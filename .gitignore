@@ -7,5 +7,6 @@ cmake_install.cmake
 *.a
 obj/*
 bin/*
+gen/*
 Makefile
 fplbase.cbp

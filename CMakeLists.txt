@@ -112,7 +112,7 @@ endif()
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
-file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_SOURCE_DIR}/src/*.fbs)
+file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
 # schema files.
@@ -150,13 +150,12 @@ set(fplbase_SRCS
   include/material.h
   include/material_manager.h
   include/mesh.h
-  include/renderer_android.h
   include/renderer.h
+  include/renderer_android.h
   include/shader.h
   include/utilities.h
-
+  schemas
   src/async_loader.cpp
-  src/flatbufferschema
   src/input.cpp
   src/material.cpp
   src/material_manager.cpp
