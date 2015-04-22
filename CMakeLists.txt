@@ -281,3 +281,4 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   target_link_libraries(mesh_pipeline ${fbx_sdk_lib} pthread dl fplutil)
 endif()
 
+add_subdirectory(demo EXCLUDE_FROM_ALL)
