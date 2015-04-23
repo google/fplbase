@@ -15,24 +15,23 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase)
 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 
 # Temporary files (like object files) created while compiling projects.
-set(tmp_dir ${CMAKE_BINARY_DIR}/obj)
+set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
 # Directory which contains the source for 3rd party libraries.
 get_filename_component(
-    third_party_root "${CMAKE_SOURCE_DIR}/../../../../external" REALPATH)
+    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external" REALPATH)
 # Directory which contains source for FPL libraries.
 get_filename_component(
-    fpl_root "${CMAKE_SOURCE_DIR}/../../libs" REALPATH)
-
+    fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../libs" REALPATH)
 
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
-set(fplbase_dependencies_root "${CMAKE_SOURCE_DIR}/dependencies")
+set(fplbase_dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 if(EXISTS "${dependencies_root}")
   set(third_party_root "${fplbase_dependencies_root}")
   set(fpl_root "${fplbase_dependencies_root}")
@@ -82,8 +81,8 @@ endfunction(install)
 # causing linker errors.
 add_definitions(-DHAVE_LIBC)
 add_definitions(-DHAVE_STDIO_H)
-set(BIN_DIR ${CMAKE_BINARY_DIR})
-set(CMAKE_BINARY_DIR ${CMAKE_BINARY_DIR}/.)
+set(BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(CMAKE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/.)
 if(APPLE)
   set(SDL_AUDIO_DRIVER_COREAUDIO 1)
 endif(APPLE)
@@ -111,7 +110,7 @@ endif()
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
-    ${CMAKE_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
 file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
