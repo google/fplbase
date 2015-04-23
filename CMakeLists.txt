@@ -111,7 +111,9 @@ endif()
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
-file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_SOURCE_DIR}/schemas/*.fbs)
+set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
+    ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR} PARENT_SCOPE)
+file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
 # schema files.
@@ -130,7 +132,7 @@ add_custom_target(fplbase_generated_includes DEPENDS ${FLATBUFFERS_GENERATED_INC
 # Build rule that uses make to build the assets.
 get_property(flatc_location TARGET flatc PROPERTY LOCATION)
 add_custom_target(fplbase_assets
-  COMMAND python ${CMAKE_SOURCE_DIR}/scripts/build_assets.py
+  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_assets.py
                  --flatc ${flatc_location} --output ${CMAKE_BINARY_DIR}/fplbase_assets
   DEPENDS flatc ${CWEBP_TARGET})
 

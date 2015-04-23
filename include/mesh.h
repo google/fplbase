@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPLBASE_MESH_H
-#define FPLBASE_MESH_H
+#ifndef FPL_MESH_H
+#define FPL_MESH_H
 
 #include "material.h"
 
@@ -22,13 +22,6 @@ namespace fpl {
 using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
-using mathfu::vec2;
-using mathfu::vec2i;
-using mathfu::vec3;
-using mathfu::vec3i;
-using mathfu::vec4;
-using mathfu::vec4i;
-using mathfu::mat4;
 
 class Renderer;
 
@@ -62,7 +55,7 @@ class Mesh {
   ~Mesh();
 
   // Create one IBO to be part of this mesh. May be called more than once.
-  void AddIndices(const unsigned short *indices, int count, Material *mat);
+  void AddIndices(const unsigned int *indices, int count, Material *mat);
 
   // Render itself. Uniforms must have been set before calling this.
   void Render(Renderer &renderer, bool ignore_material = false);
@@ -75,7 +68,7 @@ class Mesh {
   // amounts of data, or dynamic data.
   static void RenderArray(GLenum primitive, int index_count,
                           const Attribute *format, int vertex_size,
-                          const char *vertices, const unsigned short *indices);
+                          const char *vertices, const unsigned int *indices);
 
   // Convenience method for rendering a Quad. bottom_left and top_right must
   // have their X coordinate be different, but either Y or Z can be the same.
@@ -83,9 +76,19 @@ class Mesh {
                                  const vec2 &tex_bottom_left = vec2(0, 0),
                                  const vec2 &tex_top_right = vec2(1, 1));
 
+  // Convenience method for rendering a Quad with nine patch settings.
+  // In the patch_info, the user can define nine patch settings
+  // as vec4(x0, y0, x1, y1) where
+  // (x0,y0): top-left corner of stretchable area in UV coordinate.
+  // (x1,y1): bottom-right corner of stretchable area in UV coordinate.
+  static void RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
+                                          const vec3 &top_right,
+                                          const vec2i &texture_size,
+                                          const vec4 &patch_info);
+
   // Compute normals and tangents given position and texcoords.
   static void ComputeNormalsTangents(NormalMappedVertex *vertices,
-                                     const unsigned short *indices,
+                                     const unsigned int *indices,
                                      int numverts, int numindices);
 
   enum {
@@ -95,6 +98,9 @@ class Mesh {
     kAttributeTexCoord,
     kAttributeColor
   };
+
+  // Compute the byte size for a vertex from given attributes.
+  static size_t VertexSize(const Attribute *attributes);
 
  private:
   static void SetAttributes(GLuint vbo, const Attribute *attributes,
@@ -113,4 +119,4 @@ class Mesh {
 
 }  // namespace fpl
 
-#endif  // FPLBASE_MESH_H
+#endif  // FPL_MESH_H

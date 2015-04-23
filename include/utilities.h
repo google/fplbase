@@ -37,6 +37,8 @@ enum LogCategory {
 
 typedef int32_t WorldTime;
 
+const int kMillisecondsPerSecond = 1000;
+
 // Loads a file and returns its contents via string pointer.
 bool LoadFile(const char* filename, std::string* dest);
 
