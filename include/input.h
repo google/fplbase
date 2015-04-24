@@ -18,6 +18,8 @@
 #include <queue>
 #include <map>
 #include "keyboard_keycodes.h"
+#include "mathfu/constants.h"
+#include "mathfu/glsl_mappings.h"
 
 #ifdef __ANDROID__
 // Enable the android gamepad code.  It receives input events from java, via
