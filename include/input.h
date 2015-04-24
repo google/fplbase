@@ -235,6 +235,9 @@ class InputSystem {
   // above.
   Button &GetButton(int button);
 
+  bool RelativeMouseMode() const;
+  void SetRelativeMouseMode(bool enabled);
+
   // Get a joystick object describing the current input state of the specified
   // joystick ID.  (Contained in every joystick event.)
   Joystick &GetJoystick(JoystickId joystick_id);
