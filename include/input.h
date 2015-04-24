@@ -212,7 +212,8 @@ class InputSystem {
         last_millis_(0),
         start_time_(0),
         frames_(0),
-        minimized_frame_(0) {
+        minimized_frame_(0),
+        mousewheel_delta_(mathfu::kZeros2i) {
     pointers_.assign(kMaxSimultanuousPointers, Pointer());
   }
 
@@ -282,6 +283,7 @@ class InputSystem {
   }
 
   int frames() const { return frames_; }
+  vec2i mousewheel_delta() { return mousewheel_delta_; }
 
  private:
   std::vector<JoystickData> open_joystick_list;
@@ -322,6 +324,9 @@ class InputSystem {
 
   // Most recent frame at which we were minimized or maximized.
   int minimized_frame_;
+
+  // Accumulated mousewheel delta since the last frame.
+  vec2i mousewheel_delta_;
 
  public:
   static const int kMillisecondsPerSecond = 1000;
