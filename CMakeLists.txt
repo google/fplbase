@@ -145,7 +145,7 @@ endif()
 
 set(fplbase_SRCS
   include/async_loader.h
-  include/fplbase_common.h
+  include/fpl_common.h
   include/glplatform.h
   include/input.h
   include/material.h

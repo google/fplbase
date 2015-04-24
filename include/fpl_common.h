@@ -15,7 +15,6 @@
 #ifndef FPL_COMMON_H
 #define FPL_COMMON_H
 
-#include "mathfu/quaternion.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fpl {
@@ -38,11 +37,6 @@ namespace fpl {
 #define FPL_ARRAYSIZE(a)        \
   ((sizeof(a) / sizeof(*(a))) / \
    static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
-
-
-typedef mathfu::Quaternion<float> Quat;
-
-
 
 }  // namespace fpl
 
