@@ -66,6 +66,9 @@ class Texture : public AsyncResource {
   virtual void Finalize();
 
   void Set(size_t unit);
+  // Const version of Set() API. Note that the API modifies global OpenGL state.
+  void Set(size_t unit) const;
+
   void Delete();
 
   const GLuint &id() const { return id_; }

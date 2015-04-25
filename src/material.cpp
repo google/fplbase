@@ -57,6 +57,10 @@ void Texture::Set(size_t unit) {
   GL_CALL(glBindTexture(GL_TEXTURE_2D, id_));
 }
 
+void Texture::Set(size_t unit) const {
+  const_cast<Texture*>(this)->Set(unit);
+}
+
 void Texture::Delete() {
   if (id_) {
     GL_CALL(glDeleteTextures(1, &id_));
