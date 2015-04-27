@@ -271,6 +271,14 @@ Button &InputSystem::GetButton(int button) {
                                  : (button_map_[button] = Button());
 }
 
+bool InputSystem::RelativeMouseMode() const {
+  return SDL_GetRelativeMouseMode() == SDL_TRUE;
+}
+
+void InputSystem::SetRelativeMouseMode(bool enabled) {
+  SDL_SetRelativeMouseMode(enabled);
+}
+
 Joystick &InputSystem::GetJoystick(JoystickId joystick_id) {
   auto it = joystick_map_.find(joystick_id);
   assert(it != joystick_map_.end());
