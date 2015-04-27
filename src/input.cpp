@@ -276,7 +276,7 @@ bool InputSystem::RelativeMouseMode() const {
 }
 
 void InputSystem::SetRelativeMouseMode(bool enabled) {
-  SDL_SetRelativeMouseMode(enabled);
+  SDL_SetRelativeMouseMode(static_cast<SDL_bool>(enabled));
 }
 
 Joystick &InputSystem::GetJoystick(JoystickId joystick_id) {
