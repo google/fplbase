@@ -408,6 +408,16 @@ public class FPLActivity extends SDLActivity implements
     }
   }
 
+  // Reset the head tracker to the current heading, called from input class
+  public void ResetHeadTracker() {
+    cardboardView.resetHeadTracker();
+  }
+
+  // Undistort the current framebuffer, called from renderer class
+  public void UndistortFramebuffer() {
+    cardboardView.undistortFramebuffer();
+  }
+
   // Implemented in C++. (gpg_manager.cpp)
   private static native void nativeOnActivityResult(
       Activity activity,

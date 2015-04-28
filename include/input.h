@@ -29,6 +29,12 @@
 #include "pthread.h"
 #endif
 
+#ifdef __ANDROID__
+// Enable the android cardboard code.  It receives events about Cardboard from
+// java, via JNI, and creates a local representation of the state to be used.
+#define ANDROID_CARDBOARD
+#endif
+
 namespace fpl {
 
 typedef uint64_t FingerId;
@@ -40,6 +46,8 @@ typedef void *TouchFingerEvent;
 
 using mathfu::vec2;
 using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::mat4;
 
 #ifdef ANDROID_GAMEPAD
 typedef int AndroidInputDeviceId;
@@ -203,6 +211,53 @@ struct AndroidInputEvent {
 };
 #endif  // ANDROID_GAMEPAD
 
+#ifdef ANDROID_CARDBOARD
+// Cardboard input class.  Manages the state of the device in cardboard
+// based on events passed in from java, and read via JNI.
+class CardboardInput {
+ public:
+  CardboardInput()
+      : left_eye_transform_(),
+        right_eye_transform_(),
+        is_in_cardboard_(false),
+        triggered_(false),
+        pending_trigger_(false) {}
+
+  bool is_in_cardboard() const { return is_in_cardboard_; }
+  void set_is_in_cardboard(bool is_in_cardboard) {
+    is_in_cardboard_ = is_in_cardboard;
+  }
+  bool triggered() const { return triggered_; }
+
+  const mat4 &left_eye_transform() const { return left_eye_transform_; }
+  const mat4 &right_eye_transform() const { return right_eye_transform_; }
+
+  // The rightwards direction of the head.
+  vec3 right() const { return (mathfu::kAxisX4f * left_eye_transform_).xyz(); }
+  // The upwards direction of the head.
+  vec3 up() const { return (mathfu::kAxisY4f * left_eye_transform_).xyz(); }
+  // The forward direction of the head.  Note that it points into -Z.
+  vec3 forward() const {
+    return (-mathfu::kAxisZ4f * left_eye_transform_).xyz();
+  }
+
+  void AdvanceFrame();
+  void OnCardboardTrigger() { pending_trigger_ = true; }
+
+  // Realign the head tracking with the current phone heading
+  void ResetHeadTracker();
+
+ private:
+  void UpdateCardboardTransforms();
+
+  mat4 left_eye_transform_;
+  mat4 right_eye_transform_;
+  bool is_in_cardboard_;
+  bool triggered_;
+  bool pending_trigger_;
+};
+#endif  // ANDROID_CARDBOARD
+
 class InputSystem {
  public:
   InputSystem()
@@ -264,6 +319,13 @@ class InputSystem {
   void HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
 
+#ifdef ANDROID_CARDBOARD
+  CardboardInput &cardboard_input() { return cardboard_input_; }
+
+  static void OnCardboardTrigger();
+  static void SetDeviceInCardboard(bool in_cardboard);
+#endif  // ANDROID_CARDBOARD
+
   // Get a Button object for a pointer index.
   Button &GetPointerButton(FingerId pointer) {
     return GetButton(static_cast<int>(pointer + K_POINTER1));
@@ -311,6 +373,10 @@ class InputSystem {
   static pthread_mutex_t android_event_mutex;
   static std::queue<AndroidInputEvent> unhandled_java_input_events_;
 #endif  // ANDROID_GAMEPAD
+
+#ifdef ANDROID_CARDBOARD
+  static CardboardInput cardboard_input_;
+#endif
 
   // Most recent frame delta, in milliseconds.
   int frame_time_;

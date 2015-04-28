@@ -116,6 +116,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   }
   HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
+#ifdef ANDROID_CARDBOARD
+  cardboard_input_.AdvanceFrame();
+#endif
   // Poll events until Q is empty.
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -547,5 +550,82 @@ Java_com_google_fpl_pie_1noon_FPLActivity_nativeOnGamepadInput(
 }
 #endif  //__ANDROID__
 #endif  // ANDROID_GAMEPAD
+
+#ifdef ANDROID_CARDBOARD
+CardboardInput InputSystem::cardboard_input_;
+
+void CardboardInput::AdvanceFrame() {
+  UpdateCardboardTransforms();
+
+  if (pending_trigger_ != triggered_) {
+    triggered_ = pending_trigger_;
+    pending_trigger_ = false;
+  }
+}
+
+void CardboardInput::ResetHeadTracker() {
+#ifdef __ANDROID__
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID reset_head_tracker =
+      env->GetMethodID(fpl_class, "ResetHeadTracker", "()V");
+  env->CallVoidMethod(activity, reset_head_tracker);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+#endif  // __ANDROID__
+}
+
+void CardboardInput::UpdateCardboardTransforms() {
+#ifdef __ANDROID__
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID get_eye_views =
+      env->GetMethodID(fpl_class, "GetEyeViews", "([F[F)V");
+  jfloatArray left_eye = env->NewFloatArray(16);
+  jfloatArray right_eye = env->NewFloatArray(16);
+  env->CallVoidMethod(activity, get_eye_views, left_eye, right_eye);
+  jfloat *left_eye_floats = env->GetFloatArrayElements(left_eye, NULL);
+  jfloat *right_eye_floats = env->GetFloatArrayElements(right_eye, NULL);
+  left_eye_transform_ = mat4(left_eye_floats);
+  right_eye_transform_ = mat4(right_eye_floats);
+  env->ReleaseFloatArrayElements(left_eye, left_eye_floats, JNI_ABORT);
+  env->ReleaseFloatArrayElements(right_eye, right_eye_floats, JNI_ABORT);
+  env->DeleteLocalRef(left_eye);
+  env->DeleteLocalRef(right_eye);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+#endif  // __ANDROID__
+}
+
+void InputSystem::OnCardboardTrigger() {
+  cardboard_input_.OnCardboardTrigger();
+}
+
+void InputSystem::SetDeviceInCardboard(bool in_cardboard) {
+  cardboard_input_.set_is_in_cardboard(in_cardboard);
+}
+#endif  // ANDROID_CARDBOARD
+
+// Because these calls are present in the Activity, they should be present for
+// Android, even without the Cardboard flag
+#ifdef __ANDROID__
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
+    JNIEnv *env) {
+#ifdef ANDROID_CARDBOARD
+  InputSystem::OnCardboardTrigger();
+#endif
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeSetDeviceInCardboard(
+    JNIEnv *env, jobject thiz, jboolean in_cardboard) {
+#ifdef ANDROID_CARDBOARD
+  InputSystem::SetDeviceInCardboard(in_cardboard);
+#endif
+}
+#endif  // __ANDROID__
 
 }  // namespace fpl
