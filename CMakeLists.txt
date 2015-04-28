@@ -158,6 +158,7 @@ set(fplbase_SRCS
   schemas
   src/async_loader.cpp
   src/input.cpp
+  src/main.cpp
   src/material.cpp
   src/material_manager.cpp
   src/mesh.cpp

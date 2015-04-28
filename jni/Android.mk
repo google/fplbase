@@ -46,6 +46,7 @@ LOCAL_C_INCLUDES := \
 LOCAL_SRC_FILES := \
   $(FPLBASE_RELATIVE_DIR)/src/async_loader.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/input.cpp \
+  $(FPLBASE_RELATIVE_DIR)/src/main.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/material.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/material_manager.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/mesh.cpp \
