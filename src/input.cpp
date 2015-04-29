@@ -541,7 +541,7 @@ int Gamepad::GetGamepadCodeFromJavaKeyCode(int java_keycode) {
 
 #ifdef __ANDROID__
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_pie_1noon_FPLActivity_nativeOnGamepadInput(
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnGamepadInput(
     JNIEnv *env, jobject thiz, jint controller_id, jint event_code,
     jint control_code, jfloat x, jfloat y) {
   InputSystem::ReceiveGamepadEvent(
