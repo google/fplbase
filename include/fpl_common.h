@@ -15,8 +15,6 @@
 #ifndef FPL_COMMON_H
 #define FPL_COMMON_H
 
-#include "mathfu/glsl_mappings.h"
-
 namespace fpl {
 
 // A macro to disallow the copy constructor and operator= functions

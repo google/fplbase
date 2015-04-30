@@ -15,12 +15,24 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase)
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+# Option to only build flatc
+option(fplbase_build_library "Build the fplbase runtime library." ON)
+option(fplbase_build_mesh_pipeline "Build the pipeline from FBX to FlatBuffers." ON)
+option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
+
+# Look in our local cmake director for includes before checking other paths.
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Output executables in `bin`, and libraries (both static and module) in `obj`.
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
+
+# We have a parent if we're being included as `add_subdirectory` from elsewhere.
+get_directory_property(fplbase_has_parent PARENT_DIRECTORY)
 
 # Directory which contains the source for 3rd party libraries.
 get_filename_component(
@@ -61,15 +73,10 @@ set(dependencies_mathfu_dir "${fpl_root}/mathfu"
 set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
     CACHE PATH "Directory containing the Flatbuffers library.")
 
-# Option to only build flatc
-option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
-
 # Include MathFu in this project with test and benchmark builds disabled.
 set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
-#add_subdirectory(${fplbase_dependencies_mathfu_dir} ${tmp_dir}/mathfu)
-add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
-
+add_subdirectory(${fplbase_dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
 # Include SDL in this project while working around SDL requirement of out of
 # tree builds.
@@ -111,8 +118,10 @@ endif()
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
-set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
-    ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR} PARENT_SCOPE)
+if(fplbase_has_parent)
+  set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
+      ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR} PARENT_SCOPE)
+endif()
 file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
@@ -168,7 +177,6 @@ set(fplbase_SRCS
   src/shader.cpp
   src/utilities.cpp)
 
-
 # Includes for this project.
 include_directories(src)
 include_directories(include)
@@ -211,14 +219,60 @@ if(WIN32)
   link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
 endif()
 
+if(fplbase_build_library)
+  add_library(fplbase ${fplbase_SRCS})
 
-add_library (fplbase ${fplbase_SRCS})
+  # Additional flags for the target.
+  mathfu_configure_flags(fplbase)
 
-# Additional flags for the target.
-mathfu_configure_flags(fplbase)
-# Dependencies for the executable target.
-add_dependencies(fplbase fplbase_generated_includes fplbase_assets)
-target_link_libraries(fplbase
-  ${SDL_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  webp)
+  # Dependencies for the executable target.
+  add_dependencies(fplbase fplbase_generated_includes fplbase_assets)
+  target_link_libraries(fplbase
+    ${SDL_LIBRARIES}
+    ${OPENGL_LIBRARIES}
+    webp)
+endif()
+
+# Autodesk's FBX SDK must be installed to build the pipeline.
+set(fbx_sdk_dir $ENV{FBX_SDK})
+if(NOT "${fbx_sdk_dir}" STREQUAL "")
+  set(fplbase_has_fbx_sdk 1)
+endif()
+
+if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
+  # Search for the FBX library. Prefer the static library '.a' over the shared
+  # library '.so'.
+  find_library(fbx_sdk_lib NAMES libfbxsdk.a fbxsdk
+               PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
+                     ${fbx_sdk_dir}/lib/clang/release)
+
+  # We use file_util.h from fplutil.
+  set(fplutil_build_tests OFF)
+  add_subdirectory("${fplbase_dependencies_fplutil_dir}/libfplutil"
+                   ${tmp_dir}/fplutil)
+
+  # Source files for the pipeline.
+  set(fplbase_mesh_pipeline_SRCS src/mesh_pipeline.cpp)
+
+  # Add the location of #include <fbxsdk.h>.
+  include_directories(${fbx_sdk_dir}/include)
+
+  # These warnings come from the FBX SDK, and they can't be suppressed
+  # by pragmas around #include <fbxsdk.h>, so suppress them here.
+  if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix -Wno-comment")
+  endif()
+
+  # Needed by the FBX SDK when we call some file manipulation functions.
+  if(APPLE)
+    set(CMAKE_CXX_LINK_FLAGS "-framework Carbon")
+  endif()
+
+  # Create the executable for mesh_pipeline.
+  add_executable(mesh_pipeline ${fplbase_mesh_pipeline_SRCS})
+
+  # Link the executable with the FBX SDK and the static libraries that the
+  # FBX SDK needs.
+  target_link_libraries(mesh_pipeline ${fbx_sdk_lib} pthread dl fplutil)
+endif()
+

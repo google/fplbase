@@ -1,6 +1,5 @@
 # Git Ignore file.
 #General build files
-*.a
 obj/*
 bin/*
 gen/*
