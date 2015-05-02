@@ -148,7 +148,7 @@ add_custom_target(fplbase_assets
 
 if(APPLE)
   find_library(OPENGL_LIBRARIES NAMES GL GLU)
-  SET(CMAKE_CXX_LINK_FLAGS "-framework OpenGL")
+  SET(OPENGL_LIBRARIES "-framework OpenGL")
 endif()
 
 
