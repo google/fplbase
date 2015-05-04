@@ -42,3 +42,5 @@ table Material {
 }
 
 root_type Material;
+file_identifier "FMAT";
+file_extension "fplmat";

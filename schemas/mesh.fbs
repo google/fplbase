@@ -34,6 +34,6 @@ table Mesh {
 }
 
 root_type Mesh;
-file_identifier "FPLM";
+file_identifier "FMSH";
 file_extension "fplmesh";
 
