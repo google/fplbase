@@ -28,11 +28,11 @@
 #include <stdio.h>
 #include <vector>
 
-#include "common_generated.h"
-#include "fpl_common.h"
-#include "fplutil/file_utils.h"
-#include "materials_generated.h"
-#include "mesh_generated.h"
+#include "fplbase/common_generated.h"
+#include "fplbase/fpl_common.h"
+#include "fplbase/fplutil/file_utils.h"
+#include "fplbase/materials_generated.h"
+#include "fplbase/mesh_generated.h"
 
 namespace fpl {
 

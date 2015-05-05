@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "renderer.h"
-#include "utilities.h"
+#include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 
 #include "webp/decode.h"
 

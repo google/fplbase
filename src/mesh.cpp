@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "mesh.h"
+#include "fplbase/mesh.h"
 
 namespace fpl {
 

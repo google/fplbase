@@ -15,8 +15,8 @@
 #include <EGL/egl.h>
 
 #include "precompiled.h"
-#include "renderer.h"
-#include "utilities.h"
+#include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 
 // Include SDL internal headers and external refs
 #define TARGET_OS_IPHONE \

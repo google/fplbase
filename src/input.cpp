@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "input.h"
+#include "fplbase/input.h"
 #ifdef ANDROID_GAMEPAD
 #include <jni.h>
 #include <android/keycodes.h>

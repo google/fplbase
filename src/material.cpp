@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "material.h"
-#include "renderer.h"
+#include "fplbase/material.h"
+#include "fplbase/renderer.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fpl {

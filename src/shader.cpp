@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "shader.h"
-#include "renderer.h"
+#include "fplbase/shader.h"
+#include "fplbase/renderer.h"
 
 #ifdef _WIN32
 #define snprintf(buffer, count, format, ...) \

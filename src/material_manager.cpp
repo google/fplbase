@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "material_manager.h"
+#include "fplbase/material_manager.h"
+#include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
-#include "utilities.h"
 
 namespace fpl {
 

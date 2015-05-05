@@ -48,7 +48,7 @@
 #include "gpg/gpg.h"
 #endif
 
-#include "glplatform.h"
+#include "fplbase/glplatform.h"
 
 #ifdef _WIN32
 #pragma hdrstop
