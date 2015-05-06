@@ -28,16 +28,14 @@
 #include <stdio.h>
 #include <vector>
 
-#include "fplbase/common_generated.h"
+#include "common_generated.h"
 #include "fplbase/fpl_common.h"
-#include "fplbase/fplutil/file_utils.h"
-#include "fplbase/materials_generated.h"
-#include "fplbase/mesh_generated.h"
+#include "fplutil/file_utils.h"
+#include "materials_generated.h"
+#include "mesh_generated.h"
 
 namespace fpl {
 
-static const char kMeshExtension[] = ".fplmesh";
-static const char kMaterialExtension[] = ".fplmat";
 static const char kTargetSeparator[] = "__";
 
 // Each log message is given a level of importance.
@@ -193,29 +191,36 @@ class FlatMesh {
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
-  void OutputFlatBuffer(const std::string& target_dir,
-                        const std::string& target_prefix,
-                        bool copy_textures) const {
-    // Ensure target directory exists.
-    if (!CreateDirectory(target_dir.c_str())) {
-      log_.Log(kLogError, "Could not create output directory %s\n",
-               target_dir.c_str());
-      return;
+  bool OutputFlatBuffer(const std::string& mesh_dir,
+                        const std::string& material_dir,
+                        const std::string& texture_dir,
+                        const std::string& prefix) const {
+    // Copy source texture files to target directory.
+    const bool copy_textures = texture_dir != "";
+    if (copy_textures) {
+      // Ensure texture output directory exists.
+      if (!CreateDirectory(texture_dir.c_str())) {
+        log_.Log(kLogError, "Could not create texture output directory %s\n",
+                 texture_dir.c_str());
+        return false;
+      }
+
+      const std::string texture_path = DirectoryName(texture_dir) + prefix;
+      CopyTextures(texture_path);
     }
 
-    // All output files will be prepended with this name.
-    const std::string target_path = DirectoryName(target_dir) + target_prefix;
-
-    // Create one material file per surface.
-    OutputMaterialFlatBuffers(target_path, copy_textures);
-
-    // Copy source texture files to target directory.
-    if (copy_textures) {
-      CopyTextures(target_path);
+    // Ensure mesh output directory exists.
+    if (!CreateDirectory(mesh_dir.c_str())) {
+      log_.Log(kLogError, "Could not create mesh output directory %s\n",
+               mesh_dir.c_str());
+      return false;
     }
 
     // Create final mesh file that references surfaces and textures.
-    OutputMeshFlatBuffer(target_path);
+    const std::string mesh_path = DirectoryName(mesh_dir) + prefix;
+    const std::string material_path = DirectoryName(material_dir) + prefix;
+    OutputMeshFlatBuffer(mesh_path, material_path);
+    return true;
   }
 
  private:
@@ -229,29 +234,37 @@ class FlatMesh {
   }
 
   static std::string TextureFileName(const FlatSurface& s,
-                                     const std::string& target_path) {
+                                     const std::string& texture_path) {
     assert(HasTexture(s));
-    return target_path + std::string(kTargetSeparator) +
+    return texture_path + std::string(kTargetSeparator) +
            RemoveDirectoryFromName(s.texture_file_name);
   }
 
   static std::string MaterialFileName(const FlatSurface& s,
-                                      const std::string& target_path) {
+                                      const std::string& material_path) {
     if (!HasTexture(s))
       return std::string("");
 
-    return target_path + std::string(kTargetSeparator) +
-           BaseFileName(s.texture_file_name) + std::string(kMaterialExtension);
+    return material_path + std::string(kTargetSeparator) +
+           BaseFileName(s.texture_file_name) + std::string(".") +
+           std::string(matdef::MaterialExtension());
   }
 
-  void CopyTextures(const std::string& target_path) const {
+  void CopyTextures(const std::string& texture_path) const {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatSurface& s = *it;
       if (!HasTexture(s))
         continue;
 
-      const std::string target = TextureFileName(s, target_path);
+      // Copy to target location. Source location could be anywhere,
+      // including a temporary file if the texture is embedded inside
+      // the FBX file.
+      const std::string target = TextureFileName(s, texture_path);
       const bool copy_result = CopyFile(target, s.texture_file_name);
+
+      // Log copy operation.
+      log_.Log(kLogInfo, "Copying texture file %s to %s\n",
+               s.texture_file_name.c_str(), target.c_str());
       if (!copy_result) {
         log_.Log(kLogError, "Could not copy texture file %s to %s\n",
                  s.texture_file_name.c_str(), target.c_str());
@@ -275,26 +288,8 @@ class FlatMesh {
     fclose(file);
   }
 
-  void OutputMaterialFlatBuffers(const std::string& target_path,
-                                 bool copy_textures) const {
-    for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const FlatSurface& s = *it;
-      if (!HasTexture(s))
-        continue;
-
-      // TODO: add alpha, format, etc. here instead of using defaults.
-      flatbuffers::FlatBufferBuilder fbb;
-      auto texture_fb =
-          fbb.CreateString(copy_textures ? TextureFileName(s, target_path)
-                                         : s.texture_file_name);
-      auto texture_vector_fb = fbb.CreateVector(&texture_fb, 1);
-      auto material_fb = matdef::CreateMaterial(fbb, texture_vector_fb);
-      matdef::FinishMaterialBuffer(fbb, material_fb);
-      OutputFlatBufferBuilder(fbb, MaterialFileName(s, target_path));
-    }
-  }
-
-  void OutputMeshFlatBuffer(const std::string& target_path) const {
+  void OutputMeshFlatBuffer(const std::string& mesh_path,
+                            const std::string& material_path) const {
     flatbuffers::FlatBufferBuilder fbb;
 
     // Output the surfaces.
@@ -302,7 +297,7 @@ class FlatMesh {
     surfaces_fb.reserve(surfaces_.size());
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatSurface& s = *it;
-      auto material_fb = fbb.CreateString(MaterialFileName(s, target_path));
+      auto material_fb = fbb.CreateString(MaterialFileName(s, material_path));
       auto indices_fb = fbb.CreateVector(s.indices);
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
@@ -318,7 +313,8 @@ class FlatMesh {
 
     // Finalize the buffer and write it to a file.
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
-    OutputFlatBufferBuilder(fbb, target_path + std::string(kMeshExtension));
+    OutputFlatBufferBuilder(fbb, mesh_path + std::string(".") +
+                                     std::string(meshdef::MeshExtension()));
   }
 
   std::vector<FlatSurface> surfaces_;
@@ -614,7 +610,7 @@ class FbxParser {
 
       // Log the texture we found and return.
       if (texture != nullptr) {
-        log_.Log(kLogInfo, "%s using texture %s", node->GetName(),
+        log_.Log(kLogInfo, "%s using texture %s\n", node->GetName(),
                  texture->GetFileName());
         return texture;
       }
@@ -685,13 +681,16 @@ class FbxParser {
 struct MeshPipelineArgs {
   MeshPipelineArgs()
       : fbx_file(""),
-        target_dir(""),
+        mesh_dir(""),
+        texture_dir(""),
         log_level(kLogImportant),
         copy_textures(true) {}
 
   std::string fbx_file;       /// FBX input file to convert.
   std::string target_prefix;  /// Prepend to all output files.
-  std::string target_dir;     /// Directory for FlatBuffer files and materials.
+  std::string mesh_dir;       /// Output directory for FlatBuffer meshes.
+  std::string material_dir;   /// Directory with fplmat files used by meshes.
+  std::string texture_dir;    /// Output directory for textures.
   LogLevel log_level;         /// Amount of logging to dump during conversion.
   bool copy_textures;         /// Copy the texture files to target_dir, too.
 };
@@ -715,36 +714,55 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
   // Parse switches.
   for (int i = 1; i < argc - 1; ++i) {
+    const std::string arg = argv[i];
+
     // -v switch
-    if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+    if (arg == "-v" || arg == "--verbose") {
       args->log_level = kLogVerbose;
 
       // -l switch
-    } else if (strcmp(argv[i], "-l") == 0 ||
-               strcmp(argv[i], "--leave-textures") == 0) {
+    } else if (arg == "-l" || arg == "--leave-textures") {
       args->copy_textures = false;
 
-      // -t switch
-    } else if (strcmp(argv[i], "-t") == 0) {
+      // -o switch
+    } else if (arg == "-o") {
       if (i + 1 < argc - 1) {
         i++;
-        args->target_dir = std::string(argv[i]);
+        args->mesh_dir = arg;
+      } else {
+        valid_args = false;
+      }
+
+      // -m switch
+    } else if (arg == "-m") {
+      if (i + 1 < argc - 1) {
+        i++;
+        args->material_dir = arg;
+      } else {
+        valid_args = false;
+      }
+
+      // -t switch
+    } else if (arg == "-t") {
+      if (i + 1 < argc - 1) {
+        i++;
+        args->texture_dir = arg;
       } else {
         valid_args = false;
       }
 
       // -p switch
-    } else if (strcmp(argv[i], "-p") == 0) {
+    } else if (arg == "-p") {
       if (i + 1 < argc - 1) {
         i++;
-        args->target_prefix = std::string(argv[i]);
+        args->target_prefix = arg;
       } else {
         args->target_prefix = std::string("");
       }
 
       // Invalid switch.
     } else {
-      log.Log(kLogError, "Unknown parameter: %s\n", argv[i]);
+      log.Log(kLogError, "Unknown parameter: %s\n", arg.c_str());
       valid_args = false;
     }
   }
@@ -753,17 +771,28 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
   if (!valid_args) {
     log.Log(
         kLogImportant,
-        "Usage: mesh_pipeline [-v] [-l] [-t TARGET_DIR] [-p TARGET_PREFIX]"
-        " FBX_FILE\n"
+        "Usage: mesh_pipeline [-v] [-l] [-o MESH_DIR] [-m MATERIAL_DIR]"
+        " [-t TEXTURE_DIR] [-p TARGET_PREFIX] FBX_FILE\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data\n\n"
         "Options:\n"
         "  -v, --verbose        output all informative messages\n"
-        "  -l, --leave-textures do not copy textures to target directory;\n"
-        "                       reference them from their current location.\n"
-        "  -t TARGET_DIR        directory for target files\n"
+        "  -o MESH_DIR          directory for generated mesh files.\n"
+        "                       If unspecified, use current directory.\n"
+        "  -m MATERIAL_DIR      directory that holds material files for mesh\n"
+        "                       textures. If unspecified, use mesh directory.\n"
+        "                       We expect a texture_name.fplmat file to exist\n"
+        "                       for every texture.\n"
+        "  -t TEXTURE_DIR       directory for copied texture files; if -t is\n"
+        "                       not specified, textures are not copied.\n"
         "  -p TARGET_PREFIX     prepend all output file names with this\n"
         "                       by default, use base name of FBX_FILE.\n"
         "                       if TARGET_PREFIX omitted, use no prefix.\n");
+  } else {
+    // By default, we assume material files are in the same directory as
+    // the output mesh files.
+    if (args->material_dir == "") {
+      args->material_dir = args->mesh_dir;
+    }
   }
 
   return valid_args;
@@ -792,8 +821,9 @@ int main(int argc, char** argv) {
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
-  mesh.OutputFlatBuffer(args.target_dir, args.target_prefix,
-                        args.copy_textures);
+  const bool output_status = mesh.OutputFlatBuffer(
+      args.mesh_dir, args.material_dir, args.texture_dir, args.target_prefix);
+  if (!output_status) return 1;
 
   // Success.
   return 0;
