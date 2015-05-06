@@ -19,7 +19,7 @@ include "common.fbs";
 namespace meshdef;
 
 table Surface {
-  indices:[uint] (required);
+  indices:[ushort] (required);
   material:string (required);  // e.g. "materials/example.bin"
 }
 
