@@ -147,13 +147,13 @@ class FlatMesh {
                                       texture_file_name);
 
     // Copy the index array, but account for the existing control points.
-    const uint32_t first_index = static_cast<uint32_t>(s.indices.size());
+    const uint16_t first_index = static_cast<uint16_t>(s.indices.size());
     s.indices.reserve(num_indices);
     for (int i = 0; i < num_indices; ++i) {
       if (indices[i] < 0) {
         log_.Log(kLogWarning, "Index %d is negative (%d)\n", i, indices[i]);
       }
-      s.indices.push_back(first_index + static_cast<uint32_t>(indices[i]));
+      s.indices.push_back(first_index + static_cast<uint16_t>(indices[i]));
     }
 
     // Append the control point data.
@@ -226,7 +226,7 @@ class FlatMesh {
  private:
   struct FlatSurface {
     std::string texture_file_name;
-    std::vector<uint32_t> indices;
+    std::vector<uint16_t> indices;
   };
 
   static bool HasTexture(const FlatSurface& s) {
@@ -727,8 +727,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       // -o switch
     } else if (arg == "-o") {
       if (i + 1 < argc - 1) {
+        args->mesh_dir = std::string(argv[i + 1]);
         i++;
-        args->mesh_dir = arg;
       } else {
         valid_args = false;
       }
@@ -736,8 +736,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       // -m switch
     } else if (arg == "-m") {
       if (i + 1 < argc - 1) {
+        args->material_dir = std::string(argv[i + 1]);
         i++;
-        args->material_dir = arg;
       } else {
         valid_args = false;
       }
@@ -745,8 +745,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       // -t switch
     } else if (arg == "-t") {
       if (i + 1 < argc - 1) {
+        args->texture_dir = std::string(argv[i + 1]);
         i++;
-        args->texture_dir = arg;
       } else {
         valid_args = false;
       }
