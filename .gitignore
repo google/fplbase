@@ -1,7 +1,8 @@
 # Git Ignore file.
 #General build files
 obj/*
-bin/*
+bin/flatc
+bin/flathash
 gen/*
 Makefile
 fplbase.cbp
