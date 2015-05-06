@@ -107,7 +107,7 @@ bool AsyncLoader::TryFinalize() {
     res->Finalize();
     Lock([this]() { done_.erase(done_.begin()); });
   }
-  return LockReturn<bool>([this]() { return queue_.empty(); });
+  return LockReturn<bool>([this]() { return queue_.empty() && done_.empty();});
 }
 
 void AsyncLoader::Lock(const std::function<void()> &body) {
