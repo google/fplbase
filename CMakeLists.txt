@@ -240,6 +240,11 @@ if(NOT "${fbx_sdk_dir}" STREQUAL "")
 endif()
 
 if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
+  # We check-in the mesh_pipeline executible, so we need to output it to
+  # a platform-specific location.
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
+      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_SYSTEM_NAME})
+
   # Search for the FBX library. Prefer the static library '.a' over the shared
   # library '.so'.
   find_library(fbx_sdk_lib NAMES libfbxsdk.a fbxsdk
