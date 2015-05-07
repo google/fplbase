@@ -140,7 +140,7 @@ Mesh *MaterialManager::LoadMesh(const char *filename) {
   if (LoadFile(filename, &flatbuf)) {
     flatbuffers::Verifier verifier(
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(matdef::VerifyMaterialBuffer(verifier));
+    assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
     // Collect what attributes are available.
     std::vector<Attribute> attrs;

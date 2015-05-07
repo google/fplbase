@@ -63,6 +63,11 @@ class Mesh {
   // Get the material associated with the Nth IBO.
   Material *GetMaterial(int i) { return indices_[i].mat; }
 
+  // Define the vertex buffer format.
+  // `format` is an array delimitted with `kEND`.
+  // `format` must have length <= kMaxAttributes, including `kEND`.
+  void set_format(const Attribute *format);
+
   // Renders primatives using vertex and index data directly in local memory.
   // This is a convenient alternative to creating a Mesh instance for small
   // amounts of data, or dynamic data.
@@ -103,6 +108,8 @@ class Mesh {
   static size_t VertexSize(const Attribute *attributes);
 
  private:
+  static const int kMaxAttributes = 6;
+
   static void SetAttributes(GLuint vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
   static void UnSetAttributes(const Attribute *attributes);
@@ -113,7 +120,7 @@ class Mesh {
   };
   std::vector<Indices> indices_;
   size_t vertex_size_;
-  const Attribute *format_;
+  Attribute format_[kMaxAttributes];
   GLuint vbo_;
 };
 

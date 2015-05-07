@@ -99,7 +99,8 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
 
 Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
            const Attribute *format)
-    : vertex_size_(vertex_size), format_(format) {
+    : vertex_size_(vertex_size) {
+  set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, count * vertex_size, vertex_data,
@@ -110,6 +111,18 @@ Mesh::~Mesh() {
   GL_CALL(glDeleteBuffers(1, &vbo_));
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     GL_CALL(glDeleteBuffers(1, &it->ibo));
+  }
+}
+
+void Mesh::set_format(const Attribute *format) {
+  for (int i = 0;; ++i) {
+    assert(i < kMaxAttributes);
+    if (i >= kMaxAttributes)
+      break;
+
+    format_[i] = format[i];
+    if (format[i] == kEND)
+      break;
   }
 }
 
