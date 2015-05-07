@@ -320,7 +320,7 @@ class InputSystem {
 #endif  // ANDROID_GAMEPAD
 
 #ifdef ANDROID_CARDBOARD
-  CardboardInput &cardboard_input() { return cardboard_input_; }
+  CardboardInput &cardboard_input() const { return cardboard_input_; }
 
   static void OnCardboardTrigger();
   static void SetDeviceInCardboard(bool in_cardboard);
