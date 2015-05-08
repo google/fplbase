@@ -24,8 +24,11 @@
 
 #include <assert.h>
 #include <fstream>
+#include <functional>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "common_generated.h"
@@ -122,71 +125,51 @@ static inline Vec2 Vec2FromFbx(const FbxVector2& v) {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(Logger& log) : log_(log) {}
+  explicit FlatMesh(Logger& log) : cur_index_buf_(nullptr), log_(log) {}
 
-  // Set the size of these arrays at the start so that we're not constantly
-  // reallocating them. This is an optional call to improve performance.
-  void Reserve(int num_surfaces, int num_control_points) {
-    surfaces_.reserve(num_surfaces);
-    vertices_.reserve(num_control_points);
-    normals_.reserve(num_control_points);
-    uvs_.reserve(num_control_points);
+  void SetSurface(const std::string& texture_file_name) {
+    // Grab existing surface for `texture_file_name`, or create a new one.
+    IndexBuffer& index_buffer = surfaces_[texture_file_name];
+
+    // Update the current index buffer to which we're logging control points.
+    cur_index_buf_ = &index_buffer;
+
+    // Log the surface switch.
+    log_.Log(kLogInfo, "Surface: %s\n", texture_file_name.c_str());
   }
 
   // Populate a single surface with data from FBX arrays.
-  void AppendSurface(const std::string& texture_file_name, const int* indices,
-                     int num_indices, const FbxVector4* vertices,
-                     const FbxGeometryElementNormal& normal_element,
-                     const FbxVector2* uvs, int num_control_points) {
-    // Lengthen surfaces_ by one and get reference to new last element.
-    surfaces_.resize(surfaces_.size() + 1);
-    FlatSurface& s = surfaces_.back();
+  void AppendPolyVert(const Vec3& vertex, const Vec3& normal, const Vec2& uv)  {
+    // TODO: Round values before creating.
+    points_.push_back(ControlPoint(vertex, normal, uv));
 
-    // Remember the source file name.
-    s.texture_file_name = texture_file_name;
+    const ControlPointRef ref_to_insert(&points_.back(), points_.size() - 1);
+    auto insertion = unique_.insert(ref_to_insert);
 
-    // Copy the index array, but account for the existing control points.
-    const uint16_t first_index = static_cast<uint16_t>(s.indices.size());
-    s.indices.reserve(num_indices);
-    for (int i = 0; i < num_indices; ++i) {
-      if (indices[i] < 0) {
-        log_.Log(kLogWarning, "Index %d is negative (%d)\n", i, indices[i]);
-      }
-      s.indices.push_back(first_index + static_cast<uint16_t>(indices[i]));
+    // The `insert` call returns two values: iterator and success.
+    const ControlPointRef& ref = *insertion.first;
+    const bool new_control_point_created = insertion.second;
+
+    // We recycled an existing point, so we can remove the one we added with
+    // push_back().
+    if (!new_control_point_created) {
+      points_.pop_back();
     }
 
-    // Append the control point data.
-    const size_t start_control_point = vertices_.size();
-    const size_t end_control_point = start_control_point + num_control_points;
-    vertices_.reserve(end_control_point);
-    normals_.reserve(end_control_point);
-    uvs_.reserve(end_control_point);
-    for (int i = 0; i < num_control_points; ++i) {
-      vertices_.push_back(Vec3FromFbx(vertices[i]));
-      normals_.push_back(Vec3FromFbx(Element(normal_element, i)));
-      uvs_.push_back(Vec2FromFbx(uvs[i]));
-    }
+    // Append index of polygon point.
+    cur_index_buf_->push_back(ref.index);
 
     // Log the data we just added.
-    log_.Log(kLogInfo, "Surface[%d]: texture %s\n", surfaces_.size() - 1,
-             HasTexture(s) ? texture_file_name.c_str() : "none");
-    if (log_.level() <= kLogVerbose) {
-      for (size_t i = 0; i < s.indices.size(); ++i) {
-        log_.Log(kLogVerbose, "index[%d]: %d\n", i, s.indices[i]);
-      }
-      for (size_t k = start_control_point; k < end_control_point; ++k) {
-        const Vec3& v = vertices_[k];
-        const Vec3& n = normals_[k];
-        const Vec2& u = uvs_[k];
-        log_.Log(kLogVerbose,
-                 "control point[%d]:"
-                 " vertex (%.3f, %.3f, %.3f)"
-                 ", normal (%.3f, %.3f, %.3f)"
-                 ", uv (%.3f, %.3f)\n",
-                 k - start_control_point, v.x(), v.y(), v.z(), n.x(), n.y(),
-                 n.z(), u.x(), u.y());
-      }
+    log_.Log(kLogInfo, "Point: index %d", ref.index);
+    if (new_control_point_created) {
+      log_.Log(kLogInfo,
+               ", vertex (%.3f, %.3f, %.3f)"
+               ", normal (%.3f, %.3f, %.3f)"
+               ", uv (%.3f, %.3f)",
+               vertex.x(), vertex.y(), vertex.z(), normal.x(), normal.y(),
+               normal.z(), uv.x(), uv.y());
     }
+    log_.Log(kLogInfo, "\n");
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
@@ -218,29 +201,72 @@ class FlatMesh {
   }
 
  private:
-  struct FlatSurface {
-    std::string texture_file_name;
-    std::vector<uint16_t> indices;
+  typedef uint16_t IndexBufIndex;
+  typedef std::vector<IndexBufIndex> IndexBuffer;
+
+  struct ControlPoint {
+    Vec3 vertex;
+    Vec3 normal;
+    Vec2 uv;
+    ControlPoint()
+        : vertex(0, 0, 0), normal(0, 0, 0), uv(0, 0) {}
+    ControlPoint(const Vec3& v, const Vec3& n, const Vec2& u)
+        : vertex(v), normal(n), uv(u) {}
   };
 
-  static bool HasTexture(const FlatSurface& s) {
-    return s.texture_file_name.length() > 0;
+  struct ControlPointRef {
+    const ControlPoint* ref;
+    IndexBufIndex index;
+    ControlPointRef(const ControlPoint* r, size_t index)
+        : ref(r), index(static_cast<IndexBufIndex>(index)) {
+      assert(index <= std::numeric_limits<IndexBufIndex>::max());
+    }
+  };
+
+  struct ControlPointHash {
+    size_t operator()(const ControlPointRef& c) const {
+      const size_t* p = reinterpret_cast<const size_t*>(c.ref);
+      size_t hash = 0;
+      for (size_t i = 0; i < sizeof(*c.ref) / sizeof(size_t); ++i) {
+        hash ^= Rotate(p[i], i);
+      }
+      return hash;
+    }
+
+    static size_t Rotate(size_t x, size_t bytes) {
+      return (x << (8 * bytes)) | (x >> (8 * (sizeof(size_t) - bytes)));
+    }
+  };
+
+  struct ControlPointsEqual {
+    bool operator()(const ControlPointRef& a, const ControlPointRef& b) const {
+      return memcmp(a.ref, b.ref, sizeof(*a.ref)) == 0;
+    }
+  };
+
+  typedef std::unordered_map<std::string, IndexBuffer> SurfaceMap;
+  typedef std::unordered_set<ControlPointRef, ControlPointHash,
+                             ControlPointsEqual> ControlPointSet;
+
+  static bool HasTexture(const std::string& texture_file_name) {
+    return texture_file_name.length() > 0;
   }
 
-  static std::string TextureBaseFileName(const FlatSurface& s,
+  static std::string TextureBaseFileName(const std::string& texture_file_name,
                                          const std::string& assets_sub_dir) {
-    assert(HasTexture(s));
-    return assets_sub_dir + BaseFileName(s.texture_file_name);
+    assert(HasTexture(texture_file_name));
+    return assets_sub_dir + BaseFileName(texture_file_name);
   }
 
-  static std::string TextureFileName(const FlatSurface& s,
+  static std::string TextureFileName(const std::string& texture_file_name,
                                      const std::string& assets_sub_dir) {
-    return TextureBaseFileName(s, assets_sub_dir) + kTextureFileExtension;
+    return TextureBaseFileName(texture_file_name, assets_sub_dir) +
+           kTextureFileExtension;
   }
 
-  static std::string MaterialFileName(const FlatSurface& s,
+  static std::string MaterialFileName(const std::string& texture_file_name,
                                       const std::string& assets_sub_dir) {
-    return TextureBaseFileName(s, assets_sub_dir) + "." +
+    return TextureBaseFileName(texture_file_name, assets_sub_dir) + "." +
            matdef::MaterialExtension();
   }
 
@@ -263,19 +289,20 @@ class FlatMesh {
   void OutputMaterialFlatBuffers(const std::string& assets_base_dir,
                                  const std::string& assets_sub_dir) const {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const FlatSurface& s = *it;
-      if (!HasTexture(s))
+      const std::string& texture_file_name = it->first;
+      if (!HasTexture(texture_file_name))
         continue;
 
       // TODO: add alpha, format, etc. here instead of using defaults.
       flatbuffers::FlatBufferBuilder fbb;
-      auto texture_fb = fbb.CreateString(TextureFileName(s, assets_sub_dir));
+      auto texture_fb = fbb.CreateString(TextureFileName(texture_file_name,
+                                                         assets_sub_dir));
       auto texture_vector_fb = fbb.CreateVector(&texture_fb, 1);
       auto material_fb = matdef::CreateMaterial(fbb, texture_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
-          assets_base_dir + MaterialFileName(s, assets_sub_dir);
+          assets_base_dir + MaterialFileName(texture_file_name, assets_sub_dir);
       OutputFlatBufferBuilder(fbb, full_material_file_name);
     }
   }
@@ -290,29 +317,47 @@ class FlatMesh {
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
     log_.Log(kLogImportant, "Mesh %s has %d verts\n",
-             rel_mesh_file_name.c_str(), vertices_.size());
+             rel_mesh_file_name.c_str(), points_.size());
 
     // Output the surfaces.
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const FlatSurface& s = *it;
+      const std::string& texture_file_name = it->first;
+      const IndexBuffer& index_buf = it->second;
       const std::string material_file_name =
-          HasTexture(s) ? MaterialFileName(s, assets_sub_dir) : std::string("");
+          HasTexture(texture_file_name) ?
+          MaterialFileName(texture_file_name, assets_sub_dir) :
+          std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
-      auto indices_fb = fbb.CreateVector(s.indices);
+      auto indices_fb = fbb.CreateVector(index_buf);
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
       log_.Log(kLogImportant, "  Surface %s has %d indices\n",
-               material_file_name.c_str(), s.indices.size());
+               material_file_name.c_str(), index_buf.size());
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
 
     // Output the mesh.
-    auto vertices_fb = fbb.CreateVectorOfStructs(vertices_);
-    auto normals_fb = fbb.CreateVectorOfStructs(normals_);
-    auto uvs_fb = fbb.CreateVectorOfStructs(uvs_);
+    // First convert to structure-of-array format.
+    std::vector<Vec3> vertices;
+    std::vector<Vec3> normals;
+    std::vector<Vec2> uvs;
+    vertices.reserve(points_.size());
+    normals.reserve(points_.size());
+    uvs.reserve(points_.size());
+    for (auto it = points_.begin(); it != points_.end(); ++it) {
+      const ControlPoint& p = *it;
+      vertices.push_back(p.vertex);
+      normals.push_back(p.normal);
+      uvs.push_back(p.uv);
+    }
+
+    // Then create a FlatBuffer vector for each array.
+    auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
+    auto normals_fb = fbb.CreateVectorOfStructs(normals);
+    auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
     auto mesh_fb = meshdef::CreateMesh(fbb, surface_vector_fb, vertices_fb,
                                        normals_fb, 0, 0, uvs_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
@@ -321,10 +366,10 @@ class FlatMesh {
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
   }
 
-  std::vector<FlatSurface> surfaces_;
-  std::vector<Vec3> vertices_;
-  std::vector<Vec3> normals_;
-  std::vector<Vec2> uvs_;
+  SurfaceMap surfaces_;
+  ControlPointSet unique_;
+  std::vector<ControlPoint> points_;
+  IndexBuffer* cur_index_buf_;
 
   // Information and warnings.
   Logger& log_;
@@ -445,66 +490,16 @@ class FbxParser {
 
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
-    // Pre-count the number of surfaces and control points so that we're
-    // not constantly resizing `out`.
-    MeshCount count;
-    CountMeshes(scene_->GetRootNode(), &count);
-    out->Reserve(count.num_meshes, count.num_control_points);
-
     // Traverse the scene and output one surface per mesh.
     GatherFlatMeshRecursive(scene_->GetRootNode(), out);
   }
 
  private:
-  struct MeshCount {
-    MeshCount() : num_meshes(0), num_control_points(0) {}
-    int num_meshes;
-    int num_control_points;
-  };
-
-  void CountMeshes(FbxNode* node, MeshCount* count) const {
-    if (node == nullptr) return;
-
-    // For each mesh, increment our counters.
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
-      count->num_meshes++;
-      count->num_control_points += mesh->GetControlPointsCount();
-    }
-
-    // Recursively traverse each node in the scene
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      CountMeshes(node->GetChild(i), count);
-    }
-  }
-
   void ConvertGeometry() {
-    // Ensure each mesh has normals in correct format.
-    ConvertGeometryRecursive(scene_->GetRootNode());
-
     // Ensure each mesh has only one texture, and only triangles.
     FbxGeometryConverter geo_converter(manager_);
     geo_converter.SplitMeshesPerMaterial(scene_, true);
     geo_converter.Triangulate(scene_, true);
-  }
-
-  void ConvertGeometryRecursive(FbxNode* node) {
-    if (node == nullptr) return;
-
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
-      // Duplicate control points so that each control point has only one
-      // normal. If we had a cube, for example, we'd go from 8 control points
-      // (the corners) to 24 control points (three faces adjaced to each
-      // corner).
-      FbxGeometryConverter geo_converter(manager_);
-      geo_converter.EmulateNormalsByPolygonVertex(mesh);
-    }
-
-    // Recursively traverse each node in the scene
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      ConvertGeometryRecursive(node->GetChild(i));
-    }
   }
 
   // Get the UVs for a mesh.
@@ -532,89 +527,6 @@ class FbxParser {
     }
 
     return uv_element;
-  }
-
-  /// Gather one UV for each control point.
-  /// @param uv_element source UVs
-  /// @param mesh control points
-  /// @param uvs output UVs, one per control point.
-  void UvByControlPoint(const FbxGeometryElementUV* uv_element,
-                        const FbxMesh* mesh, FbxVector2* uvs) const {
-    const int num_control_points = mesh->GetControlPointsCount();
-
-    switch (uv_element->GetMappingMode()) {
-      // If source UVs are already listed per-control point, we simply
-      // dereference them in control-index order.
-      case FbxGeometryElement::eByControlPoint: {
-        const int num_control_points = mesh->GetControlPointsCount();
-        for (int control_index = 0; control_index < num_control_points;
-             ++control_index) {
-          const FbxVector2 uv = Element(*uv_element, control_index);
-          uvs[control_index] = uv;
-        }
-        break;
-      }
-
-      // If source UVs are listed per polygon-vertex, then there will be
-      // multiple UVs per control point. However, all the UVs should be the
-      // same, since we've already called SplitMeshesPerMaterial(). That is,
-      // since there is only ever one texture per mesh, a given vertex should
-      // have the same UV no matter which polygon it belongs to.
-      case FbxGeometryElement::eByPolygonVertex: {
-        const FbxDouble kMaxUvDist = 0.005f;
-
-        // Invalidate the output UVs.
-        const FbxVector2 kInvalidUv(-100.0f, -100.0f);
-        for (int control_index = 0; control_index < num_control_points;
-             ++control_index) {
-          uvs[control_index] = kInvalidUv;
-        }
-
-        // Loop through each vertex of each polygon.
-        int vertex_counter = 0;
-        const int num_polys = mesh->GetPolygonCount();
-        for (int poly_index = 0; poly_index < num_polys; ++poly_index) {
-          const int num_verts = mesh->GetPolygonSize(poly_index);
-          for (int vert_index = 0; vert_index < num_verts; ++vert_index) {
-            // Get the control index for this poly, vert combination.
-            const int control_index =
-                mesh->GetPolygonVertex(poly_index, vert_index);
-            log_.Log(kLogVerbose, "poly %d + vert %d --> control point %d",
-                     poly_index, vert_index, control_index);
-
-            // Get the UV for this poly, vert combo.
-            const FbxVector2 uv = Element(*uv_element, vertex_counter);
-
-            // Record UV or check that it matches UV previously recorded.
-            const bool is_uv_already_set = uvs[control_index] != kInvalidUv;
-            if (is_uv_already_set) {
-              // Warn if doesn't match the existing UV.
-              const bool matches = uv.Distance(uvs[control_index]) < kMaxUvDist;
-              log_.Log(kLogVerbose, matches ? ", matches\n" : ", mis-match\n");
-              if (!matches) {
-                log_.Log(kLogWarning,
-                         "Multiple UVs (%.3f, %.3f) and (%.3f, %.3f)"
-                         " for control point %d\n",
-                         uvs[control_index].mData[0],
-                         uvs[control_index].mData[1], uv.mData[0], uv.mData[1],
-                         control_index);
-              }
-            } else {
-              log_.Log(kLogVerbose, ", UV (%.3f, %.3f)\n", uv.mData[0],
-                       uv.mData[1]);
-              uvs[control_index] = uv;
-            }
-
-            // Control points are listed in order of poly + vertex.
-            vertex_counter++;
-          }
-        }
-        break;
-      }
-
-      default:
-        assert(false);
-    }
   }
 
   // Get the texture for a mesh node.
@@ -658,6 +570,23 @@ class FbxParser {
     return nullptr;
   }
 
+  std::string TextureFileName(FbxNode* node) const {
+    // Grab the texture attached to this node.
+    const FbxFileTexture* texture = TextureFromNode(node);
+    if (texture == nullptr) {
+      log_.Log(kLogWarning, "No texture found for node %s\n", node->GetName());
+      return "";
+    }
+
+    // Look for a texture on disk that matches the texture referenced by
+    // the FBX.
+    const std::string texture_file_name = FindSourceTextureFileName(
+        mesh_file_name_, std::string(texture->GetFileName()));
+    log_.Log(kLogInfo, "Mapping FBX texture %s to texture file %s\n",
+             texture->GetFileName(), texture_file_name.c_str());
+    return texture_file_name;
+  }
+
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
   void GatherFlatMeshRecursive(FbxNode* node, FlatMesh* out) const {
     if (node == nullptr) return;
@@ -666,8 +595,9 @@ class FbxParser {
     // We're only interested in meshes, for the moment.
     FbxMesh* mesh = node->GetMesh();
     if (mesh != nullptr) {
-      const FbxFileTexture* texture = TextureFromNode(node);
-      GatherFlatSurface(mesh, texture, out);
+      const std::string texture_file_name = TextureFileName(node);
+      out->SetSurface(texture_file_name);
+      GatherFlatSurface(mesh, out);
     }
 
     // Recursively traverse each node in the scene
@@ -676,42 +606,55 @@ class FbxParser {
     }
   }
 
-  void GatherFlatSurface(const FbxMesh* mesh, const FbxFileTexture* texture,
-                         FlatMesh* out) const {
-    // Get vertex buffer for mesh geometry.
-    const int num_control_points = mesh->GetControlPointsCount();
+  void GatherFlatSurface(const FbxMesh* mesh, FlatMesh* out) const {
     const FbxVector4* vertices = mesh->GetControlPoints();
-
-    // Get UVs per-control point.
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
-    std::vector<FbxVector2> uvs(num_control_points);
-    UvByControlPoint(uv_element, mesh, &uvs[0]);
-
-    // Get index buffer. Indices are into control points.
-    const int* indices = mesh->GetPolygonVertices();
-    const int num_indices = mesh->GetPolygonVertexCount();
-
-    // Normals should already be mapped per-control point because we've called
-    // EmulateNormalsByPolygonVertex().
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
-    if (normal_element->GetMappingMode() !=
-        FbxGeometryElement::eByControlPoint) {
-      log_.Log(kLogWarning, "Normals are not mapped per-control point\n");
+
+    const bool uv_by_control_index = uv_element->GetMappingMode() ==
+                                     FbxGeometryElement::eByControlPoint;
+    const bool normal_by_control_index = normal_element->GetMappingMode() ==
+                                         FbxGeometryElement::eByControlPoint;
+
+    // Loop through every poly in the mesh.
+    int vertex_counter = 0;
+    const int num_polys = mesh->GetPolygonCount();
+    for (int poly_index = 0; poly_index < num_polys; ++poly_index) {
+
+      // Ensure polygon is a triangle. This should be true since we call
+      // Triangulate() when we load the scene.
+      const int num_verts = mesh->GetPolygonSize(poly_index);
+      if (num_verts != 3) {
+        log_.Log(kLogWarning, "mesh %s poly %d has %d verts instead of 3\n",
+                 mesh->GetName(), poly_index, num_verts);
+        continue;
+      }
+
+      // Loop through all three verts.
+      for (int vert_index = 0; vert_index < num_verts; ++vert_index) {
+        // Get the control index for this poly, vert combination.
+        const int control_index =
+            mesh->GetPolygonVertex(poly_index, vert_index);
+
+        // Depending on the FBX format, normals and UVs are indexed either
+        // by control point or by polygon-vertex.
+        const FbxVector4 normal_fbx =
+            Element(*normal_element, normal_by_control_index ? control_index : vertex_counter);
+        const FbxVector2 uv_fbx =
+            Element(*uv_element, uv_by_control_index ? control_index : vertex_counter);
+
+        // Output this poly-vert.
+        // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
+        const Vec3 vertex = Vec3FromFbx(vertices[control_index]);
+        const Vec3 normal = Vec3FromFbx(normal_fbx);
+        const Vec2 uv = Vec2FromFbx(FbxVector2(uv_fbx.mData[0],
+                                               1.0 - uv_fbx.mData[1]));
+        out->AppendPolyVert(vertex, normal, uv);
+
+        // Control points are listed in order of poly + vertex.
+        vertex_counter++;
+      }
     }
-
-    // Look for a texture on disk that matches the texture referenced by
-    // the FBX.
-    const char* texture_file_name_from_fbx = texture == nullptr ? nullptr
-                                           : texture->GetFileName();
-    const std::string texture_file_name = FindSourceTextureFileName(
-        mesh_file_name_, std::string(texture_file_name_from_fbx));
-    log_.Log(kLogInfo,
-             "Mapping FBX texture file %s to source texture file %s\n",
-             texture_file_name_from_fbx, texture_file_name.c_str());
-
-    // Fill out the output structure.
-    out->AppendSurface(texture_file_name, indices, num_indices, vertices,
-                       *normal_element, &uvs[0], num_control_points);
   };
 
   // Entry point to the FBX SDK.
