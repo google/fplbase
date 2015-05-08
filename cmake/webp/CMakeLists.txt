@@ -14,47 +14,31 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 include(CheckIncludeFiles)
-include(CheckLibraryExists)
 
 set(webp_dir ${dependencies_webp_distr_dir})
 option(webp_build_cwebp "Build the cwebp command line tool." OFF)
-option(webp_build_dwebp "Build the cwebp command line tool." OFF)
+option(webp_build_dwebp "Build the dwebp command line tool." OFF)
 
+# Find the standard C math library.
 if(webp_build_cwebp OR webp_build_dwebp)
-  # Find the standard C math library.
   if(UNIX)
     find_library(MATH_LIBRARY NAMES m)
   endif()
 
-  # Configure step for command line tools.
-  check_library_exists(png png_get_libpng_ver "" WEBP_HAVE_PNG)
-  check_library_exists(jpeg jpeg_set_defaults "" WEBP_HAVE_JPEG)
-  check_library_exists(tiff TIFFGetVersion "" WEBP_HAVE_TIFF)
-  check_library_exists(gif DGifOpenFileHandle "" WEBP_HAVE_GIF)
+  find_package(PNG)
+  set(WEBP_HAVE_PNG PNG_FOUND)
+  find_package(JPEG)
+  set(WEBP_HAVE_JPEG JPEG_FOUND)
+  find_package(TIFF)
+  set(WEBP_HAVE_TIFF TIFF_FOUND)
+  find_package(GIF)
+  set(WEBP_HAVE_GIF GIF_FOUND)
+  
   check_include_files(wincodec.h shlwapi.h windows.h WEBP_HAVE_WIC)
   configure_file(${CMAKE_CURRENT_LIST_DIR}/config.h.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)
-
-  # Set the paths of libraries command line tools depend upon.
-  find_library(PNG_LIBRARY NAMES png)
-  find_library(JPEG_LIBRARY NAMES jpeg)
-  find_library(TIFF_LIBRARY NAMES tiff)
-  find_library(GIF_LIBRARY NAMES gif)
-
-  set(IMAGE_CODEC_LIBRARIES "")
-  if(PNG_LIBRARY)
-    list(APPEND IMAGE_CODEC_LIBRARIES ${PNG_LIBRARY})
-  endif()
-  if(JPEG_LIBRARY)
-    list(APPEND IMAGE_CODEC_LIBRARIES ${JPEG_LIBRARY})
-  endif()
-  if(TIFF_LIBRARY)
-    list(APPEND IMAGE_CODEC_LIBRARIES ${TIFF_LIBRARY})
-  endif()
-  if(GIF_LIBRARY)
-    list(APPEND IMAGE_CODEC_LIBRARIES ${GIF_LIBRARY})
-  endif()
+    ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)  
 endif()
+
 
 # Webp source files.
 set(webp_SRCS
@@ -170,11 +154,49 @@ endif()
 
 add_library(webp ${webp_SRCS})
 
+if(PNG_FOUND)
+  include_directories(${PNG_INCLUDE_DIRS})
+  target_link_libraries(webp ${PNG_LIBRARIES})
+endif(PNG_FOUND)
+if(JPEG_FOUND)
+  include_directories(${JPEG_INCLUDE_DIRS})
+  target_link_libraries(webp ${JPEG_LIBRARIES})
+endif(JPEG_FOUND)
+if(TIFF_FOUND)
+  include_directories(${TIFF_INCLUDE_DIRS})
+  target_link_libraries(webp ${TIFF_LIBRARIES})
+endif(TIFF_FOUND)
+if(GIF_FOUND)
+  include_directories(${GIF_INCLUDE_DIRS})
+  target_link_libraries(webp ${GIF_LIBRARIES})
+endif(GIF_FOUND)
+if(MATH_LIBRARY)
+  target_link_libraries(webp ${MATH_LIBRARY})
+endif(MATH_LIBRARY)
+
 # Create a build rule for an example executable.
 function(add_example_executable executable_name)
   add_executable(${executable_name} ${ARGN})
-  target_link_libraries(${executable_name} exampleutil webp ${MATH_LIBRARY}
-                        ${IMAGE_CODEC_LIBRARIES})
+  target_link_libraries(${executable_name} exampleutil webp)
+  if(PNG_FOUND)
+    include_directories(${PNG_INCLUDE_DIRS})
+    target_link_libraries(webp ${PNG_LIBRARIES})
+  endif(PNG_FOUND)
+  if(JPEG_FOUND)
+    include_directories(${JPEG_INCLUDE_DIRS})
+    target_link_libraries(webp ${JPEG_LIBRARIES})
+  endif(JPEG_FOUND)
+  if(TIFF_FOUND)
+    include_directories(${TIFF_INCLUDE_DIRS})
+    target_link_libraries(webp ${TIFF_LIBRARIES})
+  endif(TIFF_FOUND)
+  if(GIF_FOUND)
+    include_directories(${GIF_INCLUDE_DIRS})
+    target_link_libraries(webp ${GIF_LIBRARIES})
+  endif(GIF_FOUND)
+  if(MATH_LIBRARY)
+    target_link_libraries(webp ${MATH_LIBRARY})
+  endif(MATH_LIBRARY)
 endfunction()
 
 if(webp_build_cwebp OR webp_build_dwebp)
@@ -210,6 +232,6 @@ if(webp_build_cwebp)
       ${webp_dir}/examples/webpdec.c
       ${webp_dir}/examples/webpdec.h
       ${webp_dir}/examples/wicdec.c
-      ${webp_dir}/examples/wicdec.h)
+      ${webp_dir}/examples/wicdec.h)    
   add_example_executable(cwebp ${cwebp_SRCS})
 endif()
