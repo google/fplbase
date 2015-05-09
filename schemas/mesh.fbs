@@ -26,11 +26,11 @@ table Surface {
 table Mesh {
   surfaces:[Surface] (required);
 
-  positions:[Vec3] (required);
-  normals:[Vec3];
-  tangents:[Vec4];  // Tangent + handedness.
-  colors:[Vec4ub];
-  texcoords:[Vec2];
+  positions:[fpl.Vec3] (required);
+  normals:[fpl.Vec3];
+  tangents:[fpl.Vec4];  // Tangent + handedness.
+  colors:[fpl.Vec4ub];
+  texcoords:[fpl.Vec2];
 }
 
 root_type Mesh;
