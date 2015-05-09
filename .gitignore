@@ -16,6 +16,9 @@ cmake_install.cmake
 tests/CMakeFiles/*
 tests/Makefile
 tests/cmake_install.cmake
+demo/CMakeFiles/*
+demo/Makefile
+demo/cmake_install.cmake
 
 # Visual Studio files
 *.opensdf
