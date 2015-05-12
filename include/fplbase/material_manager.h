@@ -16,9 +16,10 @@
 #define FPLBASE_MATERIAL_MANAGER_H
 
 #include <map>
-#include "renderer.h"
+
 #include "async_loader.h"
 #include "fpl_common.h"
+#include "renderer.h"
 
 namespace fpl {
 

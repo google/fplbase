@@ -105,9 +105,7 @@ class Shader {
 
   void InitializeUniforms();
 
-  GLuint GetProgram() const {
-    return program_;
-  }
+  GLuint GetProgram() const { return program_; }
 
  private:
   GLuint program_, vs_, ps_;

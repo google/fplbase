@@ -17,8 +17,6 @@
 
 #include "SDL_main.h"
 
-extern int FPL_main(int argc, char *argv[]);
+extern int FPL_main(int argc, char* argv[]);
 
-int main(int argc, char* argv[]) {
-  return FPL_main(argc, argv);
-}
+int main(int argc, char* argv[]) { return FPL_main(argc, argv); }

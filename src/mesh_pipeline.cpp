@@ -139,7 +139,7 @@ class FlatMesh {
   }
 
   // Populate a single surface with data from FBX arrays.
-  void AppendPolyVert(const Vec3& vertex, const Vec3& normal, const Vec2& uv)  {
+  void AppendPolyVert(const Vec3& vertex, const Vec3& normal, const Vec2& uv) {
     // TODO: Round values before creating.
     points_.push_back(ControlPoint(vertex, normal, uv));
 
@@ -208,8 +208,7 @@ class FlatMesh {
     Vec3 vertex;
     Vec3 normal;
     Vec2 uv;
-    ControlPoint()
-        : vertex(0, 0, 0), normal(0, 0, 0), uv(0, 0) {}
+    ControlPoint() : vertex(0, 0, 0), normal(0, 0, 0), uv(0, 0) {}
     ControlPoint(const Vec3& v, const Vec3& n, const Vec2& u)
         : vertex(v), normal(n), uv(u) {}
   };
@@ -290,13 +289,12 @@ class FlatMesh {
                                  const std::string& assets_sub_dir) const {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const std::string& texture_file_name = it->first;
-      if (!HasTexture(texture_file_name))
-        continue;
+      if (!HasTexture(texture_file_name)) continue;
 
       // TODO: add alpha, format, etc. here instead of using defaults.
       flatbuffers::FlatBufferBuilder fbb;
-      auto texture_fb = fbb.CreateString(TextureFileName(texture_file_name,
-                                                         assets_sub_dir));
+      auto texture_fb =
+          fbb.CreateString(TextureFileName(texture_file_name, assets_sub_dir));
       auto texture_vector_fb = fbb.CreateVector(&texture_fb, 1);
       auto material_fb = matdef::CreateMaterial(fbb, texture_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
@@ -326,9 +324,9 @@ class FlatMesh {
       const std::string& texture_file_name = it->first;
       const IndexBuffer& index_buf = it->second;
       const std::string material_file_name =
-          HasTexture(texture_file_name) ?
-          MaterialFileName(texture_file_name, assets_sub_dir) :
-          std::string("");
+          HasTexture(texture_file_name)
+              ? MaterialFileName(texture_file_name, assets_sub_dir)
+              : std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
       auto indices_fb = fbb.CreateVector(index_buf);
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
@@ -393,8 +391,8 @@ static std::string FindSourceTextureFileName(
   // Check to see if there's a texture with the same base name as the mesh.
   const std::string source_name = BaseFileName(source_mesh_name);
   const std::string texture_extension = FileExtension(texture_name);
-  const std::string source_texture = source_dir + source_name + "." +
-                                     texture_extension;
+  const std::string source_texture =
+      source_dir + source_name + "." + texture_extension;
   if (FileExists(source_texture)) return source_texture;
 
   // As a last resort, use the texture name as supplied. We don't want to
@@ -550,8 +548,8 @@ class FbxParser {
 
       // Warn if there are extra unused textures.
       if (texture_count > 1 && log_.level() <= kLogWarning) {
-        const FbxFileTexture* texture1 = FbxCast<FbxFileTexture>(
-            property.GetSrcObject<FbxFileTexture>(1));
+        const FbxFileTexture* texture1 =
+            FbxCast<FbxFileTexture>(property.GetSrcObject<FbxFileTexture>(1));
         log_.Log(kLogWarning,
                  "Material %s has multiple textures. Using %s. Ignoring %s.\n",
                  material->GetName(), texture->GetFileName(),
@@ -611,16 +609,15 @@ class FbxParser {
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
 
-    const bool uv_by_control_index = uv_element->GetMappingMode() ==
-                                     FbxGeometryElement::eByControlPoint;
-    const bool normal_by_control_index = normal_element->GetMappingMode() ==
-                                         FbxGeometryElement::eByControlPoint;
+    const bool uv_by_control_index =
+        uv_element->GetMappingMode() == FbxGeometryElement::eByControlPoint;
+    const bool normal_by_control_index =
+        normal_element->GetMappingMode() == FbxGeometryElement::eByControlPoint;
 
     // Loop through every poly in the mesh.
     int vertex_counter = 0;
     const int num_polys = mesh->GetPolygonCount();
     for (int poly_index = 0; poly_index < num_polys; ++poly_index) {
-
       // Ensure polygon is a triangle. This should be true since we call
       // Triangulate() when we load the scene.
       const int num_verts = mesh->GetPolygonSize(poly_index);
@@ -639,16 +636,17 @@ class FbxParser {
         // Depending on the FBX format, normals and UVs are indexed either
         // by control point or by polygon-vertex.
         const FbxVector4 normal_fbx =
-            Element(*normal_element, normal_by_control_index ? control_index : vertex_counter);
-        const FbxVector2 uv_fbx =
-            Element(*uv_element, uv_by_control_index ? control_index : vertex_counter);
+            Element(*normal_element,
+                    normal_by_control_index ? control_index : vertex_counter);
+        const FbxVector2 uv_fbx = Element(
+            *uv_element, uv_by_control_index ? control_index : vertex_counter);
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
         const Vec3 vertex = Vec3FromFbx(vertices[control_index]);
         const Vec3 normal = Vec3FromFbx(normal_fbx);
-        const Vec2 uv = Vec2FromFbx(FbxVector2(uv_fbx.mData[0],
-                                               1.0 - uv_fbx.mData[1]));
+        const Vec2 uv =
+            Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
         out->AppendPolyVert(vertex, normal, uv);
 
         // Control points are listed in order of poly + vertex.
@@ -678,10 +676,10 @@ struct MeshPipelineArgs {
         asset_rel_dir(""),
         log_level(kLogImportant) {}
 
-  std::string fbx_file;       /// FBX input file to convert.
-  std::string asset_base_dir; /// Directory from which all assets are loaded.
-  std::string asset_rel_dir;  /// Directory (relative to base) to output files.
-  LogLevel log_level;         /// Amount of logging to dump during conversion.
+  std::string fbx_file;        /// FBX input file to convert.
+  std::string asset_base_dir;  /// Directory from which all assets are loaded.
+  std::string asset_rel_dir;   /// Directory (relative to base) to output files.
+  LogLevel log_level;          /// Amount of logging to dump during conversion.
 };
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,

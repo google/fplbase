@@ -27,7 +27,7 @@ namespace fpl {
 // semantically, one should either use disallow both or neither. Try to
 // avoid these in new code.
 #define FPL_DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
+  TypeName(const TypeName&);                   \
   void operator=(const TypeName&)
 
 // Return the number of elements in an array 'a', as type `size_t`.
