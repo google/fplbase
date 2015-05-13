@@ -125,6 +125,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #endif
 
       blend_mode_ = kBlendModeOff;
+
   return true;
 }
 
@@ -462,19 +463,6 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
 
   // Remember new mode as the current mode.
   blend_mode_ = blend_mode;
-}
-
-void Renderer::UndistortFramebuffer() {
-#ifdef __ANDROID__
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
-  jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID undistort_framebuffer =
-      env->GetMethodID(fpl_class, "UndistortFramebuffer", "()V");
-  env->CallVoidMethod(activity, undistort_framebuffer);
-  env->DeleteLocalRef(fpl_class);
-  env->DeleteLocalRef(activity);
-#endif  // __ANDROID__
 }
 
 }  // namespace fpl

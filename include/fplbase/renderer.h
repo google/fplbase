@@ -93,9 +93,6 @@ class Renderer {
   // Set to compare fragment against Z-buffer before writing, or not.
   void DepthTest(bool on);
 
-  // Undistort the current framebuffer for displaying in Cardboard
-  void UndistortFramebuffer();
-
   Renderer()
       : model_view_projection_(mat4::Identity()),
         model_(mat4::Identity()),

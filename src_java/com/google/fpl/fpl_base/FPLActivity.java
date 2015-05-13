@@ -413,9 +413,13 @@ public class FPLActivity extends SDLActivity implements
     cardboardView.resetHeadTracker();
   }
 
-  // Undistort the current framebuffer, called from renderer class
-  public void UndistortFramebuffer() {
-    cardboardView.undistortFramebuffer();
+  // Undistort and render the provided texture, called from renderer class
+  public void UndistortTexture(int textureId) {
+    try {
+      cardboardView.undistortTexture(textureId);
+    } catch (Exception e) {
+      Log.e("SDL", "exception", e);
+    }
   }
 
   // Implemented in C++. (gpg_manager.cpp)
