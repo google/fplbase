@@ -18,6 +18,7 @@
 #include "shader.h"
 #include "async_loader.h"
 #include "mathfu/glsl_mappings.h"
+#include "mathfu/constants.h"
 
 namespace fpl {
 
