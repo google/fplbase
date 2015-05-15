@@ -47,6 +47,7 @@ typedef void *TouchFingerEvent;
 using mathfu::vec2;
 using mathfu::vec2i;
 using mathfu::vec3;
+using mathfu::vec4;
 using mathfu::mat4;
 
 #ifdef ANDROID_GAMEPAD
@@ -239,6 +240,22 @@ class CardboardInput {
   // The forward direction of the head.  Note that it points into -Z.
   vec3 forward() const {
     return (-mathfu::kAxisZ4f * left_eye_transform_).xyz();
+  }
+  // The translation of the left eye
+  vec3 left_eye_translation() const {
+    return (left_eye_transform_ * mathfu::kAxisW4f).xyz();
+  }
+  // The translation of the right eye
+  vec3 right_eye_translation() const {
+    return (right_eye_transform_ * mathfu::kAxisW4f).xyz();
+  }
+  // The translation of the left eye, factoring in the Cardboard rotation
+  vec3 left_eye_rotated_translation() const {
+    return (vec4(left_eye_translation(), 0) * left_eye_transform_).xyz();
+  }
+  // The translation of the right eye, factoring in the Cardboard rotation
+  vec3 right_eye_rotated_translation() const {
+    return (vec4(right_eye_translation(), 0) * right_eye_transform_).xyz();
   }
 
   void AdvanceFrame();
