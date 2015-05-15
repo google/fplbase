@@ -273,6 +273,11 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
     set(CMAKE_CXX_LINK_FLAGS "-framework Carbon")
   endif()
 
+  # Statically link the C runtime .so files to make binary more portable.
+  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    set(CMAKE_CXX_LINK_FLAGS "-static")
+  endif()
+
   # Create the executable for mesh_pipeline.
   add_executable(mesh_pipeline ${fplbase_mesh_pipeline_SRCS})
 
