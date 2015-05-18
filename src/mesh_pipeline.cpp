@@ -35,9 +35,17 @@
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
 #include "materials_generated.h"
+#include "mathfu/glsl_mappings.h"
 #include "mesh_generated.h"
 
 namespace fpl {
+
+using mathfu::vec2;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::vec2_packed;
+using mathfu::vec3_packed;
+using mathfu::vec4_packed;
 
 static const char kTextureFileExtension[] = ".webp";
 
@@ -112,15 +120,43 @@ static T Element(const FbxLayerElementTemplate<T>& element, int index) {
   return element.GetDirectArray().GetAt(direct_index);
 }
 
-static inline Vec3 Vec3FromFbx(const FbxVector4& v) {
+/// Return element[index], accounting for the index array, if it is used.
+template <class T>
+static T ElementFromIndices(const FbxLayerElementTemplate<T>& element,
+                            int control_index, int vertex_counter) {
+  const int index =
+      element.GetMappingMode() == FbxGeometryElement::eByControlPoint ?
+      control_index : vertex_counter;
+  return Element(element, index);
+}
+
+static inline vec4 Vec4FromFbx(const FbxVector4& v) {
   const FbxDouble* d = v.mData;
-  return Vec3(static_cast<float>(d[0]), static_cast<float>(d[1]),
+  return vec4(static_cast<float>(d[0]), static_cast<float>(d[1]),
+              static_cast<float>(d[2]), static_cast<float>(d[3]));
+}
+
+static inline vec3 Vec3FromFbx(const FbxVector4& v) {
+  const FbxDouble* d = v.mData;
+  return vec3(static_cast<float>(d[0]), static_cast<float>(d[1]),
               static_cast<float>(d[2]));
 }
 
-static inline Vec2 Vec2FromFbx(const FbxVector2& v) {
+static inline vec2 Vec2FromFbx(const FbxVector2& v) {
   const FbxDouble* d = v.mData;
-  return Vec2(static_cast<float>(d[0]), static_cast<float>(d[1]));
+  return vec2(static_cast<float>(d[0]), static_cast<float>(d[1]));
+}
+
+static inline Vec4 FlatBufferVec4(const vec4& v) {
+  return Vec4(v.x(), v.y(), v.z(), v.w());
+}
+
+static inline Vec3 FlatBufferVec3(const vec3& v) {
+  return Vec3(v.x(), v.y(), v.z());
+}
+
+static inline Vec2 FlatBufferVec2(const vec2& v) {
+  return Vec2(v.x(), v.y());
 }
 
 class FlatMesh {
@@ -139,15 +175,16 @@ class FlatMesh {
   }
 
   // Populate a single surface with data from FBX arrays.
-  void AppendPolyVert(const Vec3& vertex, const Vec3& normal, const Vec2& uv) {
+  void AppendPolyVert(const vec3& vertex, const vec3& normal,
+                      const vec4& tangent, const vec2& uv) {
     // TODO: Round values before creating.
-    points_.push_back(ControlPoint(vertex, normal, uv));
+    points_.push_back(Vertex(vertex, normal, tangent, uv));
 
-    const ControlPointRef ref_to_insert(&points_.back(), points_.size() - 1);
+    const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
 
     // The `insert` call returns two values: iterator and success.
-    const ControlPointRef& ref = *insertion.first;
+    const VertexRef& ref = *insertion.first;
     const bool new_control_point_created = insertion.second;
 
     // We recycled an existing point, so we can remove the one we added with
@@ -165,9 +202,12 @@ class FlatMesh {
       log_.Log(kLogInfo,
                ", vertex (%.3f, %.3f, %.3f)"
                ", normal (%.3f, %.3f, %.3f)"
+               ", tangent (%.3f, %.3f, %.3f)"
+               ", binormal-handedness %.0f"
                ", uv (%.3f, %.3f)",
                vertex.x(), vertex.y(), vertex.z(), normal.x(), normal.y(),
-               normal.z(), uv.x(), uv.y());
+               normal.z(), tangent.x(), tangent.y(), tangent.z(),
+               tangent.w(), uv.x(), uv.y());
     }
     log_.Log(kLogInfo, "\n");
   }
@@ -204,26 +244,31 @@ class FlatMesh {
   typedef uint16_t IndexBufIndex;
   typedef std::vector<IndexBufIndex> IndexBuffer;
 
-  struct ControlPoint {
-    Vec3 vertex;
-    Vec3 normal;
-    Vec2 uv;
-    ControlPoint() : vertex(0, 0, 0), normal(0, 0, 0), uv(0, 0) {}
-    ControlPoint(const Vec3& v, const Vec3& n, const Vec2& u)
-        : vertex(v), normal(n), uv(u) {}
+  struct Vertex {
+    vec3_packed vertex;
+    vec3_packed normal;
+    vec4_packed tangent; // 4th element is handedness: +1 or -1
+    vec2_packed uv;
+    Vertex() {
+      // The Hash function operates on all the memory, so ensure everything is
+      // zero'd out.
+      memset(this, 0, sizeof(*this));
+    }
+    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec2& u)
+        : vertex(v), normal(n), tangent(t), uv(u) {}
   };
 
-  struct ControlPointRef {
-    const ControlPoint* ref;
+  struct VertexRef {
+    const Vertex* ref;
     IndexBufIndex index;
-    ControlPointRef(const ControlPoint* r, size_t index)
-        : ref(r), index(static_cast<IndexBufIndex>(index)) {
+    VertexRef(const Vertex* v, size_t index)
+        : ref(v), index(static_cast<IndexBufIndex>(index)) {
       assert(index <= std::numeric_limits<IndexBufIndex>::max());
     }
   };
 
-  struct ControlPointHash {
-    size_t operator()(const ControlPointRef& c) const {
+  struct VertexHash {
+    size_t operator()(const VertexRef& c) const {
       const size_t* p = reinterpret_cast<const size_t*>(c.ref);
       size_t hash = 0;
       for (size_t i = 0; i < sizeof(*c.ref) / sizeof(size_t); ++i) {
@@ -237,15 +282,14 @@ class FlatMesh {
     }
   };
 
-  struct ControlPointsEqual {
-    bool operator()(const ControlPointRef& a, const ControlPointRef& b) const {
+  struct VerticesEqual {
+    bool operator()(const VertexRef& a, const VertexRef& b) const {
       return memcmp(a.ref, b.ref, sizeof(*a.ref)) == 0;
     }
   };
 
   typedef std::unordered_map<std::string, IndexBuffer> SurfaceMap;
-  typedef std::unordered_set<ControlPointRef, ControlPointHash,
-                             ControlPointsEqual> ControlPointSet;
+  typedef std::unordered_set<VertexRef, VertexHash, VerticesEqual> VertexSet;
 
   static bool HasTexture(const std::string& texture_file_name) {
     return texture_file_name.length() > 0;
@@ -341,23 +385,27 @@ class FlatMesh {
     // First convert to structure-of-array format.
     std::vector<Vec3> vertices;
     std::vector<Vec3> normals;
+    std::vector<Vec4> tangents;
     std::vector<Vec2> uvs;
     vertices.reserve(points_.size());
     normals.reserve(points_.size());
+    tangents.reserve(points_.size());
     uvs.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
-      const ControlPoint& p = *it;
-      vertices.push_back(p.vertex);
-      normals.push_back(p.normal);
-      uvs.push_back(p.uv);
+      const Vertex& p = *it;
+      vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
+      normals.push_back(FlatBufferVec3(vec3(p.normal)));
+      tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
+      uvs.push_back(FlatBufferVec2(vec2(p.uv)));
     }
 
     // Then create a FlatBuffer vector for each array.
     auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
     auto normals_fb = fbb.CreateVectorOfStructs(normals);
+    auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
     auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
     auto mesh_fb = meshdef::CreateMesh(fbb, surface_vector_fb, vertices_fb,
-                                       normals_fb, 0, 0, uvs_fb);
+                                       normals_fb, tangents_fb, 0, uvs_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -365,8 +413,8 @@ class FlatMesh {
   }
 
   SurfaceMap surfaces_;
-  ControlPointSet unique_;
-  std::vector<ControlPoint> points_;
+  VertexSet unique_;
+  std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
 
   // Information and warnings.
@@ -498,6 +546,38 @@ class FbxParser {
     FbxGeometryConverter geo_converter(manager_);
     geo_converter.SplitMeshesPerMaterial(scene_, true);
     geo_converter.Triangulate(scene_, true);
+
+    // Traverse all meshes in the scene, generating normals and tangents.
+    ConvertGeometryRecursive(scene_->GetRootNode());
+  }
+
+  void ConvertGeometryRecursive(FbxNode* node) {
+    if (node == nullptr) return;
+
+    // We're only interested in meshes, for the moment.
+    FbxMesh* mesh = node->GetMesh();
+    if (mesh != nullptr) {
+      // Generate normals. Leaves existing normal data if it already exists.
+      const bool normals_generated = mesh->GenerateNormals();
+      if (!normals_generated) {
+        log_.Log(kLogWarning, "Could not generate normals for mesh %s\n",
+                 mesh->GetName());
+      }
+
+      // Generate tangents. Leaves existing tangent data if it already exists.
+      if (mesh->GetElementUVCount() > 0) {
+        const bool tangents_generated = mesh->GenerateTangentsData(0);
+        if (!tangents_generated) {
+          log_.Log(kLogWarning, "Could not generate tangents for mesh %s\n",
+                   mesh->GetName());
+        }
+      }
+    }
+
+    // Recursively traverse each node in the scene
+    for (int i = 0; i < node->GetChildCount(); i++) {
+      ConvertGeometryRecursive(node->GetChild(i));
+    }
   }
 
   // Get the UVs for a mesh.
@@ -608,11 +688,7 @@ class FbxParser {
     const FbxVector4* vertices = mesh->GetControlPoints();
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
-
-    const bool uv_by_control_index =
-        uv_element->GetMappingMode() == FbxGeometryElement::eByControlPoint;
-    const bool normal_by_control_index =
-        normal_element->GetMappingMode() == FbxGeometryElement::eByControlPoint;
+    const FbxGeometryElementTangent* tangent_element = mesh->GetElementTangent();
 
     // Loop through every poly in the mesh.
     int vertex_counter = 0;
@@ -636,18 +712,21 @@ class FbxParser {
         // Depending on the FBX format, normals and UVs are indexed either
         // by control point or by polygon-vertex.
         const FbxVector4 normal_fbx =
-            Element(*normal_element,
-                    normal_by_control_index ? control_index : vertex_counter);
-        const FbxVector2 uv_fbx = Element(
-            *uv_element, uv_by_control_index ? control_index : vertex_counter);
+            ElementFromIndices(*normal_element, control_index, vertex_counter);
+        const FbxVector4 tangent_fbx =
+            ElementFromIndices(*tangent_element, control_index, vertex_counter);
+        const FbxVector2 uv_fbx =
+            ElementFromIndices(*uv_element, control_index, vertex_counter);
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
-        const Vec3 vertex = Vec3FromFbx(vertices[control_index]);
-        const Vec3 normal = Vec3FromFbx(normal_fbx);
-        const Vec2 uv =
+        const vec3 vertex = Vec3FromFbx(vertices[control_index]);
+        const vec3 normal = Vec3FromFbx(normal_fbx);
+        const vec4 tangent = Vec4FromFbx(tangent_fbx);
+
+        const vec2 uv =
             Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
-        out->AppendPolyVert(vertex, normal, uv);
+        out->AppendPolyVert(vertex, normal, tangent, uv);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;

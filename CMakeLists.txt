@@ -204,8 +204,8 @@ if(MSVC)
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
        CMAKE_COMPILER_IS_CLANGXX)
   add_definitions(-g)
-  set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function")
+  set(CMAKE_CXX_FLAGS "-std=c++0x -pedantic -Wno-unused-function")
+  message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
   # -Wno-unused-function is because of webp encode.h
 endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
@@ -265,7 +265,7 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   # These warnings come from the FBX SDK, and they can't be suppressed
   # by pragmas around #include <fbxsdk.h>, so suppress them here.
   if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix -Wno-comment")
+    set(CMAKE_CXX_FLAGS "-std=c++0x -Wno-literal-suffix -Wno-comment ${C_FLAGS_WARNINGS}")
   endif()
 
   # Needed by the FBX SDK when we call some file manipulation functions.
@@ -284,6 +284,9 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   # Link the executable with the FBX SDK and the static libraries that the
   # FBX SDK needs.
   target_link_libraries(mesh_pipeline ${fbx_sdk_lib} pthread dl fplutil)
+
+  # Additional flags for the target.
+  mathfu_configure_flags(mesh_pipeline)
 endif()
 
 add_subdirectory(demo EXCLUDE_FROM_ALL)
