@@ -43,40 +43,33 @@ get_filename_component(
 
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
-set(fplbase_dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-if(EXISTS "${dependencies_root}")
+set(fplbase_dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies"
+    CACHE PATH "Root directory for FPL base dependencies")
+if(EXISTS "${fplbase_dependencies_root}")
   set(third_party_root "${fplbase_dependencies_root}")
   set(fpl_root "${fplbase_dependencies_root}")
 endif()
 
 # Configurable locations of dependencies of this project.
-set(fplbase_dependencies_gtest_dir "${fpl_root}/googletest"
+set(dependencies_gtest_dir "${fpl_root}/googletest"
     CACHE PATH "Directory containing the GoogleTest library.")
-set(fplbase_dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
-    CACHE PATH "Directory containing the Flatbuffers library.")
-set(fplbase_dependencies_fplutil_dir "${fpl_root}/fplutil"
-    CACHE PATH "Directory containing the fplutil library.")
-set(fplbase_dependencies_mathfu_dir "${fpl_root}/mathfu"
-    CACHE PATH "Directory containing the MathFu library.")
-set(fplbase_dependencies_sdl_dir "${third_party_root}/sdl"
-    CACHE PATH "Directory containing the SDL library.")
-set(fplbase_dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
-    CACHE PATH "Directory containing the Webp cmake project.")
-set(fplbase_dependencies_webp_distr_dir "${third_party_root}/webp"
-    CACHE PATH "Directory containing the Webp distribution.")
-
-# Apparently the webp cmake file needs this to be cached before it can run?
-set(dependencies_webp_distr_dir "${third_party_root}/webp"
-    CACHE PATH "Directory containing the Webp distribution.")
-set(dependencies_mathfu_dir "${fpl_root}/mathfu"
-    CACHE PATH "Directory containing the MathFu library.")
 set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
     CACHE PATH "Directory containing the Flatbuffers library.")
+set(dependencies_fplutil_dir "${fpl_root}/fplutil"
+    CACHE PATH "Directory containing the fplutil library.")
+set(dependencies_mathfu_dir "${fpl_root}/mathfu"
+    CACHE PATH "Directory containing the MathFu library.")
+set(dependencies_sdl_dir "${third_party_root}/sdl"
+    CACHE PATH "Directory containing the SDL library.")
+set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
+    CACHE PATH "Directory containing the Webp cmake project.")
+set(dependencies_webp_distr_dir "${third_party_root}/webp"
+    CACHE PATH "Directory containing the Webp distribution.")
 
 # Include MathFu in this project with test and benchmark builds disabled.
 set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
-add_subdirectory(${fplbase_dependencies_mathfu_dir} ${tmp_dir}/mathfu)
+add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
 # Include SDL in this project while working around SDL requirement of out of
 # tree builds.
@@ -95,7 +88,7 @@ if(APPLE)
 endif(APPLE)
 
 if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
-  add_subdirectory(${fplbase_dependencies_sdl_dir} ${tmp_dir}/sdl)
+  add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
 endif()
 
 set(CMAKE_BINARY_DIR ${BIN_DIR})
@@ -104,7 +97,7 @@ set(CMAKE_BINARY_DIR ${BIN_DIR})
 set(original_build_type ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release)
 if(NOT fplbase_only_flatc AND NOT TARGET webp)
-  add_subdirectory("${fplbase_dependencies_webp_cmake_dir}" ${tmp_dir}/webp)
+  add_subdirectory("${dependencies_webp_cmake_dir}" ${tmp_dir}/webp)
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
 
@@ -132,7 +125,9 @@ foreach(flatbuffers_schema ${FLATBUFFERS_SCHEMAS})
       ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}/${filename}_generated.h)
   add_custom_command(
     OUTPUT ${flatbuffers_include}
-    COMMAND flatc --gen-includes -o ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR} -c ${flatbuffers_schema}
+    COMMAND flatc --gen-includes
+                  -o ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}
+                  -c ${flatbuffers_schema}
     DEPENDS flatc ${flatbuffers_schema})
   list(APPEND FLATBUFFERS_GENERATED_INCLUDES ${flatbuffers_include})
 endforeach()
@@ -142,7 +137,8 @@ add_custom_target(fplbase_generated_includes DEPENDS ${FLATBUFFERS_GENERATED_INC
 get_property(flatc_location TARGET flatc PROPERTY LOCATION)
 add_custom_target(fplbase_assets
   COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_assets.py
-                 --flatc ${flatc_location} --output ${CMAKE_BINARY_DIR}/fplbase_assets
+                 --flatc ${flatc_location}
+                 --output ${CMAKE_BINARY_DIR}/fplbase_assets
   DEPENDS flatc ${CWEBP_TARGET})
 
 
@@ -185,9 +181,9 @@ if(WIN32)
 endif()
 include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 include_directories(${dependencies_flatbuffers_dir}/include)
-include_directories(${fplbase_dependencies_fplutil_dir}/libfplutil/include)
-include_directories(${fplbase_dependencies_webp_distr_dir}/include)
-include_directories(${fplbase_dependencies_webp_distr_dir}/src)
+include_directories(${dependencies_fplutil_dir}/libfplutil/include)
+include_directories(${dependencies_webp_distr_dir}/include)
+include_directories(${dependencies_webp_distr_dir}/src)
 
 # SDL includes.
 include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
@@ -253,7 +249,7 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
 
   # We use file_util.h from fplutil.
   set(fplutil_build_tests OFF)
-  add_subdirectory("${fplbase_dependencies_fplutil_dir}/libfplutil"
+  add_subdirectory("${dependencies_fplutil_dir}/libfplutil"
                    ${tmp_dir}/fplutil)
 
   # Source files for the pipeline.
