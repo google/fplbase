@@ -15,6 +15,8 @@
 #ifndef FPLBASE_ASYNC_LOADER_H
 #define FPLBASE_ASYNC_LOADER_H
 
+#include <string>
+
 namespace fpl {
 
 typedef void *Thread;
