@@ -26,6 +26,19 @@ struct Vec2i {
   y:int;
 }
 
+struct Vec3i {
+  x:int;
+  y:int;
+  z:int;
+}
+
+struct Vec4i {
+  x:int;
+  y:int;
+  z:int;
+  w:int;
+}
+
 struct Vec2 {
   x:float;
   y:float;
