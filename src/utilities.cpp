@@ -198,6 +198,25 @@ void LogError(int category, const char* fmt, ...) {
   va_end(args);
 }
 
+#ifdef __ANDROID__
+// This function always returns a pointer to a jobject, but we are returning a
+// void* for the same reason SDL does - to avoid having to include the jni
+// libraries in this library.  Anything calling this will probably want to
+// static cast the return value into a jobject*.
+void* AndroidGetActivity() {
+  return SDL_AndroidGetActivity();
+}
+
+// This function always returns a pointer to a JNIEnv, but we are returning a
+// void* for the same reason SDL does - to avoid having to include the jni
+// libraries in this library.  Anything calling this will probably want to
+// static cast the return value into a JNIEnv*.
+void* AndroidGetJNIEnv() {
+  return SDL_AndroidGetJNIEnv();
+}
+#endif
+
+
 WorldTime GetTicks() { return SDL_GetTicks(); }
 
 void Delay(WorldTime time) { SDL_Delay(time); }

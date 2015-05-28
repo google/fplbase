@@ -64,6 +64,16 @@ WorldTime GetTicks();
 // Delays (sleeps) for the specified number of ticks.
 void Delay(WorldTime time);
 
+#ifdef __ANDROID__
+// Returns a pointer to the Java instance of the activity class
+// in an Android application.
+void* AndroidGetActivity();
+
+// Returns a pointer to the Java native interface object (JNIEnv) of the
+// current thread on an Android application.
+void* AndroidGetJNIEnv();
+#endif  // __ANDROID__
+
 }  // namespace fpl
 
 #endif  // FPLBASE_UTILITIES_H
