@@ -35,19 +35,26 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 get_directory_property(fplbase_has_parent PARENT_DIRECTORY)
 
 # Directory which contains the source for 3rd party libraries.
-get_filename_component(
-    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external" REALPATH)
+if(NOT DEFINED third_party_root)
+  get_filename_component(
+    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external"
+    REALPATH)
+endif()
+
 # Directory which contains source for FPL libraries.
-get_filename_component(
-    fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../libs" REALPATH)
+if(NOT DEFINED fpl_root)
+  get_filename_component(
+      fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../libs" REALPATH)
+endif()
 
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
-set(fplbase_dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies"
-    CACHE PATH "Root directory for FPL base dependencies")
-if(EXISTS "${fplbase_dependencies_root}")
-  set(third_party_root "${fplbase_dependencies_root}")
-  set(fpl_root "${fplbase_dependencies_root}")
+if(NOT DEFINED dependencies_root)
+  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  if(EXISTS "${dependencies_root}")
+    set(third_party_root "${dependencies_root}")
+    set(fpl_root "${dependencies_root}")
+  endif()
 endif()
 
 # Configurable locations of dependencies of this project.
