@@ -44,7 +44,7 @@ static int HandleAppEvents(void *userdata, SDL_Event *event) {
     case SDL_APP_LOWMEMORY:
       break;
     case SDL_APP_WILLENTERBACKGROUND:
-      input_system->minimized_ = true;
+      input_system->set_minimized(true);
       input_system->set_minimized_frame(input_system->frames());
       break;
     case SDL_APP_DIDENTERBACKGROUND:
@@ -52,7 +52,7 @@ static int HandleAppEvents(void *userdata, SDL_Event *event) {
     case SDL_APP_WILLENTERFOREGROUND:
       break;
     case SDL_APP_DIDENTERFOREGROUND:
-      input_system->minimized_ = false;
+      input_system->set_minimized(false);
       input_system->set_minimized_frame(input_system->frames());
       break;
     default:
@@ -116,6 +116,10 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   }
   HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
+  if (!record_text_input_) {
+    text_input_events_.clear();
+  }
+
   // Poll events until Q is empty.
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -126,6 +130,12 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       case SDL_KEYDOWN:
       case SDL_KEYUP: {
         GetButton(event.key.keysym.sym).Update(event.key.state == SDL_PRESSED);
+        if (record_text_input_) {
+          text_input_events_.emplace_back(kTextInputEventTypeKey,
+                                          event.key.state, event.key.repeat,
+                                          event.key.keysym.sym,
+                                          event.key.keysym.mod);
+        }
         break;
       }
 #ifdef PLATFORM_MOBILE
@@ -194,8 +204,20 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         break;
       }
       case SDL_TEXTEDITING:
-      case SDL_TEXTINPUT:
+        if (record_text_input_) {
+          TextInputEvent edit(kTextInputEventTypeEdit);
+          text_input_events_.emplace_back(kTextInputEventTypeEdit,
+                                          event.edit.text, event.edit.start,
+                                          event.edit.length);
+        }
         break;
+      case SDL_TEXTINPUT: {
+        if (record_text_input_) {
+          text_input_events_.emplace_back(kTextInputEventTypeText,
+                                          event.text.text);
+        }
+        break;
+      }
       default: {
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "----Unknown SDL event!\n");
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "----Event ID: %d!\n",
@@ -385,6 +407,23 @@ void InputSystem::CloseOpenJoysticks() {
     SDL_JoystickClose(static_cast<SDL_Joystick *>(joystick.joystick_data()));
     joystick.set_joystick_data(nullptr);
   }
+}
+
+const std::vector<TextInputEvent> *InputSystem::GetTextInputEvents() {
+  return &text_input_events_;
+}
+
+void InputSystem::StartTextInput() { SDL_StartTextInput(); }
+
+void InputSystem::StopTextInput() { SDL_StopTextInput(); }
+
+void InputSystem::SetTextInputRect(const mathfu::vec4 &input_rect) {
+  SDL_Rect rect;
+  rect.x = input_rect.x();
+  rect.y = input_rect.y();
+  rect.w = input_rect.z();
+  rect.h = input_rect.w();
+  SDL_SetTextInputRect(&rect);
 }
 
 void Button::Update(bool down) {
@@ -614,6 +653,65 @@ void InputSystem::SetDeviceInCardboard(bool in_cardboard) {
   cardboard_input_.set_is_in_cardboard(in_cardboard);
 }
 #endif  // ANDROID_CARDBOARD
+
+// Constructors and destroctor of TextInputEvent union.
+TextInputEvent::TextInputEvent(TextInputEventType t) {
+  type = t;
+  switch (type) {
+    case kTextInputEventTypeEdit:
+    case kTextInputEventTypeText:
+      text = std::string();
+      break;
+    case kTextInputEventTypeKey:
+      break;
+  }
+}
+
+TextInputEvent::TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
+                               int32_t symbol, int32_t modifier) {
+  type = t;
+  switch (type) {
+    case kTextInputEventTypeKey:
+      key.state = state;
+      key.repeat = repeat;
+      key.symbol = symbol;
+      key.modifier = modifier;
+      break;
+    case kTextInputEventTypeEdit:
+    case kTextInputEventTypeText:
+      assert(0);
+      break;
+  }
+}
+
+TextInputEvent::TextInputEvent(TextInputEventType t, const char * str) {
+  type = t;
+  switch (type) {
+    case kTextInputEventTypeText:
+      text = std::string(str);
+      break;
+    case kTextInputEventTypeEdit:
+    case kTextInputEventTypeKey:
+      assert(0);
+      break;
+  }
+}
+
+TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
+                               int32_t start, int32_t length) {
+  type = t;
+  switch (type) {
+    case kTextInputEventTypeEdit:
+      text = std::string(str);
+      edit.start = start;
+      edit.length = length;
+      break;
+    case kTextInputEventTypeText:
+    case kTextInputEventTypeKey:
+      assert(0);
+      break;
+  }
+}
 
 // Because these calls are present in the Activity, they should be present for
 // Android, even without the Cardboard flag

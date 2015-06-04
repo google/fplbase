@@ -17,6 +17,7 @@
 
 #include <queue>
 #include <map>
+#include <string>
 #include "keyboard_keycodes.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
@@ -96,13 +97,13 @@ enum {
 };
 
 // Additional information stored for the pointer buttons.
-struct Pointer {
+struct InputPointer {
   FingerId id;
   vec2i mousepos;
   vec2i mousedelta;
   bool used;
 
-  Pointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
 };
 
 // Used to record state for axes
@@ -275,6 +276,57 @@ class CardboardInput {
 };
 #endif  // ANDROID_CARDBOARD
 
+// Text input structures and enums.
+
+// Text input event type.
+enum TextInputEventType {
+  kTextInputEventTypeEdit = 0,      // An event for a text edit in IME.
+  kTextInputEventTypeText = 1,      // An event for a text input.
+  kTextInputEventTypeKey = 2,       // An event for a key event.
+};
+
+// An event parameters for a text edit in IME (Input Method Editor).
+// The information passed in the event is an intermediate state and only used
+// for UI represents. Once IME finalizes an edit, the user recieves an
+// TextInputEventText event for the finalized strings.
+struct TextInputEventEdit {
+  int32_t start;            // A start index of a focus region in the text.
+  int32_t length;           // A length of a focus region in the text.
+};
+
+// An event parameters for a keyboard input.
+// The user recieves all input strings through kTextInputEventTypeText type of
+// an event, these paremeters should be used for an input control such as moving
+// caret.
+struct TextInputEventKey {
+  uint8_t state;            // key state,
+                            // 0: Key is pressed,
+                            // 1: Key is released.
+  bool repeat;              // A flag indicates if the key is repeated input.
+  int32_t symbol;           // Key symbol, currently it's using key definitions
+                            // of SDL. Refer SDL_keycode.h for a detail.
+  int32_t modifier;         // Modifier key state.
+                            // Currently it's using modifier key definitions of
+                            // SDL (SDL_Keymod).
+};
+
+// Union of Text input event.
+struct TextInputEvent {
+  TextInputEventType type;    // Type of the event.
+  std::string text;           // Input string.
+  union {
+    TextInputEventKey key;
+    TextInputEventEdit edit;
+  };
+  // Constructors to emblace_back() them.
+  TextInputEvent(TextInputEventType t);
+  TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
+                 int32_t symbol, int32_t modifier);
+  TextInputEvent(TextInputEventType t, const char * str);
+  TextInputEvent(TextInputEventType t, const char * str,
+                 int32_t start, int32_t length);
+};
+
 class InputSystem {
  public:
   InputSystem()
@@ -285,8 +337,9 @@ class InputSystem {
         start_time_(0),
         frames_(0),
         minimized_frame_(0),
-        mousewheel_delta_(mathfu::kZeros2i) {
-    pointers_.assign(kMaxSimultanuousPointers, Pointer());
+        mousewheel_delta_(mathfu::kZeros2i),
+        record_text_input_(false) {
+    pointers_.assign(kMaxSimultanuousPointers, InputPointer());
   }
 
   static const int kMaxSimultanuousPointers = 10;  // All current touch screens.
@@ -367,7 +420,52 @@ class InputSystem {
   int frames() const { return frames_; }
   vec2i mousewheel_delta() { return mousewheel_delta_; }
 
- private:
+  // Start/Stop recording text input events.
+  // Recorded event can be retrieved by GetTextInputEvents().
+  void RecordTextInput(bool b) {
+    record_text_input_ = b;
+    if (!b) text_input_events_.clear();
+  }
+  bool IsRecordingTextInput() { return record_text_input_; }
+
+  // Retrieve a vector of text input events.
+  // The caller uses this API to retrieve text input related events
+  // (all key down/up events, keyboard input and IME's intermediate states)
+  // and use them to edit and display texts.
+  // To start/stop a recording, call RecordTextInput() API.
+  const std::vector<TextInputEvent> *GetTextInputEvents();
+
+  // Clear a recorded text input events. The user needs to call the API once
+  // it handled input events.
+  void ClearTextInputEvents() { text_input_events_.clear(); }
+
+  // Text input related APIs.
+
+  // Start a text input.
+  // In mobile devices, it may show a software keyboard on the screen.
+  void StartTextInput();
+
+  // Stop a text input.
+  // In mobile devices, it may dismiss a software keyboard.
+  void StopTextInput();
+
+  // Indicates a text input region to IME(Input Method Editor).
+  void SetTextInputRect(const mathfu::vec4 &input_rect);
+
+  // Accessors for instance variables.
+  const std::vector<InputPointer> &get_pointers() { return pointers_; }
+
+  bool minimized() { return minimized_; }
+  void set_minimized(bool b) { minimized_ = b; }
+
+  bool exit_requested() { return exit_requested_; }
+
+private:
+  static const int kMillisecondsPerSecond = 1000;
+
+  bool exit_requested_;
+  bool minimized_;
+  std::vector<InputPointer> pointers_;
   std::vector<JoystickData> open_joystick_list;
   size_t FindPointer(FingerId id);
   size_t UpdateDragPosition(TouchFingerEvent e, uint32_t event_type,
@@ -375,13 +473,6 @@ class InputSystem {
   void RemovePointer(size_t i);
   vec2 ConvertHatToVector(uint32_t hat_enum) const;
   std::vector<AppEventCallback> app_event_callbacks_;
-
- public:
-  bool exit_requested_;
-  bool minimized_;
-  std::vector<Pointer> pointers_;
-
- private:
   std::map<int, Button> button_map_;
   std::map<JoystickId, Joystick> joystick_map_;
 
@@ -414,8 +505,11 @@ class InputSystem {
   // Accumulated mousewheel delta since the last frame.
   vec2i mousewheel_delta_;
 
- public:
-  static const int kMillisecondsPerSecond = 1000;
+  // Event queue for a text input events.
+  std::vector<TextInputEvent> text_input_events_;
+
+  // A flag indicating a text input status.
+  bool record_text_input_;
 };
 
 }  // namespace fpl
