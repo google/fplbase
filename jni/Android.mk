@@ -53,6 +53,7 @@ LOCAL_SRC_FILES := \
   $(FPLBASE_RELATIVE_DIR)/src/precompiled.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/renderer.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/renderer_android.cpp \
+  $(FPLBASE_RELATIVE_DIR)/src/renderer_hmd.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/shader.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/utilities.cpp
 

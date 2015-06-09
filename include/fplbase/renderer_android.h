@@ -21,13 +21,6 @@ namespace fpl {
 void AndroidPreCreateWindow();
 void AndroidSetScalerResolution(const vec2i& resolution);
 const vec2i& AndroidGetScalerResolution();
-
-// Initializes the framebuffer needed for Cardboard mode
-void InitializeUndistortFramebuffer(int width, int height);
-// Call before rendering for Cardboard to set up the framebuffer
-void BeginUndistortFramebuffer();
-// Call when finished with Cardboard, to undistort and render the result
-void FinishUndistortFramebuffer();
 #endif
 
 }  // namespace fpl
