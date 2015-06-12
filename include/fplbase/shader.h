@@ -16,6 +16,7 @@
 #define FPLBASE_SHADER_H
 
 #include "glplatform.h"
+#include "mathfu/glsl_mappings.h"
 
 namespace fpl {
 
