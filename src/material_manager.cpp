@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "precompiled.h"
+#include "common_generated.h"
 #include "fplbase/material_manager.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
