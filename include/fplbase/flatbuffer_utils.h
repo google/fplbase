@@ -15,6 +15,7 @@
 #ifndef FPLBASE_FLATBUFFER_UTILS_H
 #define FPLBASE_FLATBUFFER_UTILS_H
 
+#include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 #include "common_generated.h"
 
