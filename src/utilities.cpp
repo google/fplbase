@@ -31,6 +31,22 @@ bool LoadFile(const char* filename, std::string* dest) {
   return len == rlen && len > 0;
 }
 
+bool SaveFile(const char* filename, const void* data, size_t size) {
+  auto handle = SDL_RWFromFile(filename, "wb");
+  if (!handle) {
+    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "SaveFile fail on %s", filename);
+    return false;
+  }
+  size_t wlen = static_cast<size_t>(SDL_RWwrite(handle, data, 1, size));
+  SDL_RWclose(handle);
+  return (wlen == size);
+}
+
+bool SaveFile(const char* filename, const std::string& src) {
+  return SaveFile(filename, static_cast<const void*>(src.c_str()),
+                  src.length());  // don't include the '\0'
+}
+
 #if defined(_WIN32)
 inline char* getcwd(char* buffer, int maxlen) {
   return _getcwd(buffer, maxlen);
@@ -203,19 +219,14 @@ void LogError(int category, const char* fmt, ...) {
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a jobject*.
-void* AndroidGetActivity() {
-  return SDL_AndroidGetActivity();
-}
+void* AndroidGetActivity() { return SDL_AndroidGetActivity(); }
 
 // This function always returns a pointer to a JNIEnv, but we are returning a
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a JNIEnv*.
-void* AndroidGetJNIEnv() {
-  return SDL_AndroidGetJNIEnv();
-}
+void* AndroidGetJNIEnv() { return SDL_AndroidGetJNIEnv(); }
 #endif
-
 
 WorldTime GetTicks() { return SDL_GetTicks(); }
 

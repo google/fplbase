@@ -42,6 +42,12 @@ const int kMillisecondsPerSecond = 1000;
 // Loads a file and returns its contents via string pointer.
 bool LoadFile(const char* filename, std::string* dest);
 
+// Save a string to a file, overwriting the existing contents.
+bool SaveFile(const char* filename, const std::string& data);
+
+// Save binary data to a file, overwriting the existing contents.
+bool SaveFile(const char* filename, const void* data, size_t size);
+
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.
