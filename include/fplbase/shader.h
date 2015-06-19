@@ -44,7 +44,8 @@ class Shader {
         uniform_model_(-1),
         uniform_color_(-1),
         uniform_light_pos_(-1),
-        uniform_camera_pos_(-1) {}
+        uniform_camera_pos_(-1),
+        uniform_time_(-1) {}
 
   ~Shader() {
     if (vs_) GL_CALL(glDeleteShader(vs_));
@@ -116,6 +117,7 @@ class Shader {
   GLint uniform_color_;
   GLint uniform_light_pos_;
   GLint uniform_camera_pos_;
+  GLint uniform_time_;
 };
 
 }  // namespace fpl

@@ -40,7 +40,7 @@ class Renderer {
                   const char *window_title = "");
 
   // Swaps frames. Call this once per frame inside your main loop.
-  void AdvanceFrame(bool minimized);
+  void AdvanceFrame(bool minimized, float time);
 
   // Cleans up whatever Initialize creates.
   void ShutDown();
@@ -99,6 +99,7 @@ class Renderer {
         color_(mathfu::kOnes4f),
         light_pos_(mathfu::kZeros3f),
         camera_pos_(mathfu::kZeros3f),
+        time_(0),
         window_size_(mathfu::kZeros2i),
         window_(nullptr),
         context_(nullptr) {}
@@ -134,6 +135,9 @@ class Renderer {
   vec2i &window_size() { return window_size_; }
   const vec2i &window_size() const { return window_size_; }
 
+  // Time, as used by animated shaders, updated once per frame only.
+  float time() const { return time_; }
+
  private:
   GLuint CompileShader(GLenum stage, GLuint program, const GLchar *source);
 
@@ -144,6 +148,8 @@ class Renderer {
   vec4 color_;
   vec3 light_pos_;
   vec3 camera_pos_;
+
+  float time_;
 
   vec2i window_size_;
 

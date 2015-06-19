@@ -129,7 +129,8 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   return true;
 }
 
-void Renderer::AdvanceFrame(bool minimized) {
+void Renderer::AdvanceFrame(bool minimized, float time) {
+  time_ = time;
   if (minimized) {
     // Save some cpu / battery:
     SDL_Delay(10);

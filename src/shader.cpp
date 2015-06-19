@@ -35,6 +35,8 @@ void Shader::InitializeUniforms() {
   uniform_light_pos_ = glGetUniformLocation(program_, "light_pos");
   uniform_camera_pos_ = glGetUniformLocation(program_, "camera_pos");
 
+  uniform_time_ = glGetUniformLocation(program_, "time");
+
   // Set up the uniforms the shader uses for texture access.
   char texture_unit_name[] = "texture_unit_#####";
   for (int i = 0; i < kMaxTexturesPerShader; i++) {
@@ -59,6 +61,8 @@ void Shader::Set(const Renderer &renderer) const {
     GL_CALL(glUniform3fv(uniform_light_pos_, 1, &renderer.light_pos()[0]));
   if (uniform_camera_pos_ >= 0)
     GL_CALL(glUniform3fv(uniform_camera_pos_, 1, &renderer.camera_pos()[0]));
+  if (uniform_time_ >= 0)
+    GL_CALL(glUniform1f(uniform_time_, renderer.time()));
 }
 
 }  // namespace fpl
