@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPLBASE_MATERIAL_MANAGER_H
-#define FPLBASE_MATERIAL_MANAGER_H
+#ifndef FPLBASE_ASSET_MANAGER_H
+#define FPLBASE_ASSET_MANAGER_H
 
 #include <map>
 
@@ -97,4 +97,4 @@ class AssetManager {
 
 }  // namespace fpl
 
-#endif  // FPLBASE_MATERIAL_MANAGER_H
+#endif  // FPLBASE_ASSET_MANAGER_H
