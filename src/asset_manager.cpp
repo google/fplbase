@@ -14,7 +14,7 @@
 
 #include "precompiled.h"
 #include "common_generated.h"
-#include "fplbase/material_manager.h"
+#include "fplbase/asset_manager.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
@@ -36,11 +36,11 @@ T FindInMap(const std::map<std::string, T> &map, const char *name) {
   return it != map.end() ? it->second : 0;
 }
 
-Shader *MaterialManager::FindShader(const char *basename) {
+Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
 
-Shader *MaterialManager::LoadShader(const char *basename) {
+Shader *AssetManager::LoadShader(const char *basename) {
   auto shader = FindShader(basename);
   if (shader) return shader;
   std::string vs_file, ps_file;
@@ -64,11 +64,11 @@ Shader *MaterialManager::LoadShader(const char *basename) {
   return nullptr;
 }
 
-Texture *MaterialManager::FindTexture(const char *filename) {
+Texture *AssetManager::FindTexture(const char *filename) {
   return FindInMap(texture_map_, filename);
 }
 
-Texture *MaterialManager::LoadTexture(const char *filename,
+Texture *AssetManager::LoadTexture(const char *filename,
                                       TextureFormat format) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
@@ -79,15 +79,15 @@ Texture *MaterialManager::LoadTexture(const char *filename,
   return tex;
 }
 
-void MaterialManager::StartLoadingTextures() { loader_.StartLoading(); }
+void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
 
-bool MaterialManager::TryFinalize() { return loader_.TryFinalize(); }
+bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
 
-Material *MaterialManager::FindMaterial(const char *filename) {
+Material *AssetManager::FindMaterial(const char *filename) {
   return FindInMap(material_map_, filename);
 }
 
-Material *MaterialManager::LoadMaterial(const char *filename) {
+Material *AssetManager::LoadMaterial(const char *filename) {
   auto mat = FindMaterial(filename);
   if (mat) return mat;
   std::string flatbuf;
@@ -114,7 +114,7 @@ Material *MaterialManager::LoadMaterial(const char *filename) {
   return nullptr;
 }
 
-void MaterialManager::UnloadMaterial(const char *filename) {
+void AssetManager::UnloadMaterial(const char *filename) {
   auto mat = FindMaterial(filename);
   if (!mat) return;
   mat->DeleteTextures();
@@ -124,7 +124,7 @@ void MaterialManager::UnloadMaterial(const char *filename) {
   }
 }
 
-Mesh *MaterialManager::FindMesh(const char *filename) {
+Mesh *AssetManager::FindMesh(const char *filename) {
   return FindInMap(mesh_map_, filename);
 }
 
@@ -135,7 +135,7 @@ void CopyAttribute(const T *attr, uint8_t *&buf) {
   buf += sizeof(T);
 }
 
-Mesh *MaterialManager::LoadMesh(const char *filename) {
+Mesh *AssetManager::LoadMesh(const char *filename) {
   auto mesh = FindMesh(filename);
   if (mesh) return mesh;
   std::string flatbuf;
@@ -187,7 +187,7 @@ Mesh *MaterialManager::LoadMesh(const char *filename) {
   return nullptr;
 }
 
-void MaterialManager::UnloadMesh(const char *filename) {
+void AssetManager::UnloadMesh(const char *filename) {
   auto mesh = FindMesh(filename);
   if (!mesh) return;
   mesh_map_.erase(filename);

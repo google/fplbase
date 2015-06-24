@@ -44,11 +44,11 @@ LOCAL_C_INCLUDES := \
   $(DEPENDENCIES_WEBP_DIR)/src
 
 LOCAL_SRC_FILES := \
+  $(FPLBASE_RELATIVE_DIR)/src/asset_manager.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/async_loader.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/input.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/main.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/material.cpp \
-  $(FPLBASE_RELATIVE_DIR)/src/material_manager.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/mesh.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/precompiled.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/renderer.cpp \

@@ -1,7 +1,7 @@
 #include "precompiled.h"
+#include "fplbase/asset_manager.h"
 #include "fplbase/renderer.h"
 #include "fplbase/input.h"
-#include "fplbase/material_manager.h"
 #include "fplbase/utilities.h"
 #include <cassert>
 
@@ -11,7 +11,7 @@ struct Game {
 
   fpl::Renderer renderer;
   fpl::InputSystem input;
-  fpl::MaterialManager matManager;
+  fpl::AssetManager matManager;
   fpl::Shader *shader;
   GLuint position;
   GLuint uv;

@@ -23,9 +23,17 @@
 
 namespace fpl {
 
-class MaterialManager {
+// Central place to own game assets loaded from disk.
+//
+// Loads of some assets, such as textures, can be batched in a bit asynchronous
+// load. This allows you to continue setting up your game as assets are loaded,
+// in the background.
+//
+// Loading assets such as meshes will trigger the load of dependent assets
+// such as textures.
+class AssetManager {
  public:
-  MaterialManager(Renderer &renderer) : renderer_(renderer) {}
+  AssetManager(Renderer &renderer) : renderer_(renderer) {}
 
   // Returns a previously loaded shader object, or nullptr.
   Shader *FindShader(const char *basename);
@@ -77,7 +85,7 @@ class MaterialManager {
   const Renderer &renderer() const { return renderer_; }
 
  private:
-  FPL_DISALLOW_COPY_AND_ASSIGN(MaterialManager);
+  FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 
   Renderer &renderer_;
   std::map<std::string, Shader *> shader_map_;

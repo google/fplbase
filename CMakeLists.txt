@@ -156,23 +156,23 @@ endif()
 
 
 set(fplbase_SRCS
+  include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
   include/fplbase/material.h
-  include/fplbase/material_manager.h
   include/fplbase/mesh.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
   include/fplbase/shader.h
   include/fplbase/utilities.h
   schemas
+  src/asset_manager.cpp
   src/async_loader.cpp
   src/input.cpp
   src/main.cpp
   src/material.cpp
-  src/material_manager.cpp
   src/mesh.cpp
   src/precompiled.cpp
   src/precompiled.h
