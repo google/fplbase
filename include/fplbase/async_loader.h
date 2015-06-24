@@ -15,8 +15,16 @@
 #ifndef FPLBASE_ASYNC_LOADER_H
 #define FPLBASE_ASYNC_LOADER_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include <string>
 #include <vector>
+
+#ifdef FPL_BASE_BACKEND_STDLIB
+#include <mutex>
+#include <thread>
+#include <condition_variable>
+#endif
 
 namespace fpl {
 
@@ -75,6 +83,7 @@ class AsyncLoader {
   bool TryFinalize();
 
  private:
+#ifdef FPL_BASE_BACKEND_SDL
   void Lock(const std::function<void()> &body);
   template <typename T>
   T LockReturn(const std::function<T()> &body) {
@@ -82,12 +91,14 @@ class AsyncLoader {
     Lock([&ret, &body]() { ret = body(); });
     return ret;
   }
+#endif
 
   void LoaderWorker();
   static int LoaderThread(void *user_data);
 
   std::vector<AsyncResource *> queue_, done_;
 
+#ifdef FPL_BASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.
   Thread worker_thread_;
@@ -97,6 +108,13 @@ class AsyncLoader {
 
   // Kick-off the worker thread when a new job arrives.
   Semaphore job_semaphore_;
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+  std::thread worker_thread_;
+  std::mutex mutex_;
+  std::condition_variable job_cv_;
+#else
+#error Need to define FPL_BASE_BACKEND_XXX
+#endif
 };
 
 }  // namespace fpl

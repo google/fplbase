@@ -15,15 +15,33 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include <string>
 #include "mathfu/utilities.h"
+
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#endif
 
 namespace fpl {
 
 // General utility functions, used by FPLBase, and that might be of use to
 // people using the library:
-
 // Constants for use with LogInfo, LogError, etc.
+#ifdef FPL_BASE_BACKEND_SDL
+enum LogCategory {
+  kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
+  kError       = 1,  // SDL_LOG_CATEGORY_ERROR
+  kSystem      = 3,  // SDL_LOG_CATEGORY_SYSTEM
+  kAudio       = 4,  // SDL_LOG_CATEGORY_AUDIO
+  kVideo       = 5,  // SDL_LOG_CATEGORY_VIDEO
+  kRender      = 6,  // SDL_LOG_CATEGORY_RENDER
+  kInput       = 7,  // SDL_LOG_CATEGORY_INPUT
+  kCustom      = 19, // SDL_LOG_CATEGORY_CUSTOM
+};
+#else
 enum LogCategory {
   kApplication = 0,
   kError,
@@ -34,6 +52,7 @@ enum LogCategory {
   kInput,
   kCustom
 };
+#endif
 
 typedef int32_t WorldTime;
 
@@ -61,16 +80,16 @@ bool MipmapGeneration16bppSupported();
 // Basic logging functions.  They will output to the console.
 void LogInfo(const char* fmt, ...);
 void LogError(const char* fmt, ...);
-void LogInfo(int category, const char* fmt, ...);
-void LogError(int category, const char* fmt, ...);
+void LogInfo(LogCategory category, const char* fmt, ...);
+void LogError(LogCategory category, const char* fmt, ...);
 
-// Returns the current time, in ticks.
+// Returns the current time, in milliseconds.
 WorldTime GetTicks();
 
-// Delays (sleeps) for the specified number of ticks.
+// Delays (sleeps) for the specified number of milliseconds.
 void Delay(WorldTime time);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 // Returns a pointer to the Java instance of the activity class
 // in an Android application.
 void* AndroidGetActivity();
@@ -78,7 +97,13 @@ void* AndroidGetActivity();
 // Returns a pointer to the Java native interface object (JNIEnv) of the
 // current thread on an Android application.
 void* AndroidGetJNIEnv();
-#endif  // __ANDROID__
+#endif  // __ANDROID__ && FPL_BASE_BACKEND_SDL
+
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+// Provide a pointer to an already-created instance of AAssetManager. Must call
+// this function once before loading any assets.
+void SetAAssetManager(AAssetManager* manager);
+#endif
 
 }  // namespace fpl
 

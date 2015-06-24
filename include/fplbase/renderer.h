@@ -15,13 +15,15 @@
 #ifndef FPLBASE_RENDERER_H
 #define FPLBASE_RENDERER_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include "mathfu/glsl_mappings.h"
-#include "material.h"
-#include "mesh.h"
-#include "shader.h"
+#include "fplbase/material.h"
+#include "fplbase/mesh.h"
+#include "fplbase/shader.h"
 
 #ifdef __ANDROID__
-#include "renderer_android.h"
+#include "fplbase/renderer_android.h"
 #endif
 
 namespace fpl {
@@ -34,6 +36,10 @@ typedef void *GLContext;
 // such as shaders, textures, and geometry.
 class Renderer {
  public:
+  Renderer();
+  ~Renderer();
+
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   // Creates the window + OpenGL context.
   // A descriptive error is in last_error() if it returns false.
   bool Initialize(const vec2i &window_size = vec2i(800, 600),
@@ -44,6 +50,11 @@ class Renderer {
 
   // Cleans up whatever Initialize creates.
   void ShutDown();
+#else
+  // In the non-window-owning use case, call to update the window size whenever
+  // it changes.
+  void SetWindowSize(const vec2i &window_size);
+#endif
 
   // Clears the framebuffer. Call this after AdvanceFrame if desired.
   void ClearFrameBuffer(const vec4 &color);
@@ -93,18 +104,6 @@ class Renderer {
   // Set to compare fragment against Z-buffer before writing, or not.
   void DepthTest(bool on);
 
-  Renderer()
-      : model_view_projection_(mat4::Identity()),
-        model_(mat4::Identity()),
-        color_(mathfu::kOnes4f),
-        light_pos_(mathfu::kZeros3f),
-        camera_pos_(mathfu::kZeros3f),
-        time_(0),
-        window_size_(mathfu::kZeros2i),
-        window_(nullptr),
-        context_(nullptr) {}
-  ~Renderer() { ShutDown(); }
-
   // Shader uniform: model_view_projection
   mat4 &model_view_projection() { return model_view_projection_; }
   const mat4 &model_view_projection() const { return model_view_projection_; }
@@ -148,15 +147,15 @@ class Renderer {
   vec4 color_;
   vec3 light_pos_;
   vec3 camera_pos_;
-
   float time_;
-
   vec2i window_size_;
 
   std::string last_error_;
 
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   Window window_;
   GLContext context_;
+#endif
 
   BlendMode blend_mode_;
 

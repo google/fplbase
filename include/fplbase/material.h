@@ -15,8 +15,10 @@
 #ifndef FPLBASE_MATERIAL_H
 #define FPLBASE_MATERIAL_H
 
-#include "shader.h"
-#include "async_loader.h"
+#include "fplbase/config.h" // Must come first.
+
+#include "fplbase/async_loader.h"
+#include "fplbase/shader.h"
 #include "mathfu/glsl_mappings.h"
 #include "mathfu/constants.h"
 

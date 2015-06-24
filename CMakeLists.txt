@@ -236,6 +236,12 @@ if(fplbase_build_library)
     webp)
 endif()
 
+# Call this function to use stdlib instead of SDL (Simple Direct Media Layer)
+# for the backend.
+function(fplbase_use_stdlib target)
+  target_compile_definitions(${target} PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+endfunction()
+
 # Autodesk's FBX SDK must be installed to build the pipeline.
 set(fbx_sdk_dir $ENV{FBX_SDK})
 if(NOT "${fbx_sdk_dir}" STREQUAL "")

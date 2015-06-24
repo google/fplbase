@@ -14,6 +14,7 @@
 
 #include "precompiled.h"
 #include "fplbase/input.h"
+#include "fplbase/utilities.h"
 #ifdef ANDROID_GAMEPAD
 #include <jni.h>
 #include <android/keycodes.h>
@@ -95,7 +96,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   static float next_fps_update = 0;
   if (Time() > next_fps_update) {
     next_fps_update = ceilf(Time());
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "DeltaTime: %f", DeltaTime());
+    LogInfo(kApplication, "DeltaTime: %f", DeltaTime());
   }
 #endif
 
@@ -219,9 +220,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         break;
       }
       default: {
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "----Unknown SDL event!\n");
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "----Event ID: %d!\n",
-                    event.type);
+        LogInfo(kApplication, "----Unknown SDL event!\n");
+        LogInfo(kApplication, "----Event ID: %d!\n", event.type);
       }
     }
   }
@@ -281,8 +281,8 @@ vec2 InputSystem::ConvertHatToVector(uint32_t hat_enum) const {
     case SDL_HAT_RIGHTDOWN:
       return vec2(1, 1);
     default:
-      SDL_LogError(
-          SDL_LOG_CATEGORY_APPLICATION,
+      LogError(
+          kApplication,
           "InputSystem::ConvertHatToVector: Unknown SDL Hat Enum Value!\n");
       return vec2(0, 0);
   }

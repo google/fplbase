@@ -15,11 +15,13 @@
 #ifndef FPLBASE_ASSET_MANAGER_H
 #define FPLBASE_ASSET_MANAGER_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include <map>
 
-#include "async_loader.h"
-#include "fpl_common.h"
-#include "renderer.h"
+#include "fplbase/async_loader.h"
+#include "fplbase/fpl_common.h"
+#include "fplbase/renderer.h"
 
 namespace fpl {
 
@@ -33,7 +35,7 @@ namespace fpl {
 // such as textures.
 class AssetManager {
  public:
-  AssetManager(Renderer &renderer) : renderer_(renderer) {}
+  AssetManager(Renderer &renderer);
 
   // Returns a previously loaded shader object, or nullptr.
   Shader *FindShader(const char *basename);

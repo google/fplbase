@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2015 Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPLBASE_RENDERER_ANDROID_H
-#define FPLBASE_RENDERER_ANDROID_H
+#ifndef FPLBASE_CONFIG_H
+#define FPLBASE_CONFIG_H
 
-#include "fplbase/config.h" // Must come first.
-
-namespace fpl {
-
-#ifdef __ANDROID__
-void AndroidPreCreateWindow();
-void AndroidSetScalerResolution(const vec2i& resolution);
-const vec2i& AndroidGetScalerResolution();
+// This header file is included at the top of every fplbase header file.
+// It sets up configuration #defines for all of fplbase.
+#if !defined(FPL_BASE_BACKEND_STDLIB)
+#define FPL_BASE_BACKEND_SDL
+#define FPL_BASE_RENDERER_BACKEND_SDL
 #endif
 
-}  // namespace fpl
-
-#endif  // FPLBASE_RENDERER_ANDROID_H
+#endif  // FPLBASE_CONFIG_H

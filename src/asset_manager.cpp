@@ -36,6 +36,12 @@ T FindInMap(const std::map<std::string, T> &map, const char *name) {
   return it != map.end() ? it->second : 0;
 }
 
+AssetManager::AssetManager(Renderer &renderer)
+    : renderer_(renderer) {
+  // Empty material for default case.
+  material_map_[""] = new Material();
+}
+
 Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
@@ -52,14 +58,12 @@ Shader *AssetManager::LoadShader(const char *basename) {
       if (shader) {
         shader_map_[basename] = shader;
       } else {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Shader Error:\n%s\n",
-                     renderer_.last_error().c_str());
+        LogError(kError, "Shader Error:\n%s\n", renderer_.last_error().c_str());
       }
       return shader;
     }
   }
-  SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Can\'t load shader: %s",
-               filename.c_str());
+  LogError(kError, "Can\'t load shader: %s", filename.c_str());
   renderer_.last_error() = "Couldn\'t load: " + filename;
   return nullptr;
 }

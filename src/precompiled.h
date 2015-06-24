@@ -15,6 +15,8 @@
 #ifndef PIE_NOON_SRC_PRECOMPILED_H
 #define PIE_NOON_SRC_PRECOMPILED_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include <assert.h>
 #include <cstdint>
 #include <functional>
@@ -41,8 +43,10 @@
 #include "mathfu/constants.h"
 #include "mathfu/utilities.h"
 
+#ifdef FPL_BASE_BACKEND_SDL
 #include "SDL.h"
 #include "SDL_log.h"
+#endif
 
 #ifdef __ANDROID__
 #include "gpg/gpg.h"

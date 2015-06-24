@@ -15,9 +15,11 @@
 #ifndef FPLBASE_FLATBUFFER_UTILS_H
 #define FPLBASE_FLATBUFFER_UTILS_H
 
+#include "fplbase/config.h" // Must come first.
+
+#include "common_generated.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
-#include "common_generated.h"
 
 namespace fpl {
 

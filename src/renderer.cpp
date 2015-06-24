@@ -20,6 +20,20 @@
 
 namespace fpl {
 
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+Renderer::Renderer()
+    : model_view_projection_(mat4::Identity()),
+      model_(mat4::Identity()),
+      color_(mathfu::kOnes4f),
+      light_pos_(mathfu::kZeros3f),
+      camera_pos_(mathfu::kZeros3f),
+      window_(nullptr),
+      context_(nullptr) {}
+
+Renderer::~Renderer() {
+  ShutDown();
+}
+
 bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   // Basic SDL initialization, does not actually initialize a Window or OpenGL,
   // typically should not fail.
@@ -161,6 +175,23 @@ void Renderer::ShutDown() {
     window_ = nullptr;
   }
 }
+#else
+Renderer::Renderer()
+    : model_view_projection_(mat4::Identity()),
+      model_(mat4::Identity()),
+      color_(mathfu::kOnes4f),
+      light_pos_(mathfu::kZeros3f),
+      camera_pos_(mathfu::kZeros3f),
+      window_size_(mathfu::kZeros2i),
+      blend_mode_(kBlendModeOff),
+      use_16bpp_(false) {}
+
+Renderer::~Renderer() { }
+
+void Renderer::SetWindowSize(const vec2i& window_size) {
+  window_size_ = window_size;
+}
+#endif
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClearColor(color.x(), color.y(), color.z(), color.w()));
@@ -255,9 +286,9 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                bool has_alpha, TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
-    SDL_LogError(SDL_LOG_CATEGORY_ERROR,
-                 "CreateTexture: not power of two in size: (%d,%d)", size.x(),
-                 size.y());
+    LogError(kError,
+             "CreateTexture: not power of two in size: (%d,%d)", size.x(),
+             size.y());
     return 0;
   }
   // TODO: support default args for mipmap/wrap/trilinear
@@ -493,13 +524,15 @@ void LogGLError(const char *file, int line, const char *call) {
       err_str = "GL_OUT_OF_MEMORY";
       break;
   }
-  SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s(%d): OpenGL Error: %s from %s", file,
-               line, err_str, call);
+  LogError(fpl::kError, "%s(%d): OpenGL Error: %s from %s", file, line, err_str,
+           call);
   assert(0);
 }
 
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
 #define GLEXT(type, name) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
+#endif  // FPL_BASE_RENDERER_BACKEND_SDL

@@ -15,7 +15,9 @@
 // This is a wrapper around main, as SDL needs to modify the main function
 // directly.  Users of FPLBase should declare "FPL_main" which this will call.
 
+#ifdef FPL_BASE_BACKEND_SDL
 #include "SDL_main.h"
+#endif
 
 extern int FPL_main(int argc, char* argv[]);
 

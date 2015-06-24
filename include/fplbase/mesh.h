@@ -15,7 +15,9 @@
 #ifndef FPL_MESH_H
 #define FPL_MESH_H
 
-#include "material.h"
+#include "fplbase/config.h" // Must come first.
+
+#include "fplbase/material.h"
 
 namespace fpl {
 

@@ -17,6 +17,8 @@
 #ifndef FPLBASE_GLPLATFORM_H
 #define FPLBASE_GLPLATFORM_H
 
+#include "fplbase/config.h" // Must come first.
+
 #ifdef __APPLE__
 #include "TargetConditionals.h"
 #ifdef __IOS__
@@ -43,6 +45,7 @@
 #endif
 #include <GL/gl.h>
 #include <GL/glext.h>
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
 #ifdef _WIN32
 #define GLBASEEXTS GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)
 #else
@@ -87,13 +90,15 @@
   GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC /*type*/, glUniformMatrix3x4fv)      \
   GLEXT(PFNGLBINDATTRIBLOCATIONARBPROC, glBindAttribLocation)             \
   GLEXT(PFNGLGETACTIVEUNIFORMARBPROC, glGetActiveUniform)                 \
-  GLEXT(PFNGLGENERATEMIPMAPEXTPROC, glGenerateMipmap)
+  GLEXT(PFNGLGENERATEMIPMAPEXTPROC, glGenerateMipmap)                     \
+  GLEXT(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation)
 
 #define GLEXT(type, name) extern type name;
 GLBASEEXTS
 GLEXTS
 #undef GLEXT
 #endif
+#endif  // FPL_BASE_RENDERER_BACKEND_SDL
 #endif
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.

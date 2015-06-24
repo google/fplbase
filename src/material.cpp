@@ -15,6 +15,7 @@
 #include "precompiled.h"
 #include "fplbase/material.h"
 #include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fpl {
@@ -31,8 +32,8 @@ void Texture::Load() {
   data_ =
       renderer_->LoadAndUnpackTexture(filename_.c_str(), &size_, &has_alpha_);
   if (!data_) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "texture load: %s: %s",
-                 filename_.c_str(), renderer_->last_error().c_str());
+    LogError(kApplication, "texture load: %s: %s",
+             filename_.c_str(), renderer_->last_error().c_str());
   }
 }
 

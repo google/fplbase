@@ -15,6 +15,8 @@
 #ifndef FPLBASE_RENDERER_HMD_H
 #define FPLBASE_RENDERER_HMD_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include "fplbase/input.h"
 #include "fplbase/renderer.h"
 #include "mathfu/glsl_mappings.h"

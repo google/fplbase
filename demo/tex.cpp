@@ -22,6 +22,8 @@ struct Game {
   Game() : matManager(renderer) {}
 
   void Initialize() {
+    bool result = fpl::ChangeToUpstreamDir("./", "assets");
+    assert(result);
     renderer.Initialize();
     input.Initialize();
     shader = matManager.LoadShader("tex");

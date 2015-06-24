@@ -14,6 +14,11 @@
 
 #include "precompiled.h"
 #include "fplbase/async_loader.h"
+#include "fplbase/utilities.h"
+
+#ifndef FPL_BASE_BACKEND_SDL
+#error This version of AsyncLoader depends on SDL.
+#endif
 
 namespace fpl {
 
@@ -70,8 +75,7 @@ void AsyncLoader::LoaderWorker() {
     // Stop loading once we reach the bookend enqueued by
     // StopLoadingWhenComplete(). To start loading again, call StartLoading().
     if (BookendAsyncResource::IsBookend(*res)) break;
-    SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "async load: %s",
-                 res->filename_.c_str());
+    LogInfo(kApplication, "async load: %s", res->filename_.c_str());
     res->Load();
     Lock([this, res]() {
       queue_.erase(queue_.begin());
@@ -102,8 +106,7 @@ bool AsyncLoader::TryFinalize() {
     auto res = LockReturn<AsyncResource *>(
         [this]() { return done_.empty() ? nullptr : done_[0]; });
     if (!res) break;
-    SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "finalize: %s",
-                 res->filename_.c_str());
+    LogInfo(kApplication, "finalize: %s", res->filename_.c_str());
     res->Finalize();
     Lock([this]() { done_.erase(done_.begin()); });
   }

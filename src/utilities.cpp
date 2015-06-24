@@ -15,12 +15,43 @@
 #include "precompiled.h"
 #include "fplbase/utilities.h"
 
+#ifdef FPL_BASE_BACKEND_STDLIB
+#include <fcntl.h>
+#if defined(__ANDROID__)
+#include <android/log.h>
+namespace {
+static AAssetManager* g_asset_manager = nullptr;
+}
+#endif
+#endif
+
 namespace fpl {
 
+#ifdef FPL_BASE_BACKEND_SDL
+static_assert(kApplication ==
+              static_cast<LogCategory>(SDL_LOG_CATEGORY_APPLICATION),
+              "update kApplication");
+static_assert(kError == static_cast<LogCategory>(SDL_LOG_CATEGORY_ERROR),
+              "update kError");
+static_assert(kSystem == static_cast<LogCategory>(SDL_LOG_CATEGORY_SYSTEM),
+              "update kSystem");
+static_assert(kAudio == static_cast<LogCategory>(SDL_LOG_CATEGORY_AUDIO),
+              "update kAudio");
+static_assert(kVideo == static_cast<LogCategory>(SDL_LOG_CATEGORY_VIDEO),
+              "update kVideo");
+static_assert(kRender == static_cast<LogCategory>(SDL_LOG_CATEGORY_RENDER),
+              "update kRender");
+static_assert(kInput == static_cast<LogCategory>(SDL_LOG_CATEGORY_INPUT),
+              "update kInput");
+static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
+              "update kCustom");
+#endif // FPL_BASE_BACKEND_SDL
+
+#ifdef FPL_BASE_BACKEND_SDL
 bool LoadFile(const char* filename, std::string* dest) {
   auto handle = SDL_RWFromFile(filename, "rb");
   if (!handle) {
-    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "LoadFile fail on %s", filename);
+    LogError(kError, "LoadFile fail on %s", filename);
     return false;
   }
   auto len = static_cast<size_t>(SDL_RWseek(handle, 0, RW_SEEK_END));
@@ -30,6 +61,45 @@ bool LoadFile(const char* filename, std::string* dest) {
   SDL_RWclose(handle);
   return len == rlen && len > 0;
 }
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__)
+bool LoadFile(const char* filename, std::string* dest) {
+  if (!g_asset_manager) {
+    LogError(kError,
+             "Need to call SetAssetManager() once before calling LoadFile()");
+    assert(false);
+  }
+  AAsset* asset = AAssetManager_open(g_asset_manager,
+                                     filename,
+                                     AASSET_MODE_STREAMING);
+  if (!asset) {
+    LogError(kError, "LoadFile fail on %s", filename);
+    return false;
+  }
+  off_t len = AAsset_getLength(asset);
+  dest->assign(len + 1, 0);
+  int rlen = AAsset_read(asset, &(*dest)[0], len);
+  AAsset_close(asset);
+  return len == rlen && len > 0;
+}
+#else
+bool LoadFile(const char* filename, std::string* dest) {
+  int fd = open(filename, O_RDONLY);
+  if (fd < 0) {
+    LogError(kError, "LoadFile fail on %s", filename);
+    return false;
+  }
+  size_t len = lseek(fd, 0, SEEK_END);
+  lseek(fd, 0, SEEK_SET);
+  dest->assign(len + 1, 0);
+  size_t rlen = read(fd, &(*dest)[0], len);
+  close(fd);
+  return len == rlen && len > 0;
+}
+#endif
+#else
+#error Please define a backend implementation for LoadFile.
+#endif
 
 bool SaveFile(const char* filename, const void* data, size_t size) {
   auto handle = SDL_RWFromFile(filename, "wb");
@@ -87,7 +157,7 @@ bool ChangeToUpstreamDir(const char* const binary_dir,
   (void)binary_dir;
   (void)target_dir;
   return true;
-#endif  // !defined(__ANDROID__)
+#endif  //  !defined(__ANDROID__)
 }
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }
@@ -121,7 +191,7 @@ std::string FileNameFromEnumName(const char* const enum_name,
          std::string(suffix);
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidSystemFeature(const char* feature_name) {
   JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
@@ -139,14 +209,14 @@ bool AndroidSystemFeature(const char* feature_name) {
 #endif
 
 bool TouchScreenDevice() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
   return AndroidSystemFeature("android.hardware.touchscreen");
 #else
   return false;
 #endif
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidCheckDeviceList(const char* device_list[], const int num_devices) {
   // Retrieve device name through JNI.
   JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
@@ -175,7 +245,7 @@ bool AndroidCheckDeviceList(const char* device_list[], const int num_devices) {
 #endif
 
 bool MipmapGeneration16bppSupported() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
   const char* device_list[] = {"Galaxy Nexus"};
   return AndroidCheckDeviceList(device_list,
                                 sizeof(device_list) / sizeof(device_list[0]));
@@ -184,6 +254,7 @@ bool MipmapGeneration16bppSupported() {
 #endif
 }
 
+#ifdef FPL_BASE_BACKEND_SDL
 void LogInfo(const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -200,21 +271,84 @@ void LogError(const char* fmt, ...) {
   va_end(args);
 }
 
-void LogInfo(int category, const char* fmt, ...) {
+void LogInfo(LogCategory category, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
   va_end(args);
 }
 
-void LogError(int category, const char* fmt, ...) {
+void LogError(LogCategory category, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(category, SDL_LOG_PRIORITY_ERROR, fmt, args);
   va_end(args);
 }
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__)
+void LogInfo(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  __android_log_print(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
+  va_end(args);
+}
 
-#ifdef __ANDROID__
+void LogError(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  __android_log_print(ANDROID_LOG_ERROR, "fplbase", fmt, args);
+  va_end(args);
+}
+
+void LogInfo(LogCategory category, const char* fmt, ...) {
+  (void)category;
+  va_list args;
+  va_start(args, fmt);
+  LogInfo(fmt, args);
+  va_end(args);
+}
+
+void LogError(LogCategory category, const char* fmt, ...) {
+  (void)category;
+  va_list args;
+  va_start(args, fmt);
+  LogError(fmt, args);
+  va_end(args);
+}
+#else
+void LogInfo(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  printf(fmt, args);
+  va_end(args);
+}
+
+void LogError(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  fprintf(stderr, fmt, args);
+  va_end(args);
+}
+
+void LogInfo(LogCategory category, const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  LogInfo(fmt, args);
+  va_end(args);
+}
+
+void LogError(LogCategory category, const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  LogError(fmt, args);
+  va_end(args);
+}
+#endif
+#else
+#error Please define a backend implementation for LogXXX.
+#endif
+
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 // This function always returns a pointer to a jobject, but we are returning a
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
@@ -228,8 +362,22 @@ void* AndroidGetActivity() { return SDL_AndroidGetActivity(); }
 void* AndroidGetJNIEnv() { return SDL_AndroidGetJNIEnv(); }
 #endif
 
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+void SetAAssetManager(AAssetManager* manager) {
+  g_asset_manager = manager;
+}
+#endif
+
+#ifdef FPL_BASE_BACKEND_SDL
 WorldTime GetTicks() { return SDL_GetTicks(); }
 
 void Delay(WorldTime time) { SDL_Delay(time); }
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+WorldTime GetTicks() { return 0; }
+
+void Delay(WorldTime time) { }
+#else
+#error Please define a backend implementation of a monotonic clock.
+#endif
 
 }  // namespace fpl

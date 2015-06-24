@@ -15,6 +15,8 @@
 #ifndef FPLBASE_INPUT_SYSTEM_H
 #define FPLBASE_INPUT_SYSTEM_H
 
+#include "fplbase/config.h" // Must come first.
+
 #include <queue>
 #include <map>
 #include <string>

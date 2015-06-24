@@ -76,8 +76,7 @@ void AndroidPreCreateWindow() {
   if (g_android_scaler_resolution.x() && g_android_scaler_resolution.y()) {
     // Initialize OpenGL function pointers inside SDL
     if (SDL_GL_LoadLibrary(NULL) < 0) {
-      SDL_LogError(SDL_LOG_CATEGORY_ERROR,
-                   "couldn't initialize OpenGL library\n");
+      LogError(kError, "couldn't initialize OpenGL library\n");
     }
 
     // Hook eglCreateWindowSurface call
