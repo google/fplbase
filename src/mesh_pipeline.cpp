@@ -526,6 +526,12 @@ class FbxParser {
     // Exit if the import failed.
     if (!import_status) return false;
 
+    // Convert to our exported co-ordinate system: z-up, y-front, right-handed.
+    const FbxAxisSystem export_axes(FbxAxisSystem::EUpVector::eZAxis,
+                                    FbxAxisSystem::EFrontVector::eParityOdd,
+                                    FbxAxisSystem::eRightHanded);
+    export_axes.ConvertScene(scene_);
+
     // Remember the source file name so we can search for textures nearby.
     mesh_file_name_ = std::string(file_name);
 
@@ -675,7 +681,9 @@ class FbxParser {
     if (mesh != nullptr) {
       const std::string texture_file_name = TextureFileName(node);
       out->SetSurface(texture_file_name);
-      GatherFlatSurface(mesh, out);
+
+      const FbxAMatrix& transform = node->EvaluateGlobalTransform();
+      GatherFlatSurface(mesh, transform, out);
     }
 
     // Recursively traverse each node in the scene
@@ -684,7 +692,18 @@ class FbxParser {
     }
   }
 
-  void GatherFlatSurface(const FbxMesh* mesh, FlatMesh* out) const {
+  void GatherFlatSurface(const FbxMesh* mesh, const FbxAMatrix& transform,
+                         FlatMesh* out) const {
+    log_.Log(kLogVerbose,
+        "    transform: {%.3f %.3f %.3f %.3f}\n"
+        "               {%.3f %.3f %.3f %.3f}\n"
+        "               {%.3f %.3f %.3f %.3f}\n"
+        "               {%.3f %.3f %.3f %.3f}\n",
+        transform[0][0], transform[0][1], transform[0][2], transform[0][3],
+        transform[1][0], transform[1][1], transform[1][2], transform[1][3],
+        transform[2][0], transform[2][1], transform[2][2], transform[2][3],
+        transform[3][0], transform[3][1], transform[3][2], transform[3][3]);
+
     const FbxVector4* vertices = mesh->GetControlPoints();
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
@@ -711,6 +730,7 @@ class FbxParser {
 
         // Depending on the FBX format, normals and UVs are indexed either
         // by control point or by polygon-vertex.
+        const FbxVector4 vertex_fbx = vertices[control_index];
         const FbxVector4 normal_fbx =
             ElementFromIndices(*normal_element, control_index, vertex_counter);
         const FbxVector4 tangent_fbx =
@@ -720,10 +740,11 @@ class FbxParser {
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
-        const vec3 vertex = Vec3FromFbx(vertices[control_index]);
-        const vec3 normal = Vec3FromFbx(normal_fbx);
-        const vec4 tangent = Vec4FromFbx(tangent_fbx);
-
+        const vec3 vertex = Vec3FromFbx(transform.MultT(vertex_fbx));
+        const vec3 normal =
+            Vec3FromFbx(transform.MultT(normal_fbx)).Normalized();
+        const vec4 tangent =
+            Vec4FromFbx(transform.MultT(tangent_fbx)).Normalized();
         const vec2 uv =
             Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
         out->AppendPolyVert(vertex, normal, tangent, uv);
