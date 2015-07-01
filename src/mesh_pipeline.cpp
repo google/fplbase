@@ -48,6 +48,7 @@ using mathfu::vec3_packed;
 using mathfu::vec4_packed;
 
 static const char kTextureFileExtension[] = ".webp";
+static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 
 // Each log message is given a level of importance.
 // We only output messages that have level >= our current logging level.
@@ -159,19 +160,55 @@ static inline Vec2 FlatBufferVec2(const vec2& v) {
   return Vec2(v.x(), v.y());
 }
 
+
+class FlatTextures {
+ public:
+  size_t Count() const { return textures_.size(); }
+  void Append(const std::string& texture) { textures_.push_back(texture); }
+
+  // Access the ith texture.
+  const std::string& operator[](size_t i) const {
+    assert(0 <= i && i < Count());
+    return textures_[i];
+  }
+
+  // Only compare the primary texture.
+  // Required for std::unordered_set.
+  bool operator==(const FlatTextures& rhs) const {
+    return Count() > 0 && rhs.Count() > 0 && textures_[0] == rhs.textures_[0];
+  }
+
+ private:
+  std::vector<std::string> textures_;
+};
+
+
+// Required for std::unordered_set. Only compare the primary texture.
+class FlatTextureHash {
+ public:
+  size_t operator()(const FlatTextures& t) const {
+    return t.Count() == 0 ? 0 : std::hash<std::string>()(t[0]);
+  }
+};
+
+
 class FlatMesh {
  public:
   explicit FlatMesh(Logger& log) : cur_index_buf_(nullptr), log_(log) {}
 
-  void SetSurface(const std::string& texture_file_name) {
+  void SetSurface(const FlatTextures& textures) {
     // Grab existing surface for `texture_file_name`, or create a new one.
-    IndexBuffer& index_buffer = surfaces_[texture_file_name];
+    IndexBuffer& index_buffer = surfaces_[textures];
 
     // Update the current index buffer to which we're logging control points.
     cur_index_buf_ = &index_buffer;
 
     // Log the surface switch.
-    log_.Log(kLogInfo, "Surface: %s\n", texture_file_name.c_str());
+    log_.Log(kLogInfo, "Surface:");
+    for (size_t i = 0; i < textures.Count(); ++i) {
+      log_.Log(kLogInfo, " %s", textures[i].c_str());
+    }
+    log_.Log(kLogInfo, "\n");
   }
 
   // Populate a single surface with data from FBX arrays.
@@ -288,16 +325,17 @@ class FlatMesh {
     }
   };
 
-  typedef std::unordered_map<std::string, IndexBuffer> SurfaceMap;
+  typedef std::unordered_map<FlatTextures, IndexBuffer, FlatTextureHash>
+      SurfaceMap;
   typedef std::unordered_set<VertexRef, VertexHash, VerticesEqual> VertexSet;
 
-  static bool HasTexture(const std::string& texture_file_name) {
-    return texture_file_name.length() > 0;
+  static bool HasTexture(const FlatTextures& textures) {
+    return textures.Count() > 0;
   }
 
   static std::string TextureBaseFileName(const std::string& texture_file_name,
                                          const std::string& assets_sub_dir) {
-    assert(HasTexture(texture_file_name));
+    assert(texture_file_name != "");
     return assets_sub_dir + BaseFileName(texture_file_name);
   }
 
@@ -332,19 +370,23 @@ class FlatMesh {
   void OutputMaterialFlatBuffers(const std::string& assets_base_dir,
                                  const std::string& assets_sub_dir) const {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const std::string& texture_file_name = it->first;
-      if (!HasTexture(texture_file_name)) continue;
+      const FlatTextures& textures = it->first;
+      if (!HasTexture(textures)) continue;
 
       // TODO: add alpha, format, etc. here instead of using defaults.
       flatbuffers::FlatBufferBuilder fbb;
-      auto texture_fb =
-          fbb.CreateString(TextureFileName(texture_file_name, assets_sub_dir));
-      auto texture_vector_fb = fbb.CreateVector(&texture_fb, 1);
-      auto material_fb = matdef::CreateMaterial(fbb, texture_vector_fb);
+      std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
+      textures_fb.reserve(textures.Count());
+      for (size_t i = 0; i < textures.Count(); ++i) {
+        textures_fb.push_back(
+            fbb.CreateString(TextureFileName(textures[i], assets_sub_dir)));
+      }
+      auto textures_vector_fb = fbb.CreateVector(textures_fb);
+      auto material_fb = matdef::CreateMaterial(fbb, textures_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
-          assets_base_dir + MaterialFileName(texture_file_name, assets_sub_dir);
+          assets_base_dir + MaterialFileName(textures[0], assets_sub_dir);
       OutputFlatBufferBuilder(fbb, full_material_file_name);
     }
   }
@@ -365,11 +407,11 @@ class FlatMesh {
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const std::string& texture_file_name = it->first;
+      const FlatTextures& textures = it->first;
       const IndexBuffer& index_buf = it->second;
       const std::string material_file_name =
-          HasTexture(texture_file_name)
-              ? MaterialFileName(texture_file_name, assets_sub_dir)
+          HasTexture(textures)
+              ? MaterialFileName(textures[0], assets_sub_dir)
               : std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
       auto indices_fb = fbb.CreateVector(index_buf);
@@ -442,6 +484,18 @@ static std::string FindSourceTextureFileName(
   const std::string source_texture =
       source_dir + source_name + "." + texture_extension;
   if (FileExists(source_texture)) return source_texture;
+
+  // Loop through known image file extensions. The image may have been
+  // converted to a new format.
+  const std::string base_names[] = { BaseFileName(texture_no_dir),
+                                     source_name };
+  for (size_t i = 0; i < FPL_ARRAYSIZE(base_names); ++i) {
+    for (size_t j = 0; j < FPL_ARRAYSIZE(kImageExtensions); ++j) {
+      const std::string potential_name = source_dir + base_names[i] + "." +
+                                         kImageExtensions[j];
+      if (FileExists(potential_name)) return potential_name;
+    }
+  }
 
   // As a last resort, use the texture name as supplied. We don't want to
   // do this, normally, since the name can be an absolute path on the drive,
@@ -614,7 +668,8 @@ class FbxParser {
   }
 
   // Get the texture for a mesh node.
-  const FbxFileTexture* TextureFromNode(FbxNode* node) const {
+  const FbxFileTexture* TextureFromNode(FbxNode* node,
+                                        const char* texture_property) const {
     // Check every material attached to this node.
     const int material_count = node->GetMaterialCount();
     for (int material_index = 0; material_index < material_count;
@@ -623,8 +678,7 @@ class FbxParser {
       if (material == nullptr) continue;
 
       // We only check the diffuse materials. We might want to check others too.
-      const FbxProperty property =
-          material->FindProperty(FbxSurfaceMaterial::sDiffuse);
+      const FbxProperty property = material->FindProperty(texture_property);
       const int texture_count = property.GetSrcObjectCount<FbxFileTexture>();
       if (texture_count == 0) continue;
 
@@ -650,17 +704,14 @@ class FbxParser {
       }
     }
 
-    log_.Log(kLogWarning, "%s has no diffuse textures.\n", node->GetName());
     return nullptr;
   }
 
-  std::string TextureFileName(FbxNode* node) const {
+  std::string TextureFileName(FbxNode* node,
+                              const char* texture_property) const {
     // Grab the texture attached to this node.
-    const FbxFileTexture* texture = TextureFromNode(node);
-    if (texture == nullptr) {
-      log_.Log(kLogWarning, "No texture found for node %s\n", node->GetName());
-      return "";
-    }
+    const FbxFileTexture* texture = TextureFromNode(node, texture_property);
+    if (texture == nullptr) return "";
 
     // Look for a texture on disk that matches the texture referenced by
     // the FBX.
@@ -671,6 +722,30 @@ class FbxParser {
     return texture_file_name;
   }
 
+  FlatTextures GatherTextures(FbxNode* node) const {
+    FlatTextures textures;
+
+    // The base texture used to color the polys is the sDiffuse texture.
+    // Without a base texture, the model will look rather plane, so issue
+    // a warning.
+    const std::string texture =
+        TextureFileName(node, FbxSurfaceMaterial::sDiffuse);
+    if (texture == "") {
+      log_.Log(kLogWarning, "No texture found for node %s\n", node->GetName());
+    } else {
+      textures.Append(texture);
+    }
+
+    // We add the normal map, if it exists, as the second texture.
+    const std::string normal_map =
+        TextureFileName(node, FbxSurfaceMaterial::sNormalMap);
+    if (normal_map != "") {
+      textures.Append(normal_map);
+    }
+
+    return textures;
+  }
+
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
   void GatherFlatMeshRecursive(FbxNode* node, FlatMesh* out) const {
     if (node == nullptr) return;
@@ -679,8 +754,9 @@ class FbxParser {
     // We're only interested in meshes, for the moment.
     FbxMesh* mesh = node->GetMesh();
     if (mesh != nullptr) {
-      const std::string texture_file_name = TextureFileName(node);
-      out->SetSurface(texture_file_name);
+      std::string normal_map_file_name;
+      const FlatTextures textures = GatherTextures(node);
+      out->SetSurface(textures);
 
       const FbxAMatrix& transform = node->EvaluateGlobalTransform();
       GatherFlatSurface(mesh, transform, out);
