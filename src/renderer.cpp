@@ -497,6 +497,28 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   blend_mode_ = blend_mode;
 }
 
+void Renderer::SetCulling(CullingMode mode) {
+  if (mode == kNoCulling) {
+    GL_CALL(glDisable(GL_CULL_FACE));
+  } else {
+    GL_CALL(glEnable(GL_CULL_FACE));
+    switch (mode) {
+    case kCullBack:
+      GL_CALL(glCullFace(GL_BACK));
+      break;
+    case kCullFront:
+      GL_CALL(glCullFace(GL_FRONT));
+      break;
+    case kCullFrontAndBack:
+      GL_CALL(glCullFace(GL_FRONT_AND_BACK));
+      break;
+    default:
+      // Unknown culling mode.
+      assert(false);
+    }
+  }
+}
+
 }  // namespace fpl
 
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION

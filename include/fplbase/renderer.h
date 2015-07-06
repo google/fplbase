@@ -39,6 +39,13 @@ class Renderer {
   Renderer();
   ~Renderer();
 
+  enum CullingMode {
+    kNoCulling,
+    kCullFront,
+    kCullBack,
+    kCullFrontAndBack
+  };
+
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
   // Creates the window + OpenGL context.
   // A descriptive error is in last_error() if it returns false.
@@ -100,6 +107,9 @@ class Renderer {
   // (blend with framebuffer pixel regardedless).
   // blend_mode: see materials.fbs for valid enum values.
   void SetBlendMode(BlendMode blend_mode, float amount = 0.5f);
+
+  // Set culling mode.  By default, no culling happens.
+  void SetCulling(CullingMode mode);
 
   // Set to compare fragment against Z-buffer before writing, or not.
   void DepthTest(bool on);
