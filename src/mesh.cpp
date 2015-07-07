@@ -161,14 +161,15 @@ void Mesh::RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
                               const vec2 &tex_bottom_left,
                               const vec2 &tex_top_right) {
   static const Attribute format[] = {kPosition3f, kTexCoord2f, kEND};
-  static const unsigned short indices[] = { 0, 1, 2, 1, 2, 3 };
+  static const unsigned short indices[] = { 0, 1, 2, 1, 3, 2 };
   // vertex format is [x, y, z] [u, v]:
   const float vertices[] = {
       bottom_left.x(),     bottom_left.y(),     bottom_left.z(),
-      tex_bottom_left.x(), tex_bottom_left.y(), top_right.x(),
-      bottom_left.y(),     bottom_left.z(),     tex_top_right.x(),
-      tex_bottom_left.y(), bottom_left.x(),     top_right.y(),
-      top_right.z(),       tex_bottom_left.x(), tex_top_right.y(),
+      tex_bottom_left.x(), tex_bottom_left.y(),
+      bottom_left.x(),     top_right.y(),       top_right.z(),
+      tex_bottom_left.x(), tex_top_right.y(),
+      top_right.x(),       bottom_left.y(),     bottom_left.z(),
+      tex_top_right.x(),   tex_bottom_left.y(),
       top_right.x(),       top_right.y(),       top_right.z(),
       tex_top_right.x(),   tex_top_right.y()};
   Mesh::RenderArray(GL_TRIANGLES, 6, format, sizeof(float) * 5,
