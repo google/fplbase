@@ -45,7 +45,7 @@
 #endif
 #include <GL/gl.h>
 #include <GL/glext.h>
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#if !defined(GL_GLEXT_PROTOTYPES)
 #ifdef _WIN32
 #define GLBASEEXTS GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)
 #else
@@ -98,7 +98,7 @@ GLBASEEXTS
 GLEXTS
 #undef GLEXT
 #endif
-#endif  // FPL_BASE_RENDERER_BACKEND_SDL
+#endif  //  !defined(GL_GLEXT_PROTOTYPES)
 #endif
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.

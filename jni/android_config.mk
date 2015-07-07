@@ -23,6 +23,8 @@ $(foreach dep_dir,$(wildcard $(FPLBASE_DIR)/dependencies) \
 ifneq ($(DEPENDENCIES_ROOT),)
   THIRD_PARTY_ROOT:=$(DEPENDENCIES_ROOT)
   FPL_ROOT:=$(DEPENDENCIES_ROOT)
+else
+  THIRD_PARTY_ROOT:=$(FPL_ROOT)/../../../external
 endif
 
 FPLBASE_GENERATED_OUTPUT_DIR := $(FPLBASE_DIR)/gen/include
@@ -39,4 +41,5 @@ DEPENDENCIES_MATHFU_DIR?=$(FPL_ROOT)/mathfu
 DEPENDENCIES_WEBP_DIR?=$(THIRD_PARTY_ROOT)/webp
 # Location of the Google Play Games library.
 DEPENDENCIES_GPG_DIR?=$(PREBUILTS_ROOT)/gpg-cpp-sdk/android
-
+# Location of SDL
+DEPENDENCIES_SDL_DIR?=$(THIRD_PARTY_ROOT)/sdl

@@ -16,6 +16,7 @@
 
 #include "precompiled.h"
 #include "fplbase/renderer_hmd.h"
+#include "fplbase/utilities.h"
 
 namespace fpl {
 
@@ -63,12 +64,13 @@ void BeginUndistortFramebuffer() {
 
 void FinishUndistortFramebuffer() {
   GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-  JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv* env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
   jmethodID undistort = env->GetMethodID(fpl_class, "UndistortTexture", "(I)V");
   env->CallVoidMethod(activity, undistort, (jint)g_undistort_texture_id);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
 }
-}
+
+}  // namespace fpl

@@ -4,6 +4,7 @@ obj/*
 bin/flatc
 bin/flathash
 gen/*
+libs/*
 Makefile
 fplbase.cbp
 

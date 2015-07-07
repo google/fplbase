@@ -155,7 +155,7 @@ if(APPLE)
 endif()
 
 
-set(fplbase_SRCS
+set(fplbase_common_SRCS
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
   include/fplbase/fpl_common.h
@@ -169,9 +169,6 @@ set(fplbase_SRCS
   include/fplbase/utilities.h
   schemas
   src/asset_manager.cpp
-  src/async_loader.cpp
-  src/input.cpp
-  src/main.cpp
   src/material.cpp
   src/mesh.cpp
   src/precompiled.cpp
@@ -179,6 +176,16 @@ set(fplbase_SRCS
   src/renderer.cpp
   src/shader.cpp
   src/utilities.cpp)
+
+set(fplbase_SRCS
+  ${fplbase_common_SRCS}
+  src/async_loader.cpp
+  src/input.cpp
+  src/main.cpp)
+
+set(fplbase_stdlib_SRCS
+  ${fplbase_common_SRCS}
+  src/async_loader_stdlib.cpp)
 
 # Includes for this project.
 include_directories(src)
@@ -222,25 +229,26 @@ if(WIN32)
   link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
 endif()
 
-if(fplbase_build_library)
-  add_library(fplbase ${fplbase_SRCS})
-
+# Configure the specified target with the common dependencies and flags to
+# build fplbase.
+function(fplbase_common_config target)
   # Additional flags for the target.
-  mathfu_configure_flags(fplbase)
+  mathfu_configure_flags(${target})
 
   # Dependencies for the executable target.
-  add_dependencies(fplbase fplbase_generated_includes fplbase_assets)
-  target_link_libraries(fplbase
-    ${SDL_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    webp)
-endif()
-
-# Call this function to use stdlib instead of SDL (Simple Direct Media Layer)
-# for the backend.
-function(fplbase_use_stdlib target)
-  target_compile_definitions(${target} PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+  add_dependencies(${target} fplbase_generated_includes fplbase_assets)
+  target_link_libraries(${target} ${OPENGL_LIBRARIES} webp)
 endfunction()
+
+if(fplbase_build_library)
+  add_library(fplbase ${fplbase_SRCS})
+  fplbase_common_config(fplbase)
+  target_link_libraries(fplbase ${SDL_LIBRARIES})
+
+  add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
+  fplbase_common_config(fplbase_stdlib)
+  target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+endif()
 
 # Autodesk's FBX SDK must be installed to build the pipeline.
 set(fbx_sdk_dir $ENV{FBX_SDK})

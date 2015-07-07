@@ -15,14 +15,17 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include <string>
 #include "mathfu/utilities.h"
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__)
+#include <jni.h>
+#if defined(FPL_BASE_BACKEND_STDLIB)
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#endif  // defined(FPL_BASE_BACKEND_STDLIB)
 #endif
 
 namespace fpl {
@@ -33,13 +36,13 @@ namespace fpl {
 #ifdef FPL_BASE_BACKEND_SDL
 enum LogCategory {
   kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
-  kError       = 1,  // SDL_LOG_CATEGORY_ERROR
-  kSystem      = 3,  // SDL_LOG_CATEGORY_SYSTEM
-  kAudio       = 4,  // SDL_LOG_CATEGORY_AUDIO
-  kVideo       = 5,  // SDL_LOG_CATEGORY_VIDEO
-  kRender      = 6,  // SDL_LOG_CATEGORY_RENDER
-  kInput       = 7,  // SDL_LOG_CATEGORY_INPUT
-  kCustom      = 19, // SDL_LOG_CATEGORY_CUSTOM
+  kError = 1,        // SDL_LOG_CATEGORY_ERROR
+  kSystem = 3,       // SDL_LOG_CATEGORY_SYSTEM
+  kAudio = 4,        // SDL_LOG_CATEGORY_AUDIO
+  kVideo = 5,        // SDL_LOG_CATEGORY_VIDEO
+  kRender = 6,       // SDL_LOG_CATEGORY_RENDER
+  kInput = 7,        // SDL_LOG_CATEGORY_INPUT
+  kCustom = 19,      // SDL_LOG_CATEGORY_CUSTOM
 };
 #else
 enum LogCategory {
@@ -89,15 +92,15 @@ WorldTime GetTicks();
 // Delays (sleeps) for the specified number of milliseconds.
 void Delay(WorldTime time);
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__)
 // Returns a pointer to the Java instance of the activity class
 // in an Android application.
-void* AndroidGetActivity();
+jobject AndroidGetActivity();
 
 // Returns a pointer to the Java native interface object (JNIEnv) of the
 // current thread on an Android application.
-void* AndroidGetJNIEnv();
-#endif  // __ANDROID__ && FPL_BASE_BACKEND_SDL
+JNIEnv* AndroidGetJNIEnv();
+#endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
 // Provide a pointer to an already-created instance of AAssetManager. Must call

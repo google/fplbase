@@ -18,6 +18,7 @@
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 
+#if defined(FPL_BASE_BACKEND_SDL)
 // Include SDL internal headers and external refs
 #define TARGET_OS_IPHONE \
   1  // This one is not to turn on 'SDL_DYNAMIC_API' defitnition
@@ -27,6 +28,7 @@ extern "C" {
 #include "src/core/android/SDL_android.h"
 }
 #undef TARGET_OS_IPHONE  // We don't need this anymore
+#endif  // defined(FPL_BASE_BACKEND_SDL)
 
 namespace fpl {
 
@@ -35,8 +37,8 @@ static vec2i g_android_scaler_resolution;
 
 void AndroidSetScalerResolution(const vec2i& resolution) {
   // Check against the real size of the device
-  JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv* env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
   jmethodID get_size = env->GetMethodID(fpl_class, "GetLandscapedSize", "()[I");
   jintArray size = (jintArray)env->CallObjectMethod(activity, get_size);
@@ -71,6 +73,7 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   return eglCreateWindowSurface(dpy, config, win, attrib_list);
 }
 
+#ifdef FPL_BASE_BACKEND_SDL
 void AndroidPreCreateWindow() {
   // Apply scaler setting prior creating surface
   if (g_android_scaler_resolution.x() && g_android_scaler_resolution.y()) {
@@ -84,5 +87,6 @@ void AndroidPreCreateWindow() {
     device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
   }
 }
+#endif // FPL_BASE_BACKEND_SDL
 
 }  // namespace fpl

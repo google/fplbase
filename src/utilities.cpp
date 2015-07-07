@@ -17,6 +17,7 @@
 
 #ifdef FPL_BASE_BACKEND_STDLIB
 #include <fcntl.h>
+#include <stdarg.h>
 #if defined(__ANDROID__)
 #include <android/log.h>
 namespace {
@@ -29,7 +30,7 @@ namespace fpl {
 
 #ifdef FPL_BASE_BACKEND_SDL
 static_assert(kApplication ==
-              static_cast<LogCategory>(SDL_LOG_CATEGORY_APPLICATION),
+                  static_cast<LogCategory>(SDL_LOG_CATEGORY_APPLICATION),
               "update kApplication");
 static_assert(kError == static_cast<LogCategory>(SDL_LOG_CATEGORY_ERROR),
               "update kError");
@@ -45,7 +46,7 @@ static_assert(kInput == static_cast<LogCategory>(SDL_LOG_CATEGORY_INPUT),
               "update kInput");
 static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
               "update kCustom");
-#endif // FPL_BASE_BACKEND_SDL
+#endif  // FPL_BASE_BACKEND_SDL
 
 #ifdef FPL_BASE_BACKEND_SDL
 bool LoadFile(const char* filename, std::string* dest) {
@@ -69,9 +70,8 @@ bool LoadFile(const char* filename, std::string* dest) {
              "Need to call SetAssetManager() once before calling LoadFile()");
     assert(false);
   }
-  AAsset* asset = AAssetManager_open(g_asset_manager,
-                                     filename,
-                                     AASSET_MODE_STREAMING);
+  AAsset* asset =
+      AAssetManager_open(g_asset_manager, filename, AASSET_MODE_STREAMING);
   if (!asset) {
     LogError(kError, "LoadFile fail on %s", filename);
     return false;
@@ -101,6 +101,7 @@ bool LoadFile(const char* filename, std::string* dest) {
 #error Please define a backend implementation for LoadFile.
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 bool SaveFile(const char* filename, const void* data, size_t size) {
   auto handle = SDL_RWFromFile(filename, "wb");
   if (!handle) {
@@ -111,6 +112,31 @@ bool SaveFile(const char* filename, const void* data, size_t size) {
   SDL_RWclose(handle);
   return (wlen == size);
 }
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__)
+bool SaveFile(const char* filename, const void* data, size_t size) {
+  (void)filename;
+  (void)data;
+  (void)size;
+  LogError(kError, "SaveFile unimplemented on STDLIB on ANDROID.");
+  return false;
+}
+#else
+bool SaveFile(const char* filename, const void* data, size_t size) {
+  int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  if (fd < 0) {
+    LogError(kError, "SaveFile fail on %s", filename);
+    return false;
+  }
+  size_t wlen = write(fd, data, size);
+  close(fd);
+  return size == wlen && size > 0;
+}
+#endif
+#else
+#error Please define a backend implementation for SaveFile.
+#endif
 
 bool SaveFile(const char* filename, const std::string& src) {
   return SaveFile(filename, static_cast<const void*>(src.c_str()),
@@ -140,7 +166,6 @@ bool ChangeToUpstreamDir(const char* const binary_dir,
       size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
       if (separator == std::string::npos) break;
       current_dir = current_dir.substr(0, separator);
-      printf("%s\n", current_dir.c_str());
       int success = chdir(current_dir.c_str());
       if (success) break;
       char real_path[256];
@@ -348,24 +373,30 @@ void LogError(LogCategory category, const char* fmt, ...) {
 #error Please define a backend implementation for LogXXX.
 #endif
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__)
+#if defined(FPL_BASE_BACKEND_SDL)
 // This function always returns a pointer to a jobject, but we are returning a
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a jobject*.
-void* AndroidGetActivity() { return SDL_AndroidGetActivity(); }
+jobject AndroidGetActivity() {
+  return reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+}
 
 // This function always returns a pointer to a JNIEnv, but we are returning a
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a JNIEnv*.
-void* AndroidGetJNIEnv() { return SDL_AndroidGetJNIEnv(); }
+JNIEnv* AndroidGetJNIEnv() {
+  return reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+}
+#else
+// TODO: Implement JNI methods that do not depend upon SDL.
+#endif  // defined(FPL_BASE_BACKEND_SDL)
 #endif
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
-void SetAAssetManager(AAssetManager* manager) {
-  g_asset_manager = manager;
-}
+void SetAAssetManager(AAssetManager* manager) { g_asset_manager = manager; }
 #endif
 
 #ifdef FPL_BASE_BACKEND_SDL
@@ -375,7 +406,7 @@ void Delay(WorldTime time) { SDL_Delay(time); }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 WorldTime GetTicks() { return 0; }
 
-void Delay(WorldTime time) { }
+void Delay(WorldTime time) {}
 #else
 #error Please define a backend implementation of a monotonic clock.
 #endif
