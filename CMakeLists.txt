@@ -159,6 +159,7 @@ endif()
 set(fplbase_common_SRCS
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
+  include/fplbase/camera_interface.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
