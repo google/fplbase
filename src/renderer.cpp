@@ -14,6 +14,7 @@
 
 #include "precompiled.h"
 #include "fplbase/renderer.h"
+#include "fplbase/render_target.h"
 #include "fplbase/utilities.h"
 
 #include "webp/decode.h"

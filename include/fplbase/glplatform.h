@@ -52,6 +52,17 @@
 #define GLBASEEXTS
 #endif
 #define GLEXTS                                                            \
+  GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers)                      \
+  GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer)                   \
+  GLEXT(PFNGLGENRENDERBUFFERSEXTPROC, glGenRenderbuffers)                 \
+  GLEXT(PFNGLBINDRENDERBUFFEREXTPROC, glBindRenderbuffer)                 \
+  GLEXT(PFNGLRENDERBUFFERSTORAGEEXTPROC, glRenderbufferStorage)           \
+  GLEXT(PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC, glFramebufferRenderbuffer)   \
+  GLEXT(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D)            \
+  GLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers)                              \
+  GLEXT(PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC, glCheckFramebufferStatus)     \
+  GLEXT(PFNGLDELETERENDERBUFFERSEXTPROC, glDeleteRenderbuffers)           \
+  GLEXT(PFNGLDELETEFRAMEBUFFERSEXTPROC, glDeleteFramebuffers)             \
   GLEXT(PFNGLGENBUFFERSARBPROC, glGenBuffers)                             \
   GLEXT(PFNGLBINDBUFFERARBPROC, glBindBuffer)                             \
   GLEXT(PFNGLMAPBUFFERARBPROC, glMapBuffer)                               \

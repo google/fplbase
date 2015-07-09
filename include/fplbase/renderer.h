@@ -31,6 +31,8 @@ namespace fpl {
 typedef void *Window;
 typedef void *GLContext;
 
+class RenderTarget;
+
 // The core of the rendering system. Deals with setting up and shutting down
 // the window + OpenGL context (based on SDL), and creating/using resources
 // such as shaders, textures, and geometry.
@@ -115,6 +117,9 @@ class Renderer {
 
   // Set to compare fragment against Z-buffer before writing, or not.
   void DepthTest(bool on);
+
+  // Set the current render target.
+  void SetRenderTarget(const RenderTarget& render_target);
 
   // Shader uniform: model_view_projection
   mat4 &model_view_projection() { return model_view_projection_; }

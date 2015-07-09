@@ -167,6 +167,7 @@ set(fplbase_common_SRCS
   include/fplbase/mesh.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
+  include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/utilities.h
   schemas
@@ -176,6 +177,7 @@ set(fplbase_common_SRCS
   src/precompiled.cpp
   src/precompiled.h
   src/renderer.cpp
+  src/render_target.cpp
   src/shader.cpp
   src/utilities.cpp)
 
