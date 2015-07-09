@@ -182,9 +182,9 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
                                        const vec4 &patch_info) {
   static const Attribute format[] = {kPosition3f, kTexCoord2f, kEND};
   static const unsigned short indices[] = {
-      0, 1,  2, 1,  2, 3,  2, 3,  4,  3,  4,  5,  4,  5,  6,  5,  6,  7,
-      1, 8,  3, 8,  3, 9,  3, 9,  5,  9,  5,  10, 5,  10, 7,  10, 7,  11,
-      8, 12, 9, 12, 9, 13, 9, 13, 10, 13, 10, 14, 10, 14, 11, 14, 11, 15, };
+      0, 2,  1, 1,  2, 3,  2, 4,  3,  3,  4,  5,  4,  6,  5,  5,  6,  7,
+      1, 3,  8, 8,  3, 9,  3, 5,  9,  9,  5,  10, 5,  7, 10,  10, 7,  11,
+      8,  9, 12, 12, 9, 13, 9, 10, 13, 13, 10, 14, 10, 11, 14, 14, 11, 15, };
   auto max = vec2::Max(bottom_left.xy(), top_right.xy());
   auto min = vec2::Min(bottom_left.xy(), top_right.xy());
   auto p0 = vec2(texture_size) * patch_info.xy() + min;
