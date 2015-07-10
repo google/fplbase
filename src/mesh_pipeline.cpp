@@ -23,6 +23,7 @@
 #pragma GCC diagnostic pop
 
 #include <assert.h>
+#include <cfloat>
 #include <fstream>
 #include <functional>
 #include <stdarg.h>
@@ -229,7 +230,9 @@ class FlatTextureHash {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(Logger& log) : cur_index_buf_(nullptr), log_(log) {}
+  explicit FlatMesh(Logger& log) : cur_index_buf_(nullptr), log_(log),
+    max_position_(-FLT_MAX),
+    min_position_(FLT_MAX) {}
 
   void SetSurface(const FlatTextures& textures) {
     // Grab existing surface for `texture_file_name`, or create a new one.
@@ -267,6 +270,10 @@ class FlatMesh {
 
     // Append index of polygon point.
     cur_index_buf_->push_back(ref.index);
+
+    // Update the min and max positions
+    min_position_ = vec3::Min(min_position_, vertex);
+    max_position_ = vec3::Max(max_position_, vertex);
 
     // Log the data we just added.
     log_.Log(kLogInfo, "Point: index %d", ref.index);
@@ -481,8 +488,11 @@ class FlatMesh {
     auto normals_fb = fbb.CreateVectorOfStructs(normals);
     auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
     auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
+    auto max_fb = FlatBufferVec3(max_position_);
+    auto min_fb = FlatBufferVec3(min_position_);
     auto mesh_fb = meshdef::CreateMesh(fbb, surface_vector_fb, vertices_fb,
-                                       normals_fb, tangents_fb, 0, uvs_fb);
+                                       normals_fb, tangents_fb, 0, uvs_fb,
+                                       &max_fb, &min_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -493,6 +503,8 @@ class FlatMesh {
   VertexSet unique_;
   std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
+  vec3 max_position_;
+  vec3 min_position_;
 
   // Information and warnings.
   Logger& log_;

@@ -15,6 +15,7 @@
 #include "precompiled.h"
 #include "common_generated.h"
 #include "fplbase/asset_manager.h"
+#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
@@ -169,8 +170,13 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(i), p);
       if (meshdef->texcoords()) CopyAttribute(meshdef->texcoords()->Get(i), p);
     }
-    mesh =
-        new Mesh(buf, meshdef->positions()->Length(), vert_size, attrs.data());
+    vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
+                                       : mathfu::kZeros3f;
+    vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
+                                       : mathfu::kZeros3f;
+    mesh = new Mesh(buf, meshdef->positions()->Length(), vert_size,
+                    attrs.data(), meshdef->max_position() ? &max : nullptr,
+                    meshdef->min_position() ? &min : nullptr);
     delete[] buf;
     // Load indices an materials.
     for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {

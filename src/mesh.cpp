@@ -59,10 +59,13 @@ void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
   }
 }
 
-size_t Mesh::VertexSize(const Attribute *attributes) {
+size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
   size_t size = 0;
-  for (;;) {
-    switch (*attributes++) {
+  for (;; attributes++) {
+    if (*attributes == end) {
+      return size;
+    }
+    switch (*attributes) {
       case kPosition3f: size += 3 * sizeof(float); break;
       case kNormal3f:   size += 3 * sizeof(float); break;
       case kTangent4f:  size += 4 * sizeof(float); break;
@@ -98,13 +101,31 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
 }
 
 Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
-           const Attribute *format)
+           const Attribute *format, vec3 *max_position, vec3 *min_position)
     : vertex_size_(vertex_size) {
   set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, count * vertex_size, vertex_data,
                        GL_STATIC_DRAW));
+
+  // Determine the min and max position
+  if (max_position && min_position) {
+    max_position_ = *max_position;
+    min_position_ = *min_position;
+  } else {
+    auto data = static_cast<const float *>(vertex_data);
+    const Attribute *attribute = format;
+    data += VertexSize(attribute, kPosition3f) / sizeof(float);
+    int step = vertex_size / sizeof(float);
+    min_position_ = vec3(data);
+    max_position_ = min_position_;
+    for (int vertex = 1; vertex < count; vertex++) {
+      data += step;
+      min_position_ = vec3::Min(min_position_, vec3(data));
+      max_position_ = vec3::Max(max_position_, vec3(data));
+    }
+  }
 }
 
 Mesh::~Mesh() {

@@ -15,7 +15,7 @@
 #ifndef FPL_MESH_H
 #define FPL_MESH_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/material.h"
 
@@ -53,7 +53,8 @@ class Mesh {
  public:
   // Initialize a Mesh by creating one VBO, and no IBO's.
   Mesh(const void *vertex_data, int count, int vertex_size,
-       const Attribute *format);
+       const Attribute *format, vec3 *max_position = nullptr,
+       vec3 *min_position = nullptr);
   ~Mesh();
 
   // Create one IBO to be part of this mesh. May be called more than once.
@@ -107,7 +108,10 @@ class Mesh {
   };
 
   // Compute the byte size for a vertex from given attributes.
-  static size_t VertexSize(const Attribute *attributes);
+  static size_t VertexSize(const Attribute *attributes, Attribute end = kEND);
+
+  const mathfu::vec3 &min_position() const { return min_position_; }
+  const mathfu::vec3 &max_position() const { return max_position_; }
 
  private:
   static const int kMaxAttributes = 6;
@@ -124,6 +128,8 @@ class Mesh {
   size_t vertex_size_;
   Attribute format_[kMaxAttributes];
   GLuint vbo_;
+  mathfu::vec3 min_position_;
+  mathfu::vec3 max_position_;
 };
 
 }  // namespace fpl

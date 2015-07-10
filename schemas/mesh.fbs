@@ -31,6 +31,8 @@ table Mesh {
   tangents:[fpl.Vec4];  // Tangent + handedness.
   colors:[fpl.Vec4ub];
   texcoords:[fpl.Vec2];
+  max_position:fpl.Vec3;
+  min_position:fpl.Vec3;
 }
 
 root_type Mesh;
