@@ -27,7 +27,7 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions) {
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
                               bool create_depth_buffer) {
-  assert(initialized());
+  assert(!initialized());
   dimensions_ = dimensions;
   // Set up the framebuffer itself:
   framebuffer_id_ = 0;
