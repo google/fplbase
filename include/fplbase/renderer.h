@@ -53,6 +53,8 @@ class Renderer {
                   const char *window_title = "");
 
   // Swaps frames. Call this once per frame inside your main loop.
+  // The two arguments are typically the result of the InputManager's
+  // minimized() and Time() (seconds since the start of the program).
   void AdvanceFrame(bool minimized, float time);
 
   // Cleans up whatever Initialize creates.
@@ -144,7 +146,8 @@ class Renderer {
   vec2i &window_size() { return window_size_; }
   const vec2i &window_size() const { return window_size_; }
 
-  // Time, as used by animated shaders, updated once per frame only.
+  // Time in seconds since program start, as used by animated shaders,
+  // updated once per frame only.
   float time() const { return time_; }
 
  private:
