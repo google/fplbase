@@ -124,7 +124,7 @@ GLEXTS
     LogGLError(__FILE__, __LINE__, #call); \
   }
 #else
-#define GL_CALL(call) call
+#define GL_CALL(call) do { call; } while(0)
 #endif
 
 // The error checking function used by the GL_CALL macro above,

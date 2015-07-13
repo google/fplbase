@@ -75,8 +75,7 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
   }
 
   // Make sure everything worked:
-  if (GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER)) !=
-      GL_FRAMEBUFFER_COMPLETE) {
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     assert(false);
   }
   assert(framebuffer_id_ != 0);
