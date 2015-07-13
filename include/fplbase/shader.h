@@ -107,6 +107,13 @@ class Shader {
     return true;
   }
 
+  bool SetUniform(const char *uniform_name, const mathfu::mat4 &value) {
+    auto loc = FindUniform(uniform_name);
+    if (loc < 0) return false;
+    GL_CALL(glUniformMatrix4fv(loc, 1, false, &value[0]));
+    return true;
+  }
+
   void InitializeUniforms();
 
   GLuint GetProgram() const { return program_; }

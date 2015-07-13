@@ -21,9 +21,8 @@
 namespace fpl {
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions) {
- Initialize(dimensions, GL_UNSIGNED_SHORT_5_6_5, true);
+ Initialize(dimensions, GL_UNSIGNED_BYTE, true);
 }
-
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
                               bool create_depth_buffer) {
@@ -47,12 +46,12 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
   // Give an empty image to OpenGL.  (It will allocate memory, but not bother
   // to populate it.  Which is fine, since we're going to render into it.)
-  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, dimensions.x(), dimensions.y(),
-                       0, GL_RGB, format, nullptr));
+  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x(), dimensions.y(),
+                       0, GL_RGBA, format, nullptr));
 
   // Define texture properties:
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
@@ -67,7 +66,7 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
     // Bind renderbuffer and set it as the depth buffer:
     GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id_));
-    GL_CALL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,
+    GL_CALL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
                                   dimensions_.x(), dimensions_.y()));
 
     // Attach renderbuffer as our depth attachment.
@@ -80,6 +79,9 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
       GL_FRAMEBUFFER_COMPLETE) {
     assert(false);
   }
+  assert(framebuffer_id_ != 0);
+  assert(depth_buffer_id_ != 0);
+
 
   // Be good citizens and clean up:
   // Bind the framebuffer:

@@ -36,7 +36,7 @@ class RenderTarget {
  public:
   RenderTarget() : initialized_(false) {}
   // Initialize a render target of the provided dimensions.  If format and
-  // useDepthBuffer are not provided, it defaults to GL_UNSIGNED_SHORT_5_6_5,
+  // useDepthBuffer are not provided, it defaults to GL_UNSIGNED_BYTE,
   // with a depth buffer attached.
   void Initialize(mathfu::vec2i dimensions);
   void Initialize(mathfu::vec2i dimensions, GLenum format, bool useDepthBuffer);
@@ -58,7 +58,7 @@ class RenderTarget {
   // false if it refers to the screen itself.  (This is important because
   // rendertargets that aren't texture-based will assert if you try to
   // bind them as texture or access their textureId.)
-  inline bool IsTexture() const { return framebuffer_id_ == 0; }
+  inline bool IsTexture() const { return framebuffer_id_ != 0; }
 
   // Gets the TextureId associated with the RenderTarget, assuming that it is
   // texture-based.  (Throws an assert if you try to call GetTextureId on a
