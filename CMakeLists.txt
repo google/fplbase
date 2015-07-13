@@ -20,6 +20,7 @@ option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline "Build the pipeline from FBX to FlatBuffers." ON)
 option(fplbase_build_demos "Build the fplbase demo executables." OFF)
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
+option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -131,6 +132,10 @@ foreach(flatbuffers_schema ${FLATBUFFERS_SCHEMAS})
   get_filename_component(filename ${flatbuffers_schema} NAME_WE)
   set(flatbuffers_include
       ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}/${filename}_generated.h)
+  if(fplbase_copy_schemas)
+    file(COPY ${flatbuffers_schema}
+         DESTINATION ${CMAKE_BINARY_DIR}/assets/flatbufferschemas/)
+  endif()
   add_custom_command(
     OUTPUT ${flatbuffers_include}
     COMMAND flatc --gen-includes
@@ -159,7 +164,6 @@ endif()
 set(fplbase_common_SRCS
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
-  include/fplbase/camera_interface.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
