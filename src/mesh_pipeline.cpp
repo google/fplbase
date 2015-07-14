@@ -50,6 +50,41 @@ using mathfu::vec4_packed;
 static const char kTextureFileExtension[] = ".webp";
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 
+enum TextureUsage {
+  kBaseTexture,
+  kExtraTexture,
+  kIgnoredTexture,
+};
+
+struct TextureLookup {
+  const char* texture_property;
+  TextureUsage usage;
+};
+
+static const TextureLookup kTextureLookups[] = {
+  // One of these textures is required, or a warning will be issued.
+  { FbxSurfaceMaterial::sDiffuse, kBaseTexture },
+  { FbxSurfaceMaterial::sEmissive, kBaseTexture },
+
+  // These texture types are appended to the texture list in the order below.
+  { FbxSurfaceMaterial::sNormalMap, kExtraTexture },
+  { FbxSurfaceMaterial::sBump, kExtraTexture },
+
+  // These texture types are ignored. We output a warning when a file has
+  // one of these textures.
+  { FbxSurfaceMaterial::sDiffuseFactor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sEmissiveFactor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sAmbient, kIgnoredTexture },
+  { FbxSurfaceMaterial::sAmbientFactor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sSpecular, kIgnoredTexture },
+  { FbxSurfaceMaterial::sSpecularFactor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sShininess, kIgnoredTexture },
+  { FbxSurfaceMaterial::sTransparentColor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sTransparencyFactor, kIgnoredTexture },
+  { FbxSurfaceMaterial::sReflection, kIgnoredTexture },
+  { FbxSurfaceMaterial::sReflectionFactor, kIgnoredTexture },
+};
+
 // Each log message is given a level of importance.
 // We only output messages that have level >= our current logging level.
 enum LogLevel {
@@ -557,8 +592,8 @@ class FbxParser {
     // Report version information.
     log_.Log(kLogImportant,
              "Loading %s (version %d.%d.%d) with SDK version %d.%d.%d\n",
-             file_name, file_major, file_minor, file_revision, sdk_major,
-             sdk_minor, sdk_revision);
+             RemoveDirectoryFromName(file_name).c_str(), file_major, file_minor,
+             file_revision, sdk_major, sdk_minor, sdk_revision);
 
     // Exit on load error.
     if (!init_status) {
@@ -677,7 +712,7 @@ class FbxParser {
       const FbxSurfaceMaterial* material = node->GetMaterial(material_index);
       if (material == nullptr) continue;
 
-      // We only check the diffuse materials. We might want to check others too.
+      // Textures are properties of the material.
       const FbxProperty property = material->FindProperty(texture_property);
       const int texture_count = property.GetSrcObjectCount<FbxFileTexture>();
       if (texture_count == 0) continue;
@@ -697,11 +732,7 @@ class FbxParser {
       }
 
       // Log the texture we found and return.
-      if (texture != nullptr) {
-        log_.Log(kLogInfo, "%s using texture %s\n", node->GetName(),
-                 texture->GetFileName());
-        return texture;
-      }
+      if (texture != nullptr) return texture;
     }
 
     return nullptr;
@@ -717,8 +748,6 @@ class FbxParser {
     // the FBX.
     const std::string texture_file_name = FindSourceTextureFileName(
         mesh_file_name_, std::string(texture->GetFileName()));
-    log_.Log(kLogInfo, "Mapping FBX texture %s to texture file %s\n",
-             texture->GetFileName(), texture_file_name.c_str());
     return texture_file_name;
   }
 
@@ -726,24 +755,41 @@ class FbxParser {
     FlatTextures textures;
 
     // The base texture used to color the polys is the sDiffuse texture.
+    bool base_texture = false;
+
+    // FBX nodes can have many different kinds of textures.
+    // We only loop through a few of them.
+    // TODO: Add more complete support for other kinds of textures.
+    for (size_t i = 0; i < FPL_ARRAYSIZE(kTextureLookups); ++i) {
+
+      // Find the filename for the texture type given by `texture_property`.
+      const TextureLookup& tex = kTextureLookups[i];
+      std::string texture = TextureFileName(node, tex.texture_property);
+      if (texture == "") continue;
+
+      // Issue a warning if we're going to ignore this texture.
+      if (tex.usage == kIgnoredTexture) {
+        log_.Log(kLogWarning, "Ignoring %s texture `%s`\n", tex.texture_property,
+                 RemoveDirectoryFromName(texture).c_str());
+        continue;
+      }
+
+      // Append texture to our list of textures.
+      log_.Log(kLogInfo, "Mapping %s texture `%s` to shader texture %d\n",
+               tex.texture_property, RemoveDirectoryFromName(texture).c_str(),
+               textures.Count());
+      textures.Append(texture);
+      base_texture = base_texture || tex.usage == kBaseTexture;
+    }
+
     // Without a base texture, the model will look rather plane, so issue
     // a warning.
-    const std::string texture =
-        TextureFileName(node, FbxSurfaceMaterial::sDiffuse);
-    if (texture == "") {
-      log_.Log(kLogWarning, "No texture found for node %s\n", node->GetName());
-    } else {
-      textures.Append(texture);
+    if (!base_texture) {
+      log_.Log(kLogWarning, "No base texture found for node %s\n",
+               node->GetName());
     }
 
-    // We add the normal map, if it exists, as the second texture.
-    const std::string normal_map =
-        TextureFileName(node, FbxSurfaceMaterial::sNormalMap);
-    if (normal_map != "") {
-      textures.Append(normal_map);
-    }
-
-    return textures;
+    return base_texture ? textures : FlatTextures();
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
