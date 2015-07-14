@@ -819,8 +819,9 @@ class FbxParser {
         const vec3 vertex = Vec3FromFbx(transform.MultT(vertex_fbx));
         const vec3 normal =
             Vec3FromFbx(transform.MultT(normal_fbx)).Normalized();
-        const vec4 tangent =
-            Vec4FromFbx(transform.MultT(tangent_fbx)).Normalized();
+        const vec4 tangent(
+            Vec3FromFbx(transform.MultT(tangent_fbx)).Normalized(),
+            static_cast<float>(tangent_fbx[3]));
         const vec2 uv =
             Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
         out->AppendPolyVert(vertex, normal, tangent, uv);
