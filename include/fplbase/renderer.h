@@ -121,6 +121,10 @@ class Renderer {
   // Set the current render target.
   void SetRenderTarget(const RenderTarget& render_target);
 
+  // Turn on/off a scissor region. Arguments are in screen pixels.
+  void ScissorOn(const vec2i &pos, const vec2i &size);
+  void ScissorOff();
+
   // Shader uniform: model_view_projection
   mat4 &model_view_projection() { return model_view_projection_; }
   const mat4 &model_view_projection() const { return model_view_projection_; }

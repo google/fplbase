@@ -520,6 +520,16 @@ void Renderer::SetCulling(CullingMode mode) {
   }
 }
 
+void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(pos.x(), pos.y(), size.x(), size.y());
+}
+
+void Renderer::ScissorOff() {
+  glDisable(GL_SCISSOR_TEST);
+}
+
+
 }  // namespace fpl
 
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION
