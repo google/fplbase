@@ -51,39 +51,24 @@ using mathfu::vec4_packed;
 static const char kTextureFileExtension[] = ".webp";
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 
-enum TextureUsage {
-  kBaseTexture,
-  kExtraTexture,
-  kIgnoredTexture,
-};
-
-struct TextureLookup {
-  const char* texture_property;
-  TextureUsage usage;
-};
-
-static const TextureLookup kTextureLookups[] = {
-  // One of these textures is required, or a warning will be issued.
-  { FbxSurfaceMaterial::sDiffuse, kBaseTexture },
-  { FbxSurfaceMaterial::sEmissive, kBaseTexture },
-
-  // These texture types are appended to the texture list in the order below.
-  { FbxSurfaceMaterial::sNormalMap, kExtraTexture },
-  { FbxSurfaceMaterial::sBump, kExtraTexture },
-
-  // These texture types are ignored. We output a warning when a file has
-  // one of these textures.
-  { FbxSurfaceMaterial::sDiffuseFactor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sEmissiveFactor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sAmbient, kIgnoredTexture },
-  { FbxSurfaceMaterial::sAmbientFactor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sSpecular, kIgnoredTexture },
-  { FbxSurfaceMaterial::sSpecularFactor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sShininess, kIgnoredTexture },
-  { FbxSurfaceMaterial::sTransparentColor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sTransparencyFactor, kIgnoredTexture },
-  { FbxSurfaceMaterial::sReflection, kIgnoredTexture },
-  { FbxSurfaceMaterial::sReflectionFactor, kIgnoredTexture },
+// Defines the order in which textures are assigned shader indices.
+// Shader indices are assigned, starting from 0, as textures are found.
+static const char* kTextureProperties[] = {
+  FbxSurfaceMaterial::sDiffuse,
+  FbxSurfaceMaterial::sEmissive,
+  FbxSurfaceMaterial::sNormalMap,
+  FbxSurfaceMaterial::sBump,
+  FbxSurfaceMaterial::sDiffuseFactor,
+  FbxSurfaceMaterial::sEmissiveFactor,
+  FbxSurfaceMaterial::sAmbient,
+  FbxSurfaceMaterial::sAmbientFactor,
+  FbxSurfaceMaterial::sSpecular,
+  FbxSurfaceMaterial::sSpecularFactor,
+  FbxSurfaceMaterial::sShininess,
+  FbxSurfaceMaterial::sTransparentColor,
+  FbxSurfaceMaterial::sTransparencyFactor,
+  FbxSurfaceMaterial::sReflection,
+  FbxSurfaceMaterial::sReflectionFactor,
 };
 
 // Each log message is given a level of importance.
@@ -208,10 +193,13 @@ class FlatTextures {
     return textures_[i];
   }
 
-  // Only compare the primary texture.
   // Required for std::unordered_set.
   bool operator==(const FlatTextures& rhs) const {
-    return Count() > 0 && rhs.Count() > 0 && textures_[0] == rhs.textures_[0];
+    if (Count() != rhs.Count()) return false;
+    for (size_t i = 0; i < Count(); ++i) {
+      if (textures_[0] != rhs.textures_[0]) return false;
+    }
+    return true;
   }
 
  private:
@@ -223,7 +211,11 @@ class FlatTextures {
 class FlatTextureHash {
  public:
   size_t operator()(const FlatTextures& t) const {
-    return t.Count() == 0 ? 0 : std::hash<std::string>()(t[0]);
+    size_t hash = 0;
+    for (size_t i = 0; i < t.Count(); ++i) {
+      hash ^= std::hash<std::string>()(t[i]);
+    }
+    return hash;
   }
 };
 
@@ -460,8 +452,8 @@ class FlatMesh {
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
-      log_.Log(kLogImportant, "  Surface %s has %d indices\n",
-               material_file_name.c_str(), index_buf.size());
+      log_.Log(kLogImportant, "  Surface %s has %d triangles\n",
+               material_file_name.c_str(), index_buf.size() / 3);
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
 
@@ -602,7 +594,7 @@ class FbxParser {
     importer->GetFileVersion(file_major, file_minor, file_revision);
 
     // Report version information.
-    log_.Log(kLogImportant,
+    log_.Log(kLogInfo,
              "Loading %s (version %d.%d.%d) with SDK version %d.%d.%d\n",
              RemoveDirectoryFromName(file_name).c_str(), file_major, file_minor,
              file_revision, sdk_major, sdk_minor, sdk_revision);
@@ -766,48 +758,37 @@ class FbxParser {
   FlatTextures GatherTextures(FbxNode* node) const {
     FlatTextures textures;
 
-    // The base texture used to color the polys is the sDiffuse texture.
-    bool base_texture = false;
-
     // FBX nodes can have many different kinds of textures.
-    // We only loop through a few of them.
-    // TODO: Add more complete support for other kinds of textures.
-    for (size_t i = 0; i < FPL_ARRAYSIZE(kTextureLookups); ++i) {
+    // We search for each kind of texture in the order specified by
+    // kTextureProperties. When we find a texture, we assign it the next
+    // shader index.
+    for (size_t i = 0; i < FPL_ARRAYSIZE(kTextureProperties); ++i) {
 
       // Find the filename for the texture type given by `texture_property`.
-      const TextureLookup& tex = kTextureLookups[i];
-      std::string texture = TextureFileName(node, tex.texture_property);
+      const char* texture_property = kTextureProperties[i];
+      std::string texture = TextureFileName(node, texture_property);
       if (texture == "") continue;
 
-      // Issue a warning if we're going to ignore this texture.
-      if (tex.usage == kIgnoredTexture) {
-        log_.Log(kLogWarning, "Ignoring %s texture `%s`\n", tex.texture_property,
-                 RemoveDirectoryFromName(texture).c_str());
-        continue;
-      }
-
       // Append texture to our list of textures.
-      log_.Log(kLogInfo, "Mapping %s texture `%s` to shader texture %d\n",
-               tex.texture_property, RemoveDirectoryFromName(texture).c_str(),
+      log_.Log(kLogImportant, " Mapping %s texture `%s` to shader texture %d\n",
+               texture_property, RemoveDirectoryFromName(texture).c_str(),
                textures.Count());
       textures.Append(texture);
-      base_texture = base_texture || tex.usage == kBaseTexture;
     }
 
     // Without a base texture, the model will look rather plane, so issue
     // a warning.
-    if (!base_texture) {
-      log_.Log(kLogWarning, "No base texture found for node %s\n",
-               node->GetName());
+    if (textures.Count() == 0) {
+      log_.Log(kLogWarning, "No textures found for node %s\n", node->GetName());
     }
 
-    return base_texture ? textures : FlatTextures();
+    return textures;
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
   void GatherFlatMeshRecursive(FbxNode* node, FlatMesh* out) const {
     if (node == nullptr) return;
-    log_.Log(kLogVerbose, "Node: %s\n", node->GetName());
+    log_.Log(kLogImportant, "Node: %s\n", node->GetName());
 
     // We're only interested in meshes, for the moment.
     FbxMesh* mesh = node->GetMesh();
@@ -909,7 +890,7 @@ struct MeshPipelineArgs {
       : fbx_file(""),
         asset_base_dir(""),
         asset_rel_dir(""),
-        log_level(kLogImportant) {}
+        log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
@@ -940,6 +921,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
     // -v switch
     if (arg == "-v" || arg == "--verbose") {
       args->log_level = kLogVerbose;
+
+      // -d switch
+    } else if (arg == "-d") {
+      args->log_level = kLogImportant;
 
       // -b switch
     } else if (arg == "-b") {
@@ -979,6 +964,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "by names relative to ASSET_BASE_DIR.\n\n"
         "Options:\n"
         "  -v, --verbose        output all informative messages\n"
+        "  -d, --details        output important informative messages\n"
         "  -b ASSET_BASE_DIR    directory from which all assets are loaded;\n"
         "                       material file paths are relative to here.\n"
         "                       If unspecified, current directory.\n"
