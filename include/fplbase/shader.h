@@ -17,7 +17,6 @@
 
 #include "fplbase/config.h" // Must come first.
 
-#include "fplbase/glplatform.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fpl {
@@ -34,11 +33,16 @@ class Renderer;
 
 static const int kMaxTexturesPerShader = 8;
 
+// These typedefs compatible with their OpenGL equivalents, but don't require
+// this header to depend on OpenGL.
+typedef unsigned int ShaderHandle;
+typedef int UniformHandle;
+
 // Represents a shader consisting of a vertex and pixel shader. Also stores
 // ids of standard uniforms. Use the Renderer class below to create these.
 class Shader {
  public:
-  Shader(GLuint program, GLuint vs, GLuint ps)
+  Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
       : program_(program),
         vs_(vs),
         ps_(ps),
@@ -49,11 +53,7 @@ class Shader {
         uniform_camera_pos_(-1),
         uniform_time_(-1) {}
 
-  ~Shader() {
-    if (vs_) GL_CALL(glDeleteShader(vs_));
-    if (ps_) GL_CALL(glDeleteShader(ps_));
-    if (program_) GL_CALL(glDeleteProgram(program_));
-  }
+  ~Shader();
 
   // Will make this shader active for any subsequent draw calls, and sets
   // all standard uniforms (e.g. mvp matrix) based on current values in
@@ -61,33 +61,20 @@ class Shader {
   void Set(const Renderer &renderer) const;
 
   // Find a non-standard uniform by name, -1 means not found.
-  GLint FindUniform(const char *uniform_name) {
-    GL_CALL(glUseProgram(program_));
-    return glGetUniformLocation(program_, uniform_name);
-  }
+  UniformHandle FindUniform(const char *uniform_name);
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4127)  // conditional expression is constant
-#endif                           // _MSC_VER
+  // Raw call to set any uniform (with 1/2/3/4/16 components).
+  // More convenient variants below.
+  void SetUniform(UniformHandle uniform_loc, const float *value,
+                  size_t num_components);
+
   // Set an non-standard uniform to a vec2/3/4 value.
   // Call this after Set() or FindUniform().
   template <int N>
-  void SetUniform(GLint uniform_loc, const mathfu::Vector<float, N> &value) {
-    // This should amount to a compile-time if-then.
-    if (N == 2) {
-      GL_CALL(glUniform2fv(uniform_loc, 1, &value[0]));
-    } else if (N == 3) {
-      GL_CALL(glUniform3fv(uniform_loc, 1, &value[0]));
-    } else if (N == 4) {
-      GL_CALL(glUniform4fv(uniform_loc, 1, &value[0]));
-    } else {
-      assert(0);
-    }
+  void SetUniform(UniformHandle uniform_loc,
+                  const mathfu::Vector<float, N> &value) {
+    SetUniform(uniform_loc, &value[0], N);
   }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif  // _MSC_VER
 
   // Convenience call that does a Lookup and a Set if found.
   // Call this after Set().
@@ -96,37 +83,37 @@ class Shader {
                   const mathfu::Vector<float, N> &value) {
     auto loc = FindUniform(uniform_name);
     if (loc < 0) return false;
-    SetUniform(loc, value);
+    SetUniform(loc, &value[0], N);
     return true;
   }
 
-  bool SetUniform(const char *uniform_name, const float &value) {
+  bool SetUniform(const char *uniform_name, float value) {
     auto loc = FindUniform(uniform_name);
     if (loc < 0) return false;
-    GL_CALL(glUniform1f(loc, value));
+    SetUniform(loc, &value, 1);
     return true;
   }
 
   bool SetUniform(const char *uniform_name, const mathfu::mat4 &value) {
     auto loc = FindUniform(uniform_name);
     if (loc < 0) return false;
-    GL_CALL(glUniformMatrix4fv(loc, 1, false, &value[0]));
+    SetUniform(loc, &value[0], sizeof(value) / sizeof(float));
     return true;
   }
 
   void InitializeUniforms();
 
-  GLuint GetProgram() const { return program_; }
+  ShaderHandle GetProgram() const { return program_; }
 
  private:
-  GLuint program_, vs_, ps_;
+  ShaderHandle program_, vs_, ps_;
 
-  GLint uniform_model_view_projection_;
-  GLint uniform_model_;
-  GLint uniform_color_;
-  GLint uniform_light_pos_;
-  GLint uniform_camera_pos_;
-  GLint uniform_time_;
+  UniformHandle uniform_model_view_projection_;
+  UniformHandle uniform_model_;
+  UniformHandle uniform_color_;
+  UniformHandle uniform_light_pos_;
+  UniformHandle uniform_camera_pos_;
+  UniformHandle uniform_time_;
 };
 
 }  // namespace fpl

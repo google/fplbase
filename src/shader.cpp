@@ -23,6 +23,29 @@
 
 namespace fpl {
 
+Shader::~Shader() {
+  if (vs_) GL_CALL(glDeleteShader(vs_));
+  if (ps_) GL_CALL(glDeleteShader(ps_));
+  if (program_) GL_CALL(glDeleteProgram(program_));
+}
+
+UniformHandle Shader::FindUniform(const char *uniform_name) {
+  GL_CALL(glUseProgram(program_));
+  return glGetUniformLocation(program_, uniform_name);
+}
+
+void Shader::SetUniform(GLint uniform_loc, const float *value,
+                        size_t num_components) {
+  switch (num_components) {
+    case 1: GL_CALL(glUniform1f(uniform_loc, *value)); break;
+    case 2: GL_CALL(glUniform2fv(uniform_loc, 1, value)); break;
+    case 3: GL_CALL(glUniform3fv(uniform_loc, 1, value)); break;
+    case 4: GL_CALL(glUniform4fv(uniform_loc, 1, value)); break;
+    case 16: GL_CALL(glUniformMatrix4fv(uniform_loc, 1, false, value)); break;
+    default: assert(0); break;
+  }
+}
+
 void Shader::InitializeUniforms() {
   // Look up variables that are standard, but still optionally present in a
   // shader.

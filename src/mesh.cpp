@@ -169,12 +169,14 @@ void Mesh::Render(Renderer &renderer, bool ignore_material) {
   UnSetAttributes(format_);
 }
 
-void Mesh::RenderArray(GLenum primitive, int index_count,
+void Mesh::RenderArray(Primitive primitive, int index_count,
                        const Attribute *format, int vertex_size,
                        const char *vertices, const unsigned short *indices) {
   SetAttributes(0, format, vertex_size, vertices);
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-  GL_CALL(glDrawElements(primitive, index_count, GL_UNSIGNED_SHORT, indices));
+  auto gl_primitive = primitive == kLines ? GL_LINES : GL_TRIANGLES;
+  GL_CALL(glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT,
+                         indices));
   UnSetAttributes(format);
 }
 
@@ -193,7 +195,7 @@ void Mesh::RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
       tex_top_right.x(),   tex_bottom_left.y(),
       top_right.x(),       top_right.y(),       top_right.z(),
       tex_top_right.x(),   tex_top_right.y()};
-  Mesh::RenderArray(GL_TRIANGLES, 6, format, sizeof(float) * 5,
+  Mesh::RenderArray(kTriangles, 6, format, sizeof(float) * 5,
                     reinterpret_cast<const char *>(vertices), indices);
 }
 
@@ -239,7 +241,7 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
       max.x(), p0.y(),  z, 1.0f,           patch_info.y(),
       max.x(), p1.y(),  z, 1.0f,           patch_info.w(),
       max.x(), max.y(), z, 1.0f,           1.0f, };
-  Mesh::RenderArray(GL_TRIANGLES, 6 * 9, format, sizeof(float) * 5,
+  Mesh::RenderArray(kTriangles, 6 * 9, format, sizeof(float) * 5,
                     reinterpret_cast<const char *>(vertices), indices);
 }
 

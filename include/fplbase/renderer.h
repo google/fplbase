@@ -78,8 +78,9 @@ class Renderer {
 
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
   // Return 0 if not a power of two in size.
-  GLuint CreateTexture(const uint8_t *buffer, const vec2i &size, bool has_alpha,
-                       TextureFormat desired = kFormatAuto);
+  TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
+                               bool has_alpha,
+                               TextureFormat desired = kFormatAuto);
 
   // Unpacks a memory buffer containing a TGA format file.
   // May only be uncompressed RGB or RGBA data, Y-flipped or not.
@@ -160,7 +161,8 @@ class Renderer {
   float time() const { return time_; }
 
  private:
-  GLuint CompileShader(GLenum stage, GLuint program, const GLchar *source);
+  ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
+                              const char *source);
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.

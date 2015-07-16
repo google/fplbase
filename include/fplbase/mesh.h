@@ -51,6 +51,8 @@ struct NormalMappedVertex {
 // A mesh instance contains a VBO and one or more IBO's.
 class Mesh {
  public:
+  enum Primitive { kTriangles, kLines };
+
   // Initialize a Mesh by creating one VBO, and no IBO's.
   Mesh(const void *vertex_data, int count, int vertex_size,
        const Attribute *format, vec3 *max_position = nullptr,
@@ -74,7 +76,7 @@ class Mesh {
   // Renders primatives using vertex and index data directly in local memory.
   // This is a convenient alternative to creating a Mesh instance for small
   // amounts of data, or dynamic data.
-  static void RenderArray(GLenum primitive, int index_count,
+  static void RenderArray(Primitive primitive, int index_count,
                           const Attribute *format, int vertex_size,
                           const char *vertices, const unsigned short *indices);
 
@@ -114,20 +116,24 @@ class Mesh {
   const mathfu::vec3 &max_position() const { return max_position_; }
 
  private:
+  // This typedef is compatible with its OpenGL equivalent, but doesn't require
+  // this header to depend on OpenGL.
+  typedef unsigned int BufferHandle;
+
   static const int kMaxAttributes = 6;
 
-  static void SetAttributes(GLuint vbo, const Attribute *attributes,
+  static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
   static void UnSetAttributes(const Attribute *attributes);
   struct Indices {
     int count;
-    GLuint ibo;
+    BufferHandle ibo;
     Material *mat;
   };
   std::vector<Indices> indices_;
   size_t vertex_size_;
   Attribute format_[kMaxAttributes];
-  GLuint vbo_;
+  BufferHandle vbo_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
 };

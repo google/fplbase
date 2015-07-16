@@ -199,8 +199,9 @@ void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
-GLuint Renderer::CompileShader(GLenum stage, GLuint program,
+GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
+  GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
   std::string platform_source =
 #ifdef PLATFORM_MOBILE
       "#ifdef GL_ES\nprecision highp float;\n#endif\n";
@@ -230,9 +231,9 @@ GLuint Renderer::CompileShader(GLenum stage, GLuint program,
 Shader *Renderer::CompileAndLinkShader(const char *vs_source,
                                        const char *ps_source) {
   auto program = glCreateProgram();
-  auto vs = CompileShader(GL_VERTEX_SHADER, program, vs_source);
+  auto vs = CompileShader(true, program, vs_source);
   if (vs) {
-    auto ps = CompileShader(GL_FRAGMENT_SHADER, program, ps_source);
+    auto ps = CompileShader(false, program, ps_source);
     if (ps) {
       GL_CALL(
           glBindAttribLocation(program, Mesh::kAttributePosition, "aPosition"));

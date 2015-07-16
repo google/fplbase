@@ -43,6 +43,10 @@ enum TextureFormat {
   kFormatLuminance,
 };
 
+// This typedef is compatible with its OpenGL equivalent, but doesn't require
+// this header to depend on OpenGL.
+typedef unsigned int TextureHandle;
+
 class Texture : public AsyncResource {
  public:
   Texture(Renderer &renderer, const std::string &filename)
@@ -74,7 +78,7 @@ class Texture : public AsyncResource {
 
   void Delete();
 
-  const GLuint &id() const { return id_; }
+  const TextureHandle &id() const { return id_; }
   mathfu::vec2i size() { return size_; }
   const mathfu::vec2i size() const { return size_; }
 
@@ -86,7 +90,7 @@ class Texture : public AsyncResource {
  private:
   Renderer *renderer_;
 
-  GLuint id_;
+  TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec4 uv_;
   bool has_alpha_;

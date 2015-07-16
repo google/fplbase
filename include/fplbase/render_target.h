@@ -27,6 +27,8 @@
 #include "fplbase/renderer_android.h"
 #endif
 
+#include "fplbase/glplatform.h"  // TODO: remove this dependency.
+
 namespace fpl {
 
 // Abstracts a surface that can be rendered to.
