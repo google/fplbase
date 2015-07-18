@@ -654,8 +654,12 @@ class FbxParser {
     if (node == nullptr) return;
 
     // We're only interested in meshes, for the moment.
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
+    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+      FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+      if (attr == nullptr ||
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
+      FbxMesh* mesh = static_cast<FbxMesh*>(attr);
+
       // Generate normals. Leaves existing normal data if it already exists.
       const bool normals_generated = mesh->GenerateNormals();
       if (!normals_generated) {
@@ -707,12 +711,15 @@ class FbxParser {
   }
 
   // Get the texture for a mesh node.
-  const FbxFileTexture* TextureFromNode(FbxNode* node,
+  const FbxFileTexture* TextureFromNode(FbxNode* node, const FbxMesh* mesh,
                                         const char* texture_property) const {
-    // Check every material attached to this node.
-    const int material_count = node->GetMaterialCount();
-    for (int material_index = 0; material_index < material_count;
-         ++material_index) {
+    FbxLayerElementArrayTemplate<int>* material_indices;
+    const bool valid_indices = mesh->GetMaterialIndices(&material_indices);
+    if (!valid_indices) return nullptr;
+
+    for (int j = 0; j < material_indices->GetCount(); ++j) {
+      // Check every material attached to this mesh.
+      const int material_index = (*material_indices)[j];
       const FbxSurfaceMaterial* material = node->GetMaterial(material_index);
       if (material == nullptr) continue;
 
@@ -742,10 +749,10 @@ class FbxParser {
     return nullptr;
   }
 
-  std::string TextureFileName(FbxNode* node,
+  std::string TextureFileName(FbxNode* node, const FbxMesh* mesh,
                               const char* texture_property) const {
     // Grab the texture attached to this node.
-    const FbxFileTexture* texture = TextureFromNode(node, texture_property);
+    const FbxFileTexture* texture = TextureFromNode(node, mesh, texture_property);
     if (texture == nullptr) return "";
 
     // Look for a texture on disk that matches the texture referenced by
@@ -755,7 +762,7 @@ class FbxParser {
     return texture_file_name;
   }
 
-  FlatTextures GatherTextures(FbxNode* node) const {
+  FlatTextures GatherTextures(FbxNode* node, const FbxMesh* mesh) const {
     FlatTextures textures;
 
     // FBX nodes can have many different kinds of textures.
@@ -766,7 +773,7 @@ class FbxParser {
 
       // Find the filename for the texture type given by `texture_property`.
       const char* texture_property = kTextureProperties[i];
-      std::string texture = TextureFileName(node, texture_property);
+      std::string texture = TextureFileName(node, mesh, texture_property);
       if (texture == "") continue;
 
       // Append texture to our list of textures.
@@ -790,13 +797,21 @@ class FbxParser {
     if (node == nullptr) return;
     log_.Log(kLogImportant, "Node: %s\n", node->GetName());
 
-    // We're only interested in meshes, for the moment.
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
+    // We're only interested in mesh nodes.
+    // Note that there may be more than one mesh attached to a node.
+    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+      const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+      if (attr == nullptr ||
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
+      const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
+
+      // Gather the textures attached to this mesh.
+      // TODO: also pass in the `mesh` so we know which texture goes with which mes.
       std::string normal_map_file_name;
-      const FlatTextures textures = GatherTextures(node);
+      const FlatTextures textures = GatherTextures(node, mesh);
       out->SetSurface(textures);
 
+      // Gather the verticies and indices.
       const FbxAMatrix& transform = node->EvaluateGlobalTransform();
       GatherFlatSurface(mesh, transform, out);
     }
