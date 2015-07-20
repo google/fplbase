@@ -63,3 +63,10 @@ struct Vec4ub {
   z:ubyte;
   w:ubyte;
 }
+
+struct ColorRGBA {
+  r:float = 1.0;
+  g:float = 1.0;
+  b:float = 1.0;
+  a:float = 1.0;
+}

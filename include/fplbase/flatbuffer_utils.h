@@ -55,6 +55,10 @@ inline const mathfu::vec3 LoadAxis(Axis axis) {
                                                             : mathfu::kAxisZ3f;
 }
 
+inline const mathfu::vec4 LoadColorRGBA(const ColorRGBA* c) {
+  return mathfu::vec4(c->r(), c->g(), c->b(), c->a());
+}
+
 }  // namespace fpl
 
 #endif  // FPLBASE_FLATBUFFER_UTILS_H
