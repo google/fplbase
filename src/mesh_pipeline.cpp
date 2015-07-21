@@ -284,9 +284,11 @@ class FlatMesh {
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
-  bool OutputFlatBuffer(const std::string& mesh_name_unformated,
-                        const std::string& assets_base_dir_unformated,
-                        const std::string& assets_sub_dir_unformated) const {
+  bool OutputFlatBuffer(
+      const std::string& mesh_name_unformated,
+      const std::string& assets_base_dir_unformated,
+      const std::string& assets_sub_dir_unformated,
+      const std::vector<matdef::TextureFormat>& texture_formats) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -303,7 +305,7 @@ class FlatMesh {
     }
 
     // Create material files that reference the textures.
-    OutputMaterialFlatBuffers(assets_base_dir, assets_sub_dir);
+    OutputMaterialFlatBuffers(assets_base_dir, assets_sub_dir, texture_formats);
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
@@ -401,8 +403,9 @@ class FlatMesh {
     fclose(file);
   }
 
-  void OutputMaterialFlatBuffers(const std::string& assets_base_dir,
-                                 const std::string& assets_sub_dir) const {
+  void OutputMaterialFlatBuffers(
+      const std::string& assets_base_dir, const std::string& assets_sub_dir,
+      const std::vector<matdef::TextureFormat>& texture_formats) const {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
       if (!HasTexture(textures)) continue;
@@ -410,13 +413,30 @@ class FlatMesh {
       // TODO: add alpha, format, etc. here instead of using defaults.
       flatbuffers::FlatBufferBuilder fbb;
       std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
+      std::vector<uint8_t> formats_fb;
       textures_fb.reserve(textures.Count());
+      formats_fb.reserve(textures.Count());
       for (size_t i = 0; i < textures.Count(); ++i) {
-        textures_fb.push_back(
-            fbb.CreateString(TextureFileName(textures[i], assets_sub_dir)));
+        // Output texture file name to array of file names.
+        const std::string texture_file_name =
+            TextureFileName(textures[i], assets_sub_dir);
+        textures_fb.push_back(fbb.CreateString(texture_file_name));
+
+        // Append texture format (a uint8) to array of texture formats.
+        const matdef::TextureFormat texture_format =
+            i < texture_formats.size() ? texture_formats[i]
+                                       : matdef::TextureFormat_AUTO;
+        formats_fb.push_back(static_cast<uint8_t>(texture_format));
+        if (texture_format != matdef::TextureFormat_AUTO) {
+          log_.Log(kLogImportant, "  Texture `%s` has format `%s`\n",
+                   RemoveDirectoryFromName(texture_file_name).c_str(),
+                   matdef::EnumNameTextureFormat(texture_format));
+        }
       }
       auto textures_vector_fb = fbb.CreateVector(textures_fb);
-      auto material_fb = matdef::CreateMaterial(fbb, textures_vector_fb);
+      auto formats_vector_fb = fbb.CreateVector(formats_fb);
+      auto material_fb = matdef::CreateMaterial(
+          fbb, textures_vector_fb, matdef::BlendMode_OFF, formats_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
@@ -654,8 +674,12 @@ class FbxParser {
     if (node == nullptr) return;
 
     // We're only interested in meshes, for the moment.
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
+    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+      FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+      if (attr == nullptr ||
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
+      FbxMesh* mesh = static_cast<FbxMesh*>(attr);
+
       // Generate normals. Leaves existing normal data if it already exists.
       const bool normals_generated = mesh->GenerateNormals();
       if (!normals_generated) {
@@ -707,12 +731,15 @@ class FbxParser {
   }
 
   // Get the texture for a mesh node.
-  const FbxFileTexture* TextureFromNode(FbxNode* node,
+  const FbxFileTexture* TextureFromNode(FbxNode* node, const FbxMesh* mesh,
                                         const char* texture_property) const {
-    // Check every material attached to this node.
-    const int material_count = node->GetMaterialCount();
-    for (int material_index = 0; material_index < material_count;
-         ++material_index) {
+    FbxLayerElementArrayTemplate<int>* material_indices;
+    const bool valid_indices = mesh->GetMaterialIndices(&material_indices);
+    if (!valid_indices) return nullptr;
+
+    for (int j = 0; j < material_indices->GetCount(); ++j) {
+      // Check every material attached to this mesh.
+      const int material_index = (*material_indices)[j];
       const FbxSurfaceMaterial* material = node->GetMaterial(material_index);
       if (material == nullptr) continue;
 
@@ -742,10 +769,10 @@ class FbxParser {
     return nullptr;
   }
 
-  std::string TextureFileName(FbxNode* node,
+  std::string TextureFileName(FbxNode* node, const FbxMesh* mesh,
                               const char* texture_property) const {
     // Grab the texture attached to this node.
-    const FbxFileTexture* texture = TextureFromNode(node, texture_property);
+    const FbxFileTexture* texture = TextureFromNode(node, mesh, texture_property);
     if (texture == nullptr) return "";
 
     // Look for a texture on disk that matches the texture referenced by
@@ -755,7 +782,7 @@ class FbxParser {
     return texture_file_name;
   }
 
-  FlatTextures GatherTextures(FbxNode* node) const {
+  FlatTextures GatherTextures(FbxNode* node, const FbxMesh* mesh) const {
     FlatTextures textures;
 
     // FBX nodes can have many different kinds of textures.
@@ -766,7 +793,7 @@ class FbxParser {
 
       // Find the filename for the texture type given by `texture_property`.
       const char* texture_property = kTextureProperties[i];
-      std::string texture = TextureFileName(node, texture_property);
+      std::string texture = TextureFileName(node, mesh, texture_property);
       if (texture == "") continue;
 
       // Append texture to our list of textures.
@@ -790,13 +817,21 @@ class FbxParser {
     if (node == nullptr) return;
     log_.Log(kLogImportant, "Node: %s\n", node->GetName());
 
-    // We're only interested in meshes, for the moment.
-    FbxMesh* mesh = node->GetMesh();
-    if (mesh != nullptr) {
+    // We're only interested in mesh nodes.
+    // Note that there may be more than one mesh attached to a node.
+    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+      const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+      if (attr == nullptr ||
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
+      const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
+
+      // Gather the textures attached to this mesh.
+      // TODO: also pass in the `mesh` so we know which texture goes with which mes.
       std::string normal_map_file_name;
-      const FlatTextures textures = GatherTextures(node);
+      const FlatTextures textures = GatherTextures(node, mesh);
       out->SetSurface(textures);
 
+      // Gather the verticies and indices.
       const FbxAMatrix& transform = node->EvaluateGlobalTransform();
       GatherFlatSurface(mesh, transform, out);
     }
@@ -895,8 +930,48 @@ struct MeshPipelineArgs {
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
   std::string asset_rel_dir;   /// Directory (relative to base) to output files.
+  std::vector<matdef::TextureFormat> texture_formats;
   LogLevel log_level;          /// Amount of logging to dump during conversion.
 };
+
+static matdef::TextureFormat ParseTextureFormat(const char* s) {
+  int i = 0;
+  for (const char** format = matdef::EnumNamesTextureFormat();
+       *format != nullptr; ++format) {
+    if (strcmp(*format, s) == 0) {
+      return static_cast<matdef::TextureFormat>(i);
+    }
+    ++i;
+  }
+  return static_cast<matdef::TextureFormat>(-1);
+}
+
+static bool ParseTextureFormats(
+    const std::string& arg, Logger& log,
+    std::vector<matdef::TextureFormat>* texture_formats) {
+  // No texture formats specified is valid. Always use `AUTO`.
+  if (arg.size() == 0) return true;
+
+  // Loop through the comma-delimited string of texture formats.
+  size_t format_start = 0;
+  for (;;) {
+    // Get substring with the name of one texture format.
+    const size_t comma = arg.find_first_of(',', format_start);
+    const std::string s = arg.substr(format_start, comma);
+
+    // Parse the format. If it is invalid, log an error and exit.
+    const matdef::TextureFormat format = ParseTextureFormat(s.c_str());
+    if (format < 0) {
+      log.Log(kLogError, "Invalid texture format `%s`\n", s.c_str());
+      return false;
+    }
+    texture_formats->push_back(format);
+
+    // Break if on last texture format. Otherwise, advance to next argument.
+    if (comma == std::string::npos) return true;
+    format_start = comma + 1;
+  }
+}
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
                                   MeshPipelineArgs* args) {
@@ -944,19 +1019,31 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+      // -f switch
+    } else if (arg == "-f") {
+      if (i + 1 < argc - 1) {
+        valid_args = ParseTextureFormats(
+            std::string(argv[i + 1]), log, &args->texture_formats);
+        i++;
+      } else {
+        valid_args = false;
+      }
+
       // Invalid switch.
     } else {
       log.Log(kLogError, "Unknown parameter: %s\n", arg.c_str());
       valid_args = false;
     }
+
+    if (!valid_args) break;
   }
 
   // Print usage.
   if (!valid_args) {
     log.Log(
         kLogImportant,
-        "Usage: mesh_pipeline [-v] [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]"
-        " FBX_FILE\n"
+        "Usage: mesh_pipeline [-v] [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
+        "                     [-f TEXTURE_FORMATS] FBX_FILE\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
         "We output a .fplmesh file with the same base name as FBX_FILE.\n"
         "For every texture referenced by the FBX, we output a .fplmat file\n"
@@ -970,7 +1057,17 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                       If unspecified, current directory.\n"
         "  -r ASSET_REL_DIR     directory to put all output files; relative\n"
         "                       to ASSET_BASE_DIR. If unspecified, current\n"
-        "                       directory.\n");
+        "                       directory.\n"
+        "  -f TEXTURE_FORMATS   comma-separated list of formats for each\n"
+        "                       output texture. For example, if a mesh has\n"
+        "                       two textures then `AUTO,F_888` will ensure\n"
+        "                       the second texture's material has 8-bits of\n"
+        "                       RGB precision. Default is AUTO.\n"
+        "                       Valid possibilities:\n");
+    for (const char** format = matdef::EnumNamesTextureFormat();
+         *format != nullptr; ++format) {
+      log.Log(kLogImportant, "                           %s\n", *format);
+    }
   }
 
   return valid_args;
@@ -999,8 +1096,9 @@ int main(int argc, char** argv) {
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
-  const bool output_status = mesh.OutputFlatBuffer(
-      args.fbx_file, args.asset_base_dir, args.asset_rel_dir);
+  const bool output_status =
+      mesh.OutputFlatBuffer(args.fbx_file, args.asset_base_dir,
+                            args.asset_rel_dir, args.texture_formats);
   if (!output_status) return 1;
 
   // Success.
