@@ -599,7 +599,7 @@ class FbxParser {
 
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
-  bool Load(const char* file_name) {
+  bool Load(const char* file_name, bool recenter) {
     if (!Valid()) return false;
 
     // Create the importer and initialize with the file.
@@ -649,7 +649,7 @@ class FbxParser {
     mesh_file_name_ = std::string(file_name);
 
     // Bring the geo into our format.
-    ConvertGeometry();
+    ConvertGeometry(recenter);
     return true;
   }
 
@@ -660,9 +660,22 @@ class FbxParser {
   }
 
  private:
-  void ConvertGeometry() {
-    // Ensure each mesh has only one texture, and only triangles.
+  void ConvertGeometry(bool recenter) {
     FbxGeometryConverter geo_converter(manager_);
+
+    // Ensure origin is in the center of geometry.
+    if (recenter) {
+      const bool recentered =
+          geo_converter.RecenterSceneToWorldCenter(scene_, 0.0);
+      if (recentered) {
+        log_.Log(kLogInfo, "Recentering\n");
+      } else {
+        log_.Log(kLogImportant,
+                 "Already centered so ignoring recenter request\n");
+      }
+    }
+
+    // Ensure each mesh has only one texture, and only triangles.
     geo_converter.SplitMeshesPerMaterial(scene_, true);
     geo_converter.Triangulate(scene_, true);
 
@@ -921,16 +934,13 @@ class FbxParser {
 };
 
 struct MeshPipelineArgs {
-  MeshPipelineArgs()
-      : fbx_file(""),
-        asset_base_dir(""),
-        asset_rel_dir(""),
-        log_level(kLogWarning) {}
+  MeshPipelineArgs() : recenter(false), log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
   std::string asset_rel_dir;   /// Directory (relative to base) to output files.
   std::vector<matdef::TextureFormat> texture_formats;
+  bool recenter;               /// Translate geometry to origin.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
 };
 
@@ -998,7 +1008,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       args->log_level = kLogVerbose;
 
       // -d switch
-    } else if (arg == "-d") {
+    } else if (arg == "-d" || arg == "--details") {
       args->log_level = kLogImportant;
 
       // -b switch
@@ -1019,6 +1029,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+      // -c switch
+    } else if (arg == "-c" || arg == "--center") {
+      args->recenter = true;
+
       // -f switch
     } else if (arg == "-f") {
       if (i + 1 < argc - 1) {
@@ -1029,6 +1043,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+      // ignore empty arguments
+    } else if (arg == "") {
       // Invalid switch.
     } else {
       log.Log(kLogError, "Unknown parameter: %s\n", arg.c_str());
@@ -1042,8 +1058,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
   if (!valid_args) {
     log.Log(
         kLogImportant,
-        "Usage: mesh_pipeline [-v] [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
-        "                     [-f TEXTURE_FORMATS] FBX_FILE\n"
+        "Usage: mesh_pipeline [-v|-d] [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
+        "                     [-c] [-f TEXTURE_FORMATS] FBX_FILE\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
         "We output a .fplmesh file with the same base name as FBX_FILE.\n"
         "For every texture referenced by the FBX, we output a .fplmat file\n"
@@ -1058,6 +1074,9 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "  -r ASSET_REL_DIR     directory to put all output files; relative\n"
         "                       to ASSET_BASE_DIR. If unspecified, current\n"
         "                       directory.\n"
+        "  -c, --center         ensure world origin is inside geometry\n"
+        "                       bounding box by adding a translation if\n"
+        "                       required.\n"
         "  -f TEXTURE_FORMATS   comma-separated list of formats for each\n"
         "                       output texture. For example, if a mesh has\n"
         "                       two textures then `AUTO,F_888` will ensure\n"
@@ -1088,7 +1107,7 @@ int main(int argc, char** argv) {
 
   // Load the FBX file.
   FbxParser pipe(log);
-  const bool load_status = pipe.Load(args.fbx_file.c_str());
+  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.recenter);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.
