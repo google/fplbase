@@ -18,7 +18,7 @@ project(fplbase)
 # Option to only build flatc
 option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline "Build the pipeline from FBX to FlatBuffers." ON)
-option(fplbase_build_demos "Build the fplbase demo executables." OFF)
+option(fplbase_build_samples "Build the fplbase sample executables." OFF)
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
 
@@ -314,6 +314,6 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   mathfu_configure_flags(mesh_pipeline)
 endif()
 
-if(fplbase_build_demos)
-  add_subdirectory(demo)
+if(fplbase_build_samples)
+  add_subdirectory(samples)
 endif()
