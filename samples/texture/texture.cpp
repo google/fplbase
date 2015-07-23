@@ -1,3 +1,18 @@
+// Copyright 2015 Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 #include "precompiled.h"
 #include "fplbase/asset_manager.h"
 #include "fplbase/renderer.h"
@@ -5,13 +20,19 @@
 #include "fplbase/utilities.h"
 #include <cassert>
 
+// Game is a sample that displays a textured quad.
+//
+// It demonstrates usage of:
+// - fpl::AssetManager to load textures and shaders.
+// - fpl::Renderer to setup rendering and transform models.
+// - fpl::InputSystem to query for exit events and elapsed time.
 struct Game {
   static const GLfloat verts[];
   static const GLfloat uvs[];
 
   fpl::Renderer renderer;
   fpl::InputSystem input;
-  fpl::AssetManager matManager;
+  fpl::AssetManager assetManager;
   fpl::Shader* shader;
   GLuint position;
   GLuint uv;
@@ -19,24 +40,24 @@ struct Game {
   fpl::Texture* tex;
   float acc;
 
-  Game() : matManager(renderer) {}
+  Game() : assetManager(renderer) {}
 
   void Initialize() {
     bool result = fpl::ChangeToUpstreamDir("./", "assets");
     assert(result);
     renderer.Initialize();
     input.Initialize();
-    shader = matManager.LoadShader("tex");
+    shader = assetManager.LoadShader("tex");
     assert(shader);
     position = glGetAttribLocation(shader->GetProgram(), "in_position");
     uv = glGetAttribLocation(shader->GetProgram(), "in_uv");
     scale = shader->FindUniform("in_scale");
 
-    tex = matManager.LoadTexture("tex.webp");
+    tex = assetManager.LoadTexture("tex.webp");
     assert(tex);
-    matManager.StartLoadingTextures();
+    assetManager.StartLoadingTextures();
     fpl::LogInfo("start loading materials");
-    while (!matManager.TryFinalize()) {
+    while (!assetManager.TryFinalize()) {
       fpl::LogInfo("loading %s ...", tex->filename().c_str());
     }
     fpl::LogInfo("done loading materials");

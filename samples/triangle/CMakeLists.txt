@@ -13,14 +13,9 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 2.8.12)
 
-project(fpldemo)
+project(fplbase-triangle)
 
-add_executable(fpldemo-tri tri.cpp)
-add_dependencies(fpldemo-tri fplbase)
-mathfu_configure_flags(fpldemo-tri)
-target_link_libraries(fpldemo-tri fplbase)
-
-add_executable(fpldemo-tex tex.cpp)
-add_dependencies(fpldemo-tex fplbase)
-mathfu_configure_flags(fpldemo-tex)
-target_link_libraries(fpldemo-tex fplbase)
+add_executable(fplbase-triangle triangle.cpp)
+add_dependencies(fplbase-triangle fplbase)
+mathfu_configure_flags(fplbase-triangle)
+target_link_libraries(fplbase-triangle fplbase)
