@@ -15,11 +15,10 @@
 #ifndef FPLBASE_INPUT_SYSTEM_H
 #define FPLBASE_INPUT_SYSTEM_H
 
+#include <map>
+
 #include "fplbase/config.h" // Must come first.
 
-#include <queue>
-#include <map>
-#include <string>
 #include "keyboard_keycodes.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"

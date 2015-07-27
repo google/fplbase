@@ -17,7 +17,6 @@
 
 #include "fplbase/config.h"  // Must come first.
 
-#include <string>
 #include "mathfu/utilities.h"
 
 #if defined(__ANDROID__)
@@ -62,29 +61,43 @@ typedef int32_t WorldTime;
 const int kMillisecondsPerSecond = 1000;
 
 // Loads a file and returns its contents via string pointer.
-bool LoadFile(const char* filename, std::string* dest);
+// Returns false if the file couldn't be loaded (usually means it's not
+// present, but can also mean there was a read error).
+bool LoadFile(const char *filename, std::string *dest);
+
+// Load a file like above, but scan for #include "filename" statements
+// at the top of the file (only), and replace them with the contents of
+// those files.
+// Supports recursive includes, and only ever includes each file once.
+// The first non-#include line will terminate #include scanning, though
+// blank lines and // comments are correctly ignored.
+// If this function returns false, failedfilename indicates which file
+// caused the problem.
+bool LoadFileWithIncludes(const char *filename, std::string *dest,
+                          std::string *failedfilename);
 
 // Save a string to a file, overwriting the existing contents.
-bool SaveFile(const char* filename, const std::string& data);
+// Returns false if the file could not be written.
+bool SaveFile(const char *filename, const std::string &data);
 
 // Save binary data to a file, overwriting the existing contents.
-bool SaveFile(const char* filename, const void* data, size_t size);
+bool SaveFile(const char *filename, const void *data, size_t size);
 
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.
-bool ChangeToUpstreamDir(const char* const binary_dir,
-                         const char* const target_dir);
+bool ChangeToUpstreamDir(const char *const binary_dir,
+                         const char *const target_dir);
 
 // Returns true if 16bpp MipMap generation is supported.
 // (Basically always true, except on certain android devices.)
 bool MipmapGeneration16bppSupported();
 
 // Basic logging functions.  They will output to the console.
-void LogInfo(const char* fmt, ...);
-void LogError(const char* fmt, ...);
-void LogInfo(LogCategory category, const char* fmt, ...);
-void LogError(LogCategory category, const char* fmt, ...);
+void LogInfo(const char *fmt, ...);
+void LogError(const char *fmt, ...);
+void LogInfo(LogCategory category, const char *fmt, ...);
+void LogError(LogCategory category, const char *fmt, ...);
 
 // Returns the current time, in milliseconds.
 WorldTime GetTicks();

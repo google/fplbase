@@ -15,9 +15,9 @@
 #ifndef FPLBASE_ASSET_MANAGER_H
 #define FPLBASE_ASSET_MANAGER_H
 
-#include "fplbase/config.h" // Must come first.
-
 #include <map>
+
+#include "fplbase/config.h" // Must come first.
 
 #include "fplbase/async_loader.h"
 #include "fplbase/fpl_common.h"

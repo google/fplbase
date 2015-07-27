@@ -49,7 +49,7 @@ static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
 #endif  // FPL_BASE_BACKEND_SDL
 
 #ifdef FPL_BASE_BACKEND_SDL
-bool LoadFile(const char* filename, std::string* dest) {
+bool LoadFile(const char *filename, std::string *dest) {
   auto handle = SDL_RWFromFile(filename, "rb");
   if (!handle) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -57,7 +57,7 @@ bool LoadFile(const char* filename, std::string* dest) {
   }
   auto len = static_cast<size_t>(SDL_RWseek(handle, 0, RW_SEEK_END));
   SDL_RWseek(handle, 0, RW_SEEK_SET);
-  dest->assign(len + 1, 0);
+  dest->assign(len, 0);
   size_t rlen = static_cast<size_t>(SDL_RWread(handle, &(*dest)[0], 1, len));
   SDL_RWclose(handle);
   return len == rlen && len > 0;
@@ -77,13 +77,13 @@ bool LoadFile(const char* filename, std::string* dest) {
     return false;
   }
   off_t len = AAsset_getLength(asset);
-  dest->assign(len + 1, 0);
+  dest->assign(len, 0);
   int rlen = AAsset_read(asset, &(*dest)[0], len);
   AAsset_close(asset);
   return len == rlen && len > 0;
 }
 #else
-bool LoadFile(const char* filename, std::string* dest) {
+bool LoadFile(const char *filename, std::string *dest) {
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -91,7 +91,7 @@ bool LoadFile(const char* filename, std::string* dest) {
   }
   size_t len = lseek(fd, 0, SEEK_END);
   lseek(fd, 0, SEEK_SET);
-  dest->assign(len + 1, 0);
+  dest->assign(len, 0);
   size_t rlen = read(fd, &(*dest)[0], len);
   close(fd);
   return len == rlen && len > 0;
@@ -101,8 +101,86 @@ bool LoadFile(const char* filename, std::string* dest) {
 #error Please define a backend implementation for LoadFile.
 #endif
 
+bool LoadFileWithIncludesHelper(const char *filename, std::string *dest,
+                                std::string *failedfilename,
+                                std::set<std::string> *all_includes) {
+  if (!LoadFile(filename, dest)) {
+    *failedfilename = filename;
+    return false;
+  }
+  all_includes->insert(filename);
+  std::vector<std::string> includes;
+  auto cursor = dest->c_str();
+  static auto kIncludeStatement = "#include";
+  auto include_len = strlen(kIncludeStatement);
+  // Parse only lines that are include statements, terminating at the first
+  // one that's not.
+  for (;;) {
+    auto start = cursor;
+    cursor += strspn(cursor, " \t");  // Skip whitespace.
+    auto empty = strspn(cursor, "\n\r");
+    if (empty) {  // Skip empty lines.
+      cursor += empty;
+      continue;
+    }
+    auto comment = strspn(cursor, "/");
+    if (comment >= 2) { // Skip comments.
+      cursor += comment;
+      cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
+      cursor += strspn(cursor, "\n\r");   // Skip newline;
+      continue;
+    }
+    if (strncmp(cursor, kIncludeStatement, include_len) == 0) {
+      cursor += include_len;
+      cursor += strspn(cursor, " \t");  // Skip whitespace.
+      if (*cursor == '\"') {            // Must find quote.
+        cursor++;
+        auto len = strcspn(cursor, "\"\n\r");  // Filename part.
+        if (cursor[len] == '\"') {             // Ending quote.
+          includes.push_back(std::string(cursor, len));
+          cursor += len + 1;
+          cursor += strspn(cursor, "\n\r \t");  // Skip whitespace and newline.
+          continue;
+        }
+      }
+    }
+    // This include statement didn't parse correctly, leave it untouched.
+    cursor = start;
+    break;
+  }
+  // Early out for files with no includes.
+  if (!includes.size()) return true;
+  // Remove the #includes from the final file.
+  dest->erase(0, cursor - dest->c_str());
+  // Now insert the includes.
+  std::string include;
+  size_t insertion_point = 0;
+  for (auto it = includes.begin(); it != includes.end(); ++it) {
+    if (all_includes->find(*it) == all_includes->end()) {
+      if (!LoadFileWithIncludesHelper(it->c_str(), &include, failedfilename,
+                                      all_includes)) {
+        return false;
+      }
+      dest->insert(insertion_point, include);
+      insertion_point += include.length();
+      // Ensure there's a linefeed at eof.
+      if (include.size() && include.back() != '\n') {
+        dest->insert(insertion_point++, "\n");
+      }
+    }
+  }
+  return true;
+}
+
+bool LoadFileWithIncludes(const char *filename, std::string *dest,
+                          std::string *failedfilename) {
+  std::set<std::string> all_includes;
+  return LoadFileWithIncludesHelper(filename, dest, failedfilename,
+                                    &all_includes);
+}
+
 #if defined(FPL_BASE_BACKEND_SDL)
-bool SaveFile(const char* filename, const void* data, size_t size) {
+bool SaveFile(const char *filename, const void *data, size_t size) {
   auto handle = SDL_RWFromFile(filename, "wb");
   if (!handle) {
     SDL_LogError(SDL_LOG_CATEGORY_ERROR, "SaveFile fail on %s", filename);
@@ -114,7 +192,7 @@ bool SaveFile(const char* filename, const void* data, size_t size) {
 }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
-bool SaveFile(const char* filename, const void* data, size_t size) {
+bool SaveFile(const char *filename, const void *data, size_t size) {
   (void)filename;
   (void)data;
   (void)size;
@@ -122,7 +200,7 @@ bool SaveFile(const char* filename, const void* data, size_t size) {
   return false;
 }
 #else
-bool SaveFile(const char* filename, const void* data, size_t size) {
+bool SaveFile(const char *filename, const void *data, size_t size) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (fd < 0) {
@@ -138,24 +216,24 @@ bool SaveFile(const char* filename, const void* data, size_t size) {
 #error Please define a backend implementation for SaveFile.
 #endif
 
-bool SaveFile(const char* filename, const std::string& src) {
+bool SaveFile(const char *filename, const std::string &src) {
   return SaveFile(filename, static_cast<const void*>(src.c_str()),
                   src.length());  // don't include the '\0'
 }
 
 #if defined(_WIN32)
-inline char* getcwd(char* buffer, int maxlen) {
+inline char *getcwd(char *buffer, int maxlen) {
   return _getcwd(buffer, maxlen);
 }
 
-inline int chdir(const char* dirname) { return _chdir(dirname); }
+inline int chdir(const char *dirname) { return _chdir(dirname); }
 #endif  // defined(_WIN32)
 
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.
-bool ChangeToUpstreamDir(const char* const binary_dir,
-                         const char* const target_dir) {
+bool ChangeToUpstreamDir(const char *const binary_dir,
+                         const char *const target_dir) {
 #if !defined(__ANDROID__)
   {
     std::string current_dir = binary_dir;
@@ -187,7 +265,7 @@ bool ChangeToUpstreamDir(const char* const binary_dir,
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }
 
-std::string CamelCaseToSnakeCase(const char* const camel) {
+std::string CamelCaseToSnakeCase(const char *const camel) {
   // Replace capitals with underbar + lowercase.
   std::string snake;
   for (const char* c = camel; *c != '\0'; ++c) {
@@ -204,9 +282,9 @@ std::string CamelCaseToSnakeCase(const char* const camel) {
   return snake;
 }
 
-std::string FileNameFromEnumName(const char* const enum_name,
-                                 const char* const prefix,
-                                 const char* const suffix) {
+std::string FileNameFromEnumName(const char *const enum_name,
+                                 const char *const prefix,
+                                 const char *const suffix) {
   // Skip over the initial 'k', if it exists.
   const bool starts_with_k = enum_name[0] == 'k' && IsUpperCase(enum_name[1]);
   const char* const camel_case_name = starts_with_k ? enum_name + 1 : enum_name;
@@ -217,7 +295,7 @@ std::string FileNameFromEnumName(const char* const enum_name,
 }
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-bool AndroidSystemFeature(const char* feature_name) {
+bool AndroidSystemFeature(const char *feature_name) {
   JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
   jclass fpl_class = env->GetObjectClass(activity);
@@ -242,7 +320,7 @@ bool TouchScreenDevice() {
 }
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-bool AndroidCheckDeviceList(const char* device_list[], const int num_devices) {
+bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
   // Retrieve device name through JNI.
   JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
   jclass build_class = env->FindClass("android/os/Build");
@@ -271,7 +349,7 @@ bool AndroidCheckDeviceList(const char* device_list[], const int num_devices) {
 
 bool MipmapGeneration16bppSupported() {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-  const char* device_list[] = {"Galaxy Nexus"};
+  const char *device_list[] = {"Galaxy Nexus"};
   return AndroidCheckDeviceList(device_list,
                                 sizeof(device_list) / sizeof(device_list[0]));
 #else
@@ -280,7 +358,7 @@ bool MipmapGeneration16bppSupported() {
 }
 
 #ifdef FPL_BASE_BACKEND_SDL
-void LogInfo(const char* fmt, ...) {
+void LogInfo(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, fmt,
@@ -288,7 +366,7 @@ void LogInfo(const char* fmt, ...) {
   va_end(args);
 }
 
-void LogError(const char* fmt, ...) {
+void LogError(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR, fmt,
@@ -296,14 +374,14 @@ void LogError(const char* fmt, ...) {
   va_end(args);
 }
 
-void LogInfo(LogCategory category, const char* fmt, ...) {
+void LogInfo(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
   va_end(args);
 }
 
-void LogError(LogCategory category, const char* fmt, ...) {
+void LogError(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   SDL_LogMessageV(category, SDL_LOG_PRIORITY_ERROR, fmt, args);
@@ -311,21 +389,21 @@ void LogError(LogCategory category, const char* fmt, ...) {
 }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
-void LogInfo(const char* fmt, ...) {
+void LogInfo(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   __android_log_print(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
   va_end(args);
 }
 
-void LogError(const char* fmt, ...) {
+void LogError(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   __android_log_print(ANDROID_LOG_ERROR, "fplbase", fmt, args);
   va_end(args);
 }
 
-void LogInfo(LogCategory category, const char* fmt, ...) {
+void LogInfo(LogCategory category, const char *fmt, ...) {
   (void)category;
   va_list args;
   va_start(args, fmt);
@@ -333,7 +411,7 @@ void LogInfo(LogCategory category, const char* fmt, ...) {
   va_end(args);
 }
 
-void LogError(LogCategory category, const char* fmt, ...) {
+void LogError(LogCategory category, const char *fmt, ...) {
   (void)category;
   va_list args;
   va_start(args, fmt);
@@ -341,28 +419,28 @@ void LogError(LogCategory category, const char* fmt, ...) {
   va_end(args);
 }
 #else
-void LogInfo(const char* fmt, ...) {
+void LogInfo(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   printf(fmt, args);
   va_end(args);
 }
 
-void LogError(const char* fmt, ...) {
+void LogError(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   fprintf(stderr, fmt, args);
   va_end(args);
 }
 
-void LogInfo(LogCategory category, const char* fmt, ...) {
+void LogInfo(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   LogInfo(fmt, args);
   va_end(args);
 }
 
-void LogError(LogCategory category, const char* fmt, ...) {
+void LogError(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   LogError(fmt, args);
@@ -388,7 +466,7 @@ jobject AndroidGetActivity() {
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a JNIEnv*.
 JNIEnv* AndroidGetJNIEnv() {
-  return reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+  return reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
 }
 #else
 // TODO: Implement JNI methods that do not depend upon SDL.
@@ -396,7 +474,7 @@ JNIEnv* AndroidGetJNIEnv() {
 #endif
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
-void SetAAssetManager(AAssetManager* manager) { g_asset_manager = manager; }
+void SetAAssetManager(AAssetManager *manager) { g_asset_manager = manager; }
 #endif
 
 #ifdef FPL_BASE_BACKEND_SDL

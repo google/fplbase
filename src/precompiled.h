@@ -18,13 +18,17 @@
 #include "fplbase/config.h" // Must come first.
 
 #include <assert.h>
-#include <cstdint>
-#include <functional>
-#include <map>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <cstdint>
+
+#include <functional>
+#include <map>
 #include <vector>
+#include <string>
+#include <set>
+#include <queue>
 #include <algorithm>
 
 #if defined(_WIN32)

@@ -17,9 +17,6 @@
 
 #include "fplbase/config.h" // Must come first.
 
-#include <string>
-#include <vector>
-
 #ifdef FPL_BASE_BACKEND_STDLIB
 #include <mutex>
 #include <thread>

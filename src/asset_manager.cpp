@@ -52,20 +52,23 @@ Shader *AssetManager::LoadShader(const char *basename) {
   if (shader) return shader;
   std::string vs_file, ps_file;
   std::string filename = std::string(basename) + ".glslv";
-  if (LoadFile(filename.c_str(), &vs_file)) {
+  std::string failedfile;
+  if (LoadFileWithIncludes(filename.c_str(), &vs_file, &failedfile)) {
     filename = std::string(basename) + ".glslf";
-    if (LoadFile(filename.c_str(), &ps_file)) {
+    if (LoadFileWithIncludes(filename.c_str(), &ps_file, &failedfile)) {
       shader = renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
       if (shader) {
         shader_map_[basename] = shader;
       } else {
-        LogError(kError, "Shader Error:\n%s\n", renderer_.last_error().c_str());
+        LogError(kError, "Shader Error:\n%s\nVS:\n%s\nPS:\n%s\n",
+                 renderer_.last_error().c_str(),
+                 vs_file.c_str(), ps_file.c_str());
       }
       return shader;
     }
   }
-  LogError(kError, "Can\'t load shader: %s", filename.c_str());
-  renderer_.last_error() = "Couldn\'t load: " + filename;
+  LogError(kError, "Can\'t load shader file: %s", failedfile.c_str());
+  renderer_.last_error() = "Couldn\'t load: " + failedfile;
   return nullptr;
 }
 
