@@ -321,7 +321,8 @@ class FlatMesh {
     LogBones();
 
     // Create material files that reference the textures.
-    OutputMaterialFlatBuffers(assets_base_dir, assets_sub_dir, texture_formats);
+    OutputMaterialFlatBuffers(mesh_name, assets_base_dir, assets_sub_dir,
+                              texture_formats);
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
@@ -417,10 +418,14 @@ class FlatMesh {
            kTextureFileExtension;
   }
 
-  static std::string MaterialFileName(const std::string& texture_file_name,
-                                      const std::string& assets_sub_dir) {
-    return TextureBaseFileName(texture_file_name, assets_sub_dir) + "." +
-           matdef::MaterialExtension();
+  std::string MaterialFileName(const std::string& mesh_name, size_t surface_idx,
+                               const std::string& assets_sub_dir) const {
+    std::string name = TextureBaseFileName(mesh_name, assets_sub_dir);
+    if (surfaces_.size() > 1) {
+      name += std::string("_") + std::to_string(surface_idx);
+    }
+    name += std::string(".") + matdef::MaterialExtension();
+    return name;
   }
 
   void OutputFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
@@ -440,13 +445,21 @@ class FlatMesh {
   }
 
   void OutputMaterialFlatBuffers(
-      const std::string& assets_base_dir, const std::string& assets_sub_dir,
+      const std::string& mesh_name, const std::string& assets_base_dir,
+      const std::string& assets_sub_dir,
       const std::vector<matdef::TextureFormat>& texture_formats) const {
+    log_.Log(kLogImportant, "Materials:\n");
+
+    size_t surface_idx = 0;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
       if (!HasTexture(textures)) continue;
 
-      // TODO: add alpha, format, etc. here instead of using defaults.
+      const std::string material_file_name =
+          MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
+      log_.Log(kLogImportant, "  %s:", material_file_name.c_str());
+
+      // TODO: add alpha here instead of using defaults.
       flatbuffers::FlatBufferBuilder fbb;
       std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
       std::vector<uint8_t> formats_fb;
@@ -463,12 +476,17 @@ class FlatMesh {
             i < texture_formats.size() ? texture_formats[i]
                                        : matdef::TextureFormat_AUTO;
         formats_fb.push_back(static_cast<uint8_t>(texture_format));
+
+        // Log texture and format.
+        log_.Log(kLogImportant, "%s %s", i == 0 ? "" : ",",
+                 RemoveDirectoryFromName(texture_file_name).c_str());
         if (texture_format != matdef::TextureFormat_AUTO) {
-          log_.Log(kLogImportant, "  Texture `%s` has format `%s`\n",
-                   RemoveDirectoryFromName(texture_file_name).c_str(),
+          log_.Log(kLogImportant, "(%s)",
                    matdef::EnumNameTextureFormat(texture_format));
         }
       }
+      log_.Log(kLogImportant, "\n");
+
       auto textures_vector_fb = fbb.CreateVector(textures_fb);
       auto formats_vector_fb = fbb.CreateVector(formats_fb);
       auto material_fb = matdef::CreateMaterial(
@@ -476,8 +494,10 @@ class FlatMesh {
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
-          assets_base_dir + MaterialFileName(textures[0], assets_sub_dir);
+          assets_base_dir + material_file_name;
       OutputFlatBufferBuilder(fbb, full_material_file_name);
+
+      surface_idx++;
     }
   }
 
@@ -490,26 +510,28 @@ class FlatMesh {
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
-    log_.Log(kLogImportant, "Mesh %s has %d verts\n",
+    log_.Log(kLogImportant, "Mesh:\n  %s has %d verts\n",
              rel_mesh_file_name.c_str(), points_.size());
 
     // Output the surfaces.
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
+    size_t surface_idx = 0;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
       const IndexBuffer& index_buf = it->second;
       const std::string material_file_name =
           HasTexture(textures)
-              ? MaterialFileName(textures[0], assets_sub_dir)
+              ? MaterialFileName(mesh_name, surface_idx, assets_sub_dir)
               : std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
       auto indices_fb = fbb.CreateVector(index_buf);
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
-      log_.Log(kLogImportant, "  Surface %s has %d triangles\n",
-               material_file_name.c_str(), index_buf.size() / 3);
+      log_.Log(kLogImportant, "  Surface %d (%s) has %d triangles\n",
+               surface_idx, material_file_name.c_str(), index_buf.size() / 3);
+      surface_idx++;
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
 
@@ -652,6 +674,10 @@ class FbxParser {
 
   bool Load(const char* file_name, bool recenter) {
     if (!Valid()) return false;
+
+    log_.Log(kLogImportant,
+        "\n---- mesh_pipeline: %s ------------------------------------------\n",
+        BaseFileName(file_name).c_str());
 
     // Create the importer and initialize with the file.
     FbxImporter* importer = FbxImporter::Create(manager_, "");
@@ -861,7 +887,7 @@ class FbxParser {
       if (texture == "") continue;
 
       // Append texture to our list of textures.
-      log_.Log(kLogImportant, " Mapping %s texture `%s` to shader texture %d\n",
+      log_.Log(kLogInfo, " Mapping %s texture `%s` to shader texture %d\n",
                texture_property, RemoveDirectoryFromName(texture).c_str(),
                textures.Count());
       textures.Append(texture);
@@ -879,7 +905,7 @@ class FbxParser {
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
   void GatherFlatMeshRecursive(int depth, FbxNode* node, FlatMesh* out) const {
     if (node == nullptr) return;
-    log_.Log(kLogImportant, "Node: %s\n", node->GetName());
+    log_.Log(kLogInfo, "Node: %s\n", node->GetName());
 
     // We're only interested in mesh nodes.
     // Note that there may be more than one mesh attached to a node.
