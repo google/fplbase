@@ -16,6 +16,8 @@
 #define FPLBASE_INPUT_SYSTEM_H
 
 #include <map>
+#include <string>
+#include <vector>
 
 #include "fplbase/config.h" // Must come first.
 

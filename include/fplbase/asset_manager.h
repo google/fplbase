@@ -16,6 +16,7 @@
 #define FPLBASE_ASSET_MANAGER_H
 
 #include <map>
+#include <string>
 
 #include "fplbase/config.h" // Must come first.
 

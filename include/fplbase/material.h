@@ -15,6 +15,8 @@
 #ifndef FPLBASE_MATERIAL_H
 #define FPLBASE_MATERIAL_H
 
+#include <vector>
+
 #include "fplbase/config.h" // Must come first.
 
 #include "fplbase/async_loader.h"

@@ -15,6 +15,8 @@
 #ifndef FPLBASE_ASYNC_LOADER_H
 #define FPLBASE_ASYNC_LOADER_H
 
+#include <vector>
+
 #include "fplbase/config.h" // Must come first.
 
 #ifdef FPL_BASE_BACKEND_STDLIB

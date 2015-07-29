@@ -15,6 +15,8 @@
 #ifndef FPL_MESH_H
 #define FPL_MESH_H
 
+#include <vector>
+
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/material.h"
