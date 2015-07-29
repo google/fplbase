@@ -226,6 +226,18 @@ class FlatMesh {
     max_position_(-FLT_MAX),
     min_position_(FLT_MAX) {}
 
+  void AppendBone(const char* bone_name, int depth) {
+    // We use uint8_t for bone indices, so the limit is 256.
+    if (bones_.size() >= 256) {
+      log_.Log(kLogError, "256 bone limit exceeded.\n");
+      return;
+    }
+
+    // Until this function is called again, all appended vertices will
+    // reference this bone.
+    bones_.push_back(Bone(bone_name, depth));
+  }
+
   void SetSurface(const FlatTextures& textures) {
     // Grab existing surface for `texture_file_name`, or create a new one.
     IndexBuffer& index_buffer = surfaces_[textures];
@@ -245,7 +257,8 @@ class FlatMesh {
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
                       const vec4& tangent, const vec2& uv) {
     // TODO: Round values before creating.
-    points_.push_back(Vertex(vertex, normal, tangent, uv));
+    points_.push_back(Vertex(vertex, normal, tangent, uv,
+                             static_cast<uint8_t>(bones_.size() - 1)));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -304,6 +317,9 @@ class FlatMesh {
       return false;
     }
 
+    // Output bone hierarchy.
+    LogBones();
+
     // Create material files that reference the textures.
     OutputMaterialFlatBuffers(assets_base_dir, assets_sub_dir, texture_formats);
 
@@ -311,6 +327,17 @@ class FlatMesh {
     // `assets_base_dir`.
     OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir);
     return true;
+  }
+
+  void LogBones() const {
+    log_.Log(kLogImportant, "Mesh hierarchy (bone index):\n");
+    for (size_t j = 0; j < bones_.size(); ++j) {
+      const Bone& b = bones_[j];
+      for (int i = 0; i < b.depth; ++i) {
+        log_.Log(kLogImportant, " ");
+      }
+      log_.Log(kLogImportant, "  %s (%d)\n", b.name.c_str(), j);
+    }
   }
 
  private:
@@ -322,13 +349,15 @@ class FlatMesh {
     vec3_packed normal;
     vec4_packed tangent; // 4th element is handedness: +1 or -1
     vec2_packed uv;
+    uint8_t bone;
     Vertex() {
       // The Hash function operates on all the memory, so ensure everything is
       // zero'd out.
       memset(this, 0, sizeof(*this));
     }
-    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec2& u)
-        : vertex(v), normal(n), tangent(t), uv(u) {}
+    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec2& u,
+           uint8_t bone)
+        : vertex(v), normal(n), tangent(t), uv(u), bone(bone) {}
   };
 
   struct VertexRef {
@@ -359,6 +388,13 @@ class FlatMesh {
     bool operator()(const VertexRef& a, const VertexRef& b) const {
       return memcmp(a.ref, b.ref, sizeof(*a.ref)) == 0;
     }
+  };
+
+  struct Bone {
+    std::string name;
+    int depth;
+    Bone() : depth(0) {}
+    Bone(const char* name, int depth) : name(name), depth(depth) {}
   };
 
   typedef std::unordered_map<FlatTextures, IndexBuffer, FlatTextureHash>
@@ -483,6 +519,8 @@ class FlatMesh {
     std::vector<Vec3> normals;
     std::vector<Vec4> tangents;
     std::vector<Vec2> uvs;
+    std::vector<Vec4ub> skin_indices;
+    std::vector<Vec4ub> skin_weights;
     vertices.reserve(points_.size());
     normals.reserve(points_.size());
     tangents.reserve(points_.size());
@@ -493,6 +531,14 @@ class FlatMesh {
       normals.push_back(FlatBufferVec3(vec3(p.normal)));
       tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
       uvs.push_back(FlatBufferVec2(vec2(p.uv)));
+      skin_indices.push_back(Vec4ub(p.bone, 0, 0, 0));
+      skin_weights.push_back(Vec4ub(1, 0, 0, 0));
+    }
+
+    // Output the bone names, too, for debugging.
+    std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
+    for (auto it = bones_.begin(); it != bones_.end(); ++it) {
+      bone_names.push_back(fbb.CreateString(it->name));
     }
 
     // Then create a FlatBuffer vector for each array.
@@ -500,11 +546,15 @@ class FlatMesh {
     auto normals_fb = fbb.CreateVectorOfStructs(normals);
     auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
     auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
+    auto skin_indices_fb = fbb.CreateVectorOfStructs(skin_indices);
+    auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
     auto max_fb = FlatBufferVec3(max_position_);
     auto min_fb = FlatBufferVec3(min_position_);
+    auto bones_fb = fbb.CreateVector(bone_names);
     auto mesh_fb = meshdef::CreateMesh(fbb, surface_vector_fb, vertices_fb,
                                        normals_fb, tangents_fb, 0, uvs_fb,
-                                       &max_fb, &min_fb);
+                                       skin_indices_fb, skin_weights_fb,
+                                       &max_fb, &min_fb, bones_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -517,6 +567,7 @@ class FlatMesh {
   IndexBuffer* cur_index_buf_;
   vec3 max_position_;
   vec3 min_position_;
+  std::vector<Bone> bones_;
 
   // Information and warnings.
   Logger& log_;
@@ -656,7 +707,7 @@ class FbxParser {
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
     // Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(scene_->GetRootNode(), out);
+    GatherFlatMeshRecursive(0, scene_->GetRootNode(), out);
   }
 
  private:
@@ -826,20 +877,25 @@ class FbxParser {
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(FbxNode* node, FlatMesh* out) const {
+  void GatherFlatMeshRecursive(int depth, FbxNode* node, FlatMesh* out) const {
     if (node == nullptr) return;
     log_.Log(kLogImportant, "Node: %s\n", node->GetName());
 
     // We're only interested in mesh nodes.
     // Note that there may be more than one mesh attached to a node.
+    bool appended_mesh = false;
     for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
       const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
       if (attr == nullptr ||
           attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
       const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
 
+      // Create a "bone" for this mesh. The mesh_pipeline doesn't support
+      // skeleton definitions yet, but we use the mesh hierarchy to represent
+      // the animations.
+      out->AppendBone(node->GetName(), depth);
+
       // Gather the textures attached to this mesh.
-      // TODO: also pass in the `mesh` so we know which texture goes with which mes.
       std::string normal_map_file_name;
       const FlatTextures textures = GatherTextures(node, mesh);
       out->SetSurface(textures);
@@ -847,11 +903,19 @@ class FbxParser {
       // Gather the verticies and indices.
       const FbxAMatrix& transform = node->EvaluateGlobalTransform();
       GatherFlatSurface(mesh, transform, out);
+
+      // Remember if we've appended at least one mesh.
+      appended_mesh = true;
+    }
+
+    // If we've appended a mesh then increment the depth of the mesh child.
+    if (appended_mesh) {
+      depth++;
     }
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(node->GetChild(i), out);
+      GatherFlatMeshRecursive(depth, node->GetChild(i), out);
     }
   }
 

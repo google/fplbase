@@ -31,8 +31,11 @@ table Mesh {
   tangents:[fpl.Vec4];  // Tangent + handedness.
   colors:[fpl.Vec4ub];
   texcoords:[fpl.Vec2];
+  skin_indices:[fpl.Vec4ub];  // reference bones
+  skin_weights:[fpl.Vec4ub];  // sum to 1
   max_position:fpl.Vec3;
   min_position:fpl.Vec3;
+  bone_names:[string];  // For debugging. Animation data must use same bone indices.
 }
 
 root_type Mesh;
