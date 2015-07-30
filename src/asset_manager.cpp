@@ -60,9 +60,13 @@ Shader *AssetManager::LoadShader(const char *basename) {
       if (shader) {
         shader_map_[basename] = shader;
       } else {
-        LogError(kError, "Shader Error:\n%s\nVS:\n%s\nPS:\n%s\n",
-                 renderer_.last_error().c_str(),
-                 vs_file.c_str(), ps_file.c_str());
+        LogError(kError, "Shader Error: ");
+        LogError(kError, "VS:  -----------------------------------");
+        LogError(kError, "%s", vs_file.c_str());
+        LogError(kError, "PS:  -----------------------------------");
+        LogError(kError, "%s", ps_file.c_str());
+        LogError(kError, "----------------------------------------");
+        LogError(kError, "%s", renderer_.last_error().c_str());
       }
       return shader;
     }
