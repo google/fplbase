@@ -672,10 +672,10 @@ TextInputEvent::TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
   type = t;
   switch (type) {
     case kTextInputEventTypeKey:
-      key.state = state;
+      key.state = static_cast<bool>(state);
       key.repeat = repeat;
       key.symbol = symbol;
-      key.modifier = modifier;
+      key.modifier = static_cast<FPL_Keymod>(modifier);
       break;
     case kTextInputEventTypeEdit:
     case kTextInputEventTypeText:

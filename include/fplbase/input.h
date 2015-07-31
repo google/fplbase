@@ -303,15 +303,12 @@ struct TextInputEventEdit {
 // an event, these paremeters should be used for an input control such as moving
 // caret.
 struct TextInputEventKey {
-  uint8_t state;            // key state,
-                            // 0: Key is pressed,
-                            // 1: Key is released.
+  bool state;               // key state, true:pressed, false:released.
   bool repeat;              // A flag indicates if the key is repeated input.
-  int32_t symbol;           // Key symbol, currently it's using key definitions
-                            // of SDL. Refer SDL_keycode.h for a detail.
-  int32_t modifier;         // Modifier key state.
-                            // Currently it's using modifier key definitions of
-                            // SDL (SDL_Keymod).
+  FPL_Keycode symbol;       // Key symbol, refer keyboard_keycodes.h for a
+                            // detail.
+  FPL_Keymod modifier;      // Modifier key state, refer keyboard_keycodes.h for
+                            // a detail.
 };
 
 // Union of Text input event.
