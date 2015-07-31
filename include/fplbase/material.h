@@ -15,6 +15,7 @@
 #ifndef FPLBASE_MATERIAL_H
 #define FPLBASE_MATERIAL_H
 
+#include <string>
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
