@@ -70,6 +70,9 @@ class Renderer {
   // Clears the framebuffer. Call this after AdvanceFrame if desired.
   void ClearFrameBuffer(const vec4 &color);
 
+  // Clears the depthbuffer.  Leaves the colorbuffer untouched.
+  void ClearDepthBuffer();
+
   // Create a shader object from two strings containing glsl code.
   // Returns nullptr upon error, with a descriptive message in glsl_error().
   // Attribute names in the vertex shader should be aPosition, aNormal,

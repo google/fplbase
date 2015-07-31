@@ -199,6 +199,10 @@ void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
+void Renderer::ClearDepthBuffer() {
+  GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
+}
+
 GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
   GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
