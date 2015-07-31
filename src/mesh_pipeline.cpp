@@ -50,6 +50,7 @@ using mathfu::vec4_packed;
 
 static const char kTextureFileExtension[] = ".webp";
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
+static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
 
 // Defines the order in which textures are assigned shader indices.
 // Shader indices are assigned, starting from 0, as textures are found.
@@ -152,6 +153,11 @@ static T ElementFromIndices(const FbxLayerElementTemplate<T>& element,
   return Element(element, index);
 }
 
+static inline vec4 Vec4FromFbx(const FbxColor& v) {
+  return vec4(static_cast<float>(v.mRed), static_cast<float>(v.mGreen),
+              static_cast<float>(v.mBlue), static_cast<float>(v.mAlpha));
+}
+
 static inline vec4 Vec4FromFbx(const FbxVector4& v) {
   const FbxDouble* d = v.mData;
   return vec4(static_cast<float>(d[0]), static_cast<float>(d[1]),
@@ -181,6 +187,12 @@ static inline Vec2 FlatBufferVec2(const vec2& v) {
   return Vec2(v.x(), v.y());
 }
 
+static inline Vec4ub FlatBufferVec4ub(const vec4& v) {
+  const vec4 scaled = 255.0f * v;
+  return Vec4ub(
+      static_cast<uint8_t>(scaled.x()), static_cast<uint8_t>(scaled.y()),
+      static_cast<uint8_t>(scaled.z()), static_cast<uint8_t>(scaled.w()));
+}
 
 class FlatTextures {
  public:
@@ -222,9 +234,12 @@ class FlatTextureHash {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(Logger& log) : cur_index_buf_(nullptr), log_(log),
-    max_position_(-FLT_MAX),
-    min_position_(FLT_MAX) {}
+  explicit FlatMesh(Logger& log)
+      : cur_index_buf_(nullptr),
+        export_vertex_color_(false),
+        max_position_(-FLT_MAX),
+        min_position_(FLT_MAX),
+        log_(log) {}
 
   void AppendBone(const char* bone_name, int depth) {
     // We use uint8_t for bone indices, so the limit is 256.
@@ -253,11 +268,22 @@ class FlatMesh {
     log_.Log(kLogInfo, "\n");
   }
 
+  void SetExportVertexColor(bool should_export) {
+    if (points_.size() > 0 && export_vertex_color_ != should_export) {
+      log_.Log(kLogWarning,
+               export_vertex_color_
+                   ? "Mesh is missing vertex colors. Will export white."
+                   : "Previous meshes are missing vertex colors. They will "
+                     " be exported as white.");
+    }
+    export_vertex_color_ = export_vertex_color_ || should_export;
+  }
+
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
-                      const vec4& tangent, const vec2& uv) {
+                      const vec4& tangent, const vec4& color, const vec2& uv) {
     // TODO: Round values before creating.
-    points_.push_back(Vertex(vertex, normal, tangent, uv,
+    points_.push_back(Vertex(vertex, normal, tangent, color, uv,
                              static_cast<uint8_t>(bones_.size() - 1)));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
@@ -290,8 +316,12 @@ class FlatMesh {
                ", binormal-handedness %.0f"
                ", uv (%.3f, %.3f)",
                vertex.x(), vertex.y(), vertex.z(), normal.x(), normal.y(),
-               normal.z(), tangent.x(), tangent.y(), tangent.z(),
-               tangent.w(), uv.x(), uv.y());
+               normal.z(), tangent.x(), tangent.y(), tangent.z(), tangent.w(),
+               uv.x(), uv.y());
+      if (export_vertex_color_) {
+        log_.Log(kLogInfo, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
+                 color.y(), color.z(), color.w());
+      }
     }
     log_.Log(kLogInfo, "\n");
   }
@@ -350,15 +380,21 @@ class FlatMesh {
     vec3_packed normal;
     vec4_packed tangent; // 4th element is handedness: +1 or -1
     vec2_packed uv;
+    Vec4ub color;
     uint8_t bone;
-    Vertex() {
+    Vertex() : color(0, 0, 0, 0) {
       // The Hash function operates on all the memory, so ensure everything is
       // zero'd out.
       memset(this, 0, sizeof(*this));
     }
-    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec2& u,
-           uint8_t bone)
-        : vertex(v), normal(n), tangent(t), uv(u), bone(bone) {}
+    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec4& c,
+           const vec2& u, uint8_t bone)
+        : vertex(v),
+          normal(n),
+          tangent(t),
+          uv(u),
+          color(FlatBufferVec4ub(c)),
+          bone(bone) {}
   };
 
   struct VertexRef {
@@ -540,18 +576,23 @@ class FlatMesh {
     std::vector<Vec3> vertices;
     std::vector<Vec3> normals;
     std::vector<Vec4> tangents;
+    std::vector<Vec4ub> colors;
     std::vector<Vec2> uvs;
     std::vector<Vec4ub> skin_indices;
     std::vector<Vec4ub> skin_weights;
     vertices.reserve(points_.size());
     normals.reserve(points_.size());
     tangents.reserve(points_.size());
+    colors.reserve(points_.size());
     uvs.reserve(points_.size());
+    skin_indices.reserve(points_.size());
+    skin_weights.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
       const Vertex& p = *it;
       vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
       normals.push_back(FlatBufferVec3(vec3(p.normal)));
       tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
+      colors.push_back(p.color);
       uvs.push_back(FlatBufferVec2(vec2(p.uv)));
       skin_indices.push_back(Vec4ub(p.bone, 0, 0, 0));
       skin_weights.push_back(Vec4ub(1, 0, 0, 0));
@@ -567,16 +608,17 @@ class FlatMesh {
     auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
     auto normals_fb = fbb.CreateVectorOfStructs(normals);
     auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
+    auto colors_fb =
+        export_vertex_color_ ? fbb.CreateVectorOfStructs(colors) : 0;
     auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
     auto skin_indices_fb = fbb.CreateVectorOfStructs(skin_indices);
     auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
     auto max_fb = FlatBufferVec3(max_position_);
     auto min_fb = FlatBufferVec3(min_position_);
     auto bones_fb = fbb.CreateVector(bone_names);
-    auto mesh_fb = meshdef::CreateMesh(fbb, surface_vector_fb, vertices_fb,
-                                       normals_fb, tangents_fb, 0, uvs_fb,
-                                       skin_indices_fb, skin_weights_fb,
-                                       &max_fb, &min_fb, bones_fb);
+    auto mesh_fb = meshdef::CreateMesh(
+        fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
+        uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb, bones_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -587,6 +629,7 @@ class FlatMesh {
   VertexSet unique_;
   std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
+  bool export_vertex_color_;
   vec3 max_position_;
   vec3 min_position_;
   std::vector<Bone> bones_;
@@ -820,6 +863,36 @@ class FbxParser {
     return uv_element;
   }
 
+  bool SolidColor(FbxNode* node, const FbxMesh* mesh, FbxColor* color) const {
+    FbxLayerElementArrayTemplate<int>* material_indices;
+    const bool valid_indices = mesh->GetMaterialIndices(&material_indices);
+    if (!valid_indices) return false;
+
+    for (int j = 0; j < material_indices->GetCount(); ++j) {
+      // Check every material attached to this mesh.
+      const int material_index = (*material_indices)[j];
+      const FbxSurfaceMaterial* material = node->GetMaterial(material_index);
+      if (material == nullptr) continue;
+
+      // Textures are properties of the material. Check if the diffuse
+      // color has been set.
+      const FbxProperty diffuse_property =
+          material->FindProperty(FbxSurfaceMaterial::sDiffuse);
+      const FbxProperty diffuse_factor_property =
+          material->FindProperty(FbxSurfaceMaterial::sDiffuseFactor);
+      if (!diffuse_property.IsValid() || !diffuse_factor_property.IsValid())
+        continue;
+
+      // Final diffuse color is the factor times the base color.
+      const double factor = diffuse_factor_property.Get<FbxDouble>();
+      const FbxColor base = diffuse_property.Get<FbxColor>();
+      color->Set(factor * base.mRed, factor * base.mGreen,
+                 factor * base.mBlue, base.mAlpha);
+      return true;
+    }
+    return false;
+  }
+
   // Get the texture for a mesh node.
   const FbxFileTexture* TextureFromNode(FbxNode* node, const FbxMesh* mesh,
                                         const char* texture_property) const {
@@ -893,12 +966,6 @@ class FbxParser {
       textures.Append(texture);
     }
 
-    // Without a base texture, the model will look rather plane, so issue
-    // a warning.
-    if (textures.Count() == 0) {
-      log_.Log(kLogWarning, "No textures found for node %s\n", node->GetName());
-    }
-
     return textures;
   }
 
@@ -926,9 +993,21 @@ class FbxParser {
       const FlatTextures textures = GatherTextures(node, mesh);
       out->SetSurface(textures);
 
+      // If no textures for this mesh, try to get a solid color from the
+      // material.
+      FbxColor solid_color;
+      const bool has_solid_color = textures.Count() == 0 &&
+                                   SolidColor(node, mesh, &solid_color);
+
+      // Without a base texture or color, the model will look rather plane.
+      if (textures.Count() == 0 && !has_solid_color) {
+        log_.Log(kLogWarning, "No texture or solid color found for node %s\n",
+                 node->GetName());
+      }
+
       // Gather the verticies and indices.
       const FbxAMatrix& transform = node->EvaluateGlobalTransform();
-      GatherFlatSurface(mesh, transform, out);
+      GatherFlatSurface(mesh, transform, has_solid_color, solid_color, out);
 
       // Remember if we've appended at least one mesh.
       appended_mesh = true;
@@ -946,6 +1025,7 @@ class FbxParser {
   }
 
   void GatherFlatSurface(const FbxMesh* mesh, const FbxAMatrix& transform,
+                         bool has_solid_color, const FbxColor& solid_color,
                          FlatMesh* out) const {
     log_.Log(kLogVerbose,
         "    transform: {%.3f %.3f %.3f %.3f}\n"
@@ -961,6 +1041,15 @@ class FbxParser {
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
     const FbxGeometryElementTangent* tangent_element = mesh->GetElementTangent();
+    const FbxGeometryElementVertexColor* color_element =
+        mesh->GetElementVertexColor();
+    assert(uv_element != nullptr && normal_element != nullptr &&
+           tangent_element != nullptr);
+    out->SetExportVertexColor(color_element != nullptr || has_solid_color);
+    log_.Log(kLogVerbose,
+             color_element != nullptr ? "Mesh has vertex colors\n" :
+             has_solid_color ? "Mesh material has a solid color\n" :
+             "Mesh does not have vertex colors\n");
 
     // Loop through every poly in the mesh.
     int vertex_counter = 0;
@@ -988,6 +1077,11 @@ class FbxParser {
             ElementFromIndices(*normal_element, control_index, vertex_counter);
         const FbxVector4 tangent_fbx =
             ElementFromIndices(*tangent_element, control_index, vertex_counter);
+        const FbxColor color_fbx =
+            color_element != nullptr
+                ? ElementFromIndices(*color_element, control_index,
+                                     vertex_counter)
+                : has_solid_color ? solid_color : kDefaultColor;
         const FbxVector2 uv_fbx =
             ElementFromIndices(*uv_element, control_index, vertex_counter);
 
@@ -999,9 +1093,10 @@ class FbxParser {
         const vec4 tangent(
             Vec3FromFbx(transform.MultT(tangent_fbx)).Normalized(),
             static_cast<float>(tangent_fbx[3]));
+        const vec4 color = Vec4FromFbx(color_fbx);
         const vec2 uv =
             Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
-        out->AppendPolyVert(vertex, normal, tangent, uv);
+        out->AppendPolyVert(vertex, normal, tangent, color, uv);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;
