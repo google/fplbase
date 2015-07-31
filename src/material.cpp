@@ -37,17 +37,19 @@ void Texture::Load() {
   }
 }
 
-void Texture::LoadFromMemory(const uint8_t *data, const vec2i size,
-                             const TextureFormat format, const bool has_alpha) {
+void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
+                             TextureFormat format, bool has_alpha,
+                             bool mipmaps) {
   size_ = size;
   has_alpha_ = has_alpha;
   desired_ = format;
-  id_ = renderer_->CreateTexture(data, size_, has_alpha_, desired_);
+  mipmaps_ = mipmaps;
+  id_ = renderer_->CreateTexture(data, size_, has_alpha_, mipmaps_, desired_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = renderer_->CreateTexture(data_, size_, has_alpha_, desired_);
+    id_ = renderer_->CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
     free(data_);
     data_ = nullptr;
   }

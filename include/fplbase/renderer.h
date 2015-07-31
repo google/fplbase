@@ -79,8 +79,13 @@ class Renderer {
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
   // Return 0 if not a power of two in size.
   TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
-                               bool has_alpha,
+                               bool has_alpha, bool mipmaps = true,
                                TextureFormat desired = kFormatAuto);
+
+  // Update (part of) the current texture with new pixel data.
+  // For now, must always update at least entire rows.
+  void UpdateTexture(TextureFormat format, int xoffset, int yoffset, int width,
+                     int height, const void *data);
 
   // Unpacks a memory buffer containing a TGA format file.
   // May only be uncompressed RGB or RGBA data, Y-flipped or not.

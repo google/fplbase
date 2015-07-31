@@ -285,7 +285,8 @@ uint16_t *Renderer::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 }
 
 GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                               bool has_alpha, TextureFormat desired) {
+                               bool has_alpha, bool mipmaps,
+                               TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
     LogError(kError,
@@ -303,7 +304,7 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
   GL_CALL(
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                      GL_LINEAR_MIPMAP_NEAREST /*GL_LINEAR_MIPMAP_LINEAR*/));
+                      mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
   if (desired == kFormatAuto) desired = has_alpha ? kFormat5551 : kFormat565;
   switch (desired) {
     case kFormat5551: {
@@ -353,10 +354,25 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
       break;
     }
     default:
-      assert(0);
+      assert(false);
   }
-  GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
+  if (mipmaps) GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
   return texture_id;
+}
+
+void Renderer::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
+                             int width, int height, const void *data) {
+  // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
+  // that we are updating entire row at once.
+  // TODO: Optimize glTexSubImage2D call in ES3.0 capable platform.
+  switch (format) {
+    case kFormatLuminance:
+      GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width,
+                              height, GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
+      break;
+    default:
+      assert(false);  // TODO: not implemented.
+  }
 }
 
 uint8_t *Renderer::UnpackTGA(const void *tga_buf, vec2i *dimensions,

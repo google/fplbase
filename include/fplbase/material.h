@@ -58,6 +58,7 @@ class Texture : public AsyncResource {
         size_(mathfu::kZeros2i),
         uv_(mathfu::vec4(0.0f, 0.0f, 1.0f, 1.0f)),
         has_alpha_(false),
+        mipmaps_(true),
         desired_(kFormatAuto) {}
   Texture(Renderer &renderer)
       : AsyncResource(""),
@@ -66,12 +67,14 @@ class Texture : public AsyncResource {
         size_(mathfu::kZeros2i),
         uv_(mathfu::vec4(0.0f, 0.0f, 1.0f, 1.0f)),
         has_alpha_(false),
+        mipmaps_(true),
         desired_(kFormatAuto) {}
   ~Texture() { Delete(); }
 
   virtual void Load();
-  virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i size,
-                              const TextureFormat format, const bool has_alpha);
+  virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i &size,
+                              TextureFormat format, bool has_alpha,
+                              bool mipmaps);
   virtual void Finalize();
 
   void Set(size_t unit);
@@ -96,6 +99,7 @@ class Texture : public AsyncResource {
   mathfu::vec2i size_;
   mathfu::vec4 uv_;
   bool has_alpha_;
+  bool mipmaps_;
   TextureFormat desired_;
 };
 
