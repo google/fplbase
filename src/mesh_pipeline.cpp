@@ -1037,6 +1037,15 @@ class FbxParser {
         transform[2][0], transform[2][1], transform[2][2], transform[2][3],
         transform[3][0], transform[3][1], transform[3][2], transform[3][3]);
 
+    // Affine matrix only supports multiplication by a point, not a vector.
+    // That is, there is no way to ignore the translation (as is required
+    // for normals and tangents). So, we create a copy of `transform` that
+    // has no translation.
+    // http://forums.autodesk.com/t5/fbx-sdk/matrix-vector-multiplication/td-p/4245079
+    FbxAMatrix vector_transform = transform;
+    vector_transform.SetT(FbxVector4(0.0, 0.0, 0.0, 0.0));
+
+    // Get references to various vertex elements.
     const FbxVector4* vertices = mesh->GetControlPoints();
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
@@ -1089,9 +1098,9 @@ class FbxParser {
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
         const vec3 vertex = Vec3FromFbx(transform.MultT(vertex_fbx));
         const vec3 normal =
-            Vec3FromFbx(transform.MultT(normal_fbx)).Normalized();
+            Vec3FromFbx(vector_transform.MultT(normal_fbx)).Normalized();
         const vec4 tangent(
-            Vec3FromFbx(transform.MultT(tangent_fbx)).Normalized(),
+            Vec3FromFbx(vector_transform.MultT(tangent_fbx)).Normalized(),
             static_cast<float>(tangent_fbx[3]));
         const vec4 color = Vec4FromFbx(color_fbx);
         const vec2 uv =
