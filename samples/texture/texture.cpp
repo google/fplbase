@@ -42,8 +42,8 @@ struct Game {
 
   Game() : assetManager(renderer) {}
 
-  void Initialize() {
-    bool result = fpl::ChangeToUpstreamDir("./", "assets");
+  void Initialize(const char* const binary_directory) {
+    bool result = fpl::ChangeToUpstreamDir(binary_directory, "assets");
     assert(result);
     renderer.Initialize();
     input.Initialize();
@@ -94,9 +94,10 @@ const GLfloat Game::verts[] = {-1.0f, 1.0f, -1.0f, -1.0f,
 const GLfloat Game::uvs[] = {-5.0f, -5.0f, -5.0f, 5.0f,
                              5.0f,  -5.0f, 5.0f,  5.0f};
 
-int main() {
+int main(int argc, char** argv) {
   Game game;
-  game.Initialize();
+  const char* binary_directory = argc > 0 ? argv[0] : "";  
+  game.Initialize(binary_directory);
   game.Run();
   game.ShutDown();
   return 0;
