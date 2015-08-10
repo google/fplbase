@@ -31,9 +31,7 @@ Renderer::Renderer()
       window_(nullptr),
       context_(nullptr) {}
 
-Renderer::~Renderer() {
-  ShutDown();
-}
+Renderer::~Renderer() { ShutDown(); }
 
 bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   // Basic SDL initialization, does not actually initialize a Window or OpenGL,
@@ -187,9 +185,9 @@ Renderer::Renderer()
       blend_mode_(kBlendModeOff),
       use_16bpp_(false) {}
 
-Renderer::~Renderer() { }
+Renderer::~Renderer() {}
 
-void Renderer::SetWindowSize(const vec2i& window_size) {
+void Renderer::SetWindowSize(const vec2i &window_size) {
   window_size_ = window_size;
 }
 #endif
@@ -293,9 +291,8 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
-    LogError(kError,
-             "CreateTexture: not power of two in size: (%d,%d)", size.x(),
-             size.y());
+    LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
+             size.x(), size.y());
     return 0;
   }
   // TODO: support default args for mipmap/wrap/trilinear
@@ -525,18 +522,18 @@ void Renderer::SetCulling(CullingMode mode) {
   } else {
     GL_CALL(glEnable(GL_CULL_FACE));
     switch (mode) {
-    case kCullBack:
-      GL_CALL(glCullFace(GL_BACK));
-      break;
-    case kCullFront:
-      GL_CALL(glCullFace(GL_FRONT));
-      break;
-    case kCullFrontAndBack:
-      GL_CALL(glCullFace(GL_FRONT_AND_BACK));
-      break;
-    default:
-      // Unknown culling mode.
-      assert(false);
+      case kCullBack:
+        GL_CALL(glCullFace(GL_BACK));
+        break;
+      case kCullFront:
+        GL_CALL(glCullFace(GL_FRONT));
+        break;
+      case kCullFrontAndBack:
+        GL_CALL(glCullFace(GL_FRONT_AND_BACK));
+        break;
+      default:
+        // Unknown culling mode.
+        assert(false);
     }
   }
 }
@@ -546,10 +543,7 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   glScissor(pos.x(), pos.y(), size.x(), size.y());
 }
 
-void Renderer::ScissorOff() {
-  glDisable(GL_SCISSOR_TEST);
-}
-
+void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
 
 }  // namespace fpl
 
@@ -583,10 +577,10 @@ void LogGLError(const char *file, int line, const char *call) {
   assert(0);
 }
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#if !defined(GL_GLEXT_PROTOTYPES)
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
 #define GLEXT(type, name) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
-#endif  // FPL_BASE_RENDERER_BACKEND_SDL
+#endif  // !defined(GL_GLEXT_PROTOTYPES)

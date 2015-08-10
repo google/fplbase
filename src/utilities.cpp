@@ -16,6 +16,8 @@
 #include "fplbase/utilities.h"
 
 #ifdef FPL_BASE_BACKEND_STDLIB
+#define _CRT_SECURE_NO_DEPRECATE
+#include <cstdio>
 #include <fcntl.h>
 #include <stdarg.h>
 #if defined(__ANDROID__)
@@ -84,16 +86,20 @@ bool LoadFile(const char* filename, std::string* dest) {
 }
 #else
 bool LoadFile(const char *filename, std::string *dest) {
-  int fd = open(filename, O_RDONLY);
-  if (fd < 0) {
+  FILE* fd = fopen(filename, "rb");
+  if (fd == NULL) {
     LogError(kError, "LoadFile fail on %s", filename);
     return false;
   }
-  size_t len = lseek(fd, 0, SEEK_END);
-  lseek(fd, 0, SEEK_SET);
+  if (fseek(fd, 0, SEEK_END)) {
+    fclose(fd);
+    return false;
+  }
+  size_t len = ftell(fd);
+  fseek(fd, 0, SEEK_SET);
   dest->assign(len, 0);
-  size_t rlen = read(fd, &(*dest)[0], len);
-  close(fd);
+  size_t rlen = fread(&(*dest)[0], 1, len, fd);
+  fclose(fd);
   return len == rlen && len > 0;
 }
 #endif
@@ -201,14 +207,13 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 }
 #else
 bool SaveFile(const char *filename, const void *data, size_t size) {
-  int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
-                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  FILE* fd = fopen(filename, "wb");
   if (fd < 0) {
     LogError(kError, "SaveFile fail on %s", filename);
     return false;
   }
-  size_t wlen = write(fd, data, size);
-  close(fd);
+  size_t wlen = fwrite(data, 1, size, fd);
+  fclose(fd);
   return size == wlen && size > 0;
 }
 #endif
