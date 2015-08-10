@@ -48,7 +48,6 @@ using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
 
-static const char kTextureFileExtension[] = ".webp";
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
 
@@ -331,6 +330,7 @@ class FlatMesh {
       const std::string& mesh_name_unformated,
       const std::string& assets_base_dir_unformated,
       const std::string& assets_sub_dir_unformated,
+      const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = BaseFileName(mesh_name_unformated);
@@ -352,7 +352,7 @@ class FlatMesh {
 
     // Create material files that reference the textures.
     OutputMaterialFlatBuffers(mesh_name, assets_base_dir, assets_sub_dir,
-                              texture_formats);
+                              texture_extension, texture_formats);
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
@@ -449,9 +449,12 @@ class FlatMesh {
   }
 
   static std::string TextureFileName(const std::string& texture_file_name,
-                                     const std::string& assets_sub_dir) {
-    return TextureBaseFileName(texture_file_name, assets_sub_dir) +
-           kTextureFileExtension;
+                                     const std::string& assets_sub_dir,
+                                     const std::string& texture_extension) {
+    const std::string extension = texture_extension.length() == 0 ?
+        FileExtension(texture_file_name) : texture_extension;
+    return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.'
+           + extension;
   }
 
   std::string MaterialFileName(const std::string& mesh_name, size_t surface_idx,
@@ -482,7 +485,7 @@ class FlatMesh {
 
   void OutputMaterialFlatBuffers(
       const std::string& mesh_name, const std::string& assets_base_dir,
-      const std::string& assets_sub_dir,
+      const std::string& assets_sub_dir, const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats) const {
     log_.Log(kLogImportant, "Materials:\n");
 
@@ -504,7 +507,7 @@ class FlatMesh {
       for (size_t i = 0; i < textures.Count(); ++i) {
         // Output texture file name to array of file names.
         const std::string texture_file_name =
-            TextureFileName(textures[i], assets_sub_dir);
+            TextureFileName(textures[i], assets_sub_dir, texture_extension);
         textures_fb.push_back(fbb.CreateString(texture_file_name));
 
         // Append texture format (a uint8) to array of texture formats.
@@ -681,12 +684,11 @@ static std::string FindSourceTextureFileName(
   return "";
 }
 
-/// @class FbxParser
-/// @brief Load FBX files and save their geometry and animations in our
-///        FlatBuffer format.
-class FbxParser {
+/// @class FbxMeshParser
+/// @brief Load FBX files and save their geometry in our FlatBuffer format.
+class FbxMeshParser {
  public:
-  explicit FbxParser(Logger& log)
+  explicit FbxMeshParser(Logger& log)
       : manager_(nullptr), scene_(nullptr), log_(log) {
     // The FbxManager is the gateway to the FBX API.
     manager_ = FbxManager::Create();
@@ -708,7 +710,7 @@ class FbxParser {
     }
   }
 
-  ~FbxParser() {
+  ~FbxMeshParser() {
     // Delete the FBX Manager and all objects that it created.
     if (manager_ != nullptr) manager_->Destroy();
   }
@@ -1133,6 +1135,7 @@ struct MeshPipelineArgs {
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
   std::string asset_rel_dir;   /// Directory (relative to base) to output files.
+  std::string texture_extension;/// Extension of textures in material file.
   std::vector<matdef::TextureFormat> texture_formats;
   bool recenter;               /// Translate geometry to origin.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
@@ -1223,6 +1226,14 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+    } else if (arg == "-e") {
+      if (i + 1 < argc - 1) {
+        args->texture_extension = std::string(argv[i + 1]);
+        i++;
+      } else {
+        valid_args = false;
+      }
+
       // -c switch
     } else if (arg == "-c" || arg == "--center") {
       args->recenter = true;
@@ -1268,6 +1279,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "  -r ASSET_REL_DIR     directory to put all output files; relative\n"
         "                       to ASSET_BASE_DIR. If unspecified, current\n"
         "                       directory.\n"
+        "  -e TEXTURE_EXTENSION material files use this extension for texture\n"
+        "                       files. Useful if your textures are externally\n"
+        "                       converted to a different file format.\n"
+        "                       If unspecified, uses original file extension.\n"
         "  -c, --center         ensure world origin is inside geometry\n"
         "                       bounding box by adding a translation if\n"
         "                       required.\n"
@@ -1300,7 +1315,7 @@ int main(int argc, char** argv) {
   log.set_level(args.log_level);
 
   // Load the FBX file.
-  FbxParser pipe(log);
+  FbxMeshParser pipe(log);
   const bool load_status = pipe.Load(args.fbx_file.c_str(), args.recenter);
   if (!load_status) return 1;
 
@@ -1311,7 +1326,8 @@ int main(int argc, char** argv) {
   // Output gathered data to a binary FlatBuffer.
   const bool output_status =
       mesh.OutputFlatBuffer(args.fbx_file, args.asset_base_dir,
-                            args.asset_rel_dir, args.texture_formats);
+                            args.asset_rel_dir, args.texture_extension,
+                            args.texture_formats);
   if (!output_status) return 1;
 
   // Success.
