@@ -36,6 +36,7 @@ table Mesh {
   max_position:fpl.Vec3;
   min_position:fpl.Vec3;
   bone_names:[string];  // For debugging. Animation data must use same bone indices.
+  bone_transforms:[fpl.Mat3x4];
 }
 
 root_type Mesh;

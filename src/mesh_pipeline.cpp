@@ -44,6 +44,7 @@ namespace fpl {
 using mathfu::vec2;
 using mathfu::vec3;
 using mathfu::vec4;
+using mathfu::mat4;
 using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
@@ -174,6 +175,15 @@ static inline vec2 Vec2FromFbx(const FbxVector2& v) {
   return vec2(static_cast<float>(d[0]), static_cast<float>(d[1]));
 }
 
+static inline mat4 Mat4FromFbx(const FbxAMatrix& m) {
+  const double* d = m;
+  return mat4(
+    static_cast<float>(d[0]), static_cast<float>(d[1]), static_cast<float>(d[2]), static_cast<float>(d[3]),
+    static_cast<float>(d[4]), static_cast<float>(d[5]), static_cast<float>(d[3]), static_cast<float>(d[4]),
+    static_cast<float>(d[8]), static_cast<float>(d[9]), static_cast<float>(d[10]), static_cast<float>(d[11]),
+    static_cast<float>(d[12]), static_cast<float>(d[13]), static_cast<float>(d[14]), static_cast<float>(d[15]));
+}
+
 static inline Vec4 FlatBufferVec4(const vec4& v) {
   return Vec4(v.x(), v.y(), v.z(), v.w());
 }
@@ -191,6 +201,11 @@ static inline Vec4ub FlatBufferVec4ub(const vec4& v) {
   return Vec4ub(
       static_cast<uint8_t>(scaled.x()), static_cast<uint8_t>(scaled.y()),
       static_cast<uint8_t>(scaled.z()), static_cast<uint8_t>(scaled.w()));
+}
+
+static inline Mat3x4 FlatBufferMat3x4(const mat4& m) {
+  return Mat3x4(Vec4(m(0), m(1), m(2), m(3)), Vec4(m(4), m(5), m(6), m(7)),
+                Vec4(m(8), m(9), m(10), m(11)));
 }
 
 class FlatTextures {
@@ -240,7 +255,8 @@ class FlatMesh {
         min_position_(FLT_MAX),
         log_(log) {}
 
-  void AppendBone(const char* bone_name, int depth) {
+  void AppendBone(const char* bone_name, const mat4& relative_transform,
+                  int depth) {
     // We use uint8_t for bone indices, so the limit is 256.
     if (bones_.size() >= 256) {
       log_.Log(kLogError, "256 bone limit exceeded.\n");
@@ -249,7 +265,7 @@ class FlatMesh {
 
     // Until this function is called again, all appended vertices will
     // reference this bone.
-    bones_.push_back(Bone(bone_name, depth));
+    bones_.push_back(Bone(bone_name, relative_transform, depth));
   }
 
   void SetSurface(const FlatTextures& textures) {
@@ -360,14 +376,29 @@ class FlatMesh {
     return true;
   }
 
+  static std::string RepeatCharacter(char c, int count) {
+    std::string s;
+    for (int i = 0; i < count; ++i) {
+      s += c;
+    }
+    return s;
+  }
+
   void LogBones() const {
     log_.Log(kLogImportant, "Mesh hierarchy (bone index):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
-      for (int i = 0; i < b.depth; ++i) {
-        log_.Log(kLogImportant, " ");
+      std::string indent = RepeatCharacter(' ', b.depth);
+
+      // Output bone name and index, indented to match the depth in the hierarchy.
+      log_.Log(kLogImportant, "  %s%s (%d)\n", indent.c_str(), b.name.c_str(), j);
+
+      // Output matrix transform too.
+      const mat4& t = b.relative_transform;
+      for (size_t k = 0; k < 3; ++k) {
+        log_.Log(kLogVerbose, "  %s(%.3f, %.3f, %.3f, %.3f)\n",
+                 indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
-      log_.Log(kLogImportant, "  %s (%d)\n", b.name.c_str(), j);
     }
   }
 
@@ -430,8 +461,10 @@ class FlatMesh {
   struct Bone {
     std::string name;
     int depth;
+    mat4 relative_transform;
     Bone() : depth(0) {}
-    Bone(const char* name, int depth) : name(name), depth(depth) {}
+    Bone(const char* name, const mat4& relative_transform, int depth)
+      : name(name), depth(depth), relative_transform(relative_transform) {}
   };
 
   typedef std::unordered_map<FlatTextures, IndexBuffer, FlatTextureHash>
@@ -603,8 +636,12 @@ class FlatMesh {
 
     // Output the bone names, too, for debugging.
     std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
+    std::vector<Mat3x4> bone_transforms;
+    bone_names.reserve(bones_.size());
+    bone_transforms.reserve(bones_.size());
     for (auto it = bones_.begin(); it != bones_.end(); ++it) {
       bone_names.push_back(fbb.CreateString(it->name));
+      bone_transforms.push_back(FlatBufferMat3x4(it->relative_transform));
     }
 
     // Then create a FlatBuffer vector for each array.
@@ -618,10 +655,12 @@ class FlatMesh {
     auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
     auto max_fb = FlatBufferVec3(max_position_);
     auto min_fb = FlatBufferVec3(min_position_);
-    auto bones_fb = fbb.CreateVector(bone_names);
+    auto bone_names_fb = fbb.CreateVector(bone_names);
+    auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
     auto mesh_fb = meshdef::CreateMesh(
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
-        uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb, bones_fb);
+        uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
+        bone_names_fb, bone_transforms_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -689,7 +728,8 @@ static std::string FindSourceTextureFileName(
 class FbxMeshParser {
  public:
   explicit FbxMeshParser(Logger& log)
-      : manager_(nullptr), scene_(nullptr), log_(log) {
+      : manager_(nullptr), scene_(nullptr), root_node_(nullptr),
+        hierarchy_(false), log_(log) {
     // The FbxManager is the gateway to the FBX API.
     manager_ = FbxManager::Create();
     if (manager_ == nullptr) {
@@ -717,7 +757,7 @@ class FbxMeshParser {
 
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
-  bool Load(const char* file_name, bool recenter) {
+  bool Load(const char* file_name, bool recenter, bool hierarchy) {
     if (!Valid()) return false;
 
     log_.Log(kLogImportant,
@@ -761,6 +801,10 @@ class FbxMeshParser {
     // Exit if the import failed.
     if (!import_status) return false;
 
+    // Remember if we're recording hierarchy information for these meshes,
+    // or flattening it.
+    hierarchy_ = hierarchy;
+
     // Convert to our exported co-ordinate system: z-up, y-front, right-handed.
     const FbxAxisSystem export_axes(FbxAxisSystem::EUpVector::eZAxis,
                                     FbxAxisSystem::EFrontVector::eParityOdd,
@@ -772,16 +816,50 @@ class FbxMeshParser {
 
     // Bring the geo into our format.
     ConvertGeometry(recenter);
+
+    // Get the deepest node that contains all meshes. This node is the origin
+    // of our export.
+    root_node_ = RootMeshNode(scene_->GetRootNode());
     return true;
   }
 
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
     // Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(0, scene_->GetRootNode(), out);
+    GatherFlatMeshRecursive(0, root_node_, root_node_, out);
   }
 
  private:
+  // Return the deepest node this is above all mesh nodes.
+  // We consider this node the origin of the scene. This is useful because it
+  // puts all data in the target coordinate system. For example, if the mesh
+  // is authored with y-up but you want z-up, there will be a high-level node
+  // that performs that conversion. By putting the origin under that node
+  // (and applying the transform above that node to all transforms globally)
+  // we effectively output the data in the target coordinate system.
+  FbxNode* RootMeshNode(FbxNode* node) const {
+    // If we *are* a mesh, then we're the deepest ancestor of every mesh
+    // below us.
+    if (node->GetMesh()) return node;
+
+    // Find deepest child that is an ancestor to all meshes.
+    FbxNode* first_child_with_mesh = nullptr;
+    for (int i = 0; i < node->GetChildCount(); i++) {
+      FbxNode* child_with_mesh = RootMeshNode(node->GetChild(i));
+
+      // If we have more than one child with a mesh, then we are the lowest
+      // common ancestor.
+      if (child_with_mesh != nullptr && first_child_with_mesh != nullptr)
+        return node;
+
+      // This child has a mesh so it is a contender.
+      if (child_with_mesh != nullptr) {
+        first_child_with_mesh = child_with_mesh;
+      }
+    }
+    return first_child_with_mesh;
+  }
+
   void ConvertGeometry(bool recenter) {
     FbxGeometryConverter geo_converter(manager_);
 
@@ -971,8 +1049,28 @@ class FbxMeshParser {
     return textures;
   }
 
+  void Transforms(FbxNode* node, FbxNode* parent_node,
+                  FbxAMatrix* relative_transform, FbxAMatrix* point_transform) const {
+    const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
+    if (hierarchy_) {
+      // When meshes are output in relative space, the relative transform
+      // goes from parent space to this node's space. The points are only
+      // transformed by the root transform, which is applied universally.
+      *relative_transform = parent_node->EvaluateGlobalTransform().Inverse() * global_transform;
+      *point_transform = root_node_->EvaluateGlobalTransform();
+    } else {
+      // When meshes are output in global space, there are no parents (all is
+      // flat, so the relative transform is the identity). The points are
+      // brought into global space.
+      relative_transform->SetIdentity();
+      *point_transform = global_transform;
+    }
+  }
+
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(int depth, FbxNode* node, FlatMesh* out) const {
+  void GatherFlatMeshRecursive(
+      int depth, FbxNode* node, FbxNode* parent_node,
+      FlatMesh* out) const {
     if (node == nullptr) return;
     log_.Log(kLogInfo, "Node: %s\n", node->GetName());
 
@@ -985,10 +1083,15 @@ class FbxMeshParser {
           attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
       const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
 
+      // Get the transform to this node from its parent.
+      FbxAMatrix relative_transform;
+      FbxAMatrix point_transform;
+      Transforms(node, parent_node, &relative_transform, &point_transform);
+
       // Create a "bone" for this mesh. The mesh_pipeline doesn't support
       // skeleton definitions yet, but we use the mesh hierarchy to represent
       // the animations.
-      out->AppendBone(node->GetName(), depth);
+      out->AppendBone(node->GetName(), Mat4FromFbx(relative_transform), depth);
 
       // Gather the textures attached to this mesh.
       std::string normal_map_file_name;
@@ -1008,43 +1111,44 @@ class FbxMeshParser {
       }
 
       // Gather the verticies and indices.
-      const FbxAMatrix& transform = node->EvaluateGlobalTransform();
-      GatherFlatSurface(mesh, transform, has_solid_color, solid_color, out);
+      GatherFlatSurface(mesh, point_transform, has_solid_color, solid_color, out);
 
       // Remember if we've appended at least one mesh.
       appended_mesh = true;
     }
 
     // If we've appended a mesh then increment the depth of the mesh child.
-    if (appended_mesh) {
+    if (appended_mesh && hierarchy_) {
       depth++;
+      parent_node = node;
     }
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(depth, node->GetChild(i), out);
+      GatherFlatMeshRecursive(depth, node->GetChild(i), parent_node, out);
     }
   }
 
-  void GatherFlatSurface(const FbxMesh* mesh, const FbxAMatrix& transform,
+  void GatherFlatSurface(const FbxMesh* mesh, const FbxAMatrix& point_transform,
                          bool has_solid_color, const FbxColor& solid_color,
                          FlatMesh* out) const {
+    const FbxAMatrix& t = point_transform;
     log_.Log(kLogVerbose,
         "    transform: {%.3f %.3f %.3f %.3f}\n"
         "               {%.3f %.3f %.3f %.3f}\n"
         "               {%.3f %.3f %.3f %.3f}\n"
         "               {%.3f %.3f %.3f %.3f}\n",
-        transform[0][0], transform[0][1], transform[0][2], transform[0][3],
-        transform[1][0], transform[1][1], transform[1][2], transform[1][3],
-        transform[2][0], transform[2][1], transform[2][2], transform[2][3],
-        transform[3][0], transform[3][1], transform[3][2], transform[3][3]);
+        t[0][0], t[0][1], t[0][2], t[0][3],
+        t[1][0], t[1][1], t[1][2], t[1][3],
+        t[2][0], t[2][1], t[2][2], t[2][3],
+        t[3][0], t[3][1], t[3][2], t[3][3]);
 
     // Affine matrix only supports multiplication by a point, not a vector.
     // That is, there is no way to ignore the translation (as is required
     // for normals and tangents). So, we create a copy of `transform` that
     // has no translation.
     // http://forums.autodesk.com/t5/fbx-sdk/matrix-vector-multiplication/td-p/4245079
-    FbxAMatrix vector_transform = transform;
+    FbxAMatrix vector_transform = point_transform;
     vector_transform.SetT(FbxVector4(0.0, 0.0, 0.0, 0.0));
 
     // Get references to various vertex elements.
@@ -1098,7 +1202,7 @@ class FbxMeshParser {
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
-        const vec3 vertex = Vec3FromFbx(transform.MultT(vertex_fbx));
+        const vec3 vertex = Vec3FromFbx(point_transform.MultT(vertex_fbx));
         const vec3 normal =
             Vec3FromFbx(vector_transform.MultT(normal_fbx)).Normalized();
         const vec4 tangent(
@@ -1125,12 +1229,21 @@ class FbxMeshParser {
   // are not found in their referenced location.
   std::string mesh_file_name_;
 
+  // Deepest common ancestor of all mesh nodes.
+  FbxNode* root_node_;
+
+  // If true, output mesh hiearchically, with each child node relative to the
+  // transform of its parents. If false, output mesh flat, relateive to the
+  // root_node_.
+  bool hierarchy_;
+
   // Information and warnings.
   Logger& log_;
 };
 
 struct MeshPipelineArgs {
-  MeshPipelineArgs() : recenter(false), log_level(kLogWarning) {}
+  MeshPipelineArgs()
+    : recenter(false), hierarchy(false), log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
@@ -1138,6 +1251,7 @@ struct MeshPipelineArgs {
   std::string texture_extension;/// Extension of textures in material file.
   std::vector<matdef::TextureFormat> texture_formats;
   bool recenter;               /// Translate geometry to origin.
+  bool hierarchy;              /// Mesh vertices output relative to local pivot.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
 };
 
@@ -1316,7 +1430,8 @@ int main(int argc, char** argv) {
 
   // Load the FBX file.
   FbxMeshParser pipe(log);
-  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.recenter);
+  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.recenter,
+                                     args.hierarchy);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.

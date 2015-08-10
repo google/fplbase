@@ -64,6 +64,19 @@ struct Vec4ub {
   w:ubyte;
 }
 
+struct Mat4 {
+  c0:Vec4; // column0
+  c1:Vec4; // column1
+  c2:Vec4; // column2
+  c3:Vec4; // column3
+}
+
+struct Mat3x4 {
+  c0:Vec4; // column0
+  c1:Vec4; // column1
+  c2:Vec4; // column2
+}
+
 struct ColorRGBA {
   r:float = 1.0;
   g:float = 1.0;
