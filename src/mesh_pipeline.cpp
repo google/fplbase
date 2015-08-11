@@ -177,11 +177,14 @@ static inline vec2 Vec2FromFbx(const FbxVector2& v) {
 
 static inline mat4 Mat4FromFbx(const FbxAMatrix& m) {
   const double* d = m;
-  return mat4(
-    static_cast<float>(d[0]), static_cast<float>(d[1]), static_cast<float>(d[2]), static_cast<float>(d[3]),
-    static_cast<float>(d[4]), static_cast<float>(d[5]), static_cast<float>(d[3]), static_cast<float>(d[4]),
-    static_cast<float>(d[8]), static_cast<float>(d[9]), static_cast<float>(d[10]), static_cast<float>(d[11]),
-    static_cast<float>(d[12]), static_cast<float>(d[13]), static_cast<float>(d[14]), static_cast<float>(d[15]));
+  return mat4(static_cast<float>(d[0]), static_cast<float>(d[1]),
+              static_cast<float>(d[2]), static_cast<float>(d[3]),
+              static_cast<float>(d[4]), static_cast<float>(d[5]),
+              static_cast<float>(d[6]), static_cast<float>(d[7]),
+              static_cast<float>(d[8]), static_cast<float>(d[9]),
+              static_cast<float>(d[10]), static_cast<float>(d[11]),
+              static_cast<float>(d[12]), static_cast<float>(d[13]),
+              static_cast<float>(d[14]), static_cast<float>(d[15]));
 }
 
 static inline Vec4 FlatBufferVec4(const vec4& v) {
@@ -265,7 +268,8 @@ class FlatMesh {
 
     // Until this function is called again, all appended vertices will
     // reference this bone.
-    bones_.push_back(Bone(bone_name, relative_transform, depth));
+    bones_.push_back(
+        Bone(bone_name, relative_transform, depth, points_.size()));
   }
 
   void SetSurface(const FlatTextures& textures) {
@@ -322,9 +326,9 @@ class FlatMesh {
     max_position_ = vec3::Max(max_position_, vertex);
 
     // Log the data we just added.
-    log_.Log(kLogInfo, "Point: index %d", ref.index);
+    log_.Log(kLogVerbose, "Point: index %d", ref.index);
     if (new_control_point_created) {
-      log_.Log(kLogInfo,
+      log_.Log(kLogVerbose,
                ", vertex (%.3f, %.3f, %.3f)"
                ", normal (%.3f, %.3f, %.3f)"
                ", tangent (%.3f, %.3f, %.3f)"
@@ -334,11 +338,11 @@ class FlatMesh {
                normal.z(), tangent.x(), tangent.y(), tangent.z(), tangent.w(),
                uv.x(), uv.y());
       if (export_vertex_color_) {
-        log_.Log(kLogInfo, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
+        log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
                  color.y(), color.z(), color.w());
       }
     }
-    log_.Log(kLogInfo, "\n");
+    log_.Log(kLogVerbose, "\n");
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
@@ -388,17 +392,26 @@ class FlatMesh {
     log_.Log(kLogImportant, "Mesh hierarchy (bone index):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
-      std::string indent = RepeatCharacter(' ', b.depth);
+      std::string indent = RepeatCharacter(' ', 2 * b.depth);
 
       // Output bone name and index, indented to match the depth in the hierarchy.
       log_.Log(kLogImportant, "  %s%s (%d)\n", indent.c_str(), b.name.c_str(), j);
 
-      // Output matrix transform too.
+      // Output local matrix transform too.
       const mat4& t = b.relative_transform;
       for (size_t k = 0; k < 3; ++k) {
-        log_.Log(kLogVerbose, "  %s(%.3f, %.3f, %.3f, %.3f)\n",
-                 indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
+        log_.Log(kLogInfo, "   %s  (%.3f, %.3f, %.3f, %.3f)\n", indent.c_str(),
+                 t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
+
+      // And the first point, in global space.
+      // This should be the same in both hierarchical and flat outputs.
+      const mat4 glob = BoneGlobalTransform(j);
+      const Vertex& first_vertex = points_[b.first_vertex_index];
+      const vec3 first_point = glob * vec3(first_vertex.vertex);
+      log_.Log(kLogInfo, "   %s  first-point (%.3f, %.3f, %.3f)\n",
+               indent.c_str(), first_point.x(), first_point.y(),
+               first_point.z());
     }
   }
 
@@ -461,10 +474,15 @@ class FlatMesh {
   struct Bone {
     std::string name;
     int depth;
+    size_t first_vertex_index;
     mat4 relative_transform;
-    Bone() : depth(0) {}
-    Bone(const char* name, const mat4& relative_transform, int depth)
-      : name(name), depth(depth), relative_transform(relative_transform) {}
+    Bone() : depth(0), first_vertex_index(0) {}
+    Bone(const char* name, const mat4& relative_transform, int depth,
+         int first_vertex_index)
+        : name(name),
+          depth(depth),
+          first_vertex_index(first_vertex_index),
+          relative_transform(relative_transform) {}
   };
 
   typedef std::unordered_map<FlatTextures, IndexBuffer, FlatTextureHash>
@@ -667,6 +685,25 @@ class FlatMesh {
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
   }
 
+  mat4 BoneGlobalTransform(int i) const {
+    mat4 m = bones_[i].relative_transform;
+    for (;;) {
+      // Exit once we've hit the root.
+      const int depth = bones_[i].depth;
+      if (depth == 0) break;
+
+      // Advance to the parent of 'i'.
+      while (bones_[i].depth >= depth) {
+        i--;
+        assert(i >= 0);
+      }
+
+      // Update with parent transform.
+      m = bones_[i].relative_transform * m;
+    }
+    return m;
+  }
+
   SurfaceMap surfaces_;
   VertexSet unique_;
   std::vector<Vertex> points_;
@@ -728,8 +765,7 @@ static std::string FindSourceTextureFileName(
 class FbxMeshParser {
  public:
   explicit FbxMeshParser(Logger& log)
-      : manager_(nullptr), scene_(nullptr), root_node_(nullptr),
-        hierarchy_(false), log_(log) {
+      : manager_(nullptr), scene_(nullptr), hierarchy_(false), log_(log) {
     // The FbxManager is the gateway to the FBX API.
     manager_ = FbxManager::Create();
     if (manager_ == nullptr) {
@@ -805,59 +841,87 @@ class FbxMeshParser {
     // or flattening it.
     hierarchy_ = hierarchy;
 
+    // Remember the source file name so we can search for textures nearby.
+    mesh_file_name_ = std::string(file_name);
+
     // Convert to our exported co-ordinate system: z-up, y-front, right-handed.
+    LogNodes("Original scene nodes\n");
     const FbxAxisSystem export_axes(FbxAxisSystem::EUpVector::eZAxis,
                                     FbxAxisSystem::EFrontVector::eParityOdd,
                                     FbxAxisSystem::eRightHanded);
     export_axes.ConvertScene(scene_);
 
-    // Remember the source file name so we can search for textures nearby.
-    mesh_file_name_ = std::string(file_name);
-
     // Bring the geo into our format.
     ConvertGeometry(recenter);
+    LogNodes("Converted scene nodes\n");
 
-    // Get the deepest node that contains all meshes. This node is the origin
-    // of our export.
-    root_node_ = RootMeshNode(scene_->GetRootNode());
     return true;
   }
 
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
     // Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(0, root_node_, root_node_, out);
+    FbxNode* root_node = scene_->GetRootNode();
+    GatherFlatMeshRecursive(0, root_node, root_node, out);
   }
 
  private:
-  // Return the deepest node this is above all mesh nodes.
-  // We consider this node the origin of the scene. This is useful because it
-  // puts all data in the target coordinate system. For example, if the mesh
-  // is authored with y-up but you want z-up, there will be a high-level node
-  // that performs that conversion. By putting the origin under that node
-  // (and applying the transform above that node to all transforms globally)
-  // we effectively output the data in the target coordinate system.
-  FbxNode* RootMeshNode(FbxNode* node) const {
-    // If we *are* a mesh, then we're the deepest ancestor of every mesh
-    // below us.
-    if (node->GetMesh()) return node;
+  // For debugging. Output details of the the node transforms.
+  void LogNodes(const char* header) const {
+    log_.Log(kLogVerbose, "--------------------\n%s\n", header);
+    LogNodesRecursive(scene_->GetRootNode(), FbxNode::eSourcePivot);
+  }
 
-    // Find deepest child that is an ancestor to all meshes.
-    FbxNode* first_child_with_mesh = nullptr;
+  void LogNodesRecursive(const FbxNode* node,
+                         FbxNode::EPivotSet pivot_set) const {
+    if (log_.level() > kLogVerbose) return;
+
+    log_.Log(kLogVerbose, "-----\nNode: %s\n", node->GetName());
+
+    const FbxVector4 post_rotation = node->GetPostRotation(pivot_set);
+    const FbxVector4 pre_rotation = node->GetPreRotation(pivot_set);
+    const FbxVector4 rotation_offset = node->GetRotationOffset(pivot_set);
+    const FbxVector4 scaling_offset = node->GetScalingOffset(pivot_set);
+    const FbxVector4 rotation_pivot = node->GetRotationPivot(pivot_set);
+    const FbxVector4 scaling_pivot = node->GetScalingPivot(pivot_set);
+    const FbxVector4 geometric_translation =
+        node->GetGeometricTranslation(pivot_set);
+    const FbxVector4 geometric_rotation = node->GetGeometricRotation(pivot_set);
+    const FbxVector4 geometric_scaling = node->GetGeometricScaling(pivot_set);
+    const FbxDouble3 lcl_translation = node->LclTranslation.Get();
+    const FbxDouble3 lcl_rotation = node->LclRotation.Get();
+    const FbxDouble3 lcl_scaling = node->LclScaling.Get();
+
+    log_.Log(kLogVerbose, "post_rotation = (%0.3f, %0.3f, %0.3f)\n",
+             post_rotation[0], post_rotation[1], post_rotation[2]);
+    log_.Log(kLogVerbose, "pre_rotation = (%0.3f, %0.3f, %0.3f)\n",
+             pre_rotation[0], pre_rotation[1], pre_rotation[2]);
+    log_.Log(kLogVerbose, "rotation_offset = (%0.3f, %0.3f, %0.3f)\n",
+             rotation_offset[0], rotation_offset[1], rotation_offset[2]);
+    log_.Log(kLogVerbose, "scaling_offset = (%0.3f, %0.3f, %0.3f)\n",
+             scaling_offset[0], scaling_offset[1], scaling_offset[2]);
+    log_.Log(kLogVerbose, "rotation_pivot = (%0.3f, %0.3f, %0.3f)\n",
+             rotation_pivot[0], rotation_pivot[1], rotation_pivot[2]);
+    log_.Log(kLogVerbose, "scaling_pivot = (%0.3f, %0.3f, %0.3f)\n",
+             scaling_pivot[0], scaling_pivot[1], scaling_pivot[2]);
+    log_.Log(kLogVerbose, "geometric_translation = (%0.3f, %0.3f, %0.3f)\n",
+             geometric_translation[0], geometric_translation[1],
+             geometric_translation[2]);
+    log_.Log(kLogVerbose, "geometric_rotation = (%0.3f, %0.3f, %0.3f)\n",
+             geometric_rotation[0], geometric_rotation[1],
+             geometric_rotation[2]);
+    log_.Log(kLogVerbose, "geometric_scaling = (%0.3f, %0.3f, %0.3f)\n",
+             geometric_scaling[0], geometric_scaling[1], geometric_scaling[2]);
+    log_.Log(kLogVerbose, "lcl_translation = (%0.3f, %0.3f, %0.3f)\n",
+             lcl_translation[0], lcl_translation[1], lcl_translation[2]);
+    log_.Log(kLogVerbose, "lcl_rotation = (%0.3f, %0.3f, %0.3f)\n",
+             lcl_rotation[0], lcl_rotation[1], lcl_rotation[2]);
+    log_.Log(kLogVerbose, "lcl_scaling = (%0.3f, %0.3f, %0.3f)\n",
+             lcl_scaling[0], lcl_scaling[1], lcl_scaling[2]);
+
     for (int i = 0; i < node->GetChildCount(); i++) {
-      FbxNode* child_with_mesh = RootMeshNode(node->GetChild(i));
-
-      // If we have more than one child with a mesh, then we are the lowest
-      // common ancestor.
-      if (child_with_mesh != nullptr && first_child_with_mesh != nullptr)
-        return node;
-
-      // This child has a mesh so it is a contender.
-      if (child_with_mesh != nullptr) {
-        first_child_with_mesh = child_with_mesh;
-      }
+      LogNodesRecursive(node->GetChild(i), pivot_set);
     }
-    return first_child_with_mesh;
   }
 
   void ConvertGeometry(bool recenter) {
@@ -881,10 +945,31 @@ class FbxMeshParser {
 
     // Traverse all meshes in the scene, generating normals and tangents.
     ConvertGeometryRecursive(scene_->GetRootNode());
+
+    // For each mesh, set the geometry origin as the pivot.
+    if (hierarchy_) {
+      scene_->GetRootNode()->SetRotationPivotAsCenterRecursive();
+    }
   }
 
   void ConvertGeometryRecursive(FbxNode* node) {
     if (node == nullptr) return;
+
+    // When exporting the hierarchy, we center about the rotation pivot,
+    // and then ignore the rotation and scaling pivots. In this manner its
+    // easy to apply animated rotation and scaling values.
+    if (hierarchy_) {
+      const FbxVector4 rotation_pivot =
+          node->GetRotationPivot(FbxNode::eSourcePivot);
+      const FbxVector4 scaling_pivot =
+          node->GetScalingPivot(FbxNode::eSourcePivot);
+      if (rotation_pivot != scaling_pivot) {
+        log_.Log(kLogWarning,
+                 "Node %s has different rotation (%0.3f, %0.3f, %0.3f) and "
+                 "scale (%0.3f, %0.3f, %0.3f) pivots. Scaling will not be "
+                 "properly centered.\n");
+      }
+    }
 
     // We're only interested in meshes, for the moment.
     for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
@@ -1049,21 +1134,101 @@ class FbxMeshParser {
     return textures;
   }
 
+  // Factor node's global_transform into two transforms:
+  //   point_transform <== apply in pipeline
+  //   relative_transform <== apply at runtime
   void Transforms(FbxNode* node, FbxNode* parent_node,
-                  FbxAMatrix* relative_transform, FbxAMatrix* point_transform) const {
+                  FbxAMatrix* relative_transform,
+                  FbxAMatrix* point_transform) const {
     const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
+
+    // geometric_transform is applied to each point, but is not inherited
+    // by children.
+    const FbxVector4 geometric_translation =
+        node->GetGeometricTranslation(FbxNode::eSourcePivot);
+    const FbxVector4 geometric_rotation =
+        node->GetGeometricRotation(FbxNode::eSourcePivot);
+    const FbxVector4 geometric_scaling =
+        node->GetGeometricScaling(FbxNode::eSourcePivot);
+    const FbxAMatrix geometric_transform(geometric_translation,
+                                         geometric_rotation, geometric_scaling);
+
     if (hierarchy_) {
-      // When meshes are output in relative space, the relative transform
-      // goes from parent space to this node's space. The points are only
-      // transformed by the root transform, which is applied universally.
-      *relative_transform = parent_node->EvaluateGlobalTransform().Inverse() * global_transform;
-      *point_transform = root_node_->EvaluateGlobalTransform();
+      // The FBX tranform format is defined as below (see
+      // http://help.autodesk.com/view/FBX/2016/ENU/?guid=__files_GUID_10CDD63C_79C1_4F2D_BB28_AD2BE65A02ED_htm):
+      //
+      // WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R *
+      // Rpost_inv * Rp_inv * Soff * Sp * S * Sp_inv
+      //
+      // In animation data, we animate T, R, and S (translation, rotation,
+      // scaling).
+      // However, we must make some assumptions so that T, R, and S they can be
+      // applied in order:
+      //
+      // Rp, Sp, Soff are translations that must be 0
+      // Rpre and Rpost are rotations that must be 0
+      //
+      // Then, since Roff and T are translations and therefore commutitive, we
+      // have:
+      //
+      // WorldTransform = ParentWorldTransform * Roff * T * R * S
+      //
+      // Note: We still use EvaluateGlobalTransform() instead of calculating it
+      //       ourselves because there could be intermediate nodes that are
+      //       not animated. These intermediate nodes do not have the same
+      //       restrictions.
+      const FbxVector4 post_rotation =
+          node->GetPostRotation(FbxNode::eSourcePivot);
+      const FbxVector4 pre_rotation =
+          node->GetPreRotation(FbxNode::eSourcePivot);
+      const FbxVector4 scaling_offset =
+          node->GetScalingOffset(FbxNode::eSourcePivot);
+      const FbxVector4 rotation_pivot =
+          node->GetRotationPivot(FbxNode::eSourcePivot);
+      const FbxVector4 scaling_pivot =
+          node->GetScalingPivot(FbxNode::eSourcePivot);
+      const FbxVector4 zero(0.0, 0.0, 0.0, 0.0);
+      if (post_rotation != zero) {
+        log_.Log(kLogWarning,
+                 "post_rotation (%.3f, %.3f, %.3f) is non-zero. Animations "
+                 "will be incorrect.\n",
+                 post_rotation[0], post_rotation[1], post_rotation[2]);
+      }
+      if (pre_rotation != zero) {
+        log_.Log(kLogWarning,
+                 "pre_rotation (%.3f, %.3f, %.3f) is non-zero. Animations will "
+                 "be incorrect.\n",
+                 pre_rotation[0], pre_rotation[1], pre_rotation[2]);
+      }
+      if (scaling_offset != zero) {
+        log_.Log(kLogWarning,
+                 "scaling_offset (%.3f, %.3f, %.3f) is non-zero. Animations "
+                 "will be incorrect.\n",
+                 scaling_offset[0], scaling_offset[1], scaling_offset[2]);
+      }
+      if (rotation_pivot != zero) {
+        log_.Log(kLogWarning,
+                 "rotation_pivot (%.3f, %.3f, %.3f) is non-zero. Animations "
+                 "will be incorrect.\n",
+                 rotation_pivot[0], rotation_pivot[1], rotation_pivot[2]);
+      }
+      if (scaling_pivot != zero) {
+        log_.Log(kLogWarning,
+                 "scaling_pivot (%.3f, %.3f, %.3f) is non-zero. Animations "
+                 "will be incorrect.\n",
+                 scaling_pivot[0], scaling_pivot[1], scaling_pivot[2]);
+      }
+
+      *relative_transform =
+          parent_node->EvaluateGlobalTransform().Inverse() * global_transform;
+      *point_transform = geometric_transform;
+
     } else {
       // When meshes are output in global space, there are no parents (all is
       // flat, so the relative transform is the identity). The points are
       // brought into global space.
       relative_transform->SetIdentity();
-      *point_transform = global_transform;
+      *point_transform = global_transform * geometric_transform;
     }
   }
 
@@ -1229,12 +1394,9 @@ class FbxMeshParser {
   // are not found in their referenced location.
   std::string mesh_file_name_;
 
-  // Deepest common ancestor of all mesh nodes.
-  FbxNode* root_node_;
-
   // If true, output mesh hiearchically, with each child node relative to the
-  // transform of its parents. If false, output mesh flat, relateive to the
-  // root_node_.
+  // transform of its parents. If false, output mesh flat, with all points in
+  // global space.
   bool hierarchy_;
 
   // Information and warnings.
@@ -1322,6 +1484,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
     } else if (arg == "-d" || arg == "--details") {
       args->log_level = kLogImportant;
 
+      // -i switch
+    } else if (arg == "-i" || arg == "--info") {
+      args->log_level = kLogInfo;
+
       // -b switch
     } else if (arg == "-b") {
       if (i + 1 < argc - 1) {
@@ -1347,6 +1513,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       } else {
         valid_args = false;
       }
+
+      // -h switch
+    } else if (arg == "-h" || arg == "--hierarchy") {
+      args->hierarchy = true;
 
       // -c switch
     } else if (arg == "-c" || arg == "--center") {
@@ -1387,6 +1557,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "Options:\n"
         "  -v, --verbose        output all informative messages\n"
         "  -d, --details        output important informative messages\n"
+        "  -i, --info           output more than details, less than verbose\n"
         "  -b ASSET_BASE_DIR    directory from which all assets are loaded;\n"
         "                       material file paths are relative to here.\n"
         "                       If unspecified, current directory.\n"
@@ -1397,6 +1568,10 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                       files. Useful if your textures are externally\n"
         "                       converted to a different file format.\n"
         "                       If unspecified, uses original file extension.\n"
+        "  -h, --hierarchy      output vertices relative to local pivot\n"
+        "                       of each sub-mesh. The transforms from parent\n"
+        "                       pivot to local pivot are also output.\n"
+        "                       This option is necessary for animated meshes.\n"
         "  -c, --center         ensure world origin is inside geometry\n"
         "                       bounding box by adding a translation if\n"
         "                       required.\n"
