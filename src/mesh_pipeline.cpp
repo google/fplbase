@@ -206,7 +206,8 @@ static inline Vec4ub FlatBufferVec4ub(const vec4& v) {
       static_cast<uint8_t>(scaled.z()), static_cast<uint8_t>(scaled.w()));
 }
 
-static inline Mat3x4 FlatBufferMat3x4(const mat4& m) {
+static inline Mat3x4 FlatBufferMat3x4(const mat4& matrix) {
+  const mat4 m = matrix.Transpose();
   return Mat3x4(Vec4(m(0), m(1), m(2), m(3)), Vec4(m(4), m(5), m(6), m(7)),
                 Vec4(m(8), m(9), m(10), m(11)));
 }
@@ -351,7 +352,8 @@ class FlatMesh {
       const std::string& assets_base_dir_unformated,
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
-      const std::vector<matdef::TextureFormat>& texture_formats) const {
+      const std::vector<matdef::TextureFormat>& texture_formats,
+      bool skin) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -376,7 +378,7 @@ class FlatMesh {
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
-    OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir);
+    OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir, skin);
     return true;
   }
 
@@ -395,7 +397,8 @@ class FlatMesh {
       std::string indent = RepeatCharacter(' ', 2 * b.depth);
 
       // Output bone name and index, indented to match the depth in the hierarchy.
-      log_.Log(kLogImportant, "  %s%s (%d)\n", indent.c_str(), b.name.c_str(), j);
+      log_.Log(kLogImportant, "  %s%s (%d)%s\n", indent.c_str(), b.name.c_str(),
+               j, BoneHasVertices(j) ? "" : " -- no verts");
 
       // Output local matrix transform too.
       const mat4& t = b.relative_transform;
@@ -406,7 +409,7 @@ class FlatMesh {
 
       // And the first point, in global space.
       // This should be the same in both hierarchical and flat outputs.
-      const mat4 glob = BoneGlobalTransform(j);
+      const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
       const Vertex& first_vertex = points_[b.first_vertex_index];
       const vec3 first_point = glob * vec3(first_vertex.vertex);
       log_.Log(kLogInfo, "   %s  first-point (%.3f, %.3f, %.3f)\n",
@@ -593,7 +596,8 @@ class FlatMesh {
 
   void OutputMeshFlatBuffer(const std::string& mesh_name,
                             const std::string& assets_base_dir,
-                            const std::string& assets_sub_dir) const {
+                            const std::string& assets_sub_dir,
+                            bool skin) const {
     flatbuffers::FlatBufferBuilder fbb;
 
     const std::string rel_mesh_file_name =
@@ -655,11 +659,15 @@ class FlatMesh {
     // Output the bone names, too, for debugging.
     std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
     std::vector<Mat3x4> bone_transforms;
+    std::vector<uint8_t> bone_parents;
     bone_names.reserve(bones_.size());
     bone_transforms.reserve(bones_.size());
-    for (auto it = bones_.begin(); it != bones_.end(); ++it) {
-      bone_names.push_back(fbb.CreateString(it->name));
-      bone_transforms.push_back(FlatBufferMat3x4(it->relative_transform));
+    bone_parents.reserve(bones_.size());
+    for (size_t i = 0; i < bones_.size(); ++i) {
+      const Bone& bone = bones_[i];
+      bone_names.push_back(fbb.CreateString(bone.name));
+      bone_transforms.push_back(FlatBufferMat3x4(bone.relative_transform));
+      bone_parents.push_back(static_cast<uint8_t>(BoneParent(i)));
     }
 
     // Then create a FlatBuffer vector for each array.
@@ -675,33 +683,52 @@ class FlatMesh {
     auto min_fb = FlatBufferVec3(min_position_);
     auto bone_names_fb = fbb.CreateVector(bone_names);
     auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
+    auto bone_parents_fb = fbb.CreateVector(bone_parents);
     auto mesh_fb = meshdef::CreateMesh(
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
-        uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
-        bone_names_fb, bone_transforms_fb);
+        uvs_fb, skin ? skin_indices_fb : 0, skin ? skin_weights_fb : 0, &max_fb,
+        &min_fb, bone_names_fb, bone_transforms_fb, bone_parents_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
+
+    log_.Log(kLogImportant, "Skin: %s\n", skin ? "yes" : "no");
 
     // Write the buffer to a file.
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
   }
 
+  int BoneParent(int i) const {
+    // Return invalid index if we're at a root.
+    const int depth = bones_[i].depth;
+    if (depth <= 0) return -1;
+
+    // Advance to the parent of 'i'.
+    // `bones_` is listed in depth-first order, so we look for the previous
+    // non-sibling.
+    while (bones_[i].depth >= depth) {
+      i--;
+      assert(i >= 0);
+    }
+    assert(bones_[i].depth == depth - 1);
+    return i;
+  }
+
   mat4 BoneGlobalTransform(int i) const {
     mat4 m = bones_[i].relative_transform;
     for (;;) {
-      // Exit once we've hit the root.
-      const int depth = bones_[i].depth;
-      if (depth == 0) break;
-
-      // Advance to the parent of 'i'.
-      while (bones_[i].depth >= depth) {
-        i--;
-        assert(i >= 0);
-      }
+      i = BoneParent(i);
+      if (i < 0) break;
 
       // Update with parent transform.
       m = bones_[i].relative_transform * m;
     }
     return m;
+  }
+
+  bool BoneHasVertices(size_t bone_idx) const {
+    const size_t end_vertex_index =
+        bone_idx + 1 == bones_.size() ? points_.size()
+                                      : bones_[bone_idx + 1].first_vertex_index;
+    return end_vertex_index - bones_[bone_idx].first_vertex_index > 0;
   }
 
   SurfaceMap surfaces_;
@@ -862,7 +889,7 @@ class FbxMeshParser {
   void GatherFlatMesh(FlatMesh* out) const {
     // Traverse the scene and output one surface per mesh.
     FbxNode* root_node = scene_->GetRootNode();
-    GatherFlatMeshRecursive(0, root_node, root_node, out);
+    GatherFlatMeshRecursive(-1, root_node, root_node, out);
   }
 
  private:
@@ -967,7 +994,10 @@ class FbxMeshParser {
         log_.Log(kLogWarning,
                  "Node %s has different rotation (%0.3f, %0.3f, %0.3f) and "
                  "scale (%0.3f, %0.3f, %0.3f) pivots. Scaling will not be "
-                 "properly centered.\n");
+                 "properly centered.\n",
+                 node->GetName(), rotation_pivot[0], rotation_pivot[1],
+                 rotation_pivot[2], scaling_pivot[0], scaling_pivot[1],
+                 scaling_pivot[2]);
       }
     }
 
@@ -1158,7 +1188,7 @@ class FbxMeshParser {
       // http://help.autodesk.com/view/FBX/2016/ENU/?guid=__files_GUID_10CDD63C_79C1_4F2D_BB28_AD2BE65A02ED_htm):
       //
       // WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R *
-      // Rpost_inv * Rp_inv * Soff * Sp * S * Sp_inv
+      //                  Rpost_inv * Rp_inv * Soff * Sp * S * Sp_inv
       //
       // In animation data, we animate T, R, and S (translation, rotation,
       // scaling).
@@ -1233,64 +1263,62 @@ class FbxMeshParser {
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(
-      int depth, FbxNode* node, FbxNode* parent_node,
-      FlatMesh* out) const {
-    if (node == nullptr) return;
+  void GatherFlatMeshRecursive(int depth, FbxNode* node, FbxNode* parent_node,
+                               FlatMesh* out) const {
+    // We're only interested in mesh nodes. If a node and all nodes under it
+    // have no meshes, we early out.
+    if (node == nullptr || !NodeHasMesh(node)) return;
     log_.Log(kLogInfo, "Node: %s\n", node->GetName());
 
-    // We're only interested in mesh nodes.
-    // Note that there may be more than one mesh attached to a node.
-    bool appended_mesh = false;
-    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
-      const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
-      if (attr == nullptr ||
-          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
-      const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
-
+    // The root node cannot have a transform applied to it, so we do not
+    // export it as a bone.
+    if (node != scene_->GetRootNode()) {
       // Get the transform to this node from its parent.
       FbxAMatrix relative_transform;
       FbxAMatrix point_transform;
       Transforms(node, parent_node, &relative_transform, &point_transform);
 
-      // Create a "bone" for this mesh. The mesh_pipeline doesn't support
+      // Create a "bone" for this node. The mesh_pipeline doesn't support
       // skeleton definitions yet, but we use the mesh hierarchy to represent
       // the animations.
       out->AppendBone(node->GetName(), Mat4FromFbx(relative_transform), depth);
 
-      // Gather the textures attached to this mesh.
-      std::string normal_map_file_name;
-      const FlatTextures textures = GatherTextures(node, mesh);
-      out->SetSurface(textures);
+      // Gather mesh data for this bone.
+      // Note that there may be more than one mesh attached to a node.
+      for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+        const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+        if (attr == nullptr ||
+            attr->GetAttributeType() != FbxNodeAttribute::eMesh)
+          continue;
+        const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
 
-      // If no textures for this mesh, try to get a solid color from the
-      // material.
-      FbxColor solid_color;
-      const bool has_solid_color = textures.Count() == 0 &&
-                                   SolidColor(node, mesh, &solid_color);
+        // Gather the textures attached to this mesh.
+        std::string normal_map_file_name;
+        const FlatTextures textures = GatherTextures(node, mesh);
+        out->SetSurface(textures);
 
-      // Without a base texture or color, the model will look rather plane.
-      if (textures.Count() == 0 && !has_solid_color) {
-        log_.Log(kLogWarning, "No texture or solid color found for node %s\n",
-                 node->GetName());
+        // If no textures for this mesh, try to get a solid color from the
+        // material.
+        FbxColor solid_color;
+        const bool has_solid_color =
+            textures.Count() == 0 && SolidColor(node, mesh, &solid_color);
+
+        // Without a base texture or color, the model will look rather plane.
+        if (textures.Count() == 0 && !has_solid_color) {
+          log_.Log(kLogWarning, "No texture or solid color found for node %s\n",
+                   node->GetName());
+        }
+
+        // Gather the verticies and indices.
+        GatherFlatSurface(mesh, point_transform, has_solid_color, solid_color,
+                          out);
       }
-
-      // Gather the verticies and indices.
-      GatherFlatSurface(mesh, point_transform, has_solid_color, solid_color, out);
-
-      // Remember if we've appended at least one mesh.
-      appended_mesh = true;
-    }
-
-    // If we've appended a mesh then increment the depth of the mesh child.
-    if (appended_mesh && hierarchy_) {
-      depth++;
-      parent_node = node;
     }
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(depth, node->GetChild(i), parent_node, out);
+      GatherFlatMeshRecursive(hierarchy_ ? depth + 1 : depth, node->GetChild(i),
+                              node, out);
     }
   }
 
@@ -1383,6 +1411,17 @@ class FbxMeshParser {
       }
     }
   };
+
+  // Return true if `node` or any of its children has a mesh.
+  static bool NodeHasMesh(FbxNode* node) {
+    if (node->GetMesh() != nullptr) return true;
+
+    // Recursively traverse each child node.
+    for (int i = 0; i < node->GetChildCount(); i++) {
+      if (NodeHasMesh(node->GetChild(i))) return true;
+    }
+    return false;
+  }
 
   // Entry point to the FBX SDK.
   FbxManager* manager_;
@@ -1614,10 +1653,9 @@ int main(int argc, char** argv) {
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
-  const bool output_status =
-      mesh.OutputFlatBuffer(args.fbx_file, args.asset_base_dir,
-                            args.asset_rel_dir, args.texture_extension,
-                            args.texture_formats);
+  const bool output_status = mesh.OutputFlatBuffer(
+      args.fbx_file, args.asset_base_dir, args.asset_rel_dir,
+      args.texture_extension, args.texture_formats, args.hierarchy);
   if (!output_status) return 1;
 
   // Success.
