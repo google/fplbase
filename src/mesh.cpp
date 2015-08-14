@@ -14,6 +14,7 @@
 
 #include "precompiled.h"
 #include "fplbase/mesh.h"
+#include "fplbase/renderer.h"
 
 namespace fpl {
 
@@ -182,12 +183,18 @@ void Mesh::AddIndices(const unsigned short *index_data, int count,
   idxs.mat = mat;
 }
 
-void Mesh::Render(Renderer &renderer, bool ignore_material) {
+void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   SetAttributes(vbo_, format_, vertex_size_, nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
-    GL_CALL(glDrawElements(GL_TRIANGLES, it->count, GL_UNSIGNED_SHORT, 0));
+    if (instances == 1) {
+      GL_CALL(glDrawElements(GL_TRIANGLES, it->count, GL_UNSIGNED_SHORT, 0));
+    } else {
+      assert(renderer.feature_level() == Renderer::kFeatureLevel30);
+      GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, it->count,
+                                      GL_UNSIGNED_SHORT, 0, instances));
+    }
   }
   UnSetAttributes(format_);
 }
