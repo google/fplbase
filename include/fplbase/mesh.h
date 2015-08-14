@@ -23,10 +23,6 @@
 
 namespace fpl {
 
-using mathfu::vec2_packed;
-using mathfu::vec3_packed;
-using mathfu::vec4_packed;
-
 class Renderer;
 
 // An array of these enums defines the format of vertex data.
@@ -37,17 +33,6 @@ enum Attribute {
   kTangent4f,
   kTexCoord2f,
   kColor4ub
-};
-
-// A vertex definition specific to normalmapping.
-// TODO: we ideally shouldn't have hardcoded structs like this,
-// instead use Attributes
-// We use the _packed versions to ensure SIMD doesn't ruin the layout.
-struct NormalMappedVertex {
-  vec3_packed pos;
-  vec2_packed tc;
-  vec3_packed norm;
-  vec4_packed tangent;
 };
 
 // A mesh instance contains a VBO and one or more IBO's.
@@ -99,9 +84,72 @@ class Mesh {
                                           const vec4 &patch_info);
 
   // Compute normals and tangents given position and texcoords.
-  static void ComputeNormalsTangents(NormalMappedVertex *vertices,
-                                     const unsigned short *indices,
-                                     int numverts, int numindices);
+  // The template type should be a struct with at least the following fields:
+  // mathfu::vec3_packed pos;
+  // mathfu::vec2_packed tc;
+  // mathfu::vec3_packed norm;
+  // mathfu::vec4_packed tangent;
+  template <typename T>
+  static void ComputeNormalsTangents(T *vertices, const unsigned short *indices,
+                                     int numverts, int numindices) {
+    std::unique_ptr<vec3[]> binormals(new vec3[numverts]);
+
+    // set all normals to 0, as we'll accumulate
+    for (int i = 0; i < numverts; i++) {
+      vertices[i].norm = mathfu::kZeros3f;
+      vertices[i].tangent = mathfu::kZeros4f;
+      binormals[i] = mathfu::kZeros3f;
+    }
+    // Go through each triangle and calculate tangent space for it, then
+    // contribute results to adjacent triangles.
+    // For a description of the math see e.g.:
+    // http://www.terathon.com/code/tangent.html
+    for (int i = 0; i < numindices; i += 3) {
+      auto &v0 = vertices[indices[i + 0]];
+      auto &v1 = vertices[indices[i + 1]];
+      auto &v2 = vertices[indices[i + 2]];
+      // The cross product of two vectors along the triangle surface from the
+      // first vertex gives us this triangle's normal.
+      auto q1 = vec3(v1.pos) - vec3(v0.pos);
+      auto q2 = vec3(v2.pos) - vec3(v0.pos);
+      auto norm = normalize(cross(q1, q2));
+      // Contribute the triangle normal into all 3 verts:
+      v0.norm = vec3(v0.norm) + norm;
+      v1.norm = vec3(v1.norm) + norm;
+      v2.norm = vec3(v2.norm) + norm;
+      // Similarly create uv space vectors:
+      auto uv1 = vec2(v1.tc) - vec2(v0.tc);
+      auto uv2 = vec2(v2.tc) - vec2(v0.tc);
+      float m = 1 / (uv1.x() * uv2.y() - uv2.x() * uv1.y());
+      auto tangent = vec4((uv2.y() * q1 - uv1.y() * q2) * m, 0);
+      auto binorm = (uv1.x() * q2 - uv2.x() * q1) * m;
+      v0.tangent = vec4(v0.tangent) + tangent;
+      v1.tangent = vec4(v1.tangent) + tangent;
+      v2.tangent = vec4(v2.tangent) + tangent;
+      binormals[indices[i + 0]] = binorm;
+      binormals[indices[i + 1]] = binorm;
+      binormals[indices[i + 2]] = binorm;
+    }
+    // Normalize per vertex tangent space constributions, and pack tangent /
+    // binormal into a 4 component tangent.
+    for (int i = 0; i < numverts; i++) {
+      auto norm = vec3(vertices[i].norm);
+      auto tangent = vec4(vertices[i].tangent);
+      // Renormalize all 3 axes:
+      norm = normalize(norm);
+      tangent = vec4(normalize(tangent.xyz()), 0);
+      binormals[i] = normalize(binormals[i]);
+      tangent = vec4(
+          // Gram-Schmidt orthogonalize xyz components:
+          normalize(tangent.xyz() - norm * dot(norm, tangent.xyz())),
+          // The w component is the handedness, set as difference between the
+          // binormal we computed from the texture coordinates and that from the
+          // cross-product:
+          dot(cross(norm, tangent.xyz()), binormals[i]));
+      vertices[i].norm = norm;
+      vertices[i].tangent = tangent;
+    }
+  }
 
   enum {
     kAttributePosition,
