@@ -29,7 +29,8 @@ FPLBASE_COMMON_SRC_FILES := \
   $(FPLBASE_RELATIVE_DIR)/src/renderer_hmd.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/render_target.cpp \
   $(FPLBASE_RELATIVE_DIR)/src/shader.cpp \
-  $(FPLBASE_RELATIVE_DIR)/src/utilities.cpp
+  $(FPLBASE_RELATIVE_DIR)/src/utilities.cpp \
+  $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
 
 FPLBASE_COMMON_CPPFLAGS := -std=c++11 -Wno-literal-suffix -Wno-unused-function
 
@@ -48,7 +49,8 @@ FPLBASE_SCHEMA_FILES := \
 
 FPLBASE_COMMON_EXPORT_C_INCLUDES := \
   $(FPLBASE_DIR)/include \
-  $(FPLBASE_GENERATED_OUTPUT_DIR)
+  $(FPLBASE_GENERATED_OUTPUT_DIR) \
+  $(NDK_ROOT)/sources/android/ndk_helper
 
 FPLBASE_COMMON_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES) \
@@ -57,7 +59,6 @@ FPLBASE_COMMON_INCLUDES := \
   $(DEPENDENCIES_FPLUTIL_DIR)/include \
   $(DEPENDENCIES_GPG_DIR)/include \
   $(DEPENDENCIES_WEBP_DIR)/src
-
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := fplbase
@@ -105,6 +106,8 @@ LOCAL_CPPFLAGS := $(FPLBASE_COMMON_CPPFLAGS) -DFPL_BASE_BACKEND_STDLIB
 
 LOCAL_EXPORT_C_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES)
+
+LOCAL_EXPORT_LDLIBS := -lGLESv1_CM -lGLESv2 -llog -lz -lEGL -landroid
 
 LOCAL_C_INCLUDES := \
   $(FPLBASE_COMMON_INCLUDES)

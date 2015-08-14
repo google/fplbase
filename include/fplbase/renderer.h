@@ -23,7 +23,7 @@
 #include "fplbase/shader.h"
 
 #ifdef __ANDROID__
-#include "fplbase/renderer_android.h"
+#  include "fplbase/renderer_android.h"
 #endif
 
 namespace fpl {
@@ -48,7 +48,13 @@ class Renderer {
     kCullFrontAndBack
   };
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+  // OpenGL ES feature level we are able to obtain.
+  enum FeatureLevel {
+    kFeatureLevel20,    // 2.0: Our fallback.
+    kFeatureLevel30,    // 3.0: We request this by default.
+  };
+
+# ifdef FPL_BASE_RENDERER_BACKEND_SDL
   // Creates the window + OpenGL context.
   // A descriptive error is in last_error() if it returns false.
   bool Initialize(const vec2i &window_size = vec2i(800, 600),
@@ -61,11 +67,11 @@ class Renderer {
 
   // Cleans up whatever Initialize creates.
   void ShutDown();
-#else
+# else
   // In the non-window-owning use case, call to update the window size whenever
   // it changes.
   void SetWindowSize(const vec2i &window_size);
-#endif
+# endif
 
   // Clears the framebuffer. Call this after AdvanceFrame if desired.
   void ClearFrameBuffer(const vec4 &color);
@@ -168,6 +174,9 @@ class Renderer {
   // updated once per frame only.
   float time() const { return time_; }
 
+  // Get the supported OpenGL ES feature level;
+  FeatureLevel feature_level() const { return feature_level_; }
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                               const char *source);
@@ -184,12 +193,14 @@ class Renderer {
 
   std::string last_error_;
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+# ifdef FPL_BASE_RENDERER_BACKEND_SDL
   Window window_;
   GLContext context_;
-#endif
+# endif
 
   BlendMode blend_mode_;
+
+  FeatureLevel feature_level_;
 
   bool use_16bpp_;
 };

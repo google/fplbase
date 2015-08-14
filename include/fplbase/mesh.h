@@ -50,7 +50,10 @@ class Mesh {
   void AddIndices(const unsigned short *indices, int count, Material *mat);
 
   // Render itself. Uniforms must have been set before calling this.
-  void Render(Renderer &renderer, bool ignore_material = false);
+  // Use a value >1 for instances to get instanced rendering (this needs
+  // OpenGL ES 3.0 to work).
+  void Render(Renderer &renderer, bool ignore_material = false,
+              size_t instances = 1);
 
   // Get the material associated with the Nth IBO.
   Material *GetMaterial(int i) { return indices_[i].mat; }
