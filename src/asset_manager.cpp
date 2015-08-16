@@ -160,6 +160,8 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
+    const bool skin = meshdef->skin_indices() && meshdef->skin_weights() &&
+                      meshdef->bone_transforms() && meshdef->bone_parents();
     // Collect what attributes are available.
     std::vector<Attribute> attrs;
     attrs.push_back(kPosition3f);
@@ -167,6 +169,10 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     if (meshdef->tangents()) attrs.push_back(kTangent4f);
     if (meshdef->colors()) attrs.push_back(kColor4ub);
     if (meshdef->texcoords()) attrs.push_back(kTexCoord2f);
+    if (skin) {
+      attrs.push_back(kBoneIndices4ub);
+      attrs.push_back(kBoneWeights4ub);
+    }
     attrs.push_back(kEND);
     auto vert_size = Mesh::VertexSize(attrs.data());
     // Create an interleaved buffer. Would be cool to do this without
@@ -180,6 +186,10 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       if (meshdef->tangents()) CopyAttribute(meshdef->tangents()->Get(i), p);
       if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(i), p);
       if (meshdef->texcoords()) CopyAttribute(meshdef->texcoords()->Get(i), p);
+      if (skin) {
+        CopyAttribute(meshdef->skin_indices()->Get(i), p);
+        CopyAttribute(meshdef->skin_weights()->Get(i), p);
+      }
     }
     vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
                                        : mathfu::kZeros3f;
@@ -189,6 +199,19 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
                     attrs.data(), meshdef->max_position() ? &max : nullptr,
                     meshdef->min_position() ? &min : nullptr);
     delete[] buf;
+    // Load the bone information.
+    if (skin) {
+      const size_t num_bones = meshdef->bone_parents()->Length();
+      assert(meshdef->bone_transforms()->Length() == num_bones);
+      std::vector<mat4> bone_transforms(num_bones);
+      bone_transforms.clear();
+      for (size_t i = 0; i < num_bones; ++i) {
+        bone_transforms[i] = LoadAffineMat4(meshdef->bone_transforms()->Get(i));
+      }
+      const uint8_t* bone_parents = meshdef->bone_parents()->data();
+      mesh->SetBones(&bone_transforms[0], bone_parents, num_bones);
+    }
+
     // Load indices an materials.
     for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
       auto surface = meshdef->surfaces()->Get(i);

@@ -28,6 +28,8 @@ Renderer::Renderer()
       color_(mathfu::kOnes4f),
       light_pos_(mathfu::kZeros3f),
       camera_pos_(mathfu::kZeros3f),
+      bone_transforms_(nullptr),
+      num_bones_(0),
       window_(nullptr),
       context_(nullptr) {}
 
@@ -245,6 +247,8 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
       GL_CALL(
           glBindAttribLocation(program, Mesh::kAttributeTexCoord, "aTexCoord"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor, "aColor"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices, "aBoneIndices"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights, "aBoneWeights"));
       GL_CALL(glLinkProgram(program));
       GLint status;
       GL_CALL(glGetProgramiv(program, GL_LINK_STATUS, &status));

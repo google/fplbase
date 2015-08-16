@@ -51,7 +51,8 @@ class Shader {
         uniform_color_(-1),
         uniform_light_pos_(-1),
         uniform_camera_pos_(-1),
-        uniform_time_(-1) {}
+        uniform_time_(-1),
+        uniform_bone_tranforms_(-1) {}
 
   ~Shader();
 
@@ -114,6 +115,7 @@ class Shader {
   UniformHandle uniform_light_pos_;
   UniformHandle uniform_camera_pos_;
   UniformHandle uniform_time_;
+  UniformHandle uniform_bone_tranforms_;
 };
 
 }  // namespace fpl

@@ -59,6 +59,16 @@ inline const mathfu::vec4 LoadColorRGBA(const ColorRGBA* c) {
   return mathfu::vec4(c->r(), c->g(), c->b(), c->a());
 }
 
+// Affine transform can be serialized as a 3x4 matrix (three rows of four
+// elements). The fourth row is (0,0,0,1). We load the rows into the columns,
+// and then transpose it to get a standard 4x4 matrix.
+inline mathfu::mat4 LoadAffineMat4(const Mat3x4* m) {
+  const mathfu::vec4 c0 = LoadVec4(&m->c0());
+  const mathfu::vec4 c1 = LoadVec4(&m->c1());
+  const mathfu::vec4 c2 = LoadVec4(&m->c2());
+  return mathfu::mat4(c0, c1, c2, mathfu::kAxisW4f).Transpose();
+}
+
 }  // namespace fpl
 
 #endif  // FPLBASE_FLATBUFFER_UTILS_H

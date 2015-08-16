@@ -32,7 +32,9 @@ enum Attribute {
   kNormal3f,
   kTangent4f,
   kTexCoord2f,
-  kColor4ub
+  kColor4ub,
+  kBoneIndices4ub,
+  kBoneWeights4ub
 };
 
 // A mesh instance contains a VBO and one or more IBO's.
@@ -48,6 +50,16 @@ class Mesh {
 
   // Create one IBO to be part of this mesh. May be called more than once.
   void AddIndices(const unsigned short *indices, int count, Material *mat);
+
+  void SetBones(const mathfu::mat4 *bone_transforms,
+                const uint8_t *bone_parents, size_t num_bones) {
+    bone_transforms_.resize(num_bones);
+    bone_parents_.resize(num_bones);
+    memcpy(&bone_transforms_[0], bone_transforms,
+           num_bones * sizeof(bone_transforms_[0]));
+    memcpy(&bone_parents_[0], bone_parents,
+           num_bones * sizeof(bone_parents_[0]));
+  }
 
   // Render itself. Uniforms must have been set before calling this.
   void Render(Renderer &renderer, bool ignore_material = false);
@@ -156,7 +168,9 @@ class Mesh {
     kAttributeNormal,
     kAttributeTangent,
     kAttributeTexCoord,
-    kAttributeColor
+    kAttributeColor,
+    kAttributeBoneIndices,
+    kAttributeBoneWeights,
   };
 
   // Compute the byte size for a vertex from given attributes.
@@ -164,13 +178,16 @@ class Mesh {
 
   const mathfu::vec3 &min_position() const { return min_position_; }
   const mathfu::vec3 &max_position() const { return max_position_; }
+  const mathfu::mat4 *bone_transforms() const { return &bone_transforms_[0]; }
+  const uint8_t *bone_parents() const { return &bone_parents_[0]; }
+  size_t num_bones() const { return bone_transforms_.size(); }
 
  private:
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
   // this header to depend on OpenGL.
   typedef unsigned int BufferHandle;
 
-  static const int kMaxAttributes = 6;
+  static const int kMaxAttributes = 8;
 
   static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
@@ -186,6 +203,8 @@ class Mesh {
   BufferHandle vbo_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
+  std::vector<mathfu::mat4> bone_transforms_;
+  std::vector<uint8_t> bone_parents_;
 };
 
 }  // namespace fpl

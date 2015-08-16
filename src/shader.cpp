@@ -60,6 +60,8 @@ void Shader::InitializeUniforms() {
 
   uniform_time_ = glGetUniformLocation(program_, "time");
 
+  uniform_bone_tranforms_ = glGetUniformLocation(program_, "bone_transforms");
+
   // Set up the uniforms the shader uses for texture access.
   char texture_unit_name[] = "texture_unit_#####";
   for (int i = 0; i < kMaxTexturesPerShader; i++) {
@@ -86,6 +88,14 @@ void Shader::Set(const Renderer &renderer) const {
     GL_CALL(glUniform3fv(uniform_camera_pos_, 1, &renderer.camera_pos()[0]));
   if (uniform_time_ >= 0)
     GL_CALL(glUniform1f(uniform_time_, renderer.time()));
+  if (uniform_bone_tranforms_ >= 0 && renderer.num_bones() > 0) {
+    // TODO: change to matrix4x3 because affine transform has constant (0,0,0,1)
+    //       in W component.
+    assert(renderer.bone_transforms() != nullptr);
+    const mat4* bone_transforms = renderer.bone_transforms();
+    GL_CALL(glUniformMatrix4fv(uniform_bone_tranforms_, renderer.num_bones(),
+                               false, &bone_transforms[0][0]));
+  }
 }
 
 }  // namespace fpl

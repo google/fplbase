@@ -53,6 +53,21 @@ void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                                       true, stride, buffer + offset));
         offset += 4;
         break;
+      case kBoneIndices4ub:
+        GL_CALL(glEnableVertexAttribArray(kAttributeBoneIndices));
+        GL_CALL(glVertexAttribPointer(kAttributeBoneIndices, 4,
+                                      GL_UNSIGNED_BYTE, false, stride,
+                                      buffer + offset));
+        offset += 4;
+        break;
+      case kBoneWeights4ub:
+        GL_CALL(glEnableVertexAttribArray(kAttributeBoneWeights));
+        GL_CALL(glVertexAttribPointer(kAttributeBoneWeights, 4,
+                                      GL_UNSIGNED_BYTE, true, stride,
+                                      buffer + offset));
+        offset += 4;
+        break;
+
       case kEND:
         return;
     }
@@ -66,12 +81,14 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
       return size;
     }
     switch (*attributes) {
-      case kPosition3f: size += 3 * sizeof(float); break;
-      case kNormal3f:   size += 3 * sizeof(float); break;
-      case kTangent4f:  size += 4 * sizeof(float); break;
-      case kTexCoord2f: size += 2 * sizeof(float); break;
-      case kColor4ub:   size += 4;                 break;
-      case kEND:        return size;
+      case kPosition3f:     size += 3 * sizeof(float); break;
+      case kNormal3f:       size += 3 * sizeof(float); break;
+      case kTangent4f:      size += 4 * sizeof(float); break;
+      case kTexCoord2f:     size += 2 * sizeof(float); break;
+      case kColor4ub:       size += 4;                 break;
+      case kBoneIndices4ub: size += 4;                 break;
+      case kBoneWeights4ub: size += 4;                 break;
+      case kEND:            return size;
     }
   }
 }
@@ -93,6 +110,12 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
         break;
       case kColor4ub:
         GL_CALL(glDisableVertexAttribArray(kAttributeColor));
+        break;
+      case kBoneIndices4ub:
+        GL_CALL(glDisableVertexAttribArray(kAttributeBoneIndices));
+        break;
+      case kBoneWeights4ub:
+        GL_CALL(glDisableVertexAttribArray(kAttributeBoneWeights));
         break;
       case kEND:
         return;

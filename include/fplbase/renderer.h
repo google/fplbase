@@ -76,7 +76,8 @@ class Renderer {
   // Create a shader object from two strings containing glsl code.
   // Returns nullptr upon error, with a descriptive message in glsl_error().
   // Attribute names in the vertex shader should be aPosition, aNormal,
-  // aTexCoord and aColor to match whatever attributes your vertex data has.
+  // aTexCoord, aColor, aBoneIndices and aBoneWeights, to match whatever
+  // attributes your vertex data has.
   Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source);
 
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
@@ -134,6 +135,10 @@ class Renderer {
   void ScissorOn(const vec2i &pos, const vec2i &size);
   void ScissorOff();
 
+  // Set bone transforms in vertex shader uniforms.
+  // Allows vertex shader to skin each vertex to the bone position.
+  void SetAnimation(const mathfu::mat4 *bone_transforms, int num_bones);
+
   // Shader uniform: model_view_projection
   mat4 &model_view_projection() { return model_view_projection_; }
   const mat4 &model_view_projection() const { return model_view_projection_; }
@@ -153,6 +158,14 @@ class Renderer {
   // Shader uniform: camera_pos
   vec3 &camera_pos() { return camera_pos_; }
   const vec3 &camera_pos() const { return camera_pos_; }
+
+  // Shader uniform: bone_transforms
+  const mat4 *bone_transforms() const { return bone_transforms_; }
+  int num_bones() const { return num_bones_; }
+  void SetBoneTransforms(const mat4 *bone_transforms, int num_bones) {
+    bone_transforms_ = bone_transforms;
+    num_bones_ = num_bones;
+  }
 
   // If any of the more complex loading operations (shaders, textures etc.)
   // fail, this sting will contain a more informative error message.
@@ -179,6 +192,8 @@ class Renderer {
   vec4 color_;
   vec3 light_pos_;
   vec3 camera_pos_;
+  const mat4 *bone_transforms_;
+  int num_bones_;
   float time_;
   vec2i window_size_;
 
