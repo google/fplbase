@@ -14,6 +14,8 @@
 
 // Definitions for the material system.
 
+include "common.fbs";
+
 namespace matdef;
 
 enum BlendMode:ubyte {
@@ -39,6 +41,10 @@ table Material {
   // This vector corresponds to the textures above, if not present,
   // all of them will default to AUTO.
   desired_format:[TextureFormat];
+
+  // This vector corresponds to the textures above, if not present,
+  // all of them will default to texture's size.
+  original_size:[fpl.Vec2i];
 }
 
 root_type Material;

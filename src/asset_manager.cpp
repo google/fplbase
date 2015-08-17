@@ -37,8 +37,7 @@ T FindInMap(const std::map<std::string, T> &map, const char *name) {
   return it != map.end() ? it->second : 0;
 }
 
-AssetManager::AssetManager(Renderer &renderer)
-    : renderer_(renderer) {
+AssetManager::AssetManager(Renderer &renderer) : renderer_(renderer) {
   // Empty material for default case.
   material_map_[""] = new Material();
 }
@@ -80,8 +79,7 @@ Texture *AssetManager::FindTexture(const char *filename) {
   return FindInMap(texture_map_, filename);
 }
 
-Texture *AssetManager::LoadTexture(const char *filename,
-                                      TextureFormat format) {
+Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
   tex = new Texture(renderer_, filename);
@@ -118,6 +116,12 @@ Material *AssetManager::LoadMaterial(const char *filename) {
       auto tex =
           LoadTexture(matdef->texture_filenames()->Get(i)->c_str(), format);
       mat->textures().push_back(tex);
+
+      auto original_size =
+          matdef->original_size() && i < matdef->original_size()->size()
+              ? LoadVec2i(matdef->original_size()->Get(i))
+              : tex->size();
+      tex->set_original_size(original_size);
     }
     material_map_[filename] = mat;
     return mat;
