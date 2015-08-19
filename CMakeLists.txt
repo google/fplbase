@@ -17,7 +17,8 @@ project(fplbase)
 
 # Option to only build flatc
 option(fplbase_build_library "Build the fplbase runtime library." ON)
-option(fplbase_build_mesh_pipeline "Build the pipeline from FBX to FlatBuffers." ON)
+option(fplbase_build_mesh_pipeline
+       "Build the mesh_pipeline binary (converts from FBX to FlatBuffers)." ON)
 option(fplbase_build_samples "Build the fplbase sample executables." OFF)
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
@@ -83,10 +84,12 @@ add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 # Include SDL in this project while working around SDL requirement of out of
 # tree builds.
 set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
-# (hack) We redefine install to stop SDL's CMakeLists.txt from referring to SDL2 lib
+# (hack) We redefine install to stop SDL's CMakeLists.txt from referring to
+# SDL2 lib
 function(install)
 endfunction(install)
-# For some reason SDL defaults to these not being defined, and then defines their own,
+# For some reason SDL defaults to these not being defined, and then defines
+# their own,
 # causing linker errors.
 add_definitions(-DHAVE_LIBC)
 add_definitions(-DHAVE_STDIO_H)
@@ -290,7 +293,8 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   # These warnings come from the FBX SDK, and they can't be suppressed
   # by pragmas around #include <fbxsdk.h>, so suppress them here.
   if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "-std=c++0x -Wno-literal-suffix -Wno-comment ${C_FLAGS_WARNINGS}")
+    set(CMAKE_CXX_FLAGS
+        "-std=c++0x -Wno-literal-suffix -Wno-comment ${C_FLAGS_WARNINGS}")
   endif()
 
   # Needed by the FBX SDK when we call some file manipulation functions.
@@ -311,7 +315,7 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   target_link_libraries(mesh_pipeline ${fbx_sdk_lib} pthread dl fplutil)
 
   # Additional flags for the target.
-  mathfu_configure_flags(mesh_pipeline)
+  fplbase_common_config(mesh_pipeline)
 endif()
 
 if(fplbase_build_samples)
