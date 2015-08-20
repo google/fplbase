@@ -427,28 +427,32 @@ void LogError(LogCategory category, const char *fmt, ...) {
 void LogInfo(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  printf(fmt, args);
+  vprintf(fmt, args);
+  printf("\n");
   va_end(args);
 }
 
 void LogError(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  fprintf(stderr, fmt, args);
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
   va_end(args);
 }
 
 void LogInfo(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  LogInfo(fmt, args);
+  vprintf(fmt, args);
+  printf("\n");
   va_end(args);
 }
 
 void LogError(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  LogError(fmt, args);
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
   va_end(args);
 }
 #endif
