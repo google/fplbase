@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-
 #include "precompiled.h"
 #include "fplbase/renderer.h"
 #include "fplbase/render_target.h"
@@ -24,7 +22,6 @@
 namespace fpl {
 
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
-
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
       model_(mat4::Identity()),
@@ -32,8 +29,7 @@ Renderer::Renderer()
       light_pos_(mathfu::kZeros3f),
       camera_pos_(mathfu::kZeros3f),
       window_(nullptr),
-      context_(nullptr),
-      feature_level_(kFeatureLevel20) {}
+      context_(nullptr) {}
 
 Renderer::~Renderer() { ShutDown(); }
 
@@ -48,11 +44,21 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 
   SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
 
-# ifdef __ANDROID__
+// Force OpenGL ES 2 on mobile.
+#ifdef PLATFORM_MOBILE
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+#else
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                      SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+#endif
+
+#ifdef __ANDROID__
   // Setup HW scaler in Android
   AndroidSetScalerResolution(window_size);
   AndroidPreCreateWindow();
-# endif
+#endif
 
   // Always double buffer.
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -71,14 +77,14 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   window_ = SDL_CreateWindow(
       window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       window_size.x(), window_size.y(), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
-#     ifdef PLATFORM_MOBILE
-        SDL_WINDOW_BORDERLESS
-#     else
-        SDL_WINDOW_RESIZABLE
-#       ifndef _DEBUG
-          //| SDL_WINDOW_FULLSCREEN_DESKTOP
-#       endif
-#     endif
+#ifdef PLATFORM_MOBILE
+                                            SDL_WINDOW_BORDERLESS
+#else
+                                            SDL_WINDOW_RESIZABLE
+#ifndef _DEBUG
+//| SDL_WINDOW_FULLSCREEN_DESKTOP
+#endif
+#endif
       );
   if (!window_) {
     last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
@@ -91,50 +97,18 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
                     &window_size_.y());
 
   // Create the OpenGL context:
-  // Try to get OpenGL ES 3 on mobile.
-  // On desktop, we assume we can get function pointers for all ES 3 equivalent
-  // functions.
-  feature_level_ = kFeatureLevel30;
-# ifdef PLATFORM_MOBILE
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-# else
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-# endif
   context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-# ifdef PLATFORM_MOBILE
-    if (context_) {
-      // Get all function pointers.
-      // Using this rather than GLES3/gl3.h directly means we can still
-      // compile on older SDKs and run on older devices too.
-      gl3stubInit();
-    } else {
-      // Failed to get ES 3.0 context, let's try 2.0.
-      feature_level_ = kFeatureLevel20;
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-      context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-    }
-# endif
   if (!context_) {
     last_error_ = std::string("SDL_GL_CreateContext fail: ") + SDL_GetError();
     return false;
   }
 
-# ifdef PLATFORM_MOBILE
-    LogInfo("FPLBase: got OpenGL ES context level %s",
-            feature_level_ == kFeatureLevel20 ? "2.0" : "3.0");
-# endif
-
 // Enable Vsync on desktop
-# ifndef PLATFORM_MOBILE
-    SDL_GL_SetSwapInterval(1);
-# endif
+#ifndef PLATFORM_MOBILE
+  SDL_GL_SetSwapInterval(1);
+#endif
 
-# ifndef PLATFORM_MOBILE
+#ifndef PLATFORM_MOBILE
   auto exts = (char *)glGetString(GL_EXTENSIONS);
 
   if (!strstr(exts, "GL_ARB_vertex_buffer_object") ||
@@ -145,25 +119,25 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
     return false;
   }
 
-# endif
+#endif
 
-# if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#   define GLEXT(type, name)                                          \
-    union {                                                          \
-      void *data;                                                    \
-      type function;                                                 \
-    } data_function_union_##name;                                    \
-    data_function_union_##name.data = SDL_GL_GetProcAddress(#name);  \
-    if (!data_function_union_##name.data) {                          \
-      last_error_ = "could not retrieve GL function pointer " #name; \
-      return false;                                                  \
-    }                                                                \
-    name = data_function_union_##name.function;
-    GLBASEEXTS GLEXTS
-#   undef GLEXT
-# endif
+#if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
+#define GLEXT(type, name)                                          \
+  union {                                                          \
+    void *data;                                                    \
+    type function;                                                 \
+  } data_function_union_##name;                                    \
+  data_function_union_##name.data = SDL_GL_GetProcAddress(#name);  \
+  if (!data_function_union_##name.data) {                          \
+    last_error_ = "could not retrieve GL function pointer " #name; \
+    return false;                                                  \
+  }                                                                \
+  name = data_function_union_##name.function;
+  GLBASEEXTS GLEXTS
+#undef GLEXT
+#endif
 
-  blend_mode_ = kBlendModeOff;
+      blend_mode_ = kBlendModeOff;
 
   return true;
 }
@@ -179,14 +153,14 @@ void Renderer::AdvanceFrame(bool minimized, float time) {
   // Get window size again, just in case it has changed.
   SDL_GetWindowSize(static_cast<SDL_Window *>(window_), &window_size_.x(),
                     &window_size_.y());
-# ifdef __ANDROID__
-    // Check HW scaler setting and change a viewport size if they are set
-    vec2i size = AndroidGetScalerResolution();
-    const vec2i viewport_size = size.x() && size.y() ? size : window_size_;
-    GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
-# else
-    GL_CALL(glViewport(0, 0, window_size_.x(), window_size_.y()));
-# endif
+#ifdef __ANDROID__
+  // Check HW scaler setting and change a viewport size if they are set
+  vec2i size = AndroidGetScalerResolution();
+  const vec2i viewport_size = size.x() && size.y() ? size : window_size_;
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+#else
+  GL_CALL(glViewport(0, 0, window_size_.x(), window_size_.y()));
+#endif
   DepthTest(true);
 }
 
@@ -200,9 +174,7 @@ void Renderer::ShutDown() {
     window_ = nullptr;
   }
 }
-
 #else
-
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
       model_(mat4::Identity()),
@@ -218,7 +190,6 @@ Renderer::~Renderer() {}
 void Renderer::SetWindowSize(const vec2i &window_size) {
   window_size_ = window_size;
 }
-
 #endif
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {
@@ -234,11 +205,11 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
   GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
   std::string platform_source =
-# ifdef PLATFORM_MOBILE
+#ifdef PLATFORM_MOBILE
       "#ifdef GL_ES\nprecision highp float;\n#endif\n";
-# else
+#else
       "#version 120\n#define lowp\n#define mediump\n#define highp\n";
-# endif
+#endif
   platform_source += source;
   const char *platform_source_ptr = platform_source.c_str();
   auto shader_obj = glCreateShader(stage);
@@ -510,10 +481,10 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
-#     ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
-        GL_CALL(glDisable(GL_ALPHA_TEST));
-        break;
-#     endif
+#ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
+      GL_CALL(glDisable(GL_ALPHA_TEST));
+      break;
+#endif
     case kBlendModeAlpha:
       GL_CALL(glDisable(GL_BLEND));
       break;
@@ -527,11 +498,11 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
-#     ifndef PLATFORM_MOBILE
-        GL_CALL(glEnable(GL_ALPHA_TEST));
-        GL_CALL(glAlphaFunc(GL_GREATER, amount));
-        break;
-#     endif
+#ifndef PLATFORM_MOBILE
+      GL_CALL(glEnable(GL_ALPHA_TEST));
+      GL_CALL(glAlphaFunc(GL_GREATER, amount));
+      break;
+#endif
     case kBlendModeAlpha:
       GL_CALL(glEnable(GL_BLEND));
       GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
