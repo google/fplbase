@@ -183,6 +183,26 @@ void Mesh::AddIndices(const unsigned short *index_data, int count,
   idxs.mat = mat;
 }
 
+void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
+                    const uint8_t *bone_parents, const char** bone_names,
+                    size_t num_bones) {
+  bone_transforms_.resize(num_bones);
+  bone_parents_.resize(num_bones);
+  memcpy(&bone_transforms_[0], bone_transforms,
+         num_bones * sizeof(bone_transforms_[0]));
+  memcpy(&bone_parents_[0], bone_parents,
+         num_bones * sizeof(bone_parents_[0]));
+
+  // Record the bone names if they're present. They're only for debugging,
+  // so they're optional.
+  if (bone_names != nullptr) {
+    bone_names_.resize(num_bones);
+    for (size_t i = 0; i < num_bones; ++i) {
+      bone_names_[i] = bone_names[i];
+    }
+  }
+}
+
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   SetAttributes(vbo_, format_, vertex_size_, nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
