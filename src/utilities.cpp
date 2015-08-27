@@ -363,102 +363,93 @@ bool MipmapGeneration16bppSupported() {
 }
 
 #ifdef FPL_BASE_BACKEND_SDL
-void LogInfo(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, fmt,
-                  args);
-  va_end(args);
+void LogInfo(LogCategory category, const char *fmt, va_list args) {
+  SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
 }
 
-void LogError(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_ERROR, fmt,
-                  args);
-  va_end(args);
+void LogError(LogCategory category, const char *fmt, va_list args) {
+  SDL_LogMessageV(category, SDL_LOG_PRIORITY_ERROR, fmt, args);
 }
 
+void LogInfo(const char *fmt, va_list args) {
+  LogInfo(kApplication, fmt, args);
+}
+
+void LogError(const char *fmt, va_list args) {
+  LogError(kApplication, fmt, args);
+}
+
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__)
+void LogInfo(LogCategory category, const char *fmt, va_list args) {
+  (void)category;
+  LogInfo(fmt, args);
+}
+
+void LogError(LogCategory category, const char *fmt, va_list args) {
+  (void)category;
+  LogError(fmt, args);
+}
+
+void LogInfo(const char *fmt, va_list args) {
+  __android_log_print(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
+}
+
+void LogError(const char *fmt, va_list args) {
+  __android_log_print(ANDROID_LOG_ERROR, "fplbase", fmt, args);
+}
+
+#else
+void LogInfo(LogCategory category, const char *fmt, va_list args) {
+  (void)category;
+  LogInfo(fmt, args);
+}
+
+void LogError(LogCategory category, const char *fmt, va_list args) {
+  (void)category;
+  LogError(fmt, args);
+}
+
+void LogInfo(const char *fmt, va_list args) {
+  vprintf(fmt, args);
+  printf("\n");
+}
+
+void LogError(const char *fmt, va_list args) {
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
+}
+#endif
+#else
+#error Please define a backend implementation for LogXXX.
+#endif
 void LogInfo(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
+  LogInfo(category, fmt, args);
   va_end(args);
 }
 
 void LogError(LogCategory category, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  SDL_LogMessageV(category, SDL_LOG_PRIORITY_ERROR, fmt, args);
+  LogError(category, fmt, args);
   va_end(args);
 }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
-#if defined(__ANDROID__)
+
 void LogInfo(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  __android_log_print(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
-  va_end(args);
-}
-
-void LogError(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  __android_log_print(ANDROID_LOG_ERROR, "fplbase", fmt, args);
-  va_end(args);
-}
-
-void LogInfo(LogCategory category, const char *fmt, ...) {
-  (void)category;
   va_list args;
   va_start(args, fmt);
   LogInfo(fmt, args);
   va_end(args);
 }
 
-void LogError(LogCategory category, const char *fmt, ...) {
-  (void)category;
+void LogError(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   LogError(fmt, args);
   va_end(args);
 }
-#else
-void LogInfo(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  vprintf(fmt, args);
-  printf("\n");
-  va_end(args);
-}
-
-void LogError(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-}
-
-void LogInfo(LogCategory category, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  vprintf(fmt, args);
-  printf("\n");
-  va_end(args);
-}
-
-void LogError(LogCategory category, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-}
-#endif
-#else
-#error Please define a backend implementation for LogXXX.
-#endif
 
 #if defined(__ANDROID__)
 #if defined(FPL_BASE_BACKEND_SDL)
