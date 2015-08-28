@@ -94,6 +94,10 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
 bool MipmapGeneration16bppSupported();
 
 // Basic logging functions.  They will output to the console.
+void LogInfo(const char *fmt, va_list args);
+void LogError(const char *fmt, va_list args);
+void LogInfo(LogCategory category, const char *fmt, va_list args);
+void LogError(LogCategory category, const char *fmt, va_list args);
 void LogInfo(const char *fmt, ...);
 void LogError(const char *fmt, ...);
 void LogInfo(LogCategory category, const char *fmt, ...);
