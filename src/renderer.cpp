@@ -109,10 +109,12 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
 # ifdef PLATFORM_MOBILE
     if (context_) {
-      // Get all function pointers.
-      // Using this rather than GLES3/gl3.h directly means we can still
-      // compile on older SDKs and run on older devices too.
-      gl3stubInit();
+#     ifdef __ANDROID__
+        // Get all function pointers.
+        // Using this rather than GLES3/gl3.h directly means we can still
+        // compile on older SDKs and run on older devices too.
+        gl3stubInit();
+#     endif
     } else {
       // Failed to get ES 3.0 context, let's try 2.0.
       feature_level_ = kFeatureLevel20;
