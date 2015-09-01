@@ -15,6 +15,7 @@
 #ifndef FPLBASE_KEYBOARD_KEYCODES_H
 #define FPLBASE_KEYBOARD_KEYCODES_H
 
+#include <stdint.h>
 #include "fplbase/config.h" // Must come first.
 
 #include "keyboard_scancodes.h"

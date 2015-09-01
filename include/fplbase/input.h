@@ -15,12 +15,13 @@
 #ifndef FPLBASE_INPUT_SYSTEM_H
 #define FPLBASE_INPUT_SYSTEM_H
 
+#include <functional>
 #include <map>
 #include <queue>
 #include <string>
 #include <vector>
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "keyboard_keycodes.h"
 #include "mathfu/constants.h"
@@ -284,9 +285,9 @@ class CardboardInput {
 
 // Text input event type.
 enum TextInputEventType {
-  kTextInputEventTypeEdit = 0,      // An event for a text edit in IME.
-  kTextInputEventTypeText = 1,      // An event for a text input.
-  kTextInputEventTypeKey = 2,       // An event for a key event.
+  kTextInputEventTypeEdit = 0,  // An event for a text edit in IME.
+  kTextInputEventTypeText = 1,  // An event for a text input.
+  kTextInputEventTypeKey = 2,   // An event for a key event.
 };
 
 // An event parameters for a text edit in IME (Input Method Editor).
@@ -294,8 +295,8 @@ enum TextInputEventType {
 // for UI represents. Once IME finalizes an edit, the user recieves an
 // TextInputEventText event for the finalized strings.
 struct TextInputEventEdit {
-  int32_t start;            // A start index of a focus region in the text.
-  int32_t length;           // A length of a focus region in the text.
+  int32_t start;   // A start index of a focus region in the text.
+  int32_t length;  // A length of a focus region in the text.
 };
 
 // An event parameters for a keyboard input.
@@ -303,18 +304,18 @@ struct TextInputEventEdit {
 // an event, these paremeters should be used for an input control such as moving
 // caret.
 struct TextInputEventKey {
-  bool state;               // key state, true:pressed, false:released.
-  bool repeat;              // A flag indicates if the key is repeated input.
-  FPL_Keycode symbol;       // Key symbol, refer keyboard_keycodes.h for a
-                            // detail.
-  FPL_Keymod modifier;      // Modifier key state, refer keyboard_keycodes.h for
-                            // a detail.
+  bool state;           // key state, true:pressed, false:released.
+  bool repeat;          // A flag indicates if the key is repeated input.
+  FPL_Keycode symbol;   // Key symbol, refer keyboard_keycodes.h for a
+                        // detail.
+  FPL_Keymod modifier;  // Modifier key state, refer keyboard_keycodes.h for
+                        // a detail.
 };
 
 // Union of Text input event.
 struct TextInputEvent {
-  TextInputEventType type;    // Type of the event.
-  std::string text;           // Input string.
+  TextInputEventType type;  // Type of the event.
+  std::string text;         // Input string.
   union {
     TextInputEventKey key;
     TextInputEventEdit edit;
@@ -323,9 +324,9 @@ struct TextInputEvent {
   TextInputEvent(TextInputEventType t);
   TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
                  int32_t symbol, int32_t modifier);
-  TextInputEvent(TextInputEventType t, const char * str);
-  TextInputEvent(TextInputEventType t, const char * str,
-                 int32_t start, int32_t length);
+  TextInputEvent(TextInputEventType t, const char *str);
+  TextInputEvent(TextInputEventType t, const char *str, int32_t start,
+                 int32_t length);
 };
 
 class InputSystem {
@@ -461,7 +462,7 @@ class InputSystem {
 
   bool exit_requested() { return exit_requested_; }
 
-private:
+ private:
   static const int kMillisecondsPerSecond = 1000;
 
   bool exit_requested_;

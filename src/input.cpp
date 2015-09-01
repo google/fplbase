@@ -132,10 +132,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       case SDL_KEYUP: {
         GetButton(event.key.keysym.sym).Update(event.key.state == SDL_PRESSED);
         if (record_text_input_) {
-          text_input_events_.emplace_back(kTextInputEventTypeKey,
-                                          event.key.state, event.key.repeat,
-                                          event.key.keysym.sym,
-                                          event.key.keysym.mod);
+          text_input_events_.emplace_back(
+              kTextInputEventTypeKey, event.key.state, (event.key.repeat != 0),
+              event.key.keysym.sym, event.key.keysym.mod);
         }
         break;
       }
@@ -419,10 +418,10 @@ void InputSystem::StopTextInput() { SDL_StopTextInput(); }
 
 void InputSystem::SetTextInputRect(const mathfu::vec4 &input_rect) {
   SDL_Rect rect;
-  rect.x = input_rect.x();
-  rect.y = input_rect.y();
-  rect.w = input_rect.z();
-  rect.h = input_rect.w();
+  rect.x = static_cast<size_t>(input_rect.x());
+  rect.y = static_cast<size_t>(input_rect.y());
+  rect.w = static_cast<size_t>(input_rect.z());
+  rect.h = static_cast<size_t>(input_rect.w());
   SDL_SetTextInputRect(&rect);
 }
 
@@ -672,7 +671,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
   type = t;
   switch (type) {
     case kTextInputEventTypeKey:
-      key.state = static_cast<bool>(state);
+      key.state = (state != 0);
       key.repeat = repeat;
       key.symbol = symbol;
       key.modifier = static_cast<FPL_Keymod>(modifier);

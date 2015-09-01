@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "precompiled.h"
 #include "fplbase/utilities.h"
 
@@ -484,7 +486,7 @@ void Delay(WorldTime time) { SDL_Delay(time); }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 WorldTime GetTicks() { return 0; }
 
-void Delay(WorldTime time) {}
+void Delay(WorldTime /*time*/) {}
 #else
 #error Please define a backend implementation of a monotonic clock.
 #endif

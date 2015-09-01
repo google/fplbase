@@ -15,6 +15,7 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
+#include <string>
 #include "fplbase/config.h"  // Must come first.
 
 #include "mathfu/utilities.h"

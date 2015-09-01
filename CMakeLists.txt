@@ -170,6 +170,7 @@ set(fplbase_common_SRCS
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
+  include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
   include/fplbase/mesh.h
   include/fplbase/renderer.h
@@ -202,7 +203,7 @@ set(fplbase_stdlib_SRCS
 include_directories(src)
 include_directories(include)
 if(WIN32)
-  include_directories(external/include/windows)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/include)
 endif()
 include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 include_directories(${dependencies_flatbuffers_dir}/include)
