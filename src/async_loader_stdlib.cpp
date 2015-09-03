@@ -79,8 +79,8 @@ void AsyncLoader::LoaderWorker() {
     if (!resource) break;
     resource->Load();
     {
-      queue_.erase(queue_.begin());
       std::unique_lock<std::mutex> lock(mutex_);
+      queue_.erase(queue_.begin());
       done_.push_back(resource);
     }
   }
