@@ -15,7 +15,7 @@
 #ifndef FPLBASE_RENDERER_HMD_H
 #define FPLBASE_RENDERER_HMD_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/input.h"
 #include "fplbase/renderer.h"
@@ -42,8 +42,11 @@ void FinishUndistortFramebuffer();
 template <typename RenderCallback>
 void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
                               const vec4& clear_color,
-                              RenderCallback render_callback) {
-  BeginUndistortFramebuffer();
+                              RenderCallback render_callback,
+                              bool use_undistortion) {
+  if (use_undistortion) {
+    BeginUndistortFramebuffer();
+  }
   renderer->ClearFrameBuffer(clear_color);
   renderer->color() = mathfu::kOnes4f;
   renderer->DepthTest(true);
@@ -63,7 +66,17 @@ void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
   render_callback(input_system->cardboard_input().right_eye_transform());
   // Reset the screen, and finish
   GL_CALL(glViewport(0, 0, window_width, window_height));
-  FinishUndistortFramebuffer();
+  if (use_undistortion) {
+    FinishUndistortFramebuffer();
+  }
+}
+
+template <typename RenderCallback>
+void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
+                              const vec4& clear_color,
+                              RenderCallback render_callback) {
+  HeadMountedDisplayRender(input_system, renderer, clear_color, render_callback,
+                           true);
 }
 
 }  // namespace fpl
