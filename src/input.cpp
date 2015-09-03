@@ -78,7 +78,7 @@ void InputSystem::Initialize() {
   // Initialize time.
   start_time_ = SDL_GetPerformanceCounter();
   time_freq_ = SDL_GetPerformanceFrequency();
-  last_time_ = -0.02f;    // Ensure first frame doesn't get a crazy delta.
+  elapsed_time_ = -0.02f;    // Ensure first frame doesn't get a crazy delta.
 }
 
 void InputSystem::AddAppEventCallback(AppEventCallback callback) {
@@ -90,8 +90,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   assert(time_freq_);
   auto current = static_cast<double>(SDL_GetPerformanceCounter() - start_time_)
                / static_cast<double>(time_freq_);
-  frame_time_ = current - last_time_;
-  last_time_ = current;
+  frame_time_ = current - elapsed_time_;
+  elapsed_time_ = current;
   frames_++;
 
 #ifdef LOG_FRAMERATE
@@ -315,7 +315,7 @@ vec2 InputSystem::ConvertHatToVector(uint32_t hat_enum) const {
 }
 
 double InputSystem::Time() const {
-  return (last_time_ - start_time_);
+  return elapsed_time_;
 }
 
 double InputSystem::DeltaTime() const {

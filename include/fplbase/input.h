@@ -335,7 +335,7 @@ class InputSystem {
       : exit_requested_(false),
         minimized_(false),
         frame_time_(0),
-        last_time_(0),
+        elapsed_time_(0),
         start_time_(0),
         time_freq_(0),
         frames_(0),
@@ -493,7 +493,7 @@ class InputSystem {
   double frame_time_;
 
   // Time since start, in seconds.
-  double last_time_;
+  double elapsed_time_;
 
   // World time at start, in seconds.
   uint64_t start_time_;
