@@ -73,11 +73,12 @@ void InputSystem::Initialize() {
   // Set callback to hear about lifecycle events on mobile devices.
   SDL_SetEventFilter(HandleAppEvents, this);
 
-  // Initialize time.
-  start_time_ = SDL_GetTicks();
-  // Ensure first frame doesn't get a crazy delta.
-  last_millis_ = start_time_ - 16;
   UpdateConnectedJoystickList();
+
+  // Initialize time.
+  start_time_ = SDL_GetPerformanceCounter();
+  time_freq_ = SDL_GetPerformanceFrequency();
+  last_time_ = -0.02f;    // Ensure first frame doesn't get a crazy delta.
 }
 
 void InputSystem::AddAppEventCallback(AppEventCallback callback) {
@@ -86,17 +87,43 @@ void InputSystem::AddAppEventCallback(AppEventCallback callback) {
 
 void InputSystem::AdvanceFrame(vec2i *window_size) {
   // Update timing.
-  int millis = SDL_GetTicks();
-  frame_time_ = millis - last_millis_;
-  last_millis_ = millis;
+  assert(time_freq_);
+  auto current = static_cast<double>(SDL_GetPerformanceCounter() - start_time_)
+               / static_cast<double>(time_freq_);
+  frame_time_ = current - last_time_;
+  last_time_ = current;
   frames_++;
 
 #ifdef LOG_FRAMERATE
-  // Simplistic frame delta output.
-  static float next_fps_update = 0;
-  if (Time() > next_fps_update) {
-    next_fps_update = ceilf(Time());
-    LogInfo(kApplication, "DeltaTime: %f", DeltaTime());
+  // Framerate statistics over the last N frames.
+  const int kNumDeltaTimes = 64;
+  static int cur_delta_idx = 0;
+  static double delta_times[kNumDeltaTimes];
+  delta_times[cur_delta_idx++] = DeltaTime();
+  if (cur_delta_idx == kNumDeltaTimes) {
+    cur_delta_idx = 0;
+    double sum_delta = 0, min_delta = 99999, max_delta = 0;
+    const int kMaxBins = 8;
+    int bins[kMaxBins] = { 0 };
+    for (int i = 0; i < kNumDeltaTimes; i++) {
+      sum_delta += delta_times[i];
+      min_delta = std::min(min_delta, delta_times[i]);
+      max_delta = std::max(max_delta, delta_times[i]);
+      // Closest "bin" to which frame it is.
+      auto bin = static_cast<int>((delta_times[i] + (1.0 / 120.0)) /
+                                  (1.0 / 60.0));
+      bins[std::max(1, std::min(bin, kMaxBins - 1))]++;
+    }
+    std::ostringstream os;
+    for (int i = 1; i < kMaxBins; i++) {
+      os << bins[i] << ";";
+    }
+    LogInfo(kApplication,
+            "DeltaTime (ms) avg: %.1f, max: %.1f, min: %.1f, bins: %s",
+            (sum_delta / kNumDeltaTimes * 1000),
+            max_delta * 1000,
+            min_delta * 1000,
+            os.str().c_str());
   }
 #endif
 
@@ -287,13 +314,12 @@ vec2 InputSystem::ConvertHatToVector(uint32_t hat_enum) const {
   }
 }
 
-float InputSystem::Time() const {
-  return (last_millis_ - start_time_) /
-         static_cast<float>(kMillisecondsPerSecond);
+double InputSystem::Time() const {
+  return (last_time_ - start_time_);
 }
 
-float InputSystem::DeltaTime() const {
-  return frame_time_ / static_cast<float>(kMillisecondsPerSecond);
+double InputSystem::DeltaTime() const {
+  return frame_time_;
 }
 
 Button &InputSystem::GetButton(int button) {

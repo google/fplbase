@@ -63,7 +63,7 @@ class Renderer {
   // Swaps frames. Call this once per frame inside your main loop.
   // The two arguments are typically the result of the InputManager's
   // minimized() and Time() (seconds since the start of the program).
-  void AdvanceFrame(bool minimized, float time);
+  void AdvanceFrame(bool minimized, double time);
 
   // Cleans up whatever Initialize creates.
   void ShutDown();
@@ -185,7 +185,7 @@ class Renderer {
 
   // Time in seconds since program start, as used by animated shaders,
   // updated once per frame only.
-  float time() const { return time_; }
+  double time() const { return time_; }
 
   // Get the supported OpenGL ES feature level;
   FeatureLevel feature_level() const { return feature_level_; }
@@ -203,7 +203,7 @@ class Renderer {
   vec3 camera_pos_;
   const mat4 *bone_transforms_;
   int num_bones_;
-  float time_;
+  double time_;
   vec2i window_size_;
 
   std::string last_error_;

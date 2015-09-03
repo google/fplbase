@@ -335,8 +335,9 @@ class InputSystem {
       : exit_requested_(false),
         minimized_(false),
         frame_time_(0),
-        last_millis_(0),
+        last_time_(0),
         start_time_(0),
+        time_freq_(0),
         frames_(0),
         minimized_frame_(0),
         mousewheel_delta_(mathfu::kZeros2i),
@@ -356,8 +357,8 @@ class InputSystem {
   void AdvanceFrame(vec2i *window_size);
 
   // Get time in second since the start of the game, or since the last frame.
-  float Time() const;
-  float DeltaTime() const;
+  double Time() const;
+  double DeltaTime() const;
 
   // Get a Button object describing the current input state (see SDLK_ enum
   // above.
@@ -488,14 +489,17 @@ class InputSystem {
   static CardboardInput cardboard_input_;
 #endif
 
-  // Most recent frame delta, in milliseconds.
-  int frame_time_;
+  // Most recent frame delta, in seconds.
+  double frame_time_;
 
-  // Time since start, in milliseconds.
-  int last_millis_;
+  // Time since start, in seconds.
+  double last_time_;
 
-  // World time at start, in milliseconds. Set with SDL_GetTicks().
-  int start_time_;
+  // World time at start, in seconds.
+  uint64_t start_time_;
+
+  // Timer frequency.
+  uint64_t time_freq_;
 
   // Number of frames so far. That is, number of times AdvanceFrame() has been
   // called.

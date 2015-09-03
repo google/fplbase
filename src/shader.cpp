@@ -87,7 +87,7 @@ void Shader::Set(const Renderer &renderer) const {
   if (uniform_camera_pos_ >= 0)
     GL_CALL(glUniform3fv(uniform_camera_pos_, 1, &renderer.camera_pos()[0]));
   if (uniform_time_ >= 0)
-    GL_CALL(glUniform1f(uniform_time_, renderer.time()));
+    GL_CALL(glUniform1f(uniform_time_, static_cast<float>(renderer.time())));
   if (uniform_bone_tranforms_ >= 0 && renderer.num_bones() > 0) {
     // TODO: change to matrix4x3 because affine transform has constant (0,0,0,1)
     //       in W component.

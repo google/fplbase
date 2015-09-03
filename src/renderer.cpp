@@ -172,7 +172,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   return true;
 }
 
-void Renderer::AdvanceFrame(bool minimized, float time) {
+void Renderer::AdvanceFrame(bool minimized, double time) {
   time_ = time;
   if (minimized) {
     // Save some cpu / battery:
