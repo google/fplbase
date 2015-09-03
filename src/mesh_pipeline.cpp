@@ -396,9 +396,11 @@ class FlatMesh {
       const Bone& b = bones_[j];
       std::string indent = RepeatCharacter(' ', 2 * b.depth);
 
-      // Output bone name and index, indented to match the depth in the hierarchy.
+      // Output bone name and index, indented to match the depth in the
+      // hierarchy.
+      const bool has_verts = BoneHasVertices(j);
       log_.Log(kLogImportant, "  %s%s (%d)%s\n", indent.c_str(), b.name.c_str(),
-               j, BoneHasVertices(j) ? "" : " -- no verts");
+               j, has_verts ? "" : " -- no verts");
 
       // Output local matrix transform too.
       const mat4& t = b.relative_transform;
@@ -409,12 +411,14 @@ class FlatMesh {
 
       // And the first point, in global space.
       // This should be the same in both hierarchical and flat outputs.
-      const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
-      const Vertex& first_vertex = points_[b.first_vertex_index];
-      const vec3 first_point = glob * vec3(first_vertex.vertex);
-      log_.Log(kLogInfo, "   %s  first-point (%.3f, %.3f, %.3f)\n",
-               indent.c_str(), first_point.x(), first_point.y(),
-               first_point.z());
+      if (has_verts) {
+        const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
+        const Vertex& first_vertex = points_[b.first_vertex_index];
+        const vec3 first_point = glob * vec3(first_vertex.vertex);
+        log_.Log(kLogInfo, "   %s  first-point (%.3f, %.3f, %.3f)\n",
+                 indent.c_str(), first_point.x(), first_point.y(),
+                 first_point.z());
+      }
     }
   }
 
