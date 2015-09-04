@@ -51,15 +51,12 @@ class Mesh {
   // Create one IBO to be part of this mesh. May be called more than once.
   void AddIndices(const unsigned short *indices, int count, Material *mat);
 
+  // If mesh is animated set the transform from a bone's parent space into
+  // the bone's local space. Optionally record the bone names, too, for
+  // debugging.
   void SetBones(const mathfu::mat4 *bone_transforms,
-                const uint8_t *bone_parents, size_t num_bones) {
-    bone_transforms_.resize(num_bones);
-    bone_parents_.resize(num_bones);
-    memcpy(&bone_transforms_[0], bone_transforms,
-           num_bones * sizeof(bone_transforms_[0]));
-    memcpy(&bone_parents_[0], bone_parents,
-           num_bones * sizeof(bone_parents_[0]));
-  }
+                const uint8_t *bone_parents, const char** bone_names,
+                size_t num_bones);
 
   // Render itself. Uniforms must have been set before calling this.
   // Use a value >1 for instances to get instanced rendering (this needs
@@ -208,6 +205,7 @@ class Mesh {
   mathfu::vec3 max_position_;
   std::vector<mathfu::mat4> bone_transforms_;
   std::vector<uint8_t> bone_parents_;
+  std::vector<std::string> bone_names_;
 };
 
 }  // namespace fpl

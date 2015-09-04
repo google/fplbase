@@ -204,12 +204,14 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       const size_t num_bones = meshdef->bone_parents()->Length();
       assert(meshdef->bone_transforms()->Length() == num_bones);
       std::vector<mat4> bone_transforms(num_bones);
+      std::vector<const char*> bone_names(num_bones);
       bone_transforms.clear();
       for (size_t i = 0; i < num_bones; ++i) {
         bone_transforms[i] = LoadAffineMat4(meshdef->bone_transforms()->Get(i));
+        bone_names[i] = meshdef->bone_names()->Get(i)->c_str();
       }
       const uint8_t* bone_parents = meshdef->bone_parents()->data();
-      mesh->SetBones(&bone_transforms[0], bone_parents, num_bones);
+      mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0], num_bones);
     }
 
     // Load indices an materials.
