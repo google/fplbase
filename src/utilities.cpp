@@ -491,4 +491,26 @@ void Delay(WorldTime /*time*/) {}
 #error Please define a backend implementation of a monotonic clock.
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
+bool GetStoragePath(const char *app_name, std::string *path_string) {
+#if defined(__ANDROID__)
+  auto path = SDL_AndroidGetInternalStoragePath();
+#else
+  auto path = SDL_GetPrefPath("FPLBase", app_name);
+#endif
+  if (path == nullptr) {
+    return false;
+  }
+  *path_string = path;
+  return true;
+}
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+bool GetStoragePath(const char *app_name, std::string *path_string) {
+  *path_string = "/";
+  return true;
+}
+#else
+#error Please define a backend implementation for SaveFile.
+#endif
+
 }  // namespace fpl

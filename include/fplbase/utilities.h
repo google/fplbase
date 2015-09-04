@@ -126,6 +126,8 @@ JNIEnv* AndroidGetJNIEnv();
 void SetAAssetManager(AAssetManager* manager);
 #endif
 
+// Retrieve a path where an app can store data files.
+bool GetStoragePath(const char *app_name, std::string *path);
 }  // namespace fpl
 
 #endif  // FPLBASE_UTILITIES_H
