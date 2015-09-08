@@ -57,6 +57,10 @@ enum LogCategory {
 };
 #endif
 
+#ifdef __ANDROID__
+typedef void (*VsyncCallback)(void);
+#endif
+
 typedef int32_t WorldTime;
 
 const int kMillisecondsPerSecond = 1000;
@@ -118,6 +122,13 @@ jobject AndroidGetActivity();
 // Returns a pointer to the Java native interface object (JNIEnv) of the
 // current thread on an Android application.
 JNIEnv* AndroidGetJNIEnv();
+
+// Register for handling vsync callbacks on android.  As with most callbacks,
+// this will normally be called on a separate thread, so you'll need to be
+// careful about thread-safety with anything you do during the callback.
+// Return value is whatever callback was previously registered.  (Or nullptr
+// if none.)
+VsyncCallback RegisterVsyncCallback(VsyncCallback callback);
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)

@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <stdarg.h>
+
 #if defined(__ANDROID__)
 #include <android/log.h>
 namespace {
@@ -511,5 +512,32 @@ bool GetStoragePath(const char *app_name, std::string *path_string) {
 #else
 #error Please define a backend implementation for SaveFile.
 #endif
+
+#ifdef __ANDROID__
+VsyncCallback g_vsync_callback = nullptr;
+
+VsyncCallback RegisterVsyncCallback(VsyncCallback callback) {
+  VsyncCallback old_callback = g_vsync_callback;
+  g_vsync_callback = callback;
+  return old_callback;
+}
+
+// Receive native vsync updates from the choreographer, and use them to
+// signal starting a frame update and render.
+// Note that this callback is signaled from another thread, and so
+// needs to be thread-safe.
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv* env,
+                                                        jobject thiz,
+                                                        jobject activity) {
+  (void)env;
+  (void)thiz;
+  (void)activity;
+  if (g_vsync_callback != nullptr) {
+    g_vsync_callback();
+  }
+}
+
+#endif  // __ANDROID__
 
 }  // namespace fpl

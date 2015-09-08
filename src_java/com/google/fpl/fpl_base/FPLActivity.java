@@ -32,6 +32,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Choreographer;
 import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -56,7 +57,8 @@ import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
 import org.libsdl.app.SDLActivity;
 
 public class FPLActivity extends SDLActivity implements
-    MagnetSensor.OnCardboardTriggerListener, NfcSensor.OnCardboardNfcListener {
+    MagnetSensor.OnCardboardTriggerListener, NfcSensor.OnCardboardNfcListener,
+    Choreographer.FrameCallback {
 
   private final String PROPERTY_ID = "XX-XXXXXXXX-X";
   private Tracker tracker = null;
@@ -93,6 +95,9 @@ public class FPLActivity extends SDLActivity implements
     if (tagContents != null) {
       updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
     }
+
+    // Start receiving vsync callbacks:
+    Choreographer.getInstance().postFrameCallback(this);
   }
 
   @Override
@@ -101,6 +106,7 @@ public class FPLActivity extends SDLActivity implements
     cardboardView.onResume();
     magnetSensor.start();
     nfcSensor.onResume(this);
+    Choreographer.getInstance().postFrameCallback(this);
   }
 
   @Override
@@ -109,6 +115,7 @@ public class FPLActivity extends SDLActivity implements
     cardboardView.onPause();
     magnetSensor.stop();
     nfcSensor.onPause(this);
+    Choreographer.getInstance().removeFrameCallback(this);
   }
 
   // GPG's GUIs need activity lifecycle events to function properly, but
@@ -118,7 +125,6 @@ public class FPLActivity extends SDLActivity implements
     super.onActivityResult(requestCode, resultCode, data);
     nativeOnActivityResult(this, requestCode, resultCode, data);
   }
-
   boolean textDialogOpen = false;
   int queryResponse = -1;
 
@@ -235,7 +241,6 @@ public class FPLActivity extends SDLActivity implements
       }
     }
   }
-
 
   // Capture motionevents and keyevents to check for gamepad movement.  Any events we catch
   // (That look like they were from a gamepad or joystick) get sent to C++ via JNI, where
@@ -421,6 +426,16 @@ public class FPLActivity extends SDLActivity implements
       Log.e("SDL", "exception", e);
     }
   }
+
+  public void doFrame(long frameTimeNanos) {
+    // Respond to event:
+    nativeOnVsync();
+    // Renew our callback:
+    Choreographer.getInstance().postFrameCallback(this);
+  }
+
+  // Implemented in C++. (utilities.cpp)
+  private static native void nativeOnVsync();
 
   // Implemented in C++. (gpg_manager.cpp)
   private static native void nativeOnActivityResult(
