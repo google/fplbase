@@ -183,14 +183,9 @@ void Renderer::AdvanceFrame(bool minimized, double time) {
   // Get window size again, just in case it has changed.
   SDL_GetWindowSize(static_cast<SDL_Window *>(window_), &window_size_.x(),
                     &window_size_.y());
-# ifdef __ANDROID__
-    // Check HW scaler setting and change a viewport size if they are set
-    vec2i size = AndroidGetScalerResolution();
-    const vec2i viewport_size = size.x() && size.y() ? size : window_size_;
-    GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
-# else
-    GL_CALL(glViewport(0, 0, window_size_.x(), window_size_.y()));
-# endif
+
+  auto viewport_size = GetViewportSize();
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
   DepthTest(true);
 }
 
@@ -573,9 +568,27 @@ void Renderer::SetCulling(CullingMode mode) {
   }
 }
 
+vec2i Renderer::GetViewportSize() {
+# ifdef __ANDROID__
+  // Check HW scaler setting and change a viewport size if they are set
+  vec2i scaled_size = AndroidGetScalerResolution();
+  vec2i viewport_size = scaled_size.x() && scaled_size.y() ?
+  scaled_size : window_size_;
+  return viewport_size;
+# else
+  return window_size_;
+# endif
+}
+
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   glEnable(GL_SCISSOR_TEST);
-  glScissor(pos.x(), pos.y(), size.x(), size.y());
+  auto viewport_size = GetViewportSize();
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+
+  auto scaling_ratio = vec2(viewport_size) / vec2(window_size_);
+  auto scaled_pos = vec2(pos) * scaling_ratio;
+  auto scaled_size = vec2(size) * scaling_ratio;
+  glScissor(scaled_pos.x(), scaled_pos.y(), scaled_size.x(), scaled_size.y());
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }

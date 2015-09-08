@@ -193,6 +193,7 @@ class Renderer {
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                               const char *source);
+  vec2i GetViewportSize();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.
