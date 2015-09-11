@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "precompiled.h"
 #include "fplbase/utilities.h"
 
@@ -506,6 +504,7 @@ bool GetStoragePath(const char *app_name, std::string *path_string) {
 }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 bool GetStoragePath(const char *app_name, std::string *path_string) {
+  (void)app_name;
   *path_string = "/";
   return true;
 }

@@ -588,7 +588,10 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   auto scaling_ratio = vec2(viewport_size) / vec2(window_size_);
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
-  glScissor(scaled_pos.x(), scaled_pos.y(), scaled_size.x(), scaled_size.y());
+  glScissor(
+      static_cast<GLint>(scaled_pos.x()), static_cast<GLint>(scaled_pos.y()),
+	    static_cast<GLsizei>(scaled_size.x()),
+	    static_cast<GLsizei>(scaled_size.y()));
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }

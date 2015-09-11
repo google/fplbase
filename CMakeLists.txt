@@ -222,7 +222,9 @@ endif()
 # Compiler flags.
 set(C_FLAGS_WARNINGS "")
 if(MSVC)
-  set(C_FLAGS_WARNINGS "/W4 /WX")
+  # C4127: conditional expression is constant
+  set(C_FLAGS_WARNINGS "/W4 /WX /wd4127")
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
        CMAKE_COMPILER_IS_CLANGXX)
   add_definitions(-g)
@@ -274,11 +276,39 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
       ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_SYSTEM_NAME})
 
-  # Search for the FBX library. Prefer the static library '.a' over the shared
-  # library '.so'.
-  find_library(fbx_sdk_lib NAMES libfbxsdk.a fbxsdk
-               PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
-                     ${fbx_sdk_dir}/lib/clang/release)
+  # Search for the FBX library.
+  # Visual Studio 64 bit option can be specified with
+  # `cmake -G "Visual Studio 11 Win64"`
+  if(CMAKE_CL_64)
+    set(fbs_sdk_subdir "x64")
+  else()
+    set(fbs_sdk_subdir "x86")
+  endif()
+
+  # Prefer the static library '.a' over the sharedlibrary '.so'.
+  find_library(fbx_sdk_lib_release
+    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
+    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
+          ${fbx_sdk_dir}/lib/clang/release
+          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/release)
+
+  find_library(fbx_sdk_lib_debug
+    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
+    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/debug
+          ${fbx_sdk_dir}/lib/clang/debug
+          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/debug)
+
+  set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
+
+  # Linux and Mac require these libs too.
+  if(NOT MSVC)
+    set(fbx_sdk_extra_libs "pthread dl")
+  endif()
+
+  # Suppress deprecation of fopen.
+  if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  endif()
 
   # We use file_util.h from fplutil.
   set(fplutil_build_tests OFF)
@@ -313,7 +343,10 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
 
   # Link the executable with the FBX SDK and the static libraries that the
   # FBX SDK needs.
-  target_link_libraries(mesh_pipeline ${fbx_sdk_lib} pthread dl fplutil)
+  target_link_libraries(mesh_pipeline
+      ${fbx_sdk_lib}
+      ${fbx_sdk_extra_libs}
+      fplutil)
 
   # Additional flags for the target.
   fplbase_common_config(mesh_pipeline)

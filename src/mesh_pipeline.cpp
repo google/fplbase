@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // Suppress warnings in external header.
+#pragma warning(push)            // for Visual Studio
+#pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -21,6 +23,7 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include <fbxsdk.h>
 #pragma GCC diagnostic pop
+#pragma warning(pop)
 
 #include <assert.h>
 #include <cfloat>
@@ -423,6 +426,7 @@ class FlatMesh {
   }
 
  private:
+  FPL_DISALLOW_COPY_AND_ASSIGN(FlatMesh);
   typedef uint16_t IndexBufIndex;
   typedef std::vector<IndexBufIndex> IndexBuffer;
 
@@ -897,6 +901,8 @@ class FbxMeshParser {
   }
 
  private:
+  FPL_DISALLOW_COPY_AND_ASSIGN(FbxMeshParser);
+
   // For debugging. Output details of the the node transforms.
   void LogNodes(const char* header) const {
     log_.Log(kLogVerbose, "--------------------\n%s\n", header);

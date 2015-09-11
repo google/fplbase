@@ -30,7 +30,7 @@ if(webp_build_cwebp OR webp_build_dwebp)
     set(WEBP_HAVE_PNG 1)
   endif()
   find_package(JPEG)
-  if(JPEG_FOUND) 
+  if(JPEG_FOUND)
     set(WEBP_HAVE_JPEG 1)
   endif()
   find_package(TIFF)
@@ -41,12 +41,19 @@ if(webp_build_cwebp OR webp_build_dwebp)
   if(GIF_FOUND)
     set(WEBP_HAVE_GIF 1)
   endif()
-  
+
   check_include_files(wincodec.h shlwapi.h windows.h WEBP_HAVE_WIC)
   configure_file(${CMAKE_CURRENT_LIST_DIR}/config.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)  
+    ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)
 endif()
 
+# Suppress warnings on Visual Studio
+if(MSVC)
+  set(C_FLAGS_WARNINGS "/wd4820 /wd4244 /wd4242 /wd4711 /wd4668 /wd4255 /wd4057 /wd4127 /wd4738 /wd4204 /wd4221")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
 
 # Webp source files.
 set(webp_SRCS
@@ -240,6 +247,6 @@ if(webp_build_cwebp)
       ${webp_dir}/examples/webpdec.c
       ${webp_dir}/examples/webpdec.h
       ${webp_dir}/examples/wicdec.c
-      ${webp_dir}/examples/wicdec.h)    
+      ${webp_dir}/examples/wicdec.h)
   add_example_executable(cwebp ${cwebp_SRCS})
 endif()
