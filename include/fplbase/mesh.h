@@ -179,6 +179,9 @@ class Mesh {
   const mathfu::vec3 &min_position() const { return min_position_; }
   const mathfu::vec3 &max_position() const { return max_position_; }
   const mathfu::mat4 *bone_transforms() const { return &bone_transforms_[0]; }
+  const mathfu::mat4 *bone_global_transforms() const {
+    return &bone_global_transforms_[0];
+  }
   const uint8_t *bone_parents() const { return &bone_parents_[0]; }
   size_t num_bones() const { return bone_transforms_.size(); }
 
@@ -204,6 +207,7 @@ class Mesh {
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
   std::vector<mathfu::mat4> bone_transforms_;
+  std::vector<mathfu::mat4> bone_global_transforms_;
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
 };

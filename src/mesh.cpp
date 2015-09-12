@@ -201,6 +201,21 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
       bone_names_[i] = bone_names[i];
     }
   }
+
+  // Record the global version of the transforms, so we can still display
+  // the mesh, even if it's not animated.
+  static const uint8_t kInvalidBoneIdx = 0xFF;
+  bone_global_transforms_.resize(num_bones);
+  for (int i = 0; i < num_bones; ++i) {
+    const int parent_idx = bone_parents[i];
+    if (parent_idx == kInvalidBoneIdx) {
+      bone_global_transforms_[i] = bone_transforms[i];
+    } else {
+      assert(i > parent_idx);
+      bone_global_transforms_[i] = bone_global_transforms_[parent_idx] *
+                                   bone_transforms[i];
+    }
+  }
 }
 
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
