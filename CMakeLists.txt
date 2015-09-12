@@ -302,7 +302,7 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
 
   # Linux and Mac require these libs too.
   if(NOT MSVC)
-    set(fbx_sdk_extra_libs "pthread dl")
+    set(fbx_sdk_extra_libs pthread dl)
   endif()
 
   # Suppress deprecation of fopen.
@@ -344,9 +344,9 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   # Link the executable with the FBX SDK and the static libraries that the
   # FBX SDK needs.
   target_link_libraries(mesh_pipeline
-      ${fbx_sdk_lib}
-      ${fbx_sdk_extra_libs}
-      fplutil)
+                        ${fbx_sdk_lib}
+                        ${fbx_sdk_extra_libs}
+                        fplutil)
 
   # Additional flags for the target.
   fplbase_common_config(mesh_pipeline)
