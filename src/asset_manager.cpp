@@ -161,7 +161,8 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
     const bool skin = meshdef->skin_indices() && meshdef->skin_weights() &&
-                      meshdef->bone_transforms() && meshdef->bone_parents();
+                      meshdef->bone_transforms() && meshdef->bone_parents() &&
+                      meshdef->shader_to_mesh_bones();
     // Collect what attributes are available.
     std::vector<Attribute> attrs;
     attrs.push_back(kPosition3f);
@@ -211,7 +212,9 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
         bone_names[i] = meshdef->bone_names()->Get(i)->c_str();
       }
       const uint8_t* bone_parents = meshdef->bone_parents()->data();
-      mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0], num_bones);
+      mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0],
+                     num_bones, meshdef->shader_to_mesh_bones()->Data(),
+                     meshdef->shader_to_mesh_bones()->Length());
     }
 
     // Load indices an materials.

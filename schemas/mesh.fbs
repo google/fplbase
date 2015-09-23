@@ -38,6 +38,10 @@ table Mesh {
   bone_names:[string];          // For debugging.
   bone_transforms:[fpl.Mat3x4]; // Local transform from parent to bone's pivot.
   bone_parents:[ubyte];         // Animation data must have the same hierarchy.
+  shader_to_mesh_bones:[ubyte]; // Maps to the mesh bone index to the shader
+                                // bone index. The mesh bones are all the bones.
+                                // The shader bones are the subset of bones that
+                                // have at least one vertex weighted to them.
 }
 
 root_type Mesh;

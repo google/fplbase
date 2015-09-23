@@ -184,14 +184,19 @@ void Mesh::AddIndices(const unsigned short *index_data, int count,
 }
 
 void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
-                    const uint8_t *bone_parents, const char** bone_names,
-                    size_t num_bones) {
+                    const uint8_t *bone_parents, const char **bone_names,
+                    size_t num_bones, const uint8_t *shader_bone_indices,
+                    size_t num_shader_bones) {
   bone_transforms_.resize(num_bones);
   bone_parents_.resize(num_bones);
+  shader_bone_indices_.resize(num_shader_bones);
+
   memcpy(&bone_transforms_[0], bone_transforms,
          num_bones * sizeof(bone_transforms_[0]));
   memcpy(&bone_parents_[0], bone_parents,
          num_bones * sizeof(bone_parents_[0]));
+  memcpy(&shader_bone_indices_[0], shader_bone_indices,
+         num_shader_bones * sizeof(shader_bone_indices_[0]));
 
   // Record the bone names if they're present. They're only for debugging,
   // so they're optional.
@@ -308,6 +313,13 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
       max.x(), max.y(), z, 1.0f,           1.0f, };
   Mesh::RenderArray(kTriangles, 6 * 9, format, sizeof(float) * 5,
                     reinterpret_cast<const char *>(vertices), indices);
+}
+
+void Mesh::GatherShaderTransforms(const mat4 *bone_transforms,
+                                  mat4 *shader_transforms) const {
+  for (size_t i = 0; i < shader_bone_indices_.size(); ++i) {
+    shader_transforms[i] = bone_transforms[shader_bone_indices_[i]];
+  }
 }
 
 }  // namespace fpl

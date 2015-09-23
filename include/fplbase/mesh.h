@@ -54,9 +54,21 @@ class Mesh {
   // If mesh is animated set the transform from a bone's parent space into
   // the bone's local space. Optionally record the bone names, too, for
   // debugging.
+  // The shader only accesses a bone if at least one vertex is weighted to it.
+  // So, we don't have to pass every bone transform up to the shader. Instead,
+  // we compact the bone transforms by passing only those in
+  // shader_bone_indices.
   void SetBones(const mathfu::mat4 *bone_transforms,
-                const uint8_t *bone_parents, const char** bone_names,
-                size_t num_bones);
+                const uint8_t *bone_parents, const char **bone_names,
+                size_t num_bones, const uint8_t *shader_bone_indices,
+                size_t num_shader_bones);
+
+  // Compact bone transforms to eliminate the bones that have no verts
+  // weighted to them.
+  // `bone_transforms` is an input array of length num_bones().
+  // `shader_transforms` is an output array of length num_shder_bones().
+  void GatherShaderTransforms(const mat4 *bone_transforms,
+                              mat4 *shader_transforms) const;
 
   // Render itself. Uniforms must have been set before calling this.
   // Use a value >1 for instances to get instanced rendering (this needs
@@ -184,6 +196,10 @@ class Mesh {
   }
   const uint8_t *bone_parents() const { return &bone_parents_[0]; }
   size_t num_bones() const { return bone_transforms_.size(); }
+  const uint8_t *shader_bone_indices() const {
+    return &shader_bone_indices_[0];
+  }
+  size_t num_shader_bones() const { return shader_bone_indices_.size(); }
 
  private:
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
@@ -210,6 +226,7 @@ class Mesh {
   std::vector<mathfu::mat4> bone_global_transforms_;
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
+  std::vector<uint8_t> shader_bone_indices_;
 };
 
 }  // namespace fpl

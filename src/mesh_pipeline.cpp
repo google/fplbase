@@ -52,8 +52,15 @@ using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
 
+typedef uint8_t BoneIndex;
+
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
+static const BoneIndex kInvalidBoneIdx = 0xFF;
+
+// We use uint8_t for bone indices, and 0xFF marks invalid bones,
+// so the limit is 254.
+static const BoneIndex kMaxBoneIndex = 0xFE;
 
 // Defines the order in which textures are assigned shader indices.
 // Shader indices are assigned, starting from 0, as textures are found.
@@ -264,9 +271,9 @@ class FlatMesh {
 
   void AppendBone(const char* bone_name, const mat4& relative_transform,
                   int depth) {
-    // We use uint8_t for bone indices, so the limit is 256.
-    if (bones_.size() >= 256) {
-      log_.Log(kLogError, "256 bone limit exceeded.\n");
+    // Bone count is limited by data size.
+    if (bones_.size() >= kMaxBoneIndex) {
+      log_.Log(kLogError, "%d bone limit exceeded.\n", kMaxBoneIndex);
       return;
     }
 
@@ -394,6 +401,10 @@ class FlatMesh {
   }
 
   void LogBones() const {
+    std::vector<BoneIndex> mesh_to_shader_bones;
+    std::vector<BoneIndex> shader_to_mesh_bones;
+    CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
+
     log_.Log(kLogImportant, "Mesh hierarchy (bone index):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
@@ -401,9 +412,13 @@ class FlatMesh {
 
       // Output bone name and index, indented to match the depth in the
       // hierarchy.
-      const bool has_verts = BoneHasVertices(j);
-      log_.Log(kLogImportant, "  %s%s (%d)%s\n", indent.c_str(), b.name.c_str(),
-               j, has_verts ? "" : " -- no verts");
+      const BoneIndex shader_bone = mesh_to_shader_bones[j];
+      const bool has_verts = shader_bone != kInvalidBoneIdx;
+      log_.Log(kLogImportant, "  %s[%d] %s", indent.c_str(), j, b.name.c_str());
+      if (has_verts) {
+        log_.Log(kLogImportant, " (shader bone %d)", shader_bone);
+      }
+      log_.Log(kLogImportant, "\n");
 
       // Output local matrix transform too.
       const mat4& t = b.relative_transform;
@@ -436,14 +451,14 @@ class FlatMesh {
     vec4_packed tangent; // 4th element is handedness: +1 or -1
     vec2_packed uv;
     Vec4ub color;
-    uint8_t bone;
+    BoneIndex bone;
     Vertex() : color(0, 0, 0, 0) {
       // The Hash function operates on all the memory, so ensure everything is
       // zero'd out.
       memset(this, 0, sizeof(*this));
     }
     Vertex(const vec3& v, const vec3& n, const vec4& t, const vec4& c,
-           const vec2& u, uint8_t bone)
+           const vec2& u, BoneIndex bone)
         : vertex(v),
           normal(n),
           tangent(t),
@@ -615,6 +630,12 @@ class FlatMesh {
     log_.Log(kLogImportant, "Mesh:\n  %s has %d verts\n",
              rel_mesh_file_name.c_str(), points_.size());
 
+    // Get the mapping from mesh bones (i.e. all bones in the model)
+    // to shader bones (i.e. bones that have verts weighted to them).
+    std::vector<BoneIndex> mesh_to_shader_bones;
+    std::vector<BoneIndex> shader_to_mesh_bones;
+    CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
+
     // Output the surfaces.
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
@@ -655,19 +676,21 @@ class FlatMesh {
     skin_weights.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
       const Vertex& p = *it;
+      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
       vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
       normals.push_back(FlatBufferVec3(vec3(p.normal)));
       tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
       colors.push_back(p.color);
       uvs.push_back(FlatBufferVec2(vec2(p.uv)));
-      skin_indices.push_back(Vec4ub(p.bone, 0, 0, 0));
+      skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
       skin_weights.push_back(Vec4ub(1, 0, 0, 0));
     }
 
-    // Output the bone names, too, for debugging.
+    // Output the bone transforms, for skinning, and the bone names,
+    // for debugging.
     std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
     std::vector<Mat3x4> bone_transforms;
-    std::vector<uint8_t> bone_parents;
+    std::vector<BoneIndex> bone_parents;
     bone_names.reserve(bones_.size());
     bone_transforms.reserve(bones_.size());
     bone_parents.reserve(bones_.size());
@@ -675,7 +698,7 @@ class FlatMesh {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
       bone_transforms.push_back(FlatBufferMat3x4(bone.relative_transform));
-      bone_parents.push_back(static_cast<uint8_t>(BoneParent(i)));
+      bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
     }
 
     // Then create a FlatBuffer vector for each array.
@@ -692,10 +715,12 @@ class FlatMesh {
     auto bone_names_fb = fbb.CreateVector(bone_names);
     auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
     auto bone_parents_fb = fbb.CreateVector(bone_parents);
+    auto shader_to_mesh_bones_fb = fbb.CreateVector(shader_to_mesh_bones);
     auto mesh_fb = meshdef::CreateMesh(
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
         uvs_fb, skin ? skin_indices_fb : 0, skin ? skin_weights_fb : 0, &max_fb,
-        &min_fb, bone_names_fb, bone_transforms_fb, bone_parents_fb);
+        &min_fb, bone_names_fb, bone_transforms_fb, bone_parents_fb,
+        shader_to_mesh_bones_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     log_.Log(kLogImportant, "Skin: %s\n", skin ? "yes" : "no");
@@ -737,6 +762,27 @@ class FlatMesh {
         bone_idx + 1 == bones_.size() ? points_.size()
                                       : bones_[bone_idx + 1].first_vertex_index;
     return end_vertex_index - bones_[bone_idx].first_vertex_index > 0;
+  }
+
+  void CalculateBoneIndexMaps(
+      std::vector<BoneIndex>* mesh_to_shader_bones,
+      std::vector<BoneIndex>* shader_to_mesh_bones) const {
+    mesh_to_shader_bones->clear();
+    shader_to_mesh_bones->clear();
+
+    // Only bones that have vertices weighte to them are uploaded to the
+    // shader.
+    BoneIndex shader_bone = 0;
+    mesh_to_shader_bones->reserve(bones_.size());
+    for (BoneIndex mesh_bone = 0; mesh_bone < bones_.size(); ++mesh_bone) {
+      if (BoneHasVertices(mesh_bone)) {
+        mesh_to_shader_bones->push_back(shader_bone);
+        shader_to_mesh_bones->push_back(mesh_bone);
+        shader_bone++;
+      } else {
+        mesh_to_shader_bones->push_back(kInvalidBoneIdx);
+      }
+    }
   }
 
   SurfaceMap surfaces_;
