@@ -190,6 +190,15 @@ class Renderer {
   // Get the supported OpenGL ES feature level;
   FeatureLevel feature_level() const { return feature_level_; }
 
+  // Set this to override the blend used for all draw calls (after calling
+  // SetBlendMode for it).
+  BlendMode &force_blend_mode() { return force_blend_mode_; };
+  BlendMode force_blend_mode() const { return force_blend_mode_; };
+
+  // Set this force any shader that gets loaded to use this pixel shader
+  // instead (for debugging purposes).
+  std::string &override_pixel_shader() { return override_pixel_shader_; }
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                               const char *source);
@@ -219,6 +228,10 @@ class Renderer {
   FeatureLevel feature_level_;
 
   bool use_16bpp_;
+
+  Shader *force_shader_;
+  BlendMode force_blend_mode_;
+  std::string override_pixel_shader_;
 };
 
 }  // namespace fpl
