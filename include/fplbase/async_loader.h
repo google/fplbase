@@ -38,7 +38,8 @@ class AsyncLoader;
 // Any resources that can be loaded async should inherit from this.
 class AsyncResource {
  public:
-  AsyncResource(const std::string &filename)
+  AsyncResource() : data_(nullptr) {}
+  explicit AsyncResource(const std::string &filename)
       : filename_(filename), data_(nullptr) {}
   virtual ~AsyncResource() {}
 
@@ -52,6 +53,10 @@ class AsyncResource {
   // This should implement the behavior of turning data_ into the actual
   // desired resource. Called on the main thread only.
   virtual void Finalize() = 0;
+
+  // Set the the filename in situations where it can't be initialized in
+  // the constructor. Must be called before AsyncLoader::QueueJob().
+  void set_filename(const std::string &filename) { filename_ = filename; }
 
   const std::string &filename() const { return filename_; }
 
