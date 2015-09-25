@@ -32,6 +32,7 @@ enum BlendMode {
   kBlendModeOff,
   kBlendModeTest,
   kBlendModeAlpha,
+  kBlendModeAdd,
 
   kBlendModeCount  // Must be at end.
 };

@@ -35,7 +35,8 @@ Renderer::Renderer()
       num_bones_(0),
       window_(nullptr),
       context_(nullptr),
-      feature_level_(kFeatureLevel20) {}
+      feature_level_(kFeatureLevel20),
+      force_blend_mode_(kBlendModeCount) {}
 
 Renderer::~Renderer() { ShutDown(); }
 
@@ -231,6 +232,8 @@ void Renderer::ClearDepthBuffer() {
 
 GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
+  if (!is_vertex_shader && override_pixel_shader_.length())
+    source = override_pixel_shader_.c_str();
   GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
   std::string platform_source =
 # ifdef PLATFORM_MOBILE
@@ -506,6 +509,8 @@ void Renderer::DepthTest(bool on) {
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   if (blend_mode == blend_mode_) return;
 
+  if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
+
   // Disable current blend mode.
   switch (blend_mode_) {
     case kBlendModeOff:
@@ -516,6 +521,7 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
         break;
 #     endif
     case kBlendModeAlpha:
+    case kBlendModeAdd:
       GL_CALL(glDisable(GL_BLEND));
       break;
     default:
@@ -536,6 +542,10 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeAlpha:
       GL_CALL(glEnable(GL_BLEND));
       GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+      break;
+   case kBlendModeAdd:
+      GL_CALL(glEnable(GL_BLEND));
+      GL_CALL(glBlendFunc(GL_ONE, GL_ONE));
       break;
     default:
       assert(false);  // Not yet implemented
@@ -590,8 +600,8 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   auto scaled_size = vec2(size) * scaling_ratio;
   glScissor(
       static_cast<GLint>(scaled_pos.x()), static_cast<GLint>(scaled_pos.y()),
-	    static_cast<GLsizei>(scaled_size.x()),
-	    static_cast<GLsizei>(scaled_size.y()));
+      static_cast<GLsizei>(scaled_size.x()),
+      static_cast<GLsizei>(scaled_size.y()));
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }

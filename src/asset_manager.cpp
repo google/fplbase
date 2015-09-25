@@ -22,13 +22,13 @@
 
 namespace fpl {
 
-static_assert(kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
-                  kBlendModeTest ==
-                      static_cast<BlendMode>(matdef::BlendMode_TEST) &&
-                  kBlendModeAlpha ==
-                      static_cast<BlendMode>(matdef::BlendMode_ALPHA),
+static_assert(
+    kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
+    kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
+    kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
+    kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD),
               "BlendMode enums in renderer.h and material.fbs must match.");
-static_assert(kBlendModeCount == kBlendModeAlpha + 1,
+static_assert(kBlendModeCount == kBlendModeAdd + 1,
               "Please update static_assert above with new enum values.");
 
 template <typename T>
