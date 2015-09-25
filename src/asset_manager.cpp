@@ -206,7 +206,6 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       assert(meshdef->bone_transforms()->Length() == num_bones);
       std::vector<mat4> bone_transforms(num_bones);
       std::vector<const char*> bone_names(num_bones);
-      bone_transforms.clear();
       for (size_t i = 0; i < num_bones; ++i) {
         bone_transforms[i] = LoadAffineMat4(meshdef->bone_transforms()->Get(i));
         bone_names[i] = meshdef->bone_names()->Get(i)->c_str();

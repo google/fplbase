@@ -106,7 +106,6 @@ bool AsyncLoader::TryFinalize() {
     auto res = LockReturn<AsyncResource *>(
         [this]() { return done_.empty() ? nullptr : done_[0]; });
     if (!res) break;
-    LogInfo(kApplication, "finalize: %s", res->filename_.c_str());
     res->Finalize();
     Lock([this]() { done_.erase(done_.begin()); });
   }
