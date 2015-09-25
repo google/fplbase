@@ -39,7 +39,7 @@ class BookendAsyncResource : public AsyncResource {
 // static
 std::string BookendAsyncResource::kBookendFileName = "bookend";
 
-AsyncLoader::AsyncLoader() {
+AsyncLoader::AsyncLoader() : worker_thread_(nullptr) {
   mutex_ = SDL_CreateMutex();
   job_semaphore_ = SDL_CreateSemaphore(0);
   assert(mutex_ && job_semaphore_);

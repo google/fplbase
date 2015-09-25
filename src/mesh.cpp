@@ -211,8 +211,8 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
   // the mesh, even if it's not animated.
   static const uint8_t kInvalidBoneIdx = 0xFF;
   bone_global_transforms_.resize(num_bones);
-  for (int i = 0; i < num_bones; ++i) {
-    const int parent_idx = bone_parents[i];
+  for (size_t i = 0; i < num_bones; ++i) {
+    const size_t parent_idx = bone_parents[i];
     if (parent_idx == kInvalidBoneIdx) {
       bone_global_transforms_[i] = bone_transforms[i];
     } else {

@@ -262,12 +262,15 @@ class FlatTextureHash {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(Logger& log)
-      : cur_index_buf_(nullptr),
+  explicit FlatMesh(int max_verts, Logger& log)
+      : points_(max_verts),
+        cur_index_buf_(nullptr),
         export_vertex_color_(false),
         max_position_(-FLT_MAX),
         min_position_(FLT_MAX),
-        log_(log) {}
+        log_(log) {
+    points_.clear();
+  }
 
   void AppendBone(const char* bone_name, const mat4& relative_transform,
                   int depth) {
@@ -312,6 +315,11 @@ class FlatMesh {
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
                       const vec4& tangent, const vec4& color, const vec2& uv) {
+    // The `unique_` map holds pointers into `points_`, so we cannot realloc
+    // `points_`. Instead, we reserve enough memory for an upper bound on
+    // its size. If this assert hits, NumVertsUpperBound() is incorrect.
+    assert(points_.capacity() > points_.size());
+
     // TODO: Round values before creating.
     points_.push_back(Vertex(vertex, normal, tangent, color, uv,
                              static_cast<uint8_t>(bones_.size() - 1)));
@@ -939,6 +947,14 @@ class FbxMeshParser {
     return true;
   }
 
+  // Return an upper bound on the number of vertices in the scene.
+  int NumVertsUpperBound() const {
+    // The scene's been triangulated, so there are three verts per poly.
+    // Many of those verts may be duplicates, but we're only looking for an
+    // upper bound.
+    return 3 * NumPolysRecursive(scene_->GetRootNode());
+  }
+
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
     // Traverse the scene and output one surface per mesh.
@@ -1085,6 +1101,28 @@ class FbxMeshParser {
     for (int i = 0; i < node->GetChildCount(); i++) {
       ConvertGeometryRecursive(node->GetChild(i));
     }
+  }
+
+  // Return the total number of polygons under `node`.
+  int NumPolysRecursive(FbxNode* node) const {
+    if (node == nullptr) return 0;
+
+    // Sum the number of polygons across all meshes on this node.
+    int num_polys = 0;
+    for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
+      const FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
+      if (attr == nullptr ||
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh)
+        continue;
+      const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
+      num_polys += mesh->GetPolygonCount();
+    }
+
+    // Recursively traverse each node in the scene
+    for (int i = 0; i < node->GetChildCount(); i++) {
+      num_polys += NumPolysRecursive(node->GetChild(i));
+    }
+    return num_polys;
   }
 
   // Get the UVs for a mesh.
@@ -1705,7 +1743,8 @@ int main(int argc, char** argv) {
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.
-  FlatMesh mesh(log);
+  const int max_verts = pipe.NumVertsUpperBound();
+  FlatMesh mesh(max_verts, log);
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
