@@ -126,7 +126,9 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
 
 Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
-    : vertex_size_(vertex_size) {
+    : vertex_size_(vertex_size),
+      bone_transforms_(nullptr),
+      bone_global_transforms_(nullptr) {
   set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
@@ -157,6 +159,12 @@ Mesh::~Mesh() {
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     GL_CALL(glDeleteBuffers(1, &it->ibo));
   }
+
+  delete[] bone_transforms_;
+  bone_transforms_ = nullptr;
+
+  delete[] bone_global_transforms_;
+  bone_global_transforms_ = nullptr;
 }
 
 void Mesh::set_format(const Attribute *format) {
@@ -187,7 +195,8 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
                     const uint8_t *bone_parents, const char **bone_names,
                     size_t num_bones, const uint8_t *shader_bone_indices,
                     size_t num_shader_bones) {
-  bone_transforms_.resize(num_bones);
+  delete[] bone_transforms_;
+  bone_transforms_ = new mathfu::mat4[num_bones];
   bone_parents_.resize(num_bones);
   shader_bone_indices_.resize(num_shader_bones);
 
@@ -210,7 +219,8 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
   // Record the global version of the transforms, so we can still display
   // the mesh, even if it's not animated.
   static const uint8_t kInvalidBoneIdx = 0xFF;
-  bone_global_transforms_.resize(num_bones);
+  delete[] bone_global_transforms_;
+  bone_global_transforms_ = new mathfu::mat4[num_bones];
   for (size_t i = 0; i < num_bones; ++i) {
     const size_t parent_idx = bone_parents[i];
     if (parent_idx == kInvalidBoneIdx) {

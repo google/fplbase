@@ -190,18 +190,24 @@ class Mesh {
 
   const mathfu::vec3 &min_position() const { return min_position_; }
   const mathfu::vec3 &max_position() const { return max_position_; }
-  const mathfu::mat4 *bone_transforms() const { return &bone_transforms_[0]; }
+  const mathfu::mat4 *bone_transforms() const { return bone_transforms_; }
   const mathfu::mat4 *bone_global_transforms() const {
-    return &bone_global_transforms_[0];
+    return bone_global_transforms_;
   }
   const uint8_t *bone_parents() const { return &bone_parents_[0]; }
-  size_t num_bones() const { return bone_transforms_.size(); }
+  size_t num_bones() const { return bone_parents_.size(); }
   const uint8_t *shader_bone_indices() const {
     return &shader_bone_indices_[0];
   }
   size_t num_shader_bones() const { return shader_bone_indices_.size(); }
 
  private:
+  // Disallow copies because of pointers bone_transforms_ and
+  // bone_global_transforms_. Feel free to implement copy or move operators
+  // if required.
+  Mesh(const Mesh&);
+  Mesh& operator=(const Mesh&);
+
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
   // this header to depend on OpenGL.
   typedef unsigned int BufferHandle;
@@ -222,8 +228,12 @@ class Mesh {
   BufferHandle vbo_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
-  std::vector<mathfu::mat4> bone_transforms_;
-  std::vector<mathfu::mat4> bone_global_transforms_;
+
+  // Bone arrays are of length NumBones().
+  // Note that vector<mat4> is not possible on Visual Studio 2010 because
+  // it doesn't support vectors of aligned types.
+  mathfu::mat4* bone_transforms_;
+  mathfu::mat4* bone_global_transforms_;
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;

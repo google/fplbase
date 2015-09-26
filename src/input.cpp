@@ -159,9 +159,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       case SDL_KEYUP: {
         GetButton(event.key.keysym.sym).Update(event.key.state == SDL_PRESSED);
         if (record_text_input_) {
-          text_input_events_.emplace_back(
+          text_input_events_.push_back(TextInputEvent(
               kTextInputEventTypeKey, event.key.state, (event.key.repeat != 0),
-              event.key.keysym.sym, event.key.keysym.mod);
+              event.key.keysym.sym, event.key.keysym.mod));
         }
         break;
       }
@@ -233,15 +233,15 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       case SDL_TEXTEDITING:
         if (record_text_input_) {
           TextInputEvent edit(kTextInputEventTypeEdit);
-          text_input_events_.emplace_back(kTextInputEventTypeEdit,
+          text_input_events_.push_back(TextInputEvent(kTextInputEventTypeEdit,
                                           event.edit.text, event.edit.start,
-                                          event.edit.length);
+                                          event.edit.length));
         }
         break;
       case SDL_TEXTINPUT: {
         if (record_text_input_) {
-          text_input_events_.emplace_back(kTextInputEventTypeText,
-                                          event.text.text);
+          text_input_events_.push_back(TextInputEvent(kTextInputEventTypeText,
+                                          event.text.text));
         }
         break;
       }

@@ -18,6 +18,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 #include "fplbase/config.h" // Must come first.
 

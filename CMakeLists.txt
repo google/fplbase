@@ -254,14 +254,24 @@ function(fplbase_common_config target)
   target_link_libraries(${target} ${OPENGL_LIBRARIES} webp)
 endfunction()
 
+# The stdlib backend requires <mutex> and <thread> headers that were only
+# added in C++11, and are not supported by Visual Studio 2010.
+# Unforunately, there's no easy way to get this compiler capability from
+# cmake, at the moment, it seems.
+if(NOT MSVC OR MSVC_VERSION GREATER 1600)
+  set(compiler_supports_threading 1)
+endif()
+
 if(fplbase_build_library)
   add_library(fplbase ${fplbase_SRCS})
   fplbase_common_config(fplbase)
   target_link_libraries(fplbase ${SDL_LIBRARIES})
 
-  add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
-  fplbase_common_config(fplbase_stdlib)
-  target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+  if(compiler_supports_threading)
+    add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
+    fplbase_common_config(fplbase_stdlib)
+    target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+  endif()
 endif()
 
 # Autodesk's FBX SDK must be installed to build the pipeline.

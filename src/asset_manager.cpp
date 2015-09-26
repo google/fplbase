@@ -204,7 +204,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     if (skin) {
       const size_t num_bones = meshdef->bone_parents()->Length();
       assert(meshdef->bone_transforms()->Length() == num_bones);
-      std::vector<mat4> bone_transforms(num_bones);
+      std::unique_ptr<mat4[]> bone_transforms(new mat4[num_bones]);
       std::vector<const char*> bone_names(num_bones);
       for (size_t i = 0; i < num_bones; ++i) {
         bone_transforms[i] = LoadAffineMat4(meshdef->bone_transforms()->Get(i));
