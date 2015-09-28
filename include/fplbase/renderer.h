@@ -199,6 +199,12 @@ class Renderer {
   // instead (for debugging purposes).
   std::string &override_pixel_shader() { return override_pixel_shader_; }
 
+  // Get the max number of uniforms components (i.e. individual floats, so
+  // a mat4 needs 16 of them). This variable is also available in the
+  // shader as GL_MAX_VERTEX_UNIFORM_COMPONENTS.
+  // From this, you can compute safe sizes of uniform arrays etc.
+  int max_vertex_uniform_components() { return max_vertex_uniform_components_; }
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                               const char *source);
@@ -232,6 +238,8 @@ class Renderer {
   Shader *force_shader_;
   BlendMode force_blend_mode_;
   std::string override_pixel_shader_;
+
+  int max_vertex_uniform_components_;
 };
 
 }  // namespace fpl

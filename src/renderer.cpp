@@ -23,8 +23,6 @@
 
 namespace fpl {
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
-
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
       model_(mat4::Identity()),
@@ -33,10 +31,23 @@ Renderer::Renderer()
       camera_pos_(mathfu::kZeros3f),
       bone_transforms_(nullptr),
       num_bones_(0),
+#     ifdef FPL_BASE_RENDERER_BACKEND_SDL
       window_(nullptr),
       context_(nullptr),
+#     endif
       feature_level_(kFeatureLevel20),
-      force_blend_mode_(kBlendModeCount) {}
+      force_blend_mode_(kBlendModeCount),
+      max_vertex_uniform_components_(0) {}
+
+#ifndef FPL_BASE_RENDERER_BACKEND_SDL
+
+Renderer::~Renderer() {}
+
+void Renderer::SetWindowSize(const vec2i &window_size) {
+  window_size_ = window_size;
+}
+
+#else
 
 Renderer::~Renderer() { ShutDown(); }
 
@@ -174,6 +185,9 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 
   blend_mode_ = kBlendModeOff;
 
+  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
+                        &max_vertex_uniform_components_));
+
   return true;
 }
 
@@ -205,24 +219,6 @@ void Renderer::ShutDown() {
   }
 }
 
-#else
-
-Renderer::Renderer()
-    : model_view_projection_(mat4::Identity()),
-      model_(mat4::Identity()),
-      color_(mathfu::kOnes4f),
-      light_pos_(mathfu::kZeros3f),
-      camera_pos_(mathfu::kZeros3f),
-      window_size_(mathfu::kZeros2i),
-      blend_mode_(kBlendModeOff),
-      use_16bpp_(false) {}
-
-Renderer::~Renderer() {}
-
-void Renderer::SetWindowSize(const vec2i &window_size) {
-  window_size_ = window_size;
-}
-
 #endif
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {
@@ -245,6 +241,9 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
 # else
       "#version 120\n#define lowp\n#define mediump\n#define highp\n";
 # endif
+  assert(max_vertex_uniform_components_);
+  platform_source += "#define GL_MAX_VERTEX_UNIFORM_COMPONENTS ";
+  platform_source += std::to_string(max_vertex_uniform_components_);
   platform_source += source;
   const char *platform_source_ptr = platform_source.c_str();
   auto shader_obj = glCreateShader(stage);
