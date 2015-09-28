@@ -243,7 +243,7 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
 # endif
   assert(max_vertex_uniform_components_);
   platform_source += "#define GL_MAX_VERTEX_UNIFORM_COMPONENTS ";
-  platform_source += std::to_string(max_vertex_uniform_components_);
+  platform_source += flatbuffers::NumToString(max_vertex_uniform_components_);
   platform_source += source;
   const char *platform_source_ptr = platform_source.c_str();
   auto shader_obj = glCreateShader(stage);
