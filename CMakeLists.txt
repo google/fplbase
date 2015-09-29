@@ -150,10 +150,9 @@ endforeach()
 add_custom_target(fplbase_generated_includes DEPENDS ${FLATBUFFERS_GENERATED_INCLUDES})
 
 # Build rule that uses make to build the assets.
-get_property(flatc_location TARGET flatc PROPERTY LOCATION)
 add_custom_target(fplbase_assets
   COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_assets.py
-                 --flatc ${flatc_location}
+                 --flatc $<TARGET_FILE:flatc>
                  --output ${CMAKE_BINARY_DIR}/fplbase_assets
   DEPENDS flatc ${CWEBP_TARGET})
 
