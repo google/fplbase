@@ -11,7 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-cmake_minimum_required(VERSION 2.8.12)
+if(fpl_ios)
+  cmake_minimum_required(VERSION 3.3.1)
+  add_definitions(-D__IOS__)
+else()
+  cmake_minimum_required(VERSION 2.8.12)
+endif()
 
 project(fplbase)
 
@@ -29,10 +34,17 @@ set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
 # Look in our local cmake director for includes before checking other paths.
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# Output executables in `bin`, and libraries (both static and module) in `obj`.
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
+if(NOT fpl_ios)
+  # This needs to be default for iOS as output dirs are of the form
+  # Debug-iphoneos, Debug-iphonesimulator to distinguish iphone and simulator
+  # builds, otherwise each build overwrites the other if the output dir is the
+  # same
+  
+  # Output executables in `bin`, and libraries (both static and module) in `obj`.
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
+endif()
 
 # We have a parent if we're being included as `add_subdirectory` from elsewhere.
 get_directory_property(fplbase_has_parent PARENT_DIRECTORY)
@@ -99,7 +111,7 @@ if(APPLE)
   set(SDL_AUDIO_DRIVER_COREAUDIO 1)
 endif(APPLE)
 
-if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
+if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static AND NOT fpl_ios)
   add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
 endif()
 
@@ -147,7 +159,8 @@ foreach(flatbuffers_schema ${FLATBUFFERS_SCHEMAS})
     DEPENDS flatc ${flatbuffers_schema})
   list(APPEND FLATBUFFERS_GENERATED_INCLUDES ${flatbuffers_include})
 endforeach()
-add_custom_target(fplbase_generated_includes DEPENDS ${FLATBUFFERS_GENERATED_INCLUDES})
+add_custom_target(fplbase_generated_includes 
+                    DEPENDS ${FLATBUFFERS_GENERATED_INCLUDES})
 
 # Build rule that uses make to build the assets.
 add_custom_target(fplbase_assets
@@ -158,8 +171,16 @@ add_custom_target(fplbase_assets
 
 
 if(APPLE)
-  find_library(OPENGL_LIBRARIES NAMES GL GLU)
-  SET(OPENGL_LIBRARIES "-framework OpenGL")
+  if(NOT fpl_ios)
+    find_library(OPENGL_LIBRARIES NAMES GL GLU)
+    set(CMAKE_CXX_LINK_FLAGS "-framework OpenGL")
+  else()
+    set(CMAKE_CXX_LINK_FLAGS "-lSDL2 -lSDL2_mixer -framework OpenGLES
+        -framework CoreGraphics -framework Foundation 
+        -framework CoreLocation -framework CoreFoundation
+        -framework QuartzCore -framework UIKit
+        -framework AudioToolbox -framework GLKit")
+  endif()
 endif()
 
 
@@ -211,11 +232,11 @@ include_directories(${dependencies_webp_distr_dir}/include)
 include_directories(${dependencies_webp_distr_dir}/src)
 
 # SDL includes.
+set(SDL2_SOURCE_DIR "${dependencies_sdl_dir}")
 include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
 
 # Detect clang
-# Detect clang
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR 
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
    CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
   set(CMAKE_COMPILER_IS_CLANGXX 1)
 endif()
@@ -236,7 +257,12 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
 
-set (SDL_LIBRARIES SDL2-static)
+if(NOT fpl_ios)
+  set(SDL_LIBRARIES SDL2-static)
+else()
+  set(SDL_LIBRARIES "")
+endif()
+
 if(WIN32)
   add_definitions(-D_USE_MATH_DEFINES)
   set(OPENGL_LIBRARIES opengl32)
@@ -266,6 +292,12 @@ endif()
 if(fplbase_build_library)
   add_library(fplbase ${fplbase_SRCS})
   fplbase_common_config(fplbase)
+  # Set iOS specific attributes
+  mathfu_set_ios_attributes(fplbase)
+  # Since webp is also included as part of this build the iOS attributes also
+  # need to be set otherwise webp stays as an OS X target 
+  mathfu_set_ios_attributes(webp)
+
   target_link_libraries(fplbase ${SDL_LIBRARIES})
 
   if(compiler_supports_threading)
@@ -277,7 +309,7 @@ endif()
 
 # Autodesk's FBX SDK must be installed to build the pipeline.
 set(fbx_sdk_dir $ENV{FBX_SDK})
-if(NOT "${fbx_sdk_dir}" STREQUAL "")
+if(NOT "${fbx_sdk_dir}" STREQUAL "" AND NOT fpl_ios)
   set(fplbase_has_fbx_sdk 1)
 endif()
 
