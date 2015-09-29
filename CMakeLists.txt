@@ -214,7 +214,9 @@ include_directories(${dependencies_webp_distr_dir}/src)
 include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
 
 # Detect clang
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+# Detect clang
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR 
+   CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
   set(CMAKE_COMPILER_IS_CLANGXX 1)
 endif()
 
