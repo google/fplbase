@@ -339,61 +339,82 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-  GL_CALL(
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                      mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
+  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                          mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
+
+  auto format = GL_RGBA;
+  auto type = GL_UNSIGNED_BYTE;
   if (desired == kFormatAuto) desired = has_alpha ? kFormat5551 : kFormat565;
   switch (desired) {
     case kFormat5551: {
       assert(has_alpha);
       if (use_16bpp_) {
         auto buffer16 = Convert8888To5551(buffer, size);
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x(), size.y(), 0,
-                             GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, buffer16));
+        type = GL_UNSIGNED_SHORT_5_5_5_1;
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                             format, type, buffer16));
         delete[] buffer16;
       } else {
         // Fallback to 8888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x(), size.y(), 0,
-                             GL_RGBA, GL_UNSIGNED_BYTE, buffer));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                             format, type, buffer));
       }
       break;
     }
     case kFormat565: {
       assert(!has_alpha);
+      format = GL_RGB;
       if (use_16bpp_) {
         auto buffer16 = Convert888To565(buffer, size);
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x(), size.y(), 0,
-                             GL_RGB, GL_UNSIGNED_SHORT_5_6_5, buffer16));
+        type = GL_UNSIGNED_SHORT_5_6_5;
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                             format, type, buffer16));
         delete[] buffer16;
       } else {
         // Fallback to 888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x(), size.y(), 0,
-                             GL_RGB, GL_UNSIGNED_BYTE, buffer));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                             format, type, buffer));
       }
       break;
     }
     case kFormat8888: {
       assert(has_alpha);
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x(), size.y(), 0,
-                           GL_RGBA, GL_UNSIGNED_BYTE, buffer));
+      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                           format, type, buffer));
       break;
     }
     case kFormat888: {
       assert(!has_alpha);
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x(), size.y(), 0,
-                           GL_RGB, GL_UNSIGNED_BYTE, buffer));
+      format = GL_RGB;
+      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                           format, type, buffer));
       break;
     }
     case kFormatLuminance: {
       assert(!has_alpha);
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, size.x(), size.y(),
-                           0, GL_LUMINANCE, GL_UNSIGNED_BYTE, buffer));
+      format = GL_LUMINANCE;
+      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                           0, format, type, buffer));
       break;
     }
     default:
       assert(false);
   }
-  if (mipmaps) GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
+  if (mipmaps) {
+    // Work around for some Android devices to correctly generate miplevels.
+    auto levels = ceil(log(std::min(size.x(), size.y())) / log(2.0f));
+    auto width = size.x() / 2;
+    auto height = size.y() / 2;
+    for (auto i = 1; i < levels; ++i) {
+      GL_CALL(glTexImage2D(GL_TEXTURE_2D, i, format, width, height, 0, format,
+                           type, nullptr));
+      width /= 2;
+      height /= 2;
+    }
+
+    GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
+  }
+
   return texture_id;
 }
 
