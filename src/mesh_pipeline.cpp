@@ -57,6 +57,8 @@ typedef uint8_t BoneIndex;
 static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
 static const BoneIndex kInvalidBoneIdx = 0xFF;
+static const matdef::TextureFormat kDefaultTextureFormat =
+    matdef::TextureFormat_AUTO;
 
 // We use uint8_t for bone indices, and 0xFF marks invalid bones,
 // so the limit is 254.
@@ -371,6 +373,7 @@ class FlatMesh {
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
+      matdef::BlendMode blend_mode,
       bool skin) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = BaseFileName(mesh_name_unformated);
@@ -392,7 +395,7 @@ class FlatMesh {
 
     // Create material files that reference the textures.
     OutputMaterialFlatBuffers(mesh_name, assets_base_dir, assets_sub_dir,
-                              texture_extension, texture_formats);
+                              texture_extension, texture_formats, blend_mode);
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
@@ -571,7 +574,8 @@ class FlatMesh {
   void OutputMaterialFlatBuffers(
       const std::string& mesh_name, const std::string& assets_base_dir,
       const std::string& assets_sub_dir, const std::string& texture_extension,
-      const std::vector<matdef::TextureFormat>& texture_formats) const {
+      const std::vector<matdef::TextureFormat>& texture_formats,
+      matdef::BlendMode blend_mode) const {
     log_.Log(kLogImportant, "Materials:\n");
 
     size_t surface_idx = 0;
@@ -583,7 +587,7 @@ class FlatMesh {
           MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
       log_.Log(kLogImportant, "  %s:", material_file_name.c_str());
 
-      // TODO: add alpha here instead of using defaults.
+      // Create FlatBuffer arrays of texture names and formats.
       flatbuffers::FlatBufferBuilder fbb;
       std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
       std::vector<uint8_t> formats_fb;
@@ -598,23 +602,24 @@ class FlatMesh {
         // Append texture format (a uint8) to array of texture formats.
         const matdef::TextureFormat texture_format =
             i < texture_formats.size() ? texture_formats[i]
-                                       : matdef::TextureFormat_AUTO;
+                                       : kDefaultTextureFormat;
         formats_fb.push_back(static_cast<uint8_t>(texture_format));
 
         // Log texture and format.
         log_.Log(kLogImportant, "%s %s", i == 0 ? "" : ",",
                  RemoveDirectoryFromName(texture_file_name).c_str());
-        if (texture_format != matdef::TextureFormat_AUTO) {
+        if (texture_format != kDefaultTextureFormat) {
           log_.Log(kLogImportant, "(%s)",
                    matdef::EnumNameTextureFormat(texture_format));
         }
       }
       log_.Log(kLogImportant, "\n");
 
+      // Create final material FlatBuffer.
       auto textures_vector_fb = fbb.CreateVector(textures_fb);
       auto formats_vector_fb = fbb.CreateVector(formats_fb);
       auto material_fb = matdef::CreateMaterial(
-          fbb, textures_vector_fb, matdef::BlendMode_OFF, formats_vector_fb);
+          fbb, textures_vector_fb, blend_mode, formats_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
@@ -622,6 +627,12 @@ class FlatMesh {
       OutputFlatBufferBuilder(fbb, full_material_file_name);
 
       surface_idx++;
+    }
+
+    // Log blend mode, if blend mode is being used.
+    if (blend_mode != matdef::BlendMode_OFF) {
+      log_.Log(kLogImportant, "  blend mode: %s\n",
+               matdef::EnumNameBlendMode(blend_mode));
     }
   }
 
@@ -1538,28 +1549,42 @@ class FbxMeshParser {
 
 struct MeshPipelineArgs {
   MeshPipelineArgs()
-    : recenter(false), hierarchy(false), log_level(kLogWarning) {}
+    : blend_mode(static_cast<matdef::BlendMode>(-1)),
+      recenter(false),
+      hierarchy(false),
+      log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
   std::string asset_rel_dir;   /// Directory (relative to base) to output files.
   std::string texture_extension;/// Extension of textures in material file.
   std::vector<matdef::TextureFormat> texture_formats;
+  matdef::BlendMode blend_mode;
   bool recenter;               /// Translate geometry to origin.
   bool hierarchy;              /// Mesh vertices output relative to local pivot.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
 };
 
-static matdef::TextureFormat ParseTextureFormat(const char* s) {
+// Returns index of `s` in `array_of_strings`, or -1 if `s` not found.
+// `array_of_strings` is a null-terminated array of char* strings, in the style
+// generated by FlatBuffers.
+static int IndexOfString(const char* s, const char** array_of_strings) {
   int i = 0;
-  for (const char** format = matdef::EnumNamesTextureFormat();
-       *format != nullptr; ++format) {
-    if (strcmp(*format, s) == 0) {
-      return static_cast<matdef::TextureFormat>(i);
-    }
+  for (const char** a = array_of_strings; *a != nullptr; ++a) {
+    if (strcmp(*a, s) == 0) return i;
     ++i;
   }
-  return static_cast<matdef::TextureFormat>(-1);
+  return -1;
+}
+
+static matdef::TextureFormat ParseTextureFormat(const char* s) {
+  return static_cast<matdef::TextureFormat>(
+        IndexOfString(s, matdef::EnumNamesTextureFormat()));
+}
+
+static matdef::BlendMode ParseBlendMode(const char* s) {
+  return static_cast<matdef::BlendMode>(
+        IndexOfString(s, matdef::EnumNamesBlendMode()));
 }
 
 static bool ParseTextureFormats(
@@ -1587,6 +1612,16 @@ static bool ParseTextureFormats(
     if (comma == std::string::npos) return true;
     format_start = comma + 1;
   }
+}
+
+static bool TextureFormatHasAlpha(matdef::TextureFormat format) {
+ return format == matdef::TextureFormat_F_8888;
+}
+
+static matdef::BlendMode DefaultBlendMode(
+    const std::vector<matdef::TextureFormat>& texture_formats) {
+  return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0]) ?
+      matdef::BlendMode_ALPHA : matdef::BlendMode_OFF;
 }
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
@@ -1660,6 +1695,22 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       if (i + 1 < argc - 1) {
         valid_args = ParseTextureFormats(
             std::string(argv[i + 1]), log, &args->texture_formats);
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown texture format: %s\n\n", argv[i + 1]);
+        }
+        i++;
+      } else {
+        valid_args = false;
+      }
+
+      // -m switch
+    } else if (arg == "-m") {
+      if (i + 1 < argc - 1) {
+        args->blend_mode = ParseBlendMode(argv[i + 1]);
+        valid_args = args->blend_mode >= 0;
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown blend mode: %s\n\n", argv[i + 1]);
+        }
         i++;
       } else {
         valid_args = false;
@@ -1674,6 +1725,12 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
     }
 
     if (!valid_args) break;
+  }
+
+  // If blend mode not explicitly specified, calculate it from the texture
+  // formats.
+  if (args->blend_mode < 0) {
+    args->blend_mode = DefaultBlendMode(args->texture_formats);
   }
 
   // Print usage.
@@ -1712,11 +1769,22 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                       output texture. For example, if a mesh has\n"
         "                       two textures then `AUTO,F_888` will ensure\n"
         "                       the second texture's material has 8-bits of\n"
-        "                       RGB precision. Default is AUTO.\n"
-        "                       Valid possibilities:\n");
+        "                       RGB precision. Default is %s.\n"
+        "                       Valid possibilities:\n",
+        matdef::EnumNameTextureFormat(kDefaultTextureFormat));
     for (const char** format = matdef::EnumNamesTextureFormat();
          *format != nullptr; ++format) {
       log.Log(kLogImportant, "                           %s\n", *format);
+    }
+    log.Log(
+        kLogImportant,
+        "  -m BLEND_MODE        rendering blend mode for the generated\n"
+        "                       materials. If texture format has an alpha\n"
+        "                       channel, defaults to ALPHA. Otherwise,\n"
+        "                       defaults to OFF. Valid possibilities:\n");
+    for (const char** mode = matdef::EnumNamesBlendMode();
+         *mode != nullptr; ++mode) {
+      log.Log(kLogImportant, "                           %s\n", *mode);
     }
   }
 
@@ -1750,7 +1818,8 @@ int main(int argc, char** argv) {
   // Output gathered data to a binary FlatBuffer.
   const bool output_status = mesh.OutputFlatBuffer(
       args.fbx_file, args.asset_base_dir, args.asset_rel_dir,
-      args.texture_extension, args.texture_formats, args.hierarchy);
+      args.texture_extension, args.texture_formats, args.blend_mode,
+      args.hierarchy);
   if (!output_status) return 1;
 
   // Success.
