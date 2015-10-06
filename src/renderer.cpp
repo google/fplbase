@@ -187,6 +187,12 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 
   GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
                         &max_vertex_uniform_components_));
+  if (max_vertex_uniform_components_ == 0) {
+    // If missing the number of uniform components, use the number of vectors.
+    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
+                        &max_vertex_uniform_components_));
+    max_vertex_uniform_components_ *= 4;
+  }
 
   return true;
 }
