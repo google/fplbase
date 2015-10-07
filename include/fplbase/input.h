@@ -466,6 +466,8 @@ class InputSystem {
  private:
   static const int kMillisecondsPerSecond = 1000;
 
+  static int HandleAppEvents(void *userdata, void *event);
+
   bool exit_requested_;
   bool minimized_;
   std::vector<InputPointer> pointers_;
@@ -516,6 +518,11 @@ class InputSystem {
 
   // A flag indicating a text input status.
   bool record_text_input_;
+
+#ifdef __ANDROID__
+  // Store current relative mouse mode before entering background.
+  bool relative_mouse_mode_;
+#endif
 };
 
 }  // namespace fpl
