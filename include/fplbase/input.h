@@ -27,18 +27,18 @@
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
-#ifdef __ANDROID__
+#if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
 // Enable the android gamepad code.  It receives input events from java, via
 // JNI, and creates a local representation of the state of any connected
 // gamepads.  Also enables the gamepad_controller controller class.
-#define ANDROID_GAMEPAD
+#define ANDROID_GAMEPAD 1
 #include "pthread.h"
 #endif
 
-#ifdef __ANDROID__
+#if !defined(ANDROID_CARDBOARD) && defined(__ANDROID__)
 // Enable the android cardboard code.  It receives events about Cardboard from
 // java, via JNI, and creates a local representation of the state to be used.
-#define ANDROID_CARDBOARD
+#define ANDROID_CARDBOARD 1
 #endif
 
 namespace fpl {
@@ -56,7 +56,7 @@ using mathfu::vec3;
 using mathfu::vec4;
 using mathfu::mat4;
 
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 typedef int AndroidInputDeviceId;
 #endif
 
@@ -160,7 +160,7 @@ class Joystick {
   std::vector<JoystickHat> hat_list_;
 };
 
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 // Gamepad input class.  Represents the state of a connected gamepad, based on
 // events passed in from java.
 class Gamepad {
@@ -218,7 +218,7 @@ struct AndroidInputEvent {
 };
 #endif  // ANDROID_GAMEPAD
 
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
 // Cardboard input class.  Manages the state of the device in cardboard
 // based on events passed in from java, and read via JNI.
 class CardboardInput {
@@ -375,7 +375,7 @@ class InputSystem {
     return joystick_map_;
   }
 
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
   // Returns an object describing a gamepad, based on the android device ID.
   // Get the ID either from an android event, or by checking a known gamepad.
   Gamepad &GetGamepad(AndroidInputDeviceId gamepad_device_id);
@@ -392,7 +392,7 @@ class InputSystem {
   void HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
 
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   CardboardInput &cardboard_input() const { return cardboard_input_; }
 
   static void OnCardboardTrigger();
@@ -479,13 +479,13 @@ class InputSystem {
   std::map<int, Button> button_map_;
   std::map<JoystickId, Joystick> joystick_map_;
 
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
   std::map<AndroidInputDeviceId, Gamepad> gamepad_map_;
   static pthread_mutex_t android_event_mutex;
   static std::queue<AndroidInputEvent> unhandled_java_input_events_;
 #endif  // ANDROID_GAMEPAD
 
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   static CardboardInput cardboard_input_;
 #endif
 

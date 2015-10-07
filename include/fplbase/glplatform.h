@@ -34,10 +34,13 @@
 #else
   #ifdef __ANDROID__
     #define PLATFORM_MOBILE
-    #include <GLES2/gl2.h>
-    // Use this instead of GLES3/gl3.h so we can build/run on older SDKs and
-    // devices.
-    #include "gl3stub.h"
+    #include <android/api-level.h>
+    #if __ANDROID_API__ >= 18
+      #include <GLES3/gl3.h>
+    #else
+      #include <GLES2/gl2.h>
+      #include "gl3stub.h"
+    #endif
   #else  // WIN32 & Linux
     #ifdef _WIN32
       #define VC_EXTRALEAN
