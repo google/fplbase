@@ -393,11 +393,11 @@ void LogError(LogCategory category, const char *fmt, va_list args) {
 }
 
 void LogInfo(const char *fmt, va_list args) {
-  __android_log_print(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
+  __android_log_vprint(ANDROID_LOG_VERBOSE, "fplbase", fmt, args);
 }
 
 void LogError(const char *fmt, va_list args) {
-  __android_log_print(ANDROID_LOG_ERROR, "fplbase", fmt, args);
+  __android_log_vprint(ANDROID_LOG_ERROR, "fplbase", fmt, args);
 }
 
 #else
