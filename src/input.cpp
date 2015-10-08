@@ -15,7 +15,7 @@
 #include "precompiled.h"
 #include "fplbase/input.h"
 #include "fplbase/utilities.h"
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 #include <jni.h>
 #include <android/keycodes.h>
 #include <android/input.h>
@@ -28,7 +28,7 @@
 namespace fpl {
 
 // ANDROID_GAMEPAD is defined in input.h, if we're running on an android device.
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 const int kMaxAndroidEventsPerFrame = 100;
 #endif  // ANDROID_GAMEPAD
 
@@ -149,7 +149,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   for (auto it = joystick_map_.begin(); it != joystick_map_.end(); ++it) {
     it->second.AdvanceFrame();
   }
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
   for (auto it = gamepad_map_.begin(); it != gamepad_map_.end(); ++it) {
     it->second.AdvanceFrame();
   }
@@ -208,7 +208,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
             .Update(event.button.state == SDL_PRESSED);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
         pointers_[0].used = true;
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
         if (event.button.state == SDL_PRESSED) {
           cardboard_input_.OnCardboardTrigger();
         }
@@ -264,7 +264,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   }
 // Update the Cardboard input. Note this is after the mouse input, as that can
 // be treated as a trigger.
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   cardboard_input_.AdvanceFrame();
 #endif
 }
@@ -352,7 +352,7 @@ Joystick &InputSystem::GetJoystick(JoystickId joystick_id) {
   assert(it != joystick_map_.end());
   return it->second;
 }
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 Gamepad &InputSystem::GetGamepad(AndroidInputDeviceId gamepad_device_id) {
   auto it = gamepad_map_.find(gamepad_device_id);
   if (it == gamepad_map_.end()) {
@@ -521,7 +521,7 @@ int Joystick::GetNumHats() const {
   return SDL_JoystickNumHats(static_cast<SDL_Joystick *>(joystick_data_));
 }
 
-#ifdef ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
 std::queue<AndroidInputEvent> InputSystem::unhandled_java_input_events_;
 
 void InputSystem::ReceiveGamepadEvent(AndroidInputDeviceId device_id,
@@ -633,7 +633,7 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnGamepadInput(
 #endif  //__ANDROID__
 #endif  // ANDROID_GAMEPAD
 
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
 CardboardInput InputSystem::cardboard_input_;
 
 void CardboardInput::AdvanceFrame() {
@@ -753,7 +753,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
     JNIEnv *env) {
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   InputSystem::OnCardboardTrigger();
 #endif
 }
@@ -761,7 +761,7 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fpl_1base_FPLActivity_nativeSetDeviceInCardboard(
     JNIEnv *env, jobject thiz, jboolean in_cardboard) {
-#ifdef ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   InputSystem::SetDeviceInCardboard(in_cardboard);
 #endif
 }

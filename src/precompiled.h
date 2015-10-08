@@ -52,10 +52,6 @@
 #include "SDL_log.h"
 #endif
 
-#ifdef __ANDROID__
-#include "gpg/gpg.h"
-#endif
-
 #include "fplbase/glplatform.h"
 
 #ifdef _WIN32
