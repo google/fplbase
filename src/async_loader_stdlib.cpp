@@ -25,6 +25,7 @@ AsyncLoader::AsyncLoader() {
 }
 
 AsyncLoader::~AsyncLoader() {
+  StopLoadingWhenComplete();
   worker_thread_.join();
 }
 
@@ -51,8 +52,10 @@ bool AsyncLoader::TryFinalize() {
       std::unique_lock<std::mutex> lock(mutex_);
       if (done_.size() > 0) resource = done_[0];
     }
+
     if (!resource) break;
     resource->Finalize();
+
     {
       std::unique_lock<std::mutex> lock(mutex_);
       done_.erase(done_.begin());
@@ -74,15 +77,18 @@ void AsyncLoader::LoaderWorker() {
       job_cv_.wait(lock, [this]() { return queue_.size() > 0; });
       resource = queue_[0];
     }
-    // We assume a nullptr inserted in to the queue is used as a termination
-    // signal.
-    if (!resource) break;
-    resource->Load();
+
+    if (resource) resource->Load();
+
     {
       std::unique_lock<std::mutex> lock(mutex_);
       queue_.erase(queue_.begin());
-      done_.push_back(resource);
+      if (resource) done_.push_back(resource);
     }
+
+    // We assume a nullptr inserted in to the queue is used as a termination
+    // signal.
+    if (!resource) break;
   }
 }
 
