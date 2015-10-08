@@ -613,7 +613,7 @@ void Renderer::SetCulling(CullingMode mode) {
 }
 
 vec2i Renderer::GetViewportSize() {
-# ifdef __ANDROID__
+# if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
   // Check HW scaler setting and change a viewport size if they are set
   vec2i scaled_size = AndroidGetScalerResolution();
   vec2i viewport_size = scaled_size.x() && scaled_size.y() ?
