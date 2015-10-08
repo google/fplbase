@@ -51,6 +51,8 @@ import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.Eye;
 import com.google.vrtoolkit.cardboard.HeadTransform;
+import com.google.vrtoolkit.cardboard.PhoneParams;
+import com.google.vrtoolkit.cardboard.proto.Phone;
 import com.google.vrtoolkit.cardboard.ScreenParams;
 import com.google.vrtoolkit.cardboard.sensors.MagnetSensor;
 import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
@@ -60,6 +62,7 @@ public class FPLActivity extends SDLActivity implements
     MagnetSensor.OnCardboardTriggerListener, NfcSensor.OnCardboardNfcListener,
     Choreographer.FrameCallback {
 
+  private static final float METERS_PER_INCH = 0.0254f;
   private final String PROPERTY_ID = "XX-XXXXXXXX-X";
   private Tracker tracker = null;
 
@@ -366,11 +369,19 @@ public class FPLActivity extends SDLActivity implements
   }
 
   public void SetHeadMountedDisplayResolution(int width, int height) {
-    ScreenParams params =
-      new ScreenParams(cardboardView.getHeadMountedDisplay().getScreenParams());
-    params.setWidth(width);
-    params.setHeight(height);
-    cardboardView.updateScreenParams(params);
+    // If hardware scaling is used, the width x height will be less than the
+    // displays natural resolution, so the PPI (pixels per inch) will also
+    // be different. So, we use this trick to recalculate the ScreenParam's PPI
+    // values (which are normally just read from the display).
+    Display display = getWindowManager().getDefaultDisplay();
+    ScreenParams sp = new ScreenParams(display);
+    Phone.PhoneParams pp = new Phone.PhoneParams();
+    pp.setXPpi(width / sp.getWidthMeters() * METERS_PER_INCH);
+    pp.setYPpi(height / sp.getHeightMeters() * METERS_PER_INCH);
+    sp = ScreenParams.fromProto(display, pp);
+    sp.setWidth(width);
+    sp.setHeight(height);
+    cardboardView.updateScreenParams(sp);
   }
 
   @Override
