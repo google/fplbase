@@ -38,6 +38,7 @@
 #include "common_generated.h"
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
+#include "fplutil/string_utils.h"
 #include "materials_generated.h"
 #include "mathfu/glsl_mappings.h"
 #include "mesh_generated.h"
@@ -54,7 +55,8 @@ using mathfu::vec4_packed;
 
 typedef uint8_t BoneIndex;
 
-static const char* const kImageExtensions[] = { "jpg", "jpeg", "png", "webp" };
+static const char* const kImageExtensions[] =
+    { "jpg", "jpeg", "png", "webp", "tga" };
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
 static const BoneIndex kInvalidBoneIdx = 0xFF;
 static const matdef::TextureFormat kDefaultTextureFormat =
@@ -817,49 +819,6 @@ class FlatMesh {
   Logger& log_;
 };
 
-static std::string FindSourceTextureFileName(
-    const std::string& source_mesh_name, const std::string& texture_name) {
-  // If the texture name is relative, check for it relative to the
-  // source mesh's directory.
-  const std::string source_dir = DirectoryName(source_mesh_name);
-  if (!AbsoluteFileName(texture_name)) {
-    const std::string texture_rel_name = source_dir + texture_name;
-    if (FileExists(texture_rel_name)) return texture_rel_name;
-  }
-
-  // If the texture exists in the same directory as the source mesh, use it.
-  const std::string texture_no_dir = RemoveDirectoryFromName(texture_name);
-  const std::string texture_in_source_dir = source_dir + texture_no_dir;
-  if (FileExists(texture_in_source_dir)) return texture_in_source_dir;
-
-  // Check to see if there's a texture with the same base name as the mesh.
-  const std::string source_name = BaseFileName(source_mesh_name);
-  const std::string texture_extension = FileExtension(texture_name);
-  const std::string source_texture =
-      source_dir + source_name + "." + texture_extension;
-  if (FileExists(source_texture)) return source_texture;
-
-  // Loop through known image file extensions. The image may have been
-  // converted to a new format.
-  const std::string base_names[] = { BaseFileName(texture_no_dir),
-                                     source_name };
-  for (size_t i = 0; i < FPL_ARRAYSIZE(base_names); ++i) {
-    for (size_t j = 0; j < FPL_ARRAYSIZE(kImageExtensions); ++j) {
-      const std::string potential_name = source_dir + base_names[i] + "." +
-                                         kImageExtensions[j];
-      if (FileExists(potential_name)) return potential_name;
-    }
-  }
-
-  // As a last resort, use the texture name as supplied. We don't want to
-  // do this, normally, since the name can be an absolute path on the drive,
-  // or relative to the directory we're currently running from.
-  if (FileExists(texture_name)) return texture_name;
-
-  // Texture can't be found.
-  return "";
-}
-
 /// @class FbxMeshParser
 /// @brief Load FBX files and save their geometry in our FlatBuffer format.
 class FbxMeshParser {
@@ -1230,6 +1189,66 @@ class FbxMeshParser {
     }
 
     return nullptr;
+  }
+
+  bool TextureFileExists(const std::string& file_name) const {
+    const bool exists = FileExists(file_name, kCaseSensitive);
+    log_.Log(kLogInfo, "  Searching for texture file named `%s`. %s\n",
+             file_name.c_str(), exists ? "Found!" : "Not found.");
+    return exists;
+  }
+
+  // Try variations of the texture name until we find one on disk.
+  std::string FindSourceTextureFileName(
+      const std::string& source_mesh_name,
+      const std::string& texture_name) const {
+    // If the texture name is relative, check for it relative to the
+    // source mesh's directory.
+    const std::string source_dir = DirectoryName(source_mesh_name);
+    if (!AbsoluteFileName(texture_name)) {
+      const std::string texture_rel_name = source_dir + texture_name;
+      if (TextureFileExists(texture_rel_name)) return texture_rel_name;
+    }
+
+    // If the texture exists in the same directory as the source mesh, use it.
+    const std::string texture_no_dir = RemoveDirectoryFromName(texture_name);
+    const std::string texture_in_source_dir = source_dir + texture_no_dir;
+    if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
+
+    // Check to see if there's a texture with the same base name as the mesh.
+    const std::string source_name = BaseFileName(source_mesh_name);
+    const std::string texture_extension = FileExtension(texture_name);
+    const std::string source_texture =
+        source_dir + source_name + "." + texture_extension;
+    if (TextureFileExists(source_texture)) return source_texture;
+
+    // Gather potential base names for the texture (i.e. name without directory
+    // or extension).
+    const std::string base_name = BaseFileName(texture_no_dir);
+    const std::string base_names[] = {
+      base_name,
+      SnakeCase(base_name),
+      CamelCase(base_name),
+      source_name
+    };
+
+    // For each potential base name, loop through known image file extensions.
+    // The image may have been converted to a new format.
+    for (size_t i = 0; i < FPL_ARRAYSIZE(base_names); ++i) {
+      for (size_t j = 0; j < FPL_ARRAYSIZE(kImageExtensions); ++j) {
+        const std::string potential_name = source_dir + base_names[i] + "." +
+                                           kImageExtensions[j];
+        if (TextureFileExists(potential_name)) return potential_name;
+      }
+    }
+
+    // As a last resort, use the texture name as supplied. We don't want to
+    // do this, normally, since the name can be an absolute path on the drive,
+    // or relative to the directory we're currently running from.
+    if (TextureFileExists(texture_name)) return texture_name;
+
+    // Texture can't be found.
+    return "";
   }
 
   std::string TextureFileName(FbxNode* node, const FbxMesh* mesh,
