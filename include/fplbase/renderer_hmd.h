@@ -30,6 +30,10 @@ void BeginUndistortFramebuffer();
 // Called when finished with HMD, to undistort and render the result.
 void FinishUndistortFramebuffer();
 
+// Called to set whether the Cardboard settings button (gear icon) is enabled
+// and rendering.
+void SetCardboardButtonEnabled(bool enabled);
+
 // Call used for rendering to HMDs, handling the split and multiple matrices.
 // Calls back on the provided render_callback twice, with the transforms from
 // the device representing each eye, which are gotten from the input system.

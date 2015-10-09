@@ -73,4 +73,15 @@ void FinishUndistortFramebuffer() {
   env->DeleteLocalRef(activity);
 }
 
+void SetCardboardButtonEnabled(bool enabled) {
+  JNIEnv* env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID set_button =
+      env->GetMethodID(fpl_class, "SetCardboardButtonEnabled", "(Z)V");
+  env->CallVoidMethod(activity, set_button, (jboolean)enabled);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+}
+
 }  // namespace fpl

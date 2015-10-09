@@ -47,6 +47,7 @@ import android.widget.TextView;
 import com.google.android.gms.analytics.GoogleAnalytics;
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
+import com.google.vr.cardboard.UiLayer;
 import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.Eye;
@@ -76,6 +77,7 @@ public class FPLActivity extends SDLActivity implements
   private Eye monocularEye;
   private Eye leftEyeNoDistortion;
   private Eye rightEyeNoDistortion;
+  private UiLayer uiLayer;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -435,6 +437,16 @@ public class FPLActivity extends SDLActivity implements
       cardboardView.undistortTexture(textureId);
     } catch (Exception e) {
       Log.e("SDL", "exception", e);
+    }
+  }
+
+  // Set whether the Cardboard button (gear icon) is enabled and rendering.
+  public void SetCardboardButtonEnabled(boolean enabled) {
+    if (uiLayer != null) {
+      uiLayer.setButtonEnabled(enabled);
+    } else if (enabled) {
+      uiLayer = new UiLayer(this, null);
+      uiLayer.attachUiLayer(null);
     }
   }
 
