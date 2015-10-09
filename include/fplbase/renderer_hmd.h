@@ -68,6 +68,7 @@ void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
   GL_CALL(glViewport(0, 0, window_width, window_height));
   if (use_undistortion) {
     FinishUndistortFramebuffer();
+    renderer->SetBlendMode(kBlendModeOff);
   }
 }
 
