@@ -95,6 +95,11 @@ class Texture : public AsyncResource {
   void set_desired_format(TextureFormat format) { desired_ = format; }
 
   void set_original_size(const mathfu::vec2i &size) { original_size_ = size; }
+  void SetOriginalSizeIfNotYetSet(const mathfu::vec2i &size) {
+    if (original_size_.x() == 0 && original_size_.y() == 0) {
+      original_size_ = size;
+    }
+  }
   const mathfu::vec2i &original_size() const {
     return original_size_;
   }

@@ -31,7 +31,7 @@ using mathfu::mat4;
 void Texture::Load() {
   data_ =
       renderer_->LoadAndUnpackTexture(filename_.c_str(), &size_, &has_alpha_);
-  original_size_ = size_;
+  SetOriginalSizeIfNotYetSet(size_);
   if (!data_) {
     LogError(kApplication, "texture load: %s: %s",
              filename_.c_str(), renderer_->last_error().c_str());
@@ -42,7 +42,7 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
                              TextureFormat format, bool has_alpha,
                              bool mipmaps) {
   size_ = size;
-  original_size_ = size_;
+  SetOriginalSizeIfNotYetSet(size_);
   has_alpha_ = has_alpha;
   desired_ = format;
   mipmaps_ = mipmaps;
