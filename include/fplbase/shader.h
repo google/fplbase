@@ -32,6 +32,7 @@ using mathfu::mat4;
 class Renderer;
 
 static const int kMaxTexturesPerShader = 8;
+static const int kNumVec4sInAffineTransform = 3;
 
 // These typedefs compatible with their OpenGL equivalents, but don't require
 // this header to depend on OpenGL.
@@ -52,7 +53,7 @@ class Shader {
         uniform_light_pos_(-1),
         uniform_camera_pos_(-1),
         uniform_time_(-1),
-        uniform_bone_tranforms_(-1) {}
+        uniform_bone_transforms_(-1) {}
 
   ~Shader();
 
@@ -115,7 +116,7 @@ class Shader {
   UniformHandle uniform_light_pos_;
   UniformHandle uniform_camera_pos_;
   UniformHandle uniform_time_;
-  UniformHandle uniform_bone_tranforms_;
+  UniformHandle uniform_bone_transforms_;
 };
 
 }  // namespace fpl
