@@ -139,6 +139,10 @@ void SetAAssetManager(AAssetManager* manager);
 
 // Retrieve a path where an app can store data files.
 bool GetStoragePath(const char *app_name, std::string *path);
+
+// Checks whether Head Mounted Displays, such as Cardboard, are supported by
+// the system being run on.
+bool SupportsHeadMountedDisplay();
 }  // namespace fpl
 
 #endif  // FPLBASE_UTILITIES_H

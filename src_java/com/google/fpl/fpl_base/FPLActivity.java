@@ -86,10 +86,8 @@ public class FPLActivity extends SDLActivity implements
     super.onCreate(savedInstanceState);
     tracker = GoogleAnalytics.getInstance(this).newTracker(PROPERTY_ID);
 
-    SensorManager sensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
-    Sensor sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-    // Instantiate fields used by Cardboard, if the gyroscope exists.
-    if (sensor != null) {
+    // Instantiate fields used by Cardboard, if we support HMDs.
+    if (SupportsHeadMountedDisplay()) {
       cardboardView = new CardboardView(this);
       headTransform = new HeadTransform();
       leftEye = new Eye(Eye.Type.LEFT);
@@ -399,6 +397,12 @@ public class FPLActivity extends SDLActivity implements
     } catch (Exception e) {
       Log.e("SDL", "exception", e);
     }
+  }
+
+  public boolean SupportsHeadMountedDisplay() {
+    SensorManager sensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
+    return sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null &&
+           sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null;
   }
 
   @Override

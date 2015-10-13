@@ -540,4 +540,21 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv* env,
 
 #endif  // __ANDROID__
 
+// Checks whether Head Mounted Displays are supported by the system.
+bool SupportsHeadMountedDisplay() {
+#ifdef __ANDROID__
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID supports_hmd =
+      env->GetMethodID(fpl_class, "SupportsHeadMountedDisplay", "()Z");
+  jboolean result = env->CallBooleanMethod(activity, supports_hmd);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+  return supports_hmd;
+#else
+  return false;
+#endif  // __ANDROID
+}
+
 }  // namespace fpl
