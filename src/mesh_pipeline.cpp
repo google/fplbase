@@ -308,10 +308,8 @@ class FlatMesh {
   void SetExportVertexColor(bool should_export) {
     if (points_.size() > 0 && export_vertex_color_ != should_export) {
       log_.Log(kLogWarning,
-               export_vertex_color_
-                   ? "Mesh is missing vertex colors. Will export white."
-                   : "Previous meshes are missing vertex colors. They will "
-                     " be exported as white.");
+               "Some meshes have vertex colors and others do not."
+               " Meshes that do not will be assigned white vertices.\n");
     }
     export_vertex_color_ = export_vertex_color_ || should_export;
   }
@@ -418,7 +416,7 @@ class FlatMesh {
     std::vector<BoneIndex> shader_to_mesh_bones;
     CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
 
-    log_.Log(kLogImportant, "Mesh hierarchy (bone index):\n");
+    log_.Log(kLogImportant, "Mesh hierarchy (bone indices in brackets):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
       std::string indent = RepeatCharacter(' ', 2 * b.depth);
@@ -1192,28 +1190,29 @@ class FbxMeshParser {
   }
 
   bool TextureFileExists(const std::string& file_name) const {
-    const bool exists = FileExists(file_name, kCaseSensitive);
-    log_.Log(kLogInfo, "  Searching for texture file named `%s`. %s\n",
-             file_name.c_str(), exists ? "Found!" : "Not found.");
-    return exists;
+    return FileExists(file_name, kCaseSensitive);
   }
 
   // Try variations of the texture name until we find one on disk.
   std::string FindSourceTextureFileName(
       const std::string& source_mesh_name,
       const std::string& texture_name) const {
+    std::string attempted_textures;
+
     // If the texture name is relative, check for it relative to the
     // source mesh's directory.
     const std::string source_dir = DirectoryName(source_mesh_name);
     if (!AbsoluteFileName(texture_name)) {
       const std::string texture_rel_name = source_dir + texture_name;
       if (TextureFileExists(texture_rel_name)) return texture_rel_name;
+      attempted_textures += texture_rel_name + '\n';
     }
 
     // If the texture exists in the same directory as the source mesh, use it.
     const std::string texture_no_dir = RemoveDirectoryFromName(texture_name);
     const std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
+    attempted_textures += texture_in_source_dir + '\n';
 
     // Check to see if there's a texture with the same base name as the mesh.
     const std::string source_name = BaseFileName(source_mesh_name);
@@ -1221,6 +1220,7 @@ class FbxMeshParser {
     const std::string source_texture =
         source_dir + source_name + "." + texture_extension;
     if (TextureFileExists(source_texture)) return source_texture;
+    attempted_textures += source_texture + '\n';
 
     // Gather potential base names for the texture (i.e. name without directory
     // or extension).
@@ -1239,6 +1239,7 @@ class FbxMeshParser {
         const std::string potential_name = source_dir + base_names[i] + "." +
                                            kImageExtensions[j];
         if (TextureFileExists(potential_name)) return potential_name;
+        attempted_textures += potential_name + '\n';
       }
     }
 
@@ -1246,8 +1247,11 @@ class FbxMeshParser {
     // do this, normally, since the name can be an absolute path on the drive,
     // or relative to the directory we're currently running from.
     if (TextureFileExists(texture_name)) return texture_name;
+    attempted_textures += texture_name + '\n';
 
     // Texture can't be found.
+    log_.Log(kLogWarning, "Can't find texture `%s`. Tried these variants:\n%s\n",
+             texture_name.c_str(), attempted_textures.c_str());
     return "";
   }
 
