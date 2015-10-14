@@ -13,9 +13,9 @@
 // limitations under the License.
 //
 
-uniform sampler2D texture_unit_name_00000;
-varying vec2 v_uv;
+uniform sampler2D texture_unit_0;
+varying vec2 vTexCoord;
 
 void main() {
-  gl_FragColor = texture2D(texture_unit_name_00000, v_uv);
+  gl_FragColor = texture2D(texture_unit_0, vTexCoord);
 }

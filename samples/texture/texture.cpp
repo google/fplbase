@@ -23,82 +23,56 @@
 // Game is a sample that displays a textured quad.
 //
 // It demonstrates usage of:
-// - fpl::AssetManager to load textures and shaders.
+// - fpl::asset_manager to load textures and shaders.
 // - fpl::Renderer to setup rendering and transform models.
 // - fpl::InputSystem to query for exit events and elapsed time.
-struct Game {
-  static const GLfloat verts[];
-  static const GLfloat uvs[];
+
+int main(int, char** argv) {
+  fpl::InputSystem input;
+  input.Initialize();
 
   fpl::Renderer renderer;
-  fpl::InputSystem input;
-  fpl::AssetManager assetManager;
-  fpl::Shader* shader;
-  GLuint position;
-  GLuint uv;
-  GLint scale;
-  fpl::Texture* tex;
-  float acc;
+  renderer.Initialize();
 
-  Game() : assetManager(renderer) {}
+  fpl::AssetManager asset_manager(renderer);
 
-  void Initialize(const char* const binary_directory) {
-    bool result = fpl::ChangeToUpstreamDir(binary_directory, "assets");
-    assert(result);
-    renderer.Initialize();
-    input.Initialize();
-    shader = assetManager.LoadShader("tex");
-    assert(shader);
-    position = glGetAttribLocation(shader->GetProgram(), "in_position");
-    uv = glGetAttribLocation(shader->GetProgram(), "in_uv");
-    scale = shader->FindUniform("in_scale");
+  bool result = fpl::ChangeToUpstreamDir(argv[0], "assets");
+  assert(result);
 
-    tex = assetManager.LoadTexture("tex.webp");
-    assert(tex);
-    assetManager.StartLoadingTextures();
-    fpl::LogInfo("start loading materials");
-    while (!assetManager.TryFinalize()) {
-      fpl::LogInfo("loading %s ...", tex->filename().c_str());
-    }
-    fpl::LogInfo("done loading materials");
+  auto shader = asset_manager.LoadShader("tex");
+  assert(shader);
+
+  auto tex = asset_manager.LoadTexture("tex.webp");
+  assert(tex);
+
+  asset_manager.StartLoadingTextures();
+  while (!asset_manager.TryFinalize()) {
+    // Can display loading screen here.
   }
-  void ShutDown() { renderer.ShutDown(); }
-  void Run() {
-    while (!input.exit_requested()) {
-      input.AdvanceFrame(&renderer.window_size());
-      renderer.AdvanceFrame(input.minimized(), input.Time());
-      Render();
-    }
-  }
-  void Render() {
+
+  while (!input.exit_requested()) {
+    input.AdvanceFrame(&renderer.window_size());
+    renderer.AdvanceFrame(input.minimized(), input.Time());
+
     renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));
+
     shader->Set(renderer);
-    glEnableVertexAttribArray(position);
-    glVertexAttribPointer(position, 2, GL_FLOAT, GL_FALSE, 0, verts);
-    glEnableVertexAttribArray(uv);
-    glVertexAttribPointer(uv, 2, GL_FLOAT, GL_FALSE, 0, uvs);
+    tex->Set(0);
+
     auto time = input.Time();
     auto c = cos(time);
     auto s = sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 2);
     auto zoom = mathfu::vec3(3.0f, 3.0f, 1.0f) + mathfu::vec3(c, c, 1.0f);
-    renderer.model() = mathfu::mat4::FromRotationMatrix(rotz) *
-                       mathfu::mat4::FromScaleVector(zoom);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  }
-};
-// Quad vertices coordinates: 2 triangle strips.
-const GLfloat Game::verts[] = {-1.0f, 1.0f, -1.0f, -1.0f,
-                               1.0f,  1.0f, 1.0f,  -1.0f};
-// Quad texture coordinates.
-const GLfloat Game::uvs[] = {-5.0f, -5.0f, -5.0f, 5.0f,
-                             5.0f,  -5.0f, 5.0f,  5.0f};
+    renderer.model_view_projection() = mathfu::mat4::FromRotationMatrix(rotz) *
+                                       mathfu::mat4::FromScaleVector(zoom);
 
-int main(int argc, char** argv) {
-  Game game;
-  const char* binary_directory = argc > 0 ? argv[0] : "";  
-  game.Initialize(binary_directory);
-  game.Run();
-  game.ShutDown();
+    fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
+                                  mathfu::vec3( 1,  1, 0),
+                                  mathfu::vec2(0, 0),
+                                  mathfu::vec2(10, 10));
+  }
+
+  renderer.ShutDown();
   return 0;
 }

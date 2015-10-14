@@ -15,67 +15,49 @@
 
 #include "precompiled.h"
 #include "fplbase/renderer.h"
+#include "fplbase/mesh.h"
 #include "fplbase/input.h"
 #include <cassert>
 
-// Game is a sample that displays a colored triangle.
+// This is a sample that displays a colored quad.
 //
 // It demonstrates usage of:
 // - fpl::Renderer to load shaders from strings and setup rendering.
+// - fpl::Mesh for rendering simple geometry.
 // - fpl::InputSystem to query for exit events and elapsed time.
-class Game {
-  static const char *vertexShader;
-  static const char *fragmentShader;
-  static const GLfloat verts[];
-
-  fpl::Renderer renderer;
-  fpl::InputSystem input;
-  fpl::Shader *shader;
-  GLuint vPositionHandle;
-
- public:
-  void Initialize() {
-    renderer.Initialize();
-    input.Initialize();
-    shader = renderer.CompileAndLinkShader(vertexShader, fragmentShader);
-    assert(shader);
-    vPositionHandle = glGetAttribLocation(shader->GetProgram(), "vPosition");
-  }
-  void ShutDown() { renderer.ShutDown(); }
-  void Run() {
-    while (!input.exit_requested()) {
-      input.AdvanceFrame(&renderer.window_size());
-      renderer.AdvanceFrame(input.minimized(), input.Time());
-      Render();
-    }
-  }
-  void Render() {
-    float color = (1.0f - cos(input.Time())) / 2.0f;
-    renderer.ClearFrameBuffer(fpl::vec4(color, 0.0f, color, 1.0f));
-    shader->Set(renderer);
-    glEnableVertexAttribArray(vPositionHandle);
-    glVertexAttribPointer(vPositionHandle, 2, GL_FLOAT, GL_FALSE, 0, verts);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-  }
-};
-// A vertex shader that passes untransformed position thru.
-const char *Game::vertexShader =
-    "attribute vec4 vPosition;\n"
-    "void main() {\n"
-    "  gl_Position = vPosition;\n"
-    "}\n";
-// A fragment shader that outputs a green pixel.
-const char *Game::fragmentShader =
-    "void main() {\n"
-    "  gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
-    "}\n";
-// Triangle vertice coordinates.
-const GLfloat Game::verts[] = {0.0f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f};
 
 int main() {
-  Game game;
-  game.Initialize();
-  game.Run();
-  game.ShutDown();
+  fpl::Renderer renderer;
+  fpl::InputSystem input;
+
+  renderer.Initialize();
+  input.Initialize();
+
+  // A vertex shader that passes untransformed position thru.
+  auto vertex_shader =
+    "attribute vec4 aPosition;\n"
+    "void main() { gl_Position = aPosition; }\n";
+
+  // A fragment shader that outputs a green pixel.
+  auto fragment_shader =
+    "void main() { gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+
+  auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
+  assert(shader);
+
+  while (!input.exit_requested()) {
+    input.AdvanceFrame(&renderer.window_size());
+    renderer.AdvanceFrame(input.minimized(), input.Time());
+
+    float color = (1.0f - cos(input.Time())) / 2.0f;
+    renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
+
+    shader->Set(renderer);
+
+    fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
+                                  mathfu::vec3( 0.5f,  0.5f, 0));
+  }
+
+  renderer.ShutDown();
   return 0;
 }
