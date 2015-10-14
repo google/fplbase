@@ -15,8 +15,10 @@
 #ifndef FPLBASE_SYSTRACE_H
 #define FPLBASE_SYSTRACE_H
 
-// Functions for creating systrace log events.
-// To enable, #define FPLBASE_ENABLE_SYSTRACE 1
+/// @file fplbase/systrace.h
+/// @brief Functions for creating systrace log events, for Android.
+///
+/// To enable, \#define FPLBASE_ENABLE_SYSTRACE 1
 
 #if FPLBASE_ENABLE_SYSTRACE
 #ifndef __ANDROID__
@@ -31,7 +33,9 @@
 #define MAX_SYSTRACE_LEN 256
 int     trace_marker = -1;
 
-// This needs to be called before other
+/// @brief Initializes the settings for systrace.
+///
+/// This needs to be called before any other systrace call.
 void SystraceInit()
 {
 #if FPLBASE_ENABLE_SYSTRACE
@@ -41,8 +45,11 @@ void SystraceInit()
 #endif
 }
 
-// Start a block, with the supplied name.  This will last until SystraceEnd is
-// called.  (Nesting is supported!)
+/// @brief Start a block, with the supplied name.
+///
+/// This will last until SystraceEnd is called. Nesting is supported!
+///
+/// @param name The name of the block, which will appear in the trace.
 inline void SystraceBegin(const char *name) {
   (void) name;
 #if FPLBASE_ENABLE_SYSTRACE
@@ -52,7 +59,7 @@ inline void SystraceBegin(const char *name) {
 #endif
 }
 
-// Ends the most recently begun block.
+/// @brief Ends the most recently begun block.
 inline void SystraceEnd() {
 #if FPLBASE_ENABLE_SYSTRACE
   char c = 'E';
@@ -60,7 +67,12 @@ inline void SystraceEnd() {
 #endif
 }
 
-// Logs a value.  This will be displayed on a graph in the systrace.
+/// @brief Logs a value.
+///
+/// This will be displayed on a graph in the systrace.
+///
+/// @param name The name that will be logged.
+/// @param value The value to be logged with the given name.
 inline void SystraceCounter(const char *name, const int value) {
   (void) name;
   (void) value;
@@ -71,8 +83,12 @@ inline void SystraceCounter(const char *name, const int value) {
 #endif
 }
 
-// Begins an asynchronous block.  Name/Cookie need to be unique per
-// block.
+/// @brief Begins an asynchronous block.
+///
+/// Name/Cookie need to be unique per block.
+///
+/// @param name The name of the block, which will appear in the trace.
+/// @param cookie Part of the unique identifier to note the block.
 inline void SystraceAsyncBegin(const char *name, const int32_t cookie) {
   (void) name;
   (void) cookie;
@@ -83,7 +99,12 @@ inline void SystraceAsyncBegin(const char *name, const int32_t cookie) {
 #endif
 }
 
-// Ends an asynchronous block.
+/// @brief Ends an asynchronous block.
+///
+/// @param name The name of the block, which needs to match the one used to
+///             begin the block.
+/// @param cookie The unique identifier of the block, which needs to match the
+///               one used to begin the block.
 inline void SystraceAsyncEnd(const char *name, const int32_t cookie) {
   (void) name;
   (void) cookie;

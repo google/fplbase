@@ -39,42 +39,70 @@ enum Attribute {
   kBoneWeights4ub
 };
 
-// A mesh instance contains a VBO and one or more IBO's.
+/// @class Mesh
+/// @brief Abstraction for a set of indices, used for rendering.
+///
+/// A mesh instance contains a VBO and one or more IBO's.
 class Mesh {
  public:
   enum Primitive { kTriangles, kLines };
 
-  // Initialize a Mesh by creating one VBO, and no IBO's.
+  /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
   Mesh(const void *vertex_data, int count, int vertex_size,
        const Attribute *format, vec3 *max_position = nullptr,
        vec3 *min_position = nullptr);
   ~Mesh();
 
-  // Create one IBO to be part of this mesh. May be called more than once.
+  /// @brief Add an index buffer object to be part of this mesh
+  ///
+  /// Create one IBO to be part of this mesh. May be called more than once.
+  ///
+  /// @param indices The indices to be included in the IBO.
+  /// @param count The number of indices.
+  /// @param mat The material associated with the IBO.
   void AddIndices(const unsigned short *indices, int count, Material *mat);
 
-  // If mesh is animated set the transform from a bone's parent space into
-  // the bone's local space. Optionally record the bone names, too, for
-  // debugging.
-  // The shader only accesses a bone if at least one vertex is weighted to it.
-  // So, we don't have to pass every bone transform up to the shader. Instead,
-  // we compact the bone transforms by passing only those in
-  // shader_bone_indices.
+  /// @brief Set the bones used by an animated mesh.
+  ///
+  /// If mesh is animated set the transform from a bone's parent space into
+  /// the bone's local space. Optionally record the bone names, too, for
+  /// debugging.
+  /// The shader only accesses a bone if at least one vertex is weighted to it.
+  /// So, we don't have to pass every bone transform up to the shader. Instead,
+  /// we compact the bone transforms by passing only those in
+  /// shader_bone_indices.
+  ///
+  /// @param bone_transforms Array of bones to be used.
+  /// @param bone_parents Array that contains, for each bone, the index of its
+  ///        parent.
+  /// @param bone_names Array containing the names of the bones.
+  /// @param num_bones The number of bones in the given array.
+  /// @param shader_bone_indices The indices of bones used by the shader.
+  /// @param num_shader_bones The number of bones in the shader bones array.
   void SetBones(const mathfu::AffineTransform *bone_transforms,
                 const uint8_t *bone_parents, const char **bone_names,
                 size_t num_bones, const uint8_t *shader_bone_indices,
                 size_t num_shader_bones);
 
-  // Compact bone transforms to eliminate the bones that have no verts
-  // weighted to them.
-  // `bone_transforms` is an input array of length num_bones().
-  // `shader_transforms` is an output array of length num_shader_bones().
+  /// @brief Compacts bone transforms to eliminate the bones that have no verts
+  ///        weighted to them.
+  ///
+  /// @param bone_transforms Input array of bones, should be of length
+  ///        num_bones().
+  /// @param shader_transforms Output array of bones, should be of length
+  ///        num_shader_bones().
   void GatherShaderTransforms(const mathfu::AffineTransform *bone_transforms,
                               mathfu::AffineTransform *shader_transforms) const;
 
-  // Render itself. Uniforms must have been set before calling this.
-  // Use a value >1 for instances to get instanced rendering (this needs
-  // OpenGL ES 3.0 to work).
+  /// @brief Render the mesh.
+  ///
+  /// Call to have the mesh render itself. Uniforms must have been set before
+  /// calling this. For instanced rendering, pass in a value >1 (needs OpenGL
+  /// ES 3.0 to work).
+  ///
+  /// @param renderer The renderer object to be used.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
   void Render(Renderer &renderer, bool ignore_material = false,
               size_t instances = 1);
 
@@ -88,43 +116,78 @@ class Mesh {
                     const vec3* camera_position,
                     bool ignore_material = false, size_t instances = 1);
 
-  // Get the material associated with the Nth IBO.
+  /// @brief Get the material associated with the IBO at the given index.
+  ///
+  /// @param i The index of the IBO.
+  /// @return Returns the material of the corresponding IBO.
   Material *GetMaterial(int i) { return indices_[i].mat; }
 
-  // Define the vertex buffer format.
-  // `format` is an array delimitted with `kEND`.
-  // `format` must have length <= kMaxAttributes, including `kEND`.
+  /// @brief Define the vertex buffer format.
+  ///
+  /// `format` must have length <= kMaxAttributes, including `kEND`.
+  ///
+  /// @param format Array of attributes to set the format to, delimitted with
+  ///        `kEND`.
   void set_format(const Attribute *format);
 
-  // Renders primatives using vertex and index data directly in local memory.
-  // This is a convenient alternative to creating a Mesh instance for small
-  // amounts of data, or dynamic data.
+  /// @brief Renders the given vertex and index data directly.
+  ///
+  /// Renders primitives using vertex and index data directly in local memory.
+  /// This is a convenient alternative to creating a Mesh instance for small
+  /// amounts of data, or dynamic data.
+  ///
+  /// @param primitive The type of primitive to render the data as.
+  /// @param index_count The total number of indices.
+  /// @param format The vertex buffer format, following the same rules as
+  ///        described in set_format().
+  /// @param vertex_size The size of an individual vertex.
+  /// @param vertices The array of vertices.
+  /// @param indices The array of indices into the vertex array.
   static void RenderArray(Primitive primitive, int index_count,
                           const Attribute *format, int vertex_size,
                           const void *vertices, const unsigned short *indices);
 
-  // Convenience method for rendering a Quad. bottom_left and top_right must
-  // have their X coordinate be different, but either Y or Z can be the same.
+  /// @brief Convenience method for rendering a Quad.
+  ///
+  /// bottom_left and top_right must have their X coordinate be different, but
+  /// either Y or Z can be the same.
+  ///
+  /// @param bottom_left The bottom left coordinate of the Quad.
+  /// @param top_right The bottom left coordinate of the Quad.
+  /// @param tex_bottom_left The texture coordinates at the bottom left.
+  /// @param tex_top_right The texture coordinates at the top right.
   static void RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
                                  const vec2 &tex_bottom_left = vec2(0, 0),
                                  const vec2 &tex_top_right = vec2(1, 1));
 
-  // Convenience method for rendering a Quad with nine patch settings.
-  // In the patch_info, the user can define nine patch settings
-  // as vec4(x0, y0, x1, y1) where
-  // (x0,y0): top-left corner of stretchable area in UV coordinate.
-  // (x1,y1): bottom-right corner of stretchable area in UV coordinate.
+  /// @brief Convenience method for rendering a Quad with nine patch settings.
+  ///
+  /// In the patch_info, the user can define nine patch settings
+  /// as vec4(x0, y0, x1, y1) where
+  /// (x0,y0): top-left corner of stretchable area in UV coordinate.
+  /// (x1,y1): bottom-right corner of stretchable area in UV coordinate.
+  ///
+  /// @param bottom_left The bottom left coordinate of the Quad.
+  /// @param top_right The top right coordinate of the Quad.
+  /// @param texture_size The size of the texture used by the patches.
+  /// @param patch_info Defines how the patches are set up.
   static void RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
                                           const vec3 &top_right,
                                           const vec2i &texture_size,
                                           const vec4 &patch_info);
 
-  // Compute normals and tangents given position and texcoords.
-  // The template type should be a struct with at least the following fields:
-  // mathfu::vec3_packed pos;
-  // mathfu::vec2_packed tc;
-  // mathfu::vec3_packed norm;
-  // mathfu::vec4_packed tangent;
+  /// @brief Compute normals and tangents given position and texcoords.
+  ///
+  /// The template type should be a struct with at least the following fields:
+  /// mathfu::vec3_packed pos;
+  /// mathfu::vec2_packed tc;
+  /// mathfu::vec3_packed norm;
+  /// mathfu::vec4_packed tangent;
+  ///
+  /// @param vertices The vertices to computes the information for.
+  /// @param indices The indices that make up the mesh.
+  /// @param numverts The number of vertices in the vertex array.
+  /// @param numindices The number of indices in the index array.
   template <typename T>
   static void ComputeNormalsTangents(T *vertices, const unsigned short *indices,
                                      int numverts, int numindices) {
@@ -197,22 +260,50 @@ class Mesh {
     kAttributeBoneWeights,
   };
 
-  // Compute the byte size for a vertex from given attributes.
+  /// @brief Compute the byte size for a vertex from given attributes.
+  ///
+  /// @param attributes The array of attributes describing the vertex.
+  /// @param end The attribute to treat as the end of the array.
+  /// @return Returns the byte size based on the given attributes.
   static size_t VertexSize(const Attribute *attributes, Attribute end = kEND);
 
+  /// @brief Get the minimum position of an AABB about the mesh.
+  ///
+  /// @return Returns the minimum position of the mesh.
   const mathfu::vec3 &min_position() const { return min_position_; }
+  /// @brief Get the maximum position of an AABB about the mesh.
+  ///
+  /// @return Returns the maximum position of the mesh.
   const mathfu::vec3 &max_position() const { return max_position_; }
+  /// @brief The relative transforms of the bones.
+  ///
+  /// @return Returns an array of transforms for the mesh's bones.
   const mathfu::AffineTransform *bone_transforms() const {
     return bone_transforms_;
   }
+  /// @brief The global transforms of the bones (taking into account parents).
+  ///
+  /// @return Returns an array of global transforms for the mesh's bones.
   const mathfu::AffineTransform *bone_global_transforms() const {
     return bone_global_transforms_;
   }
+  /// @brief The defines parents of each bone.
+  ///
+  /// @return Returns an array of indices of each bone's parent.
   const uint8_t *bone_parents() const { return &bone_parents_[0]; }
+  /// @brief The number of bones in the mesh.
+  ///
+  /// @return Returns the number of bones.
   size_t num_bones() const { return bone_parents_.size(); }
+  /// @brief The indices of bones used by the shader.
+  ///
+  /// @return Returns an array of indices of bones used by the shader.
   const uint8_t *shader_bone_indices() const {
     return &shader_bone_indices_[0];
   }
+  /// @brief The number of bones used by the shader.
+  ///
+  /// @return Returns the number of bones used by the shader.
   size_t num_shader_bones() const { return shader_bone_indices_.size(); }
 
  private:

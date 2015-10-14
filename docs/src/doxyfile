@@ -753,8 +753,9 @@ INPUT                  = "index.md" \
                          "programmers_guide/building_osx.md" \
                          "programmers_guide/building_windows.md" \
                          "programmers_guide/mesh_pipeline.md" \
-                         "contributing.md"
-#                         "../../include"
+                         "contributing.md" \
+                         "api_reference.md" \
+                         "../../include"
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

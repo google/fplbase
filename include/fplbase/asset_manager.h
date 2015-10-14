@@ -26,78 +26,134 @@
 
 namespace fpl {
 
-// Central place to own game assets loaded from disk.
-//
-// Loads of some assets, such as textures, can be batched in a bit asynchronous
-// load. This allows you to continue setting up your game as assets are loaded,
-// in the background.
-//
-// Loading assets such as meshes will trigger the load of dependent assets
-// such as textures.
+/// @class AssetManager
+/// @brief Central place to own game assets loaded from disk.
+///
+/// Loads of some assets, such as textures, can be batched in a bit asynchronous
+/// load. This allows you to continue setting up your game as assets are loaded,
+/// in the background.
+///
+/// Loading assets such as meshes will trigger the load of dependent assets
+/// such as textures.
 class AssetManager {
  public:
   AssetManager(Renderer &renderer);
   ~AssetManager() { ClearAllAssets(); }
 
-  // Returns a previously loaded shader object, or nullptr.
+  /// @brief Returns a previously loaded shader object.
+  ///
+  /// @param basename The name of the shader.
+  /// @return Returns the shader, or nullptr if not previously loaded.
   Shader *FindShader(const char *basename);
-  // Loads a shader if it hasn't been loaded already, by appending .glslv
-  // and .glslf to the basename, compiling and linking them.
-  // If this returns nullptr, the error can be found in Renderer::last_error().
+
+  /// @brief Loads and returns a shader object.
+  ///
+  /// Loads a shader if it hasn't been loaded already, by appending .glslv
+  /// and .glslf to the basename, compiling and linking them.
+  /// If this returns nullptr, the error can be found in Renderer::last_error().
+  ///
+  /// @param basename The name of the shader.
+  /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShader(const char *basename);
 
-  // Returns a previously created texture, or nullptr.
+  /// @brief Returns a previously created texture.
+  ///
+  /// @param filename The name of the texture.
+  /// @return Returns the texture, or nullptr if not previously loaded.
   Texture *FindTexture(const char *filename);
-  // Queue's a texture for loading if it hasn't been loaded already.
-  // Currently only supports TGA/WebP format files.
-  // Returned texture isn't usable until TryFinalize() succeeds and the id
-  // is non-zero.
+  /// @brief Queue loading a texture if it hasn't been loaded already.
+  ///
+  /// Queue's a texture for loading if it hasn't been loaded already.
+  /// Currently only supports TGA/WebP format files.
+  /// Returned texture isn't usable until TryFinalize() succeeds and the id
+  /// is non-zero.
+  ///
+  /// @param filename The name of the texture to load.
+  /// @param format The texture format, defaults to kFormatAuto.
+  /// @param mipmaps If mipmaps should be used, defaults to true.
+  /// @return Returns an unloaded texture object.
   Texture *LoadTexture(const char *filename,
                        TextureFormat format = kFormatAuto,
                        bool mipmaps = true);
-  // LoadTextures doesn't actually load anything, this will start the async
-  // loading of all files, and decompression.
+  /// @brief Start loading all previously queued textures.
+  ///
+  /// LoadTextures doesn't actually load anything, this will start the async
+  /// loading of all files, and decompression.
   void StartLoadingTextures();
-  // Call this repeatedly until it returns true, which signals all textures
-  // will have loaded, and turned into OpenGL textures.
-  // Textures with a 0 id will have failed to load.
+  /// @brief Check for the status of async loading textures.
+  ///
+  /// Call this repeatedly until it returns true, which signals all textures
+  /// will have loaded, and turned into OpenGL textures.
+  /// Textures with a 0 id will have failed to load.
+  ///
+  /// @return Returns true when all textures have been loaded.
   bool TryFinalize();
 
-  // Returns a previously loaded material, or nullptr.
+  /// @brief Returns a previously loaded material.
+  ///
+  /// @param filename The name of the material.
+  /// @return Returns the material, or nullptr if not previously loaded.
   Material *FindMaterial(const char *filename);
-  // Loads a material, which is a compiled FlatBuffer file with
-  // root Material. This loads all resources contained there-in.
-  // If this returns nullptr, the error can be found in Renderer::last_error().
+  /// @brief Loads and returns a material object.
+  ///
+  /// Loads a material, which is a compiled FlatBuffer file with
+  /// root Material. This loads all resources contained there-in.
+  /// If this returns nullptr, the error can be found in Renderer::last_error().
+  ///
+  /// @param filename The name of the material.
+  /// @return Returns the loaded material, or nullptr if there was an error.
   Material *LoadMaterial(const char *filename);
 
-  // Deletes all OpenGL textures contained in this material, and removes the
-  // textures and the material from material manager. Any subsequent requests
-  // for these textures through Load*() will cause them to be loaded anew.
+  /// @brief Deletes the previously loaded material.
+  ///
+  /// Deletes all OpenGL textures contained in this material, and removes the
+  /// textures and the material from material manager. Any subsequent requests
+  /// for these textures through Load*() will cause them to be loaded anew.
+  ///
+  /// @param filename The name of the material to unload.
   void UnloadMaterial(const char *filename);
 
-  // Returns a previously loaded mesh, or nullptr.
+  /// @brief Returns a previously loaded mesh.
+  ///
+  /// @param filename The name of the mesh.
+  /// @return Returns the mesh, or nullptr if not previously loaded.
   Mesh *FindMesh(const char *filename);
-  // Loads a mesh, which is a compiled FlatBuffer file with
-  // root Mesh.
-  // If this returns nullptr, the error can be found in Renderer::last_error().
+  /// @brief Loads and returns a mesh object.
+  ///
+  /// Loads a mesh, which is a compiled FlatBuffer file with root Mesh.
+  /// If this returns nullptr, the error can be found in Renderer::last_error().
+  ///
+  /// @param filename The name of the mesh.
+  /// @return
   Mesh *LoadMesh(const char *filename);
-  // Deletes the mesh and removes it from the material manager. Any subsequent
-  // requests for this mesh through Load*() will cause them to be loaded anew.
+  /// @brief Deletes the previously loaded mesh.
+  ///
+  /// Deletes the mesh and removes it from the material manager. Any subsequent
+  /// requests for this mesh through Load*() will cause them to be loaded anew.
+  ///
+  /// @param filename The name of the mesh to unload.
   void UnloadMesh(const char *filename);
 
-  // Handy accessors, so you don't have to pass the renderer around too.
+  /// @brief Handy accessor for the renderer.
+  ///
+  /// @return Returns the renderer.
   Renderer &renderer() { return renderer_; }
+  /// @brief Handy accessor for the renderer.
+  ///
+  /// @return Returns the renderer.
   const Renderer &renderer() const { return renderer_; }
 
-  // Removes and destructs all assets held by the AssetManager.
-  // Will be called automatically by the destructor, but can also be called
-  // manually beforehand if necessary since destructing assets requires the
-  // OpenGL context to still be alive.
+  /// @brief Removes and destructs all assets held by the AssetManager.
+  ///
+  /// Will be called automatically by the destructor, but can also be called
+  /// manually beforehand if necessary since destructing assets requires the
+  /// OpenGL context to still be alive.
   void ClearAllAssets();
 
-  // Set a scaling factor to apply when loading texture materials.
-  // By setting the scaling factor, an application save a memory footprint
-  // on low RAM devices.
+  /// @brief Set a scaling factor to apply when loading texture materials.
+  ///
+  /// By setting the scaling factor, an application save a memory footprint
+  /// on low RAM devices.
   void SetTextureScale(const vec2 &scale) { texture_scale_ = scale; }
 
  private:

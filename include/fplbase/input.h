@@ -61,8 +61,11 @@ using mathfu::mat4;
 typedef int AndroidInputDeviceId;
 #endif
 
-// Used to record state for fingers, mousebuttons, keys and gamepad buttons.
-// Allows you to know if a button went up/down this frame.
+/// @class Button
+/// @brief Used to record state for fingers, mousebuttons, keys and gamepad
+///        buttons.
+///
+/// Allows you to know if a button went up/down this frame.
 class Button {
  public:
   Button() : is_down_(false) { AdvanceFrame(); }
@@ -112,6 +115,8 @@ struct InputPointer {
   InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
 };
 
+/// @class Joystick
+/// @brief Represents the state of an SDL Joystick.
 class Joystick {
  public:
   // Get a Button object for a pointer index.
@@ -136,8 +141,11 @@ class Joystick {
 };
 
 #if ANDROID_GAMEPAD
-// Gamepad input class.  Represents the state of a connected gamepad, based on
-// events passed in from java.
+/// @class Gamepad
+/// @brief Represents the state of a connected gamepad.
+///
+/// This is based on events passed in from java. Depends on ANDROID_GAMEPAD
+/// being defined.
 class Gamepad {
  public:
   enum GamepadInputButton : int {
@@ -194,9 +202,13 @@ struct AndroidInputEvent {
 #endif  // ANDROID_GAMEPAD
 
 #if ANDROID_HMD
-// Head mounted input class.  Manages the state of the device in a head mounted
-// input device like cardboard based on events passed in from java, and read
-// via JNI.
+/// @class HeadMountedDisplayInput
+/// @brief Represents the state of the device in a head mounted input device,
+///        like Cardboard.
+///
+/// Manages the state of the device in a head mounted input device based on
+/// events passed in from java, and read via JNI. Depends on ANDROID_HMD being
+/// defined.
 class HeadMountedDisplayInput {
  public:
   HeadMountedDisplayInput()
@@ -327,58 +339,99 @@ struct TextInputEvent {
                  int32_t length);
 };
 
+/// @class InputSystem
+/// @brief Use to handle time, touch/mouse/keyboard/etc input, and lifecyle
+///        events.
 class InputSystem {
  public:
+  /// @brief Construct an uninitialized InputSystem.
   InputSystem();
   ~InputSystem();
 
   static const int kMaxSimultanuousPointers = 10;  // All current touch screens.
 
-  // Initialize the input system. Call this after SDL is initialized by
-  // the renderer.
+  /// @brief Initialize the input system.
+  ///
+  /// Call this after SDL is initialized by the renderer.
   void Initialize();
 
-  // Call this once a frame to process all new events and update the input
-  // state. The window_size argument may get updated whenever the window
-  // resizes.
+  /// @brief Call once a frame to update the input state.
+  ///
+  /// Call this once a frame to process all new events and update the input
+  /// state. The window_size argument may get updated whenever the window
+  /// resizes.
+  ///
+  /// @param window_size The current window size of the application.
   void AdvanceFrame(vec2i *window_size);
 
-  // Get time in seconds since the start of the game. Updated once per frame.
-  // This is the time you'd want to use for any gameplay simulation or
-  // animation the game does, such that you are in sync with what's
-  // rendered each frame.
+  /// @brief Get time in seconds since the start of the game. Updated once per
+  ///        frame.
+  ///
+  /// This is the time you'd want to use for any gameplay simulation or
+  /// animation the game does, such that you are in sync with what's
+  /// rendered each frame.
+  ///
+  /// @return Return the time in seconds since the start of the game.
   double Time() const;
 
-  // Get time in seconds since start of the game. Unlike Time(), it is
-  // recomputed every time it is called (slower).
-  // Mostly useful for profiling/benchmarking.
+  /// @brief Get time in seconds since start of the game. Updated every call.
+  ///
+  /// Unlike Time(), it is recomputed every time it is called (slower).
+  /// Mostly useful for profiling/benchmarking.
+  ///
+  /// @return Return the time in seconds since the start of the game.
   double RealTime() const;
 
-  // Get time in seconds of the previous frame. Updated once per frame.
+  /// @brief The time in seconds since the last frame. Updated once per frame.
+  ///
+  /// @return Return the incremental time, in seconds.
   double DeltaTime() const;
 
-  // Get a Button object describing the current input state (see SDLK_ enum
-  // above.
+  /// @brief Get a Button object describing the input state of the specified
+  ///        button ID.
+  ///
+  /// @param button The ID of the button, see the SDLK_ enum.
+  /// @return Returns the corresponding button.
   Button &GetButton(int button);
 
+  /// @brief Checks if relative mouse mode is enabled.
+  ///
+  /// @return Returns the current state of relative mouse mode.
   bool RelativeMouseMode() const;
-  /// Enable / disable relative mouse mode (disabled by default).
+  /// @brief Enable / disable relative mouse mode (disabled by default).
+  ///
+  /// @param enabled The state to set relative mouse mode to.
   /// @note Relative mouse mode is currently ignored on Android devices.
   void SetRelativeMouseMode(bool enabled);
 
-  // Get a joystick object describing the current input state of the specified
-  // joystick ID.  (Contained in every joystick event.)
+  /// @brief Get a Joystick object describing the input state of the specified
+  ///        joystick ID.
+  ///
+  /// @param joystick_id The ID of the joystick, contained in every joystick
+  ///        event.
+  /// @return Returns the corresponding button.
   Joystick &GetJoystick(JoystickId joystick_id);
 
+  /// @brief Get a map containing all currently connected joysticks.
+  ///
+  /// @return Returns the map of all joysticks.
   const std::map<JoystickId, Joystick> &JoystickMap() const {
     return joystick_map_;
   }
 
 #if ANDROID_GAMEPAD
-  // Returns an object describing a gamepad, based on the android device ID.
-  // Get the ID either from an android event, or by checking a known gamepad.
+  /// @brief Get a Gamepad object describing the input state of the specified
+  ///        device ID.
+  ///
+  /// Get the ID either from an android event, or by checking a known gamepad.
+  ///
+  /// @param gamepad_device_id The ID of the gamepad device.
+  /// @return Returns the corresponding gamepad.
   Gamepad &GetGamepad(AndroidInputDeviceId gamepad_device_id);
 
+  /// @brief Get a map containing all currently connected gamepads.
+  ///
+  /// @return Returns the map of all gamepads.
   const std::map<AndroidInputDeviceId, Gamepad> &GamepadMap() const {
     return gamepad_map_;
   }
@@ -392,6 +445,9 @@ class InputSystem {
 #endif  // ANDROID_GAMEPAD
 
 #if ANDROID_HMD
+  /// @brief Get the current input state of the Head Mounted Display device.
+  ///
+  /// @return Returns the current input state.
   HeadMountedDisplayInput &head_mounted_display_input() {
     return head_mounted_display_input_;
   }
@@ -401,7 +457,10 @@ class InputSystem {
   }
 #endif  // ANDROID_HMD
 
-  // Get a Button object for a pointer index.
+  /// @brief Get a Button object for a pointer index.
+  ///
+  /// @param pointer The FingerId of the button.
+  /// @return Returns the corresponding button.
   Button &GetPointerButton(FingerId pointer) {
     return GetButton(static_cast<int>(pointer + K_POINTER1));
   }
@@ -417,52 +476,68 @@ class InputSystem {
   }
   void AddAppEventCallback(AppEventCallback callback);
 
+  /// @brief Most recent frame at which we were minimized or maximized.
   int minimized_frame() const { return minimized_frame_; }
   void set_minimized_frame(int minimized_frame) {
     minimized_frame_ = minimized_frame;
   }
 
+  /// @brief The total number of frames elapsed so far.
   int frames() const { return frames_; }
+  /// @brief Accumulated mousewheel delta since the previous frame.
   vec2i mousewheel_delta() { return mousewheel_delta_; }
 
-  // Start/Stop recording text input events.
-  // Recorded event can be retrieved by GetTextInputEvents().
+  /// @brief Start/Stop recording text input events.
+  ///
+  /// Recorded event can be retrieved by GetTextInputEvents().
   void RecordTextInput(bool b) {
     record_text_input_ = b;
     if (!b) text_input_events_.clear();
   }
+  /// @brief Checks if text input is being recorded.
   bool IsRecordingTextInput() { return record_text_input_; }
 
-  // Retrieve a vector of text input events.
-  // The caller uses this API to retrieve text input related events
-  // (all key down/up events, keyboard input and IME's intermediate states)
-  // and use them to edit and display texts.
-  // To start/stop a recording, call RecordTextInput() API.
+  /// @brief Retrieve a vector of text input events.
+  ///
+  /// The caller uses this API to retrieve text input related events
+  /// (all key down/up events, keyboard input and IME's intermediate states)
+  /// and use them to edit and display texts.
+  /// To start/stop a recording, call RecordTextInput() API.
+  ///
+  /// @return Returns a vector containing text input events.
   const std::vector<TextInputEvent> *GetTextInputEvents();
 
-  // Clear a recorded text input events. The user needs to call the API once
-  // it handled input events.
+  /// @brief Clear the recorded text input events.
+  ///
+  /// The user needs to call the API once they have handled input events.
   void ClearTextInputEvents() { text_input_events_.clear(); }
 
   // Text input related APIs.
 
-  // Start a text input.
-  // In mobile devices, it may show a software keyboard on the screen.
+  /// @brief Start a text input.
+  ///
+  /// In mobile devices, it may show a software keyboard on the screen.
   void StartTextInput();
 
-  // Stop a text input.
-  // In mobile devices, it may dismiss a software keyboard.
+  /// @brief Stop a text input.
+  ///
+  /// In mobile devices, it may dismiss a software keyboard.
   void StopTextInput();
 
-  // Indicates a text input region to IME(Input Method Editor).
+  /// @brief Indicates a text input region to IME(Input Method Editor).
+  ///
+  /// @param input_rect The input region rectangle.
   void SetTextInputRect(const mathfu::vec4 &input_rect);
 
-  // Accessors for instance variables.
+  /// @brief Gets the vector of all the input pointers in the system.
   const std::vector<InputPointer> &get_pointers() { return pointers_; }
 
+  /// @brief Gets if the application is currently minimized.
   bool minimized() { return minimized_; }
+  /// @brief Sets if the application is currently minimized.
   void set_minimized(bool b) { minimized_ = b; }
 
+  /// @brief Gets if exit has been requested by the system.
   bool exit_requested() { return exit_requested_; }
 
  private:

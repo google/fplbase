@@ -36,6 +36,8 @@ enum BlendMode {
   kBlendModeCount  // Must be at end.
 };
 
+/// @class Material
+/// @brief Collections of textures used for rendering multi-texture models.
 class Material {
  public:
   Material() : blend_mode_(kBlendModeOff) {}

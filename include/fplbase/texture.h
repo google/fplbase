@@ -44,6 +44,10 @@ enum TextureFormat {
 // this header to depend on OpenGL.
 typedef unsigned int TextureHandle;
 
+/// @class Texture
+/// @brief Abstraction for a texture object loaded on the GPU.
+///
+/// Contains functions for loading, marshalling, and disposal of textures.
 class Texture : public AsyncResource {
  public:
   explicit Texture(const char *filename = nullptr,

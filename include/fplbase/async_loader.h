@@ -36,7 +36,9 @@ typedef void *Semaphore;
 
 class AsyncLoader;
 
-// Any resources that can be loaded async should inherit from this.
+/// @class AsyncResource
+/// @brief Any resource intended to be loaded asynchronously should inherit from
+///        this.
 class AsyncResource {
  public:
   AsyncResource() : data_(nullptr) {}
@@ -44,21 +46,32 @@ class AsyncResource {
       : filename_(filename), data_(nullptr) {}
   virtual ~AsyncResource() {}
 
-  // Load should perform the actual loading of filename_, and store the
-  // result in data_, or nullptr upon failure. It is called on the loader
-  // thread, so should not access any program state outside of this object.
-  // Since there will be only one loader thread, any libraries called by Load
-  // need not be MT-safe as long as they're not also called by the main thread.
+  /// @brief Override with the actual loading behavior.
+  ///
+  /// Load should perform the actual loading of filename_, and store the
+  /// result in data_, or nullptr upon failure. It is called on the loader
+  /// thread, so should not access any program state outside of this object.
+  /// Since there will be only one loader thread, any libraries called by Load
+  /// need not be MT-safe as long as they're not also called by the main thread.
   virtual void Load() = 0;
 
-  // This should implement the behavior of turning data_ into the actual
-  // desired resource. Called on the main thread only.
+  /// @brief Override with converting the data into the resource.
+  ///
+  /// This should implement the behavior of turning data_ into the actual
+  /// desired resource. Called on the main thread only.
   virtual void Finalize() = 0;
 
-  // Set the the filename in situations where it can't be initialized in
-  // the constructor. Must be called before AsyncLoader::QueueJob().
+  /// @brief Sets the filename that should be loaded.
+  ///
+  /// Set the the filename in situations where it can't be initialized in
+  /// the constructor. Must be called before AsyncLoader::QueueJob().
+  ///
+  /// @param filename The name of the file to load.
   void set_filename(const std::string &filename) { filename_ = filename; }
 
+  /// @brief The name of the file associated with the resource.
+  ///
+  /// @return Returns the filename.
   const std::string &filename() const { return filename_; }
 
  protected:
@@ -68,25 +81,37 @@ class AsyncResource {
   friend class AsyncLoader;
 };
 
+/// @class AsyncLoader
+/// @brief Handles loading AsyncResource objects.
 class AsyncLoader {
  public:
   AsyncLoader();
   ~AsyncLoader();
 
-  // Call this any number of times before StartLoading.
+  /// @brief Queues AsyncResources to be loaded by StartLoading.
+  ///
+  /// Call this any number of times before StartLoading.
+  ///
+  /// @param res The resource to queue for loading.
   void QueueJob(AsyncResource *res);
 
-  // Launches the loading thread.
+  /// @brief Launches the loading thread for the previously queued jobs.
   void StartLoading();
 
-  // Cleans-up the background loading thread once all jobs have been completed.
-  // You can restart with StartLoading() if you like.
+  /// @brief Ends the loading thread when all jobs are done.
+  ///
+  /// Cleans-up the background loading thread once all jobs have been completed.
+  /// You can restart with StartLoading() if you like.
   void StopLoadingWhenComplete();
 
-  // Call this once per frame after StartLoading. Will call Finalize on any
-  // resources that have finished loading. One it returns true, that means
-  // the queue is empty, all resources have been processed, and the loading
-  // thread has terminated.
+  /// @brief Call to Finalize any resources that have finished loading.
+  ///
+  /// Call this once per frame after StartLoading. Will call Finalize on any
+  /// resources that have finished loading. One it returns true, that means
+  /// the queue is empty, all resources have been processed, and the loading
+  /// thread has terminated.
+  ///
+  /// @return Returns true once the queue is empty.
   bool TryFinalize();
 
  private:

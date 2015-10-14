@@ -15,8 +15,6 @@
 #ifndef FPLBASE_CONFIG_H
 #define FPLBASE_CONFIG_H
 
-// This header file is included at the top of every fplbase header file.
-// It sets up configuration #defines for all of fplbase.
 #if !defined(FPL_BASE_BACKEND_STDLIB)
 #define FPL_BASE_BACKEND_SDL
 #define FPL_BASE_RENDERER_BACKEND_SDL

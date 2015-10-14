@@ -39,8 +39,11 @@ static const int kNumVec4sInAffineTransform = 3;
 typedef unsigned int ShaderHandle;
 typedef int UniformHandle;
 
-// Represents a shader consisting of a vertex and pixel shader. Also stores
-// ids of standard uniforms. Use the Renderer class below to create these.
+/// @class Shader
+/// @brief Represents a shader consisting of a vertex and pixel shader.
+///
+/// Represents a shader consisting of a vertex and pixel shader. Also stores
+/// ids of standard uniforms. Use the Renderer class below to create these.
 class Shader {
  public:
   Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
@@ -57,29 +60,50 @@ class Shader {
 
   ~Shader();
 
-  // Will make this shader active for any subsequent draw calls, and sets
-  // all standard uniforms (e.g. mvp matrix) based on current values in
-  // Renderer, if this shader refers to them.
+  /// @brief Activate this shader for subsequent draw calls.
+  ///
+  /// Will make this shader active for any subsequent draw calls, and sets
+  /// all standard uniforms (e.g. mvp matrix) based on current values in
+  /// Renderer, if this shader refers to them.
+  ///
+  /// @param renderer The renderer that has the standard uniforms set.
   void Set(const Renderer &renderer) const;
 
-  // Find a non-standard uniform by name, -1 means not found.
+  /// @brief Find a non-standard uniform by name.
+  ///
+  /// @param uniform_name The name of the uniform to find.
+  /// @return Returns a handle to the requested uniform, -1 if not found.
   UniformHandle FindUniform(const char *uniform_name);
 
-  // Raw call to set any uniform (with 1/2/3/4/16 components).
-  // More convenient variants below.
+  /// @brief Raw call to set any uniform (with 1/2/3/4/16 components).
+  ///
+  /// More convenient variants below.
+  ///
+  /// @param uniform_loc Handle to the uniform that will be set.
+  /// @param value The value to set the uniform to.
+  /// @param num_components The number of components used by the uniform.
   void SetUniform(UniformHandle uniform_loc, const float *value,
                   size_t num_components);
 
-  // Set an non-standard uniform to a vec2/3/4 value.
-  // Call this after Set() or FindUniform().
+  /// @brief Set an non-standard uniform to a vec2/3/4 value.
+  ///
+  /// Call this after Set() or FindUniform().
+  ///
+  /// @param uniform_loc Handle to the uniform that will be set.
+  /// @param value The vector to set the uniform to.
   template <int N>
   void SetUniform(UniformHandle uniform_loc,
                   const mathfu::Vector<float, N> &value) {
     SetUniform(uniform_loc, &value[0], N);
   }
 
-  // Convenience call that does a Lookup and a Set if found.
-  // Call this after Set().
+  /// @brief Convenience call that does a Lookup and a Set if found.
+  ///
+  /// Call this after Set().
+  ///
+  /// @param uniform_name The name of the uniform that will be set.
+  /// @param value The vector to set the uniform to.
+  /// @return Returns true if the uniform was found and set, false otherwise.
   template <int N>
   bool SetUniform(const char *uniform_name,
                   const mathfu::Vector<float, N> &value) {
@@ -89,6 +113,13 @@ class Shader {
     return true;
   }
 
+  /// @brief Set a non-standard uniform to a float value.
+  ///
+  /// Call this after Set().
+  ///
+  /// @param uniform_name The name of the uniform that will be set.
+  /// @param value The float to set the uniform to.
+  /// @return Returns true if the uniform was found and set, false otherwise.
   bool SetUniform(const char *uniform_name, float value) {
     auto loc = FindUniform(uniform_name);
     if (loc < 0) return false;
@@ -96,6 +127,13 @@ class Shader {
     return true;
   }
 
+  /// @brief Set a non-standard uniform to a mat4 value.
+  ///
+  /// Call this after Set().
+  ///
+  /// @param uniform_name The name of the uniform that will be set.
+  /// @param value The mat4 to set the uniform to.
+  /// @return Returns true if the uniform was found and set, false otherwise.
   bool SetUniform(const char *uniform_name, const mathfu::mat4 &value) {
     auto loc = FindUniform(uniform_name);
     if (loc < 0) return false;
