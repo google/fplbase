@@ -13,13 +13,13 @@
 // limitations under the License.
 //
 
-attribute vec4 in_position;
-attribute vec2 in_uv;
-uniform mat4 model;
+attribute vec4 aPosition;
+attribute vec2 aTexCoord;
+uniform mat4 model_view_projection;
 
-varying vec2 v_uv;
+varying vec2 vTexCoord;
 
 void main() {
-  gl_Position = model * in_position;
-  v_uv = in_uv;
+  gl_Position = model_view_projection * aPosition;
+  vTexCoord = aTexCoord;
 }

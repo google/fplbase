@@ -1,11 +1,12 @@
 # Git Ignore file.
 #General build files
 obj/*
-bin/flatc
-bin/flathash
-bin/fpldemo-*
+bin/*
 gen/*
 libs/*
+docs/html/*
+fplbase_assets/*
+assets/*
 Makefile
 fplbase.cbp
 
@@ -21,6 +22,9 @@ tests/cmake_install.cmake
 demo/CMakeFiles/*
 demo/Makefile
 demo/cmake_install.cmake
+samples/CMakeFiles/*
+samples/texture/CMakeFiles/*
+samples/triangle/CMakeFiles/*
 
 # Visual Studio files
 *.opensdf

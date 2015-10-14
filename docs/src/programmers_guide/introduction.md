@@ -65,6 +65,43 @@ The basic flow of using this lower level layer is as follows:
   `model_view_projection()`), ready to be used by the shader.
 * Finally, calling `Render` on your mesh will display it on screen.
 
+A simple example of how this can work together (displays a quad):
+
+~~~{.cpp}
+fpl::Renderer renderer;
+fpl::InputSystem input;
+
+renderer.Initialize();
+input.Initialize();
+
+// A vertex shader that passes untransformed position thru.
+auto vertex_shader =
+  "attribute vec4 aPosition;\n"
+  "void main() { gl_Position = aPosition; }\n";
+
+// A fragment shader that outputs a green pixel.
+auto fragment_shader =
+  "void main() { gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+
+auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
+assert(shader);
+
+while (!input.exit_requested()) {
+  input.AdvanceFrame(&renderer.window_size());
+  renderer.AdvanceFrame(input.minimized(), input.Time());
+
+  float color = (1.0f - cos(input.Time())) / 2.0f;
+  renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
+
+  shader->Set(renderer);
+
+  fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
+                                mathfu::vec3( 0.5f,  0.5f, 0));
+}
+
+renderer.ShutDown();
+~~~
+
 # Asset Manager {#fplbase_matman}
 
 The renderer is deliberately a bare minimum system that takes care of creating
@@ -99,6 +136,26 @@ to a binary file by our [FlatBuffers] serialization library, the result
 of which can be passed to `LoadMaterial` that will load all referenced
 textures and create a `Material` object (which can be attached to `Mesh`).
 
+A simple example, which could replace the shader loading in the above example,
+and also loads a texture:
+
+~~~{.cpp}
+fpl::AssetManager asset_manager(renderer);
+
+auto shader = asset_manager.LoadShader("tex");
+assert(shader);
+
+auto tex = asset_manager.LoadTexture("tex.webp");
+assert(tex);
+
+asset_manager.StartLoadingTextures();
+while (!asset_manager.TryFinalize()) {
+  // Can display loading screen here.
+}
+~~~
+
+What is that while loop needed for? Well:
+
 # Asynchronous Loader {#fplbase_async_loader}
 
 Loading resources can take a long time, and can be sped up by loading
@@ -122,6 +179,8 @@ relatively simple:
   loads textures in the order they were requested, make sure you queue up
   your loading screen textures first. If the `Texture::id()` is non-zero,
   it can already be used.
+
+
 
 # Input System {#fplbase_input}
 
