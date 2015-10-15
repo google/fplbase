@@ -52,7 +52,7 @@ void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
     BeginUndistortFramebuffer();
   }
   renderer->ClearFrameBuffer(clear_color);
-  renderer->color() = mathfu::kOnes4f;
+  renderer->set_color(mathfu::kOnes4f);
   renderer->DepthTest(true);
 
   vec2i size = AndroidGetScalerResolution();
