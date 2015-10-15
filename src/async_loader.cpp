@@ -24,7 +24,7 @@ namespace fpl {
 
 // Push this to signal the worker thread that it's time to quit.
 class BookendAsyncResource : public AsyncResource {
-  static std::string kBookendFileName;
+  static const char *kBookendFileName;
 
  public:
   BookendAsyncResource() : AsyncResource(kBookendFileName) {}
@@ -37,7 +37,7 @@ class BookendAsyncResource : public AsyncResource {
 };
 
 // static
-std::string BookendAsyncResource::kBookendFileName = "bookend";
+const char *BookendAsyncResource::kBookendFileName = "bookend";
 
 AsyncLoader::AsyncLoader() : worker_thread_(nullptr) {
   mutex_ = SDL_CreateMutex();

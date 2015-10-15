@@ -40,7 +40,7 @@ class AsyncLoader;
 class AsyncResource {
  public:
   AsyncResource() : data_(nullptr) {}
-  explicit AsyncResource(const std::string &filename)
+  explicit AsyncResource(const char *filename)
       : filename_(filename), data_(nullptr) {}
   virtual ~AsyncResource() {}
 

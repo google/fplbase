@@ -71,7 +71,7 @@ Shader *AssetManager::LoadShader(const char *basename) {
     }
   }
   LogError(kError, "Can\'t load shader file: %s", failedfile.c_str());
-  renderer_.last_error() = "Couldn\'t load: " + failedfile;
+  renderer_.set_last_error("Couldn\'t load: " + failedfile);
   return nullptr;
 }
 
@@ -126,7 +126,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
     material_map_[filename] = mat;
     return mat;
   }
-  renderer_.last_error() = std::string("Couldn\'t load: ") + filename;
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 
@@ -231,7 +231,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     mesh_map_[filename] = mesh;
     return mesh;
   }
-  renderer_.last_error() = std::string("Couldn\'t load: ") + filename;
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 

@@ -516,20 +516,20 @@ uint8_t *Renderer::LoadAndUnpackTexture(const char *filename, vec2i *dimensions,
     if (ext_pos != std::string::npos) ext = ext.substr(ext_pos + 1);
     if (ext == "tga") {
       auto buf = UnpackTGA(file.c_str(), dimensions, has_alpha);
-      if (!buf) last_error() = std::string("TGA format problem: ") + filename;
+      if (!buf) last_error_ = std::string("TGA format problem: ") + filename;
       return buf;
     } else if (ext == "webp") {
       auto buf = UnpackWebP(file.c_str(), file.length(), dimensions, has_alpha);
-      if (!buf) last_error() = std::string("WebP format problem: ") + filename;
+      if (!buf) last_error_ = std::string("WebP format problem: ") + filename;
       return buf;
     } else {
-      last_error() =
+      last_error_ =
           std::string("Can\'t figure out file type from extension: ") +
           filename;
       return nullptr;
     }
   }
-  last_error() = std::string("Couldn\'t load: ") + filename;
+  last_error_ = std::string("Couldn\'t load: ") + filename;
   return nullptr;
 }
 

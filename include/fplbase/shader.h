@@ -105,7 +105,7 @@ class Shader {
 
   void InitializeUniforms();
 
-  ShaderHandle GetProgram() const { return program_; }
+  ShaderHandle program() const { return program_; }
 
  private:
   ShaderHandle program_, vs_, ps_;

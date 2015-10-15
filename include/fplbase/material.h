@@ -17,14 +17,17 @@
 
 #include <vector>
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
 #include "fplbase/shader.h"
-#include "mathfu/glsl_mappings.h"
 #include "mathfu/constants.h"
+#include "mathfu/glsl_mappings.h"
 
 namespace fpl {
+
+using mathfu::vec2i;
+using mathfu::vec4;
 
 class Renderer;
 
@@ -52,29 +55,20 @@ typedef unsigned int TextureHandle;
 
 class Texture : public AsyncResource {
  public:
-  Texture(Renderer &renderer, const std::string &filename)
-      : AsyncResource(filename),
+  Texture(Renderer &renderer, const char *filename = nullptr)
+      : AsyncResource(filename ? filename : ""),
         renderer_(&renderer),
         id_(0),
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),
-        uv_(mathfu::vec4(0.0f, 0.0f, 1.0f, 1.0f)),
-        has_alpha_(false),
-        mipmaps_(true),
-        desired_(kFormatAuto) {}
-  Texture(Renderer &renderer)
-      : AsyncResource(""),
-        renderer_(&renderer),
-        id_(0),
-        size_(mathfu::kZeros2i),
-        uv_(mathfu::vec4(0.0f, 0.0f, 1.0f, 1.0f)),
+        uv_(vec4(0.0f, 0.0f, 1.0f, 1.0f)),
         has_alpha_(false),
         mipmaps_(true),
         desired_(kFormatAuto) {}
   ~Texture() { Delete(); }
 
   virtual void Load();
-  virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i &size,
+  virtual void LoadFromMemory(const uint8_t *data, const vec2i &size,
                               TextureFormat format, bool has_alpha,
                               bool mipmaps);
   virtual void Finalize();
@@ -86,31 +80,28 @@ class Texture : public AsyncResource {
   void Delete();
 
   const TextureHandle &id() const { return id_; }
-  mathfu::vec2i size() { return size_; }
-  const mathfu::vec2i &size() const { return size_; }
+  const vec2i &size() const { return size_; }
 
-  const mathfu::vec4 &uv() const { return uv_; }
+  const vec4 &uv() const { return uv_; }
   void set_uv(const vec4 &uv) { uv_ = uv; }
 
   void set_desired_format(TextureFormat format) { desired_ = format; }
 
-  void set_original_size(const mathfu::vec2i &size) { original_size_ = size; }
-  void SetOriginalSizeIfNotYetSet(const mathfu::vec2i &size) {
+  const vec2i &original_size() const { return original_size_; }
+  void set_original_size(const vec2i &size) { original_size_ = size; }
+  void SetOriginalSizeIfNotYetSet(const vec2i &size) {
     if (original_size_.x() == 0 && original_size_.y() == 0) {
       original_size_ = size;
     }
-  }
-  const mathfu::vec2i &original_size() const {
-    return original_size_;
   }
 
  private:
   Renderer *renderer_;
 
   TextureHandle id_;
-  mathfu::vec2i size_;
-  mathfu::vec2i original_size_;
-  mathfu::vec4 uv_;
+  vec2i size_;
+  vec2i original_size_;
+  vec4 uv_;
   bool has_alpha_;
   bool mipmaps_;
   TextureFormat desired_;

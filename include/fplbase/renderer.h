@@ -15,18 +15,23 @@
 #ifndef FPLBASE_RENDERER_H
 #define FPLBASE_RENDERER_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
-#include "mathfu/glsl_mappings.h"
 #include "fplbase/material.h"
 #include "fplbase/mesh.h"
 #include "fplbase/shader.h"
+#include "mathfu/glsl_mappings.h"
 
 #ifdef __ANDROID__
-#  include "fplbase/renderer_android.h"
+#include "fplbase/renderer_android.h"
 #endif
 
 namespace fpl {
+
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::mat4;
 
 typedef void *Window;
 typedef void *GLContext;
@@ -41,20 +46,15 @@ class Renderer {
   Renderer();
   ~Renderer();
 
-  enum CullingMode {
-    kNoCulling,
-    kCullFront,
-    kCullBack,
-    kCullFrontAndBack
-  };
+  enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
 
   // OpenGL ES feature level we are able to obtain.
   enum FeatureLevel {
-    kFeatureLevel20,    // 2.0: Our fallback.
-    kFeatureLevel30,    // 3.0: We request this by default.
+    kFeatureLevel20,  // 2.0: Our fallback.
+    kFeatureLevel30,  // 3.0: We request this by default.
   };
 
-# ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   // Creates the window + OpenGL context.
   // A descriptive error is in last_error() if it returns false.
   bool Initialize(const vec2i &window_size = vec2i(800, 600),
@@ -67,11 +67,11 @@ class Renderer {
 
   // Cleans up whatever Initialize creates.
   void ShutDown();
-# else
+#else
   // In the non-window-owning use case, call to update the window size whenever
   // it changes.
   void SetWindowSize(const vec2i &window_size);
-# endif
+#endif
 
   // Clears the framebuffer. Call this after AdvanceFrame if desired.
   void ClearFrameBuffer(const vec4 &color);
@@ -89,8 +89,8 @@ class Renderer {
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
   // Return 0 if not a power of two in size.
   TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
-                               bool has_alpha, bool mipmaps = true,
-                               TextureFormat desired = kFormatAuto);
+                              bool has_alpha, bool mipmaps = true,
+                              TextureFormat desired = kFormatAuto);
 
   // Update (part of) the current texture with new pixel data.
   // For now, must always update at least entire rows.
@@ -135,7 +135,7 @@ class Renderer {
   void DepthTest(bool on);
 
   // Set the current render target.
-  void SetRenderTarget(const RenderTarget& render_target);
+  void SetRenderTarget(const RenderTarget &render_target);
 
   // Turn on/off a scissor region. Arguments are in screen pixels.
   void ScissorOn(const vec2i &pos, const vec2i &size);
@@ -146,24 +146,26 @@ class Renderer {
   void SetAnimation(const mathfu::mat4 *bone_transforms, int num_bones);
 
   // Shader uniform: model_view_projection
-  mat4 &model_view_projection() { return model_view_projection_; }
   const mat4 &model_view_projection() const { return model_view_projection_; }
+  void set_model_view_projection(const mat4 &mvp) {
+    model_view_projection_ = mvp;
+  }
 
   // Shader uniform: model (object to world transform only)
-  mat4 &model() { return model_; }
   const mat4 &model() const { return model_; }
+  void set_model(const mat4 &model) { model_ = model; }
 
   // Shader uniform: color
-  vec4 &color() { return color_; }
   const vec4 &color() const { return color_; }
+  void set_color(const vec4 &color) { color_ = color; }
 
   // Shader uniform: light_pos
-  vec3 &light_pos() { return light_pos_; }
   const vec3 &light_pos() const { return light_pos_; }
+  void set_light_pos(const vec3 &light_pos) { light_pos_ = light_pos; }
 
   // Shader uniform: camera_pos
-  vec3 &camera_pos() { return camera_pos_; }
   const vec3 &camera_pos() const { return camera_pos_; }
+  void set_camera_pos(const vec3 &camera_pos) { camera_pos_ = camera_pos; }
 
   // Shader uniform: bone_transforms
   const mat4 *bone_transforms() const { return bone_transforms_; }
@@ -175,13 +177,16 @@ class Renderer {
 
   // If any of the more complex loading operations (shaders, textures etc.)
   // fail, this sting will contain a more informative error message.
-  std::string &last_error() { return last_error_; }
   const std::string &last_error() const { return last_error_; }
+  void set_last_error(const std::string &last_error) {
+    last_error_ = last_error;
+  }
 
   // The device's current framebuffer size. May change from frame to frame
   // due to window resizing or Android navigation buttons turning on/off.
-  vec2i &window_size() { return window_size_; }
   const vec2i &window_size() const { return window_size_; }
+  vec2i &window_size() { return window_size_; }
+  void set_window_size(const vec2i &ws) { window_size_ = ws; }
 
   // Time in seconds since program start, as used by animated shaders,
   // updated once per frame only.
@@ -192,12 +197,14 @@ class Renderer {
 
   // Set this to override the blend used for all draw calls (after calling
   // SetBlendMode for it).
-  BlendMode &force_blend_mode() { return force_blend_mode_; };
   BlendMode force_blend_mode() const { return force_blend_mode_; };
+  void set_force_blend_mode(BlendMode bm) { force_blend_mode_ = bm; };
 
   // Set this force any shader that gets loaded to use this pixel shader
   // instead (for debugging purposes).
-  std::string &override_pixel_shader() { return override_pixel_shader_; }
+  void set_override_pixel_shader(const std::string &ps) {
+    override_pixel_shader_ = ps;
+  }
 
   // Get the max number of uniforms components (i.e. individual floats, so
   // a mat4 needs 16 of them). This variable is also available in the
@@ -207,7 +214,7 @@ class Renderer {
 
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
-                              const char *source);
+                             const char *source);
   vec2i GetViewportSize();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
@@ -224,10 +231,10 @@ class Renderer {
 
   std::string last_error_;
 
-# ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   Window window_;
   GLContext context_;
-# endif
+#endif
 
   BlendMode blend_mode_;
 

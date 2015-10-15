@@ -279,8 +279,8 @@ void InputSystem::HandleJoystickEvent(Event event) {
     case SDL_JOYAXISMOTION:
       // Axis data is normalized to a range of [-1.0, 1.0]
       GetJoystick(sdl_event->jaxis.which)
-          .GetAxis(sdl_event->jaxis.axis)
-          .Update(sdl_event->jaxis.value / kJoystickAxisRange);
+          .SetAxis(sdl_event->jaxis.axis,
+                   sdl_event->jaxis.value / kJoystickAxisRange);
       break;
     case SDL_JOYBUTTONDOWN:
     case SDL_JOYBUTTONUP:
@@ -290,8 +290,8 @@ void InputSystem::HandleJoystickEvent(Event event) {
       break;
     case SDL_JOYHATMOTION:
       GetJoystick(sdl_event->jhat.which)
-          .GetHat(sdl_event->jhat.hat)
-          .Update(ConvertHatToVector(sdl_event->jhat.value));
+          .SetHat(sdl_event->jhat.hat,
+                  ConvertHatToVector(sdl_event->jhat.value));
       break;
   }
 }
@@ -478,30 +478,34 @@ Button &Joystick::GetButton(size_t button_index) {
   return button_list_[button_index];
 }
 
-JoystickAxis &Joystick::GetAxis(size_t axis_index) {
-  if (axis_index >= axis_list_.size()) {
-    axis_list_.resize(axis_index + 1);
+float Joystick::GetAxis(size_t axis_index) {
+  while (axis_index >= axis_list_.size()) {
+    axis_list_.push_back(0);
   }
   return axis_list_[axis_index];
 }
 
-JoystickHat &Joystick::GetHat(size_t hat_index) {
-  if (hat_index >= hat_list_.size()) {
-    hat_list_.resize(hat_index + 1);
+vec2 Joystick::GetHat(size_t hat_index) {
+  while (hat_index >= hat_list_.size()) {
+    hat_list_.push_back(mathfu::kZeros2f);
   }
   return hat_list_[hat_index];
+}
+
+void Joystick::SetAxis(size_t axis_index, float axis) {
+  GetAxis(axis_index);
+  axis_list_[axis_index] = axis;
+}
+
+void Joystick::SetHat(size_t hat_index, const vec2 &hat) {
+  GetHat(hat_index);
+  hat_list_[hat_index] = hat;
 }
 
 // Reset the per-frame input on all our sub-elements
 void Joystick::AdvanceFrame() {
   for (size_t i = 0; i < button_list_.size(); i++) {
     button_list_[i].AdvanceFrame();
-  }
-  for (size_t i = 0; i < axis_list_.size(); i++) {
-    axis_list_[i].AdvanceFrame();
-  }
-  for (size_t i = 0; i < hat_list_.size(); i++) {
-    hat_list_[i].AdvanceFrame();
   }
 }
 

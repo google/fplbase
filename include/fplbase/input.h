@@ -111,40 +111,14 @@ struct InputPointer {
   InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
 };
 
-// Used to record state for axes
-class JoystickAxis {
- public:
-  JoystickAxis() : value_(0), previous_value_(0) {}
-  void AdvanceFrame() { previous_value_ = value_; }
-  void Update(float new_value) { value_ = new_value; }
-  float Value() const { return value_; }
-  float PreviousValue() const { return previous_value_; }
-
- private:
-  float value_;           // current value
-  float previous_value_;  // value last update
-};
-
-// Used to record state for hats
-class JoystickHat {
- public:
-  JoystickHat() : value_(mathfu::kZeros2f), previous_value_(mathfu::kZeros2f) {}
-  void AdvanceFrame() { previous_value_ = value_; }
-  void Update(const vec2 &new_value) { value_ = new_value; }
-  const vec2 &Value() const { return value_; }
-  vec2 PreviousValue() const { return previous_value_; }
-
- private:
-  vec2 value_;           // current value
-  vec2 previous_value_;  // value last update
-};
-
 class Joystick {
  public:
   // Get a Button object for a pointer index.
   Button &GetButton(size_t button_index);
-  JoystickAxis &GetAxis(size_t axis_index);
-  JoystickHat &GetHat(size_t hat_index);
+  float GetAxis(size_t axis_index);
+  vec2 GetHat(size_t hat_index);
+  void SetAxis(size_t axis_index, float axis);
+  void SetHat(size_t hat_index, const vec2 &hat);
   void AdvanceFrame();
   JoystickData joystick_data() { return joystick_data_; }
   void set_joystick_data(JoystickData joy) { joystick_data_ = joy; }
@@ -155,9 +129,9 @@ class Joystick {
 
  private:
   JoystickData joystick_data_;
-  std::vector<JoystickAxis> axis_list_;
+  std::vector<float> axis_list_;
   std::vector<Button> button_list_;
-  std::vector<JoystickHat> hat_list_;
+  std::vector<vec2> hat_list_;
 };
 
 #if ANDROID_GAMEPAD

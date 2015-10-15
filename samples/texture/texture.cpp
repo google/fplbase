@@ -64,8 +64,8 @@ int main(int, char** argv) {
     auto s = sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 2);
     auto zoom = mathfu::vec3(3.0f, 3.0f, 1.0f) + mathfu::vec3(c, c, 1.0f);
-    renderer.model_view_projection() = mathfu::mat4::FromRotationMatrix(rotz) *
-                                       mathfu::mat4::FromScaleVector(zoom);
+    renderer.set_model_view_projection(mathfu::mat4::FromRotationMatrix(rotz) *
+                                       mathfu::mat4::FromScaleVector(zoom));
 
     fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
                                   mathfu::vec3( 1,  1, 0),
