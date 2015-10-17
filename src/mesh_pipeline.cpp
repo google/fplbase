@@ -55,6 +55,43 @@ using mathfu::vec4_packed;
 
 typedef uint8_t BoneIndex;
 
+enum AxisSystem {
+  kInvalidAxisSystem = -2,
+  kUnspecifiedAxisSystem = -1,
+
+  kXUp_PositiveYFront_PositiveZ = 0,
+  kXUp_PositiveYFront_NegativeZ,
+  kXUp_NegativeYFront_PositiveZ,
+  kXUp_NegativeYFront_NegativeZ,
+  kXUp_PositiveZFront_PositiveY,
+  kXUp_PositiveZFront_NegativeY,
+  kXUp_NegativeZFront_PositiveY,
+  kXUp_NegativeZFront_NegativeY,
+  kLastXUpAxisSystem,
+
+  kYUp_PositiveXFront_PositiveZ = kLastXUpAxisSystem,
+  kYUp_PositiveXFront_NegativeZ,
+  kYUp_NegativeXFront_PositiveZ,
+  kYUp_NegativeXFront_NegativeZ,
+  kYUp_PositiveZFront_PositiveX,
+  kYUp_PositiveZFront_NegativeX,
+  kYUp_NegativeZFront_PositiveX,
+  kYUp_NegativeZFront_NegativeX,
+  kLastYUpAxisSystem,
+
+  kZUp_PositiveXFront_PositiveY = kLastYUpAxisSystem,
+  kZUp_PositiveXFront_NegativeY,
+  kZUp_NegativeXFront_PositiveY,
+  kZUp_NegativeXFront_NegativeY,
+  kZUp_PositiveYFront_PositiveX,
+  kZUp_PositiveYFront_NegativeX,
+  kZUp_NegativeYFront_PositiveX,
+  kZUp_NegativeYFront_NegativeX,
+  kLastZUpAxisSystem,
+
+  kNumAxisSystems = kLastZUpAxisSystem
+};
+
 static const char* const kImageExtensions[] =
     { "jpg", "jpeg", "png", "webp", "tga" };
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
@@ -85,6 +122,35 @@ static const char* kTextureProperties[] = {
   FbxSurfaceMaterial::sReflection,
   FbxSurfaceMaterial::sReflectionFactor,
 };
+
+static const char* kAxisSystemNames[] = {
+  "x+y+z", // kXUp_PositiveYFront_PositiveZ
+  "x+y-z", // kXUp_PositiveYFront_NegativeZ
+  "x-y+z", // kXUp_NegativeYFront_PositiveZ
+  "x-y-z", // kXUp_NegativeYFront_NegativeZ
+  "x+z+y", // kXUp_PositiveZFront_PositiveY
+  "x+z-y", // kXUp_PositiveZFront_NegativeY
+  "x-z+y", // kXUp_NegativeZFront_PositiveY
+  "x-z-y", // kXUp_NegativeZFront_NegativeY
+  "y+x+z", // kYUp_PositiveXFront_PositiveZ
+  "y+x-z", // kYUp_PositiveXFront_NegativeZ
+  "y-x+z", // kYUp_NegativeXFront_PositiveZ
+  "y-x-z", // kYUp_NegativeXFront_NegativeZ
+  "y+z+x", // kYUp_PositiveZFront_PositiveX
+  "y+z-x", // kYUp_PositiveZFront_NegativeX
+  "y-z+x", // kYUp_NegativeZFront_PositiveX
+  "y-z-x", // kYUp_NegativeZFront_NegativeX
+  "z+x+y", // kZUp_PositiveXFront_PositiveY
+  "z+x-y", // kZUp_PositiveXFront_NegativeY
+  "z-x+y", // kZUp_NegativeXFront_PositiveY
+  "z-x-y", // kZUp_NegativeXFront_NegativeY
+  "z+y+x", // kZUp_PositiveYFront_PositiveX
+  "z+y-x", // kZUp_PositiveYFront_NegativeX
+  "z-y+x", // kZUp_NegativeYFront_PositiveX
+  "z-y-x", // kZUp_NegativeYFront_NegativeX
+  nullptr
+};
+static_assert(FPL_ARRAYSIZE(kAxisSystemNames) == kNumAxisSystems + 1, "");
 
 // Each log message is given a level of importance.
 // We only output messages that have level >= our current logging level.
@@ -850,7 +916,8 @@ class FbxMeshParser {
 
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
-  bool Load(const char* file_name, bool recenter, bool hierarchy) {
+  bool Load(const char* file_name, AxisSystem axis_system, bool recenter,
+            bool hierarchy) {
     if (!Valid()) return false;
 
     log_.Log(kLogImportant,
@@ -901,12 +968,13 @@ class FbxMeshParser {
     // Remember the source file name so we can search for textures nearby.
     mesh_file_name_ = std::string(file_name);
 
-    // Convert to our exported co-ordinate system: z-up, y-front, right-handed.
+    // Convert to our exported co-ordinate system.
     LogNodes("Original scene nodes\n");
-    const FbxAxisSystem export_axes(FbxAxisSystem::EUpVector::eZAxis,
-                                    FbxAxisSystem::EFrontVector::eParityOdd,
-                                    FbxAxisSystem::eRightHanded);
-    export_axes.ConvertScene(scene_);
+    if (axis_system != kUnspecifiedAxisSystem) {
+      assert(axis_system >= 0);
+      const FbxAxisSystem export_axes = CalculateFbxAxisSystem(axis_system);
+      export_axes.ConvertScene(scene_);
+    }
 
     // Bring the geo into our format.
     ConvertGeometry(recenter);
@@ -1540,6 +1608,32 @@ class FbxMeshParser {
     }
   };
 
+  static inline FbxAxisSystem::EUpVector CalculateFbxUpVector(
+      AxisSystem system) {
+    return system <= kLastXUpAxisSystem ? FbxAxisSystem::EUpVector::eXAxis :
+           system <= kLastYUpAxisSystem ? FbxAxisSystem::EUpVector::eYAxis :
+           FbxAxisSystem::EUpVector::eZAxis;
+  }
+
+  static inline FbxAxisSystem::EFrontVector CalculateFbxFrontVector(
+      AxisSystem system) {
+    return (system % kLastXUpAxisSystem) < kLastXUpAxisSystem / 2 ?
+           FbxAxisSystem::EFrontVector::eParityEven :
+           FbxAxisSystem::EFrontVector::eParityOdd;
+  }
+
+  static inline FbxAxisSystem::ECoordSystem CalculateFbxHandedness(
+      AxisSystem system) {
+    return system % 2 == 0 ? FbxAxisSystem::eRightHanded
+                           : FbxAxisSystem::eLeftHanded;
+  }
+
+  static FbxAxisSystem CalculateFbxAxisSystem(AxisSystem system) {
+    return FbxAxisSystem(CalculateFbxUpVector(system),
+                         CalculateFbxFrontVector(system),
+                         CalculateFbxHandedness(system));
+  }
+
   // Return true if `node` or any of its children has a mesh.
   static bool NodeHasMesh(FbxNode* node) {
     if (node->GetMesh() != nullptr) return true;
@@ -1573,6 +1667,7 @@ class FbxMeshParser {
 struct MeshPipelineArgs {
   MeshPipelineArgs()
     : blend_mode(static_cast<matdef::BlendMode>(-1)),
+      axis_system(kUnspecifiedAxisSystem),
       recenter(false),
       hierarchy(false),
       log_level(kLogWarning) {}
@@ -1583,6 +1678,7 @@ struct MeshPipelineArgs {
   std::string texture_extension;/// Extension of textures in material file.
   std::vector<matdef::TextureFormat> texture_formats;
   matdef::BlendMode blend_mode;
+  AxisSystem axis_system;
   bool recenter;               /// Translate geometry to origin.
   bool hierarchy;              /// Mesh vertices output relative to local pivot.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
@@ -1598,6 +1694,10 @@ static int IndexOfString(const char* s, const char** array_of_strings) {
     ++i;
   }
   return -1;
+}
+
+static AxisSystem ParseAxisSystem(const char* s) {
+  return static_cast<AxisSystem>(IndexOfString(s, kAxisSystemNames));
 }
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
@@ -1739,6 +1839,18 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+    } else if (arg == "-a" || arg == "--axes") {
+      if (i + 1 < argc - 1) {
+        args->axis_system = ParseAxisSystem(argv[i + 1]);
+        valid_args = args->axis_system >= 0;
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown coordinate system: %s\n\n", argv[i + 1]);
+        }
+        i++;
+      } else {
+        valid_args = false;
+      }
+
       // ignore empty arguments
     } else if (arg == "") {
       // Invalid switch.
@@ -1762,7 +1874,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         kLogImportant,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
         "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
-        "                     [-m BLEND_MODE] [-h] [-c] [-v|-d|-i] FBX_FILE\n"
+        "                     [-m BLEND_MODE] [-a AXES] [-h] [-c] [-v|-d|-i]\n"
+        "                     FBX_FILE\n"
         "\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
         "We output a .fplmesh file and (potentially several) .fplmat files,\n"
@@ -1815,6 +1928,23 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
     log.Log(
         kLogImportant,
+        "  -a, --axes AXES\n"
+        "                coordinate system of exported file, in format\n"
+        "                    (up-axis)(front-axis)(left-axis) \n"
+        "                where,\n"
+        "                    'up' = [x|y|z]\n"
+        "                    'front' = [+x|-x|+y|-y|+z|-z], is the axis\n"
+        "                      pointing out of the front of the mesh.\n"
+        "                      For example, the vector pointing out of a\n"
+        "                      character's belly button.\n"
+        "                    'left' = [+x|-x|+y|-y|+z|-z], is the axis\n"
+        "                      pointing out the left of the mesh.\n"
+        "                      For example, the vector from the character's\n"
+        "                      neck to his left shoulder.\n"
+        "                For example, 'z+y+x' is z-axis up, positive y-axis\n"
+        "                out of a character's belly button, positive x-axis\n"
+        "                out of a character's left side.\n"
+        "                If unspecified, use file's coordinate system.\n"
         "  -h, --hierarchy\n"
         "                output vertices relative to local pivot of each\n"
         "                sub-mesh. The transforms from parent pivot to local\n"
@@ -1845,8 +1975,8 @@ int main(int argc, char** argv) {
 
   // Load the FBX file.
   FbxMeshParser pipe(log);
-  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.recenter,
-                                     args.hierarchy);
+  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.axis_system,
+                                     args.recenter, args.hierarchy);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.
