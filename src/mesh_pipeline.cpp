@@ -1680,7 +1680,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       args->log_level = kLogInfo;
 
       // -b switch
-    } else if (arg == "-b") {
+    } else if (arg == "-b" || arg == "--base-dir") {
       if (i + 1 < argc - 1) {
         args->asset_base_dir = std::string(argv[i + 1]);
         i++;
@@ -1689,7 +1689,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       }
 
       // -r switch
-    } else if (arg == "-r") {
+    } else if (arg == "-r" || arg == "--relative-dir") {
       if (i + 1 < argc - 1) {
         args->asset_rel_dir = std::string(argv[i + 1]);
         i++;
@@ -1697,7 +1697,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
-    } else if (arg == "-e") {
+    } else if (arg == "-e" || arg == "--texture-extension") {
       if (i + 1 < argc - 1) {
         args->texture_extension = std::string(argv[i + 1]);
         i++;
@@ -1714,7 +1714,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       args->recenter = true;
 
       // -f switch
-    } else if (arg == "-f") {
+    } else if (arg == "-f" || arg == "--texture-formats") {
       if (i + 1 < argc - 1) {
         valid_args = ParseTextureFormats(
             std::string(argv[i + 1]), log, &args->texture_formats);
@@ -1727,7 +1727,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       }
 
       // -m switch
-    } else if (arg == "-m") {
+    } else if (arg == "-m" || arg == "--blend-mode") {
       if (i + 1 < argc - 1) {
         args->blend_mode = ParseBlendMode(argv[i + 1]);
         valid_args = args->blend_mode >= 0;
@@ -1760,55 +1760,71 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
   if (!valid_args) {
     log.Log(
         kLogImportant,
-        "Usage: mesh_pipeline [-v|-d] [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
-        "                     [-c] [-f TEXTURE_FORMATS] FBX_FILE\n"
+        "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
+        "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
+        "                     [-m BLEND_MODE] [-h] [-c] [-v|-d|-i] FBX_FILE\n"
+        "\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
-        "We output a .fplmesh file with the same base name as FBX_FILE.\n"
-        "For every texture referenced by the FBX, we output a .fplmat file\n"
-        "to load the texture. The .fplmesh file references all .fplmat files\n"
-        "by names relative to ASSET_BASE_DIR.\n\n"
+        "We output a .fplmesh file and (potentially several) .fplmat files,\n"
+        "one for each material. The files have the same base name as\n"
+        "FBX_FILE, with a number appended to the .fplmat files if required.\n"
+        "The .fplmesh file references the .fplmat files.\n"
+        "The .fplmat files reference the textures.\n"
+        "\n"
         "Options:\n"
-        "  -v, --verbose        output all informative messages\n"
-        "  -d, --details        output important informative messages\n"
-        "  -i, --info           output more than details, less than verbose\n"
-        "  -b ASSET_BASE_DIR    directory from which all assets are loaded;\n"
-        "                       material file paths are relative to here.\n"
-        "                       If unspecified, current directory.\n"
-        "  -r ASSET_REL_DIR     directory to put all output files; relative\n"
-        "                       to ASSET_BASE_DIR. If unspecified, current\n"
-        "                       directory.\n"
-        "  -e TEXTURE_EXTENSION material files use this extension for texture\n"
-        "                       files. Useful if your textures are externally\n"
-        "                       converted to a different file format.\n"
-        "                       If unspecified, uses original file extension.\n"
-        "  -h, --hierarchy      output vertices relative to local pivot\n"
-        "                       of each sub-mesh. The transforms from parent\n"
-        "                       pivot to local pivot are also output.\n"
-        "                       This option is necessary for animated meshes.\n"
-        "  -c, --center         ensure world origin is inside geometry\n"
-        "                       bounding box by adding a translation if\n"
-        "                       required.\n"
-        "  -f TEXTURE_FORMATS   comma-separated list of formats for each\n"
-        "                       output texture. For example, if a mesh has\n"
-        "                       two textures then `AUTO,F_888` will ensure\n"
-        "                       the second texture's material has 8-bits of\n"
-        "                       RGB precision. Default is %s.\n"
-        "                       Valid possibilities:\n",
+        "  -b, --base-dir ASSET_BASE_DIR\n"
+        "  -r, --relative-dir ASSET_REL_DIR\n"
+        "                The .fplmesh file and the .fplmat files are output\n"
+        "                to the ASSET_BASE_DIR/ASSET_REL_DIR directory.\n"
+        "                ASSET_BASE_DIR is the working directory of your app,\n"
+        "                from which all files are loaded. The .fplmesh file\n"
+        "                references the .fplmat file relative to\n"
+        "                ASSET_BASE_DIR, that is, by prefixing ASSET_REL_DIR.\n"
+        "                If ASSET_BASE_DIR is unspecified, use current\n"
+        "                directory. If ASSET_REL_DIR is unspecified, output\n"
+        "                and reference files from ASSET_BASE_DIR.\n"
+        "  -e, --texture-extension TEXTURE_EXTENSION\n"
+        "                material files use this extension for texture files.\n"
+        "                Useful if your textures are externally converted\n"
+        "                to a different file format.\n"
+        "                If unspecified, uses original file extension.\n"
+        "  -f, --texture-formats TEXTURE_FORMATS\n"
+        "                comma-separated list of formats for each output\n"
+        "                texture. For example, if a mesh has two textures\n"
+        "                then `AUTO,F_888` will ensure the second texture's\n"
+        "                material has 8-bits of RGB precision.\n"
+        "                Default is %s.\n"
+        "                Valid possibilities:\n",
         matdef::EnumNameTextureFormat(kDefaultTextureFormat));
     for (const char** format = matdef::EnumNamesTextureFormat();
          *format != nullptr; ++format) {
       log.Log(kLogImportant, "                           %s\n", *format);
     }
+
     log.Log(
         kLogImportant,
-        "  -m BLEND_MODE        rendering blend mode for the generated\n"
-        "                       materials. If texture format has an alpha\n"
-        "                       channel, defaults to ALPHA. Otherwise,\n"
-        "                       defaults to OFF. Valid possibilities:\n");
+        "  -m, --blend-mode BLEND_MODE\n"
+        "                rendering blend mode for the generated materials.\n"
+        "                If texture format has an alpha channel, defaults to\n"
+        "                ALPHA. Otherwise, defaults to OFF.\n"
+        "                Valid possibilities:\n");
     for (const char** mode = matdef::EnumNamesBlendMode();
          *mode != nullptr; ++mode) {
       log.Log(kLogImportant, "                           %s\n", *mode);
     }
+
+    log.Log(
+        kLogImportant,
+        "  -h, --hierarchy\n"
+        "                output vertices relative to local pivot of each\n"
+        "                sub-mesh. The transforms from parent pivot to local\n"
+        "                pivot are also output.\n"
+        "                This option is necessary for animated meshes.\n"
+        "  -c, --center  ensure world origin is inside geometry bounding box\n"
+        "                by adding a translation if required.\n"
+        "  -v, --verbose output all informative messages\n"
+        "  -d, --details output important informative messages\n"
+        "  -i, --info    output more than details, less than verbose\n");
   }
 
   return valid_args;
