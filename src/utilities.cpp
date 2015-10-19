@@ -557,4 +557,43 @@ bool SupportsHeadMountedDisplay() {
 #endif  // __ANDROID
 }
 
+#ifdef __ANDROID__
+// Sends a keypress event to the android system.  This will show up in android
+// indistinguishable from a normal user key press
+void SendKeypressEventToAndroid(int android_key_code) {
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID method_id =
+      env->GetMethodID(fpl_class, "SendKeypressEventToAndroid", "(I)V");
+  env->CallVoidMethod(activity, method_id, android_key_code);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+}
+
+HighPerformanceParams high_performance_params;
+
+// Sets the specific parameters for high performance mode on Android
+void SetHighPerformanceParameters(const HighPerformanceParams& params) {
+  high_performance_params = params;
+}
+
+// Returns the high performance mode parameters in a struct.
+const HighPerformanceParams& GetHighPerformanceParameters() {
+  return high_performance_params;
+}
+#endif  // __ANDROID
+
+static PerformanceMode performance_mode = kNormalPerformance;
+
+// Sets the performance mode.
+void SetPerformanceMode(PerformanceMode new_mode){
+  performance_mode = new_mode;
+}
+
+PerformanceMode GetPerformanceMode() {
+  return performance_mode;
+}
+
+
 }  // namespace fpl

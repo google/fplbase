@@ -19,6 +19,7 @@ package com.google.fpl.fpl_base;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Instrumentation;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -68,6 +69,7 @@ public class FPLActivity extends SDLActivity implements
   private static final float METERS_PER_INCH = 0.0254f;
   private final String PROPERTY_ID = "XX-XXXXXXXX-X";
   private Tracker tracker = null;
+  private final Instrumentation instrumentation = new Instrumentation();
 
   // Fields used in order to interact with a Cardboard device
   private CardboardView cardboardView;
@@ -104,7 +106,6 @@ public class FPLActivity extends SDLActivity implements
         updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
       }
     }
-
     // Start receiving vsync callbacks:
     Choreographer.getInstance().postFrameCallback(this);
   }
@@ -470,6 +471,11 @@ public class FPLActivity extends SDLActivity implements
       uiLayer = new UiLayer(this, null);
       uiLayer.attachUiLayer(null);
     }
+  }
+
+  // Sends a keypress event to the Android system.
+  public void SendKeypressEventToAndroid(int androidKeycode) {
+    instrumentation.sendKeyDownUpSync(androidKeycode);
   }
 
   public void doFrame(long frameTimeNanos) {
