@@ -31,15 +31,30 @@ static_assert(
 static_assert(kBlendModeCount == kBlendModeAdd + 1,
               "Please update static_assert above with new enum values.");
 
-template <typename T>
+template<typename T>
 T FindInMap(const std::map<std::string, T> &map, const char *name) {
   auto it = map.find(name);
   return it != map.end() ? it->second : 0;
 }
 
+template<typename T>
+void DestructAssetsInMap(std::map<std::string, T> &map) {
+  for (auto it = map.begin(); it != map.end(); ++it) {
+    delete it->second;
+  }
+  map.clear();
+}
+
 AssetManager::AssetManager(Renderer &renderer) : renderer_(renderer) {
   // Empty material for default case.
   material_map_[""] = new Material();
+}
+
+void AssetManager::ClearAllAssets() {
+  DestructAssetsInMap(shader_map_);
+  DestructAssetsInMap(texture_map_);
+  DestructAssetsInMap(material_map_);
+  DestructAssetsInMap(mesh_map_);
 }
 
 Shader *AssetManager::FindShader(const char *basename) {

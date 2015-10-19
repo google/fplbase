@@ -73,6 +73,7 @@ int main(int, char** argv) {
                                   mathfu::vec2(10, 10));
   }
 
+  asset_manager.ClearAllAssets();
   renderer.ShutDown();
   return 0;
 }

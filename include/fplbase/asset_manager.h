@@ -37,6 +37,7 @@ namespace fpl {
 class AssetManager {
  public:
   AssetManager(Renderer &renderer);
+  ~AssetManager() { ClearAllAssets(); }
 
   // Returns a previously loaded shader object, or nullptr.
   Shader *FindShader(const char *basename);
@@ -86,6 +87,12 @@ class AssetManager {
   // Handy accessors, so you don't have to pass the renderer around too.
   Renderer &renderer() { return renderer_; }
   const Renderer &renderer() const { return renderer_; }
+
+  // Removes and destructs all assets held by the AssetManager.
+  // Will be called automatically by the destructor, but can also be called
+  // manually beforehand if necessary since destructing assets requires the
+  // OpenGL context to still be alive.
+  void ClearAllAssets();
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
