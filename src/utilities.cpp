@@ -24,7 +24,7 @@
 #if defined(__ANDROID__)
 #include <android/log.h>
 namespace {
-static AAssetManager* g_asset_manager = nullptr;
+static AAssetManager *g_asset_manager = nullptr;
 }
 #endif
 #endif
@@ -67,13 +67,13 @@ bool LoadFile(const char *filename, std::string *dest) {
 }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
-bool LoadFile(const char* filename, std::string* dest) {
+bool LoadFile(const char *filename, std::string *dest) {
   if (!g_asset_manager) {
     LogError(kError,
              "Need to call SetAssetManager() once before calling LoadFile()");
     assert(false);
   }
-  AAsset* asset =
+  AAsset *asset =
       AAssetManager_open(g_asset_manager, filename, AASSET_MODE_STREAMING);
   if (!asset) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -87,7 +87,7 @@ bool LoadFile(const char* filename, std::string* dest) {
 }
 #else
 bool LoadFile(const char *filename, std::string *dest) {
-  FILE* fd = fopen(filename, "rb");
+  FILE *fd = fopen(filename, "rb");
   if (fd == NULL) {
     LogError(kError, "LoadFile fail on %s", filename);
     return false;
@@ -106,6 +106,64 @@ bool LoadFile(const char *filename, std::string *dest) {
 #endif
 #else
 #error Please define a backend implementation for LoadFile.
+#endif
+
+#ifdef FPL_BASE_BACKEND_SDL
+bool LoadPreferences(const char *filename, std::string *dest) {
+#if defined(__ANDROID__)
+  // Use Android preference API to store blob as a Java String.
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jclass activity_class = env->GetObjectClass(activity);
+  // Retrieve a preference.
+  jmethodID get_preferences = env->GetMethodID(
+      activity_class, "getSharedPreferences",
+      "(Ljava/lang/String;I)Landroid/content/SharedPreferences;");
+  jstring file = env->NewStringUTF("preference");
+  // The last value: Content.MODE_PRIVATE = 0.
+  jobject preference =
+      env->CallObjectMethod(activity, get_preferences, file, 0);
+  jclass preference_class = env->GetObjectClass(preference);
+
+  // Retrieve blob as a String.
+  jstring key = env->NewStringUTF("data");
+  jstring default_value = env->NewStringUTF("");
+  jmethodID get_string = env->GetMethodID(
+      preference_class, "getString",
+      "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;");
+  jstring blob = static_cast<jstring>(
+      env->CallObjectMethod(preference, get_string, key, default_value));
+
+  // Retrieve value.
+  const jchar *str = env->GetStringChars(blob, nullptr);
+  jsize len = env->GetStringLength(blob);
+  dest->assign(len, 0);
+
+  memcpy(&(*dest)[0], reinterpret_cast<const char *>(str), len);
+  LogInfo("Loaded %d bytes from the preference", len);
+  bool ret = len > 0 ? true : false;
+
+  env->ReleaseStringChars(blob, str);
+
+  // Release objects references.
+  env->DeleteLocalRef(blob);
+  env->DeleteLocalRef(default_value);
+  env->DeleteLocalRef(key);
+  env->DeleteLocalRef(preference_class);
+  env->DeleteLocalRef(preference);
+  env->DeleteLocalRef(file);
+  env->DeleteLocalRef(activity_class);
+  env->DeleteLocalRef(activity);
+
+  return ret;
+#else
+  return LoadFile(filename, dest);
+#endif
+}
+#elif defined(FPL_BASE_BACKEND_STDLIB)
+bool LoadPreferences(const char *filename, std::string *dest) {
+  return LoadFile(filename, dest);
+}
 #endif
 
 bool LoadFileWithIncludesHelper(const char *filename, std::string *dest,
@@ -131,7 +189,7 @@ bool LoadFileWithIncludesHelper(const char *filename, std::string *dest,
       continue;
     }
     auto comment = strspn(cursor, "/");
-    if (comment >= 2) { // Skip comments.
+    if (comment >= 2) {  // Skip comments.
       cursor += comment;
       cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
       cursor += strspn(cursor, "\n\r");   // Skip newline;
@@ -208,7 +266,7 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 }
 #else
 bool SaveFile(const char *filename, const void *data, size_t size) {
-  FILE* fd = fopen(filename, "wb");
+  FILE *fd = fopen(filename, "wb");
   if (fd < 0) {
     LogError(kError, "SaveFile fail on %s", filename);
     return false;
@@ -222,8 +280,66 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 #error Please define a backend implementation for SaveFile.
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
+bool SavePreferences(const char *filename, const void *data, size_t size) {
+#if defined(__ANDROID__)
+  // Use Android preference API to store blob as a Java String.
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jclass activity_class = env->GetObjectClass(activity);
+  // Retrieve a preference.
+  jmethodID get_preferences = env->GetMethodID(
+      activity_class, "getSharedPreferences",
+      "(Ljava/lang/String;I)Landroid/content/SharedPreferences;");
+  jstring file = env->NewStringUTF("preference");
+  jobject preference =
+      env->CallObjectMethod(activity, get_preferences, file, 0);
+  jclass preference_class = env->GetObjectClass(preference);
+
+  // Retrieve an editor.
+  jmethodID edit = env->GetMethodID(
+      preference_class, "edit", "()Landroid/content/SharedPreferences$Editor;");
+  jobject editor = env->CallObjectMethod(preference, edit);
+  jclass editor_class = env->GetObjectClass(editor);
+
+  // Put blob as a String.
+  jstring key = env->NewStringUTF("data");
+  jstring blob = env->NewString(static_cast<const jchar *>(data), size);
+  jmethodID put_string =
+      env->GetMethodID(editor_class, "putString",
+                       "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/"
+                       "SharedPreferences$Editor;");
+  env->CallObjectMethod(editor, put_string, key, blob);
+
+  // Commit a change.
+  jmethodID commit = env->GetMethodID(editor_class, "commit", "()Z");
+  jboolean ret = env->CallBooleanMethod(editor, commit);
+  LogInfo("Saved %d bytes to the preference, %d", size, ret);
+
+  // Release objects references.
+  env->DeleteLocalRef(blob);
+  env->DeleteLocalRef(key);
+  env->DeleteLocalRef(editor_class);
+  env->DeleteLocalRef(editor);
+  env->DeleteLocalRef(preference_class);
+  env->DeleteLocalRef(preference);
+  env->DeleteLocalRef(file);
+  env->DeleteLocalRef(activity_class);
+  env->DeleteLocalRef(activity);
+
+  return ret;
+#else
+  return SaveFile(filename, data, size);
+#endif
+}
+#else
+bool SavePreferences(const char *filename, const void *data, size_t size) {
+  return SaveFile(filename, data, size);
+}
+#endif
+
 bool SaveFile(const char *filename, const std::string &src) {
-  return SaveFile(filename, static_cast<const void*>(src.c_str()),
+  return SaveFile(filename, static_cast<const void *>(src.c_str()),
                   src.length());  // don't include the '\0'
 }
 
@@ -274,7 +390,7 @@ static inline bool IsUpperCase(const char c) { return c == toupper(c); }
 std::string CamelCaseToSnakeCase(const char *const camel) {
   // Replace capitals with underbar + lowercase.
   std::string snake;
-  for (const char* c = camel; *c != '\0'; ++c) {
+  for (const char *c = camel; *c != '\0'; ++c) {
     if (IsUpperCase(*c)) {
       const bool is_start_or_end = c == camel || *(c + 1) == '\0';
       if (!is_start_or_end) {
@@ -293,7 +409,7 @@ std::string FileNameFromEnumName(const char *const enum_name,
                                  const char *const suffix) {
   // Skip over the initial 'k', if it exists.
   const bool starts_with_k = enum_name[0] == 'k' && IsUpperCase(enum_name[1]);
-  const char* const camel_case_name = starts_with_k ? enum_name + 1 : enum_name;
+  const char *const camel_case_name = starts_with_k ? enum_name + 1 : enum_name;
 
   // Assemble file name.
   return std::string(prefix) + CamelCaseToSnakeCase(camel_case_name) +
@@ -302,7 +418,7 @@ std::string FileNameFromEnumName(const char *const enum_name,
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidSystemFeature(const char *feature_name) {
-  JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
   jclass fpl_class = env->GetObjectClass(activity);
   jmethodID has_system_feature =
@@ -328,13 +444,13 @@ bool TouchScreenDevice() {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
   // Retrieve device name through JNI.
-  JNIEnv* env = reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jclass build_class = env->FindClass("android/os/Build");
   jfieldID model_id =
       env->GetStaticFieldID(build_class, "MODEL", "Ljava/lang/String;");
   jstring model_obj =
       static_cast<jstring>(env->GetStaticObjectField(build_class, model_id));
-  const char* device_name = env->GetStringUTFChars(model_obj, 0);
+  const char *device_name = env->GetStringUTFChars(model_obj, 0);
 
   // Check if the device name is in the list.
   bool result = true;
@@ -466,7 +582,7 @@ jobject AndroidGetActivity() {
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
 // static cast the return value into a JNIEnv*.
-JNIEnv* AndroidGetJNIEnv() {
+JNIEnv *AndroidGetJNIEnv() {
   return reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
 }
 #else
@@ -527,7 +643,7 @@ VsyncCallback RegisterVsyncCallback(VsyncCallback callback) {
 // Note that this callback is signaled from another thread, and so
 // needs to be thread-safe.
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv* env,
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv *env,
                                                         jobject thiz,
                                                         jobject activity) {
   (void)env;
