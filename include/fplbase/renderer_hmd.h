@@ -40,7 +40,7 @@ void SetCardboardButtonEnabled(bool enabled);
 // As an example:
 // HeadMountedDisplayRender(&input_system, &renderer,
 //                          vec4(0, 0, 0, 1),  // Clear screen to black
-//                          [](const mat4& transform) {
+//                          [](const vec4i* viewport, const mat4* transform) {
 //                            RenderSceneFromView(transform);
 //                          });
 template <typename RenderCallback>
@@ -62,12 +62,17 @@ void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
   float half_width = window_width / 2.0f;
   float window_height = viewport_size.y();
 
-  // Render for the left side
-  GL_CALL(glViewport(0, 0, half_width, window_height));
-  render_callback(input_system->cardboard_input().left_eye_transform());
-  // Render for the right side
-  GL_CALL(glViewport(half_width, 0, half_width, window_height));
-  render_callback(input_system->cardboard_input().right_eye_transform());
+  // Render stereoscopic views.
+  vec4i viewport[2] = {vec4i(0, 0, static_cast<int32_t>(half_width),
+                             static_cast<int32_t>(window_height)),
+                       vec4i(static_cast<int32_t>(half_width), 0,
+                             static_cast<int32_t>(half_width),
+                             static_cast<int32_t>(window_height))};
+  mat4 transforms[2] = {
+      input_system->cardboard_input().left_eye_transform(),
+      input_system->cardboard_input().right_eye_transform(), };
+  render_callback(viewport, transforms);
+
   // Reset the screen, and finish
   GL_CALL(glViewport(0, 0, window_width, window_height));
   if (use_undistortion) {

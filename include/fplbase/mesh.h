@@ -76,6 +76,16 @@ class Mesh {
   void Render(Renderer &renderer, bool ignore_material = false,
               size_t instances = 1);
 
+  // Render itself into stereoscopic viewports.
+  // viewport, mvp, camera_position arugments need to be a pointer to an array
+  // with 2 entries for left and right parameters.
+  void RenderStereo(Renderer &renderer,
+                    const Shader* shader,
+                    const vec4i* viewport,
+                    const mat4* mvp,
+                    const vec3* camera_position,
+                    bool ignore_material = false, size_t instances = 1);
+
   // Get the material associated with the Nth IBO.
   Material *GetMaterial(int i) { return indices_[i].mat; }
 
@@ -217,6 +227,8 @@ class Mesh {
   static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
   static void UnSetAttributes(const Attribute *attributes);
+  void DrawElement(Renderer &renderer, int32_t count, int32_t instances);
+
   struct Indices {
     int count;
     BufferHandle ibo;

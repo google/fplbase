@@ -233,17 +233,45 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
   }
 }
 
+void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
+  if (instances == 1) {
+    GL_CALL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0));
+  } else {
+    assert(renderer.feature_level() == Renderer::kFeatureLevel30);
+    GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count,
+                                    GL_UNSIGNED_SHORT, 0, instances));
+  }
+}
+
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   SetAttributes(vbo_, format_, vertex_size_, nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
-    if (instances == 1) {
-      GL_CALL(glDrawElements(GL_TRIANGLES, it->count, GL_UNSIGNED_SHORT, 0));
-    } else {
-      assert(renderer.feature_level() == Renderer::kFeatureLevel30);
-      GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, it->count,
-                                      GL_UNSIGNED_SHORT, 0, instances));
+    DrawElement(renderer, it->count, instances);
+  }
+  UnSetAttributes(format_);
+}
+
+void Mesh::RenderStereo(Renderer &renderer,
+                        const Shader* shader,
+                        const vec4i* viewport,
+                        const mat4* mvp,
+                        const vec3* camera_position,
+                        bool ignore_material, size_t instances) {
+  SetAttributes(vbo_, format_, vertex_size_, nullptr);
+  for (auto it = indices_.begin(); it != indices_.end(); ++it) {
+    if (!ignore_material) it->mat->Set(renderer);
+    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
+
+    for (auto i = 0; i < 2; ++i) {
+      renderer.set_camera_pos(camera_position[i]);
+      renderer.set_model_view_projection(mvp[i]);
+      shader->Set(renderer);
+
+      auto vp = viewport[i];
+      glViewport(vp.x(), vp.y(), vp.z(), vp.w());
+      DrawElement(renderer, it->count, instances);
     }
   }
   UnSetAttributes(format_);
