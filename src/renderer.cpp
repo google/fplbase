@@ -557,6 +557,8 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
 #     endif
     case kBlendModeAlpha:
     case kBlendModeAdd:
+    case kBlendModeAddAlpha:
+    case kBlendModeMultiply:
       GL_CALL(glDisable(GL_BLEND));
       break;
     default:
@@ -582,6 +584,14 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
       GL_CALL(glEnable(GL_BLEND));
       GL_CALL(glBlendFunc(GL_ONE, GL_ONE));
       break;
+    case kBlendModeAddAlpha:
+       GL_CALL(glEnable(GL_BLEND));
+       GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
+       break;
+    case kBlendModeMultiply:
+       GL_CALL(glEnable(GL_BLEND));
+       GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
+       break;
     default:
       assert(false);  // Not yet implemented
       break;

@@ -26,9 +26,21 @@ static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
     kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
     kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
-    kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD),
-              "BlendMode enums in renderer.h and material.fbs must match.");
-static_assert(kBlendModeCount == kBlendModeAdd + 1,
+    kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD) &&
+    kBlendModeAddAlpha == static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
+    kBlendModeMultiply == static_cast<BlendMode>(matdef::BlendMode_MULTIPLY),
+              "BlendMode enums in material.h and material.fbs must match.");
+static_assert(kBlendModeCount == kBlendModeMultiply + 1,
+              "Please update static_assert above with new enum values.");
+static_assert(
+    kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
+    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
+    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
+    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
+    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
+    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8),
+              "TextureFormat enums in material.h and material.fbs must match.");
+static_assert(kFormatCount == kFormatLuminance + 1,
               "Please update static_assert above with new enum values.");
 
 template<typename T>

@@ -32,10 +32,12 @@ using mathfu::vec4;
 class Renderer;
 
 enum BlendMode {
-  kBlendModeOff,
+  kBlendModeOff = 0,
   kBlendModeTest,
   kBlendModeAlpha,
   kBlendModeAdd,
+  kBlendModeAddAlpha,
+  kBlendModeMultiply,
 
   kBlendModeCount  // Must be at end.
 };
@@ -47,6 +49,8 @@ enum TextureFormat {
   kFormat5551,
   kFormat565,
   kFormatLuminance,
+
+  kFormatCount  // Must be at end.
 };
 
 // This typedef is compatible with its OpenGL equivalent, but doesn't require

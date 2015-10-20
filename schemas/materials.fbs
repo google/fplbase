@@ -19,7 +19,7 @@ include "common.fbs";
 namespace matdef;
 
 enum BlendMode:ubyte {
-  OFF,
+  OFF = 0,
   TEST,
   ALPHA,
   ADD,
@@ -33,6 +33,7 @@ enum TextureFormat:ubyte {
   F_888,
   F_5551,
   F_565,
+  F_8,
 }
 
 table Material {
