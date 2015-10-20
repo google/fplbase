@@ -108,7 +108,7 @@ struct InputPointer {
   vec2i mousedelta;
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
 };
 
 class Joystick {
@@ -315,7 +315,8 @@ class InputSystem {
         frames_(0),
         minimized_frame_(0),
         mousewheel_delta_(mathfu::kZeros2i),
-        record_text_input_(false) {
+        record_text_input_(false),
+        touch_device_(true) {
     pointers_.assign(kMaxSimultanuousPointers, InputPointer());
   }
 
@@ -351,7 +352,7 @@ class InputSystem {
     return joystick_map_;
   }
 
-#if ANDROID_GAMEPAD
+# if ANDROID_GAMEPAD
   // Returns an object describing a gamepad, based on the android device ID.
   // Get the ID either from an android event, or by checking a known gamepad.
   Gamepad &GetGamepad(AndroidInputDeviceId gamepad_device_id);
@@ -366,14 +367,14 @@ class InputSystem {
 
   // Runs through all the received events and processes them.
   void HandleGamepadEvents();
-#endif  // ANDROID_GAMEPAD
+# endif  // ANDROID_GAMEPAD
 
-#if ANDROID_CARDBOARD
+# if ANDROID_CARDBOARD
   CardboardInput &cardboard_input() const { return cardboard_input_; }
 
   static void OnCardboardTrigger();
   static void SetDeviceInCardboard(bool in_cardboard);
-#endif  // ANDROID_CARDBOARD
+# endif  // ANDROID_CARDBOARD
 
   // Get a Button object for a pointer index.
   Button &GetPointerButton(FingerId pointer) {
@@ -457,15 +458,15 @@ class InputSystem {
   std::map<int, Button> button_map_;
   std::map<JoystickId, Joystick> joystick_map_;
 
-#if ANDROID_GAMEPAD
+# if ANDROID_GAMEPAD
   std::map<AndroidInputDeviceId, Gamepad> gamepad_map_;
   static pthread_mutex_t android_event_mutex;
   static std::queue<AndroidInputEvent> unhandled_java_input_events_;
-#endif  // ANDROID_GAMEPAD
+# endif  // ANDROID_GAMEPAD
 
-#if ANDROID_CARDBOARD
+# if ANDROID_CARDBOARD
   static CardboardInput cardboard_input_;
-#endif
+# endif
 
   // Most recent frame delta, in seconds.
   double frame_time_;
@@ -495,13 +496,17 @@ class InputSystem {
   // A flag indicating a text input status.
   bool record_text_input_;
 
-#ifdef __ANDROID__
+  // True if most recent pointer events are coming from a touch screen,
+  // false if coming from a mouse or similar.
+  bool touch_device_;
+
+# ifdef __ANDROID__
   // Store current relative mouse mode before entering background.
   bool relative_mouse_mode_;
 
   // How long since we've sent a keypress event to keep the CPU alive.
   int32_t last_android_keypress_;
-#endif
+# endif
 };
 
 }  // namespace fpl

@@ -122,14 +122,14 @@ RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
   screen_render_target.rendered_texture_id_ = 0;
   screen_render_target.depth_buffer_id_ = 0;
   mathfu::vec2i window_size = renderer.window_size();
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
-#ifdef __ANDROID__
+# ifdef FPL_BASE_RENDERER_BACKEND_SDL
+# ifdef __ANDROID__
   vec2i size = AndroidGetScalerResolution();
   if (size.x() && size.y()) {
     window_size = size;
   }
-#endif
-#endif
+# endif
+# endif
   screen_render_target.dimensions_ = window_size;
   screen_render_target.initialized_ = true;
   return screen_render_target;
