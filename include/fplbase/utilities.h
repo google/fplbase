@@ -85,10 +85,6 @@ struct HighPerformanceParams {
 };
 #endif
 
-typedef int32_t WorldTime;
-
-const int kMillisecondsPerSecond = 1000;
-
 // Loads a file and returns its contents via string pointer.
 // Returns false if the file couldn't be loaded (usually means it's not
 // present, but can also mean there was a read error).
@@ -139,12 +135,6 @@ void LogInfo(const char *fmt, ...);
 void LogError(const char *fmt, ...);
 void LogInfo(LogCategory category, const char *fmt, ...);
 void LogError(LogCategory category, const char *fmt, ...);
-
-// Returns the current time, in milliseconds.
-WorldTime GetTicks();
-
-// Delays (sleeps) for the specified number of milliseconds.
-void Delay(WorldTime time);
 
 #if defined(__ANDROID__)
 // Returns a pointer to the Java instance of the activity class

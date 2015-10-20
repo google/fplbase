@@ -597,18 +597,6 @@ JNIEnv *AndroidGetJNIEnv() {
 void SetAAssetManager(AAssetManager *manager) { g_asset_manager = manager; }
 #endif
 
-#ifdef FPL_BASE_BACKEND_SDL
-WorldTime GetTicks() { return SDL_GetTicks(); }
-
-void Delay(WorldTime time) { SDL_Delay(time); }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
-WorldTime GetTicks() { return 0; }
-
-void Delay(WorldTime /*time*/) {}
-#else
-#error Please define a backend implementation of a monotonic clock.
-#endif
-
 #if defined(FPL_BASE_BACKEND_SDL)
 bool GetStoragePath(const char *app_name, std::string *path_string) {
 # if defined(__ANDROID__)

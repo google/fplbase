@@ -48,12 +48,12 @@ int InputSystem::HandleAppEvents(void *userdata, void *ev) {
     case SDL_APP_WILLENTERBACKGROUND:
       input_system->set_minimized(true);
       input_system->set_minimized_frame(input_system->frames());
-#     ifdef __ANDROID__
+#ifdef __ANDROID__
       // Work around for an invalid window reference in mouse input.
       input_system->relative_mouse_mode_ = input_system->RelativeMouseMode();
       input_system->SetRelativeMouseMode(true);
       LogInfo("CurrentMouseMode:%d", input_system->relative_mouse_mode_);
-#     endif
+#endif
       break;
     case SDL_APP_DIDENTERBACKGROUND:
       break;
@@ -62,10 +62,10 @@ int InputSystem::HandleAppEvents(void *userdata, void *ev) {
     case SDL_APP_DIDENTERFOREGROUND:
       input_system->set_minimized(false);
       input_system->set_minimized_frame(input_system->frames());
-#     ifdef __ANDROID__
+#ifdef __ANDROID__
       // Restore relative mousemode.
       input_system->SetRelativeMouseMode(input_system->relative_mouse_mode_);
-#     endif
+#endif
       break;
     default:
       passthrough = 1;
@@ -106,7 +106,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   elapsed_time_ = current;
   frames_++;
 
-# ifdef __ANDROID__
+#ifdef __ANDROID__
   // For performance mode, we send keypress events to the Android system, so
   // that it knows it's still in active use, even if the user isn't currently
   // touching the screen.
@@ -116,9 +116,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
     last_android_keypress_ = current_time;
     SendKeypressEventToAndroid(hp_params.android_key_code);
   }
-# endif
+#endif
 
-# ifdef LOG_FRAMERATE
+#ifdef LOG_FRAMERATE
   // Framerate statistics over the last N frames.
   const int kNumDeltaTimes = 64;
   static int cur_delta_idx = 0;
@@ -149,7 +149,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
             min_delta * 1000,
             os.str().c_str());
   }
-# endif
+#endif
 
   // Reset our per-frame input state.
   mousewheel_delta_ = mathfu::kZeros2i;
@@ -166,12 +166,12 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   for (auto it = joystick_map_.begin(); it != joystick_map_.end(); ++it) {
     it->second.AdvanceFrame();
   }
-# if ANDROID_GAMEPAD
+#if ANDROID_GAMEPAD
   for (auto it = gamepad_map_.begin(); it != gamepad_map_.end(); ++it) {
     it->second.AdvanceFrame();
   }
   HandleGamepadEvents();
-# endif  // ANDROID_GAMEPAD
+#endif  // ANDROID_GAMEPAD
   if (!record_text_input_) {
     text_input_events_.clear();
   }
@@ -193,7 +193,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         }
         break;
       }
-#     ifdef PLATFORM_MOBILE
+#ifdef PLATFORM_MOBILE
       case SDL_FINGERDOWN: {
         touch_device_ = true;
         int i = UpdateDragPosition(&event.tfinger, event.type, *window_size);
@@ -212,7 +212,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         UpdateDragPosition(&event.tfinger, event.type, *window_size);
         break;
       }
-#     else  // PLATFORM_MOBILE
+#else  // PLATFORM_MOBILE
       // These fire from e.g. OS X touchpads. Ignore them because we just
       // want the mouse events.
       case SDL_FINGERDOWN:
@@ -221,7 +221,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         break;
       case SDL_FINGERMOTION:
         break;
-#     endif  // PLATFORM_MOBILE
+#endif  // PLATFORM_MOBILE
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP: {
         touch_device_ = false;
@@ -229,22 +229,22 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
             .Update(event.button.state == SDL_PRESSED);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
         pointers_[0].used = true;
-#       if ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
         if (event.button.state == SDL_PRESSED) {
           cardboard_input_.OnCardboardTrigger();
         }
-#       endif  // ANDROID_CARDBOARD
+#endif  // ANDROID_CARDBOARD
         break;
       }
       case SDL_MOUSEMOTION: {
         // Mouse events are superfluous on mobile platforms as they're simply
         // a backward compatible way of sending finger up / down / motion
         // events.
-#       if !defined(PLATFORM_MOBILE)
+#if !defined(PLATFORM_MOBILE)
         touch_device_ = false;
         pointers_[0].mousedelta += vec2i(event.motion.xrel, event.motion.yrel);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
-#       endif  // !defined(PLATFORM_MOBILE)
+#endif  // !defined(PLATFORM_MOBILE)
         break;
       }
       case SDL_MOUSEWHEEL: {
@@ -296,9 +296,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   }
   // Update the Cardboard input. Note this is after the mouse input, as that can
   // be treated as a trigger.
-# if ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   cardboard_input_.AdvanceFrame();
-# endif  // ANDROID_CARDBOARD
+#endif  // ANDROID_CARDBOARD
 }
 
 void InputSystem::HandleJoystickEvent(Event event) {
@@ -376,9 +376,9 @@ bool InputSystem::RelativeMouseMode() const {
 }
 
 void InputSystem::SetRelativeMouseMode(bool enabled) {
-# if defined(__ANDROID__)
+#if defined(__ANDROID__)
   (void)enabled;
-# else
+#else
   // SDL on Android does not support relative mouse mode.  Enabling this
   // causes a slew of errors reported caused by the SDL_androidtouch.c module
   // sending touch events to SDL_SendMouseMotion() without a window handle,
@@ -386,7 +386,7 @@ void InputSystem::SetRelativeMouseMode(bool enabled) {
   // to move the mouse pointer (not present on Android) back to the middle of
   // the screen.
   SDL_SetRelativeMouseMode(static_cast<SDL_bool>(enabled));
-# endif  // defined(__ANDROID__)
+#endif  // defined(__ANDROID__)
 }
 
 Joystick &InputSystem::GetJoystick(JoystickId joystick_id) {
@@ -694,7 +694,7 @@ void CardboardInput::AdvanceFrame() {
 }
 
 void CardboardInput::ResetHeadTracker() {
-# ifdef __ANDROID__
+#ifdef __ANDROID__
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
   jclass fpl_class = env->GetObjectClass(activity);
@@ -703,11 +703,11 @@ void CardboardInput::ResetHeadTracker() {
   env->CallVoidMethod(activity, reset_head_tracker);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
-# endif  // __ANDROID__
+#endif  // __ANDROID__
 }
 
 void CardboardInput::UpdateCardboardTransforms() {
-# ifdef __ANDROID__
+#ifdef __ANDROID__
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
   jclass fpl_class = env->GetObjectClass(activity);
@@ -726,7 +726,7 @@ void CardboardInput::UpdateCardboardTransforms() {
   env->DeleteLocalRef(right_eye);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
-# endif  // __ANDROID__
+#endif  // __ANDROID__
 }
 
 void InputSystem::OnCardboardTrigger() {
@@ -803,17 +803,17 @@ TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
     JNIEnv *env) {
-# if ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   InputSystem::OnCardboardTrigger();
-# endif  // ANDROID_CARDBOARD
+#endif  // ANDROID_CARDBOARD
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fpl_1base_FPLActivity_nativeSetDeviceInCardboard(
     JNIEnv *env, jobject thiz, jboolean in_cardboard) {
-# if ANDROID_CARDBOARD
+#if ANDROID_CARDBOARD
   InputSystem::SetDeviceInCardboard(in_cardboard);
-# endif
+#endif
 }
 #endif  // __ANDROID__
 
