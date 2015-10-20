@@ -16,9 +16,11 @@ cmake_minimum_required(VERSION 2.8.12)
 project(fplbase)
 
 # Option to only build flatc
+set(fbx_sdk_msg "The FBX SDK must be installed and the FBX_SDK environment variable must be set to the SDK directory.")
 option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline
-       "Build the mesh_pipeline binary (converts from FBX to FlatBuffers)." ON)
+       "Build the mesh_pipeline binary (converts from FBX to FlatBuffers). ${fbx_sdk_msg}"
+       OFF)
 option(fplbase_build_samples "Build the fplbase sample executables." OFF)
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
@@ -216,7 +218,7 @@ include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
 
 # Detect clang
 # Detect clang
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR 
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
    CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
   set(CMAKE_COMPILER_IS_CLANGXX 1)
 endif()
@@ -276,13 +278,13 @@ if(fplbase_build_library)
   endif()
 endif()
 
-# Autodesk's FBX SDK must be installed to build the pipeline.
-set(fbx_sdk_dir $ENV{FBX_SDK})
-if(NOT "${fbx_sdk_dir}" STREQUAL "")
-  set(fplbase_has_fbx_sdk 1)
-endif()
+if(fplbase_build_mesh_pipeline)
+  # Autodesk's FBX SDK must be installed to build the pipeline.
+  set(fbx_sdk_dir $ENV{FBX_SDK})
+  if("${fbx_sdk_dir}" STREQUAL "")
+    message(FATAL_ERROR ${fbx_sdk_msg})
+  endif()
 
-if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
   # We check-in the mesh_pipeline executible, so we need to output it to
   # a platform-specific location.
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
@@ -328,7 +330,7 @@ if(fplbase_build_mesh_pipeline AND fplbase_has_fbx_sdk)
                    ${tmp_dir}/fplutil)
 
   # Source files for the pipeline.
-  set(fplbase_mesh_pipeline_SRCS src/mesh_pipeline.cpp)
+  set(fplbase_mesh_pipeline_SRCS mesh_pipeline/mesh_pipeline.cpp)
 
   # Add the location of #include <fbxsdk.h>.
   include_directories(${fbx_sdk_dir}/include)
