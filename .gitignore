@@ -9,6 +9,7 @@ fplbase_assets/*
 assets/*
 Makefile
 fplbase.cbp
+docs/linklint_results
 
 # CMake files
 CMakeCache.txt
