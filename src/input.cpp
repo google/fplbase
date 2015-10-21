@@ -205,7 +205,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         UpdateDragPosition(&event.tfinger, event.type, *window_size);
         break;
       }
-#else
+#else  // PLATFORM_MOBILE
       // These fire from e.g. OS X touchpads. Ignore them because we just
       // want the mouse events.
       case SDL_FINGERDOWN:
@@ -214,7 +214,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         break;
       case SDL_FINGERMOTION:
         break;
-#endif
+#endif  // PLATFORM_MOBILE
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP: {
         GetPointerButton(event.button.button - 1)
@@ -225,12 +225,17 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         if (event.button.state == SDL_PRESSED) {
           cardboard_input_.OnCardboardTrigger();
         }
-#endif
+#endif  // ANDROID_CARDBOARD
         break;
       }
       case SDL_MOUSEMOTION: {
+        // Mouse events are superfluous on mobile platforms as they're simply
+        // a backward compatible way of sending finger up / down / motion
+        // events.
+#if !defined(PLATFORM_MOBILE)
         pointers_[0].mousedelta += vec2i(event.motion.xrel, event.motion.yrel);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
+#endif  // !defined(PLATFORM_MOBILE)
         break;
       }
       case SDL_MOUSEWHEEL: {
@@ -283,7 +288,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
 // be treated as a trigger.
 #if ANDROID_CARDBOARD
   cardboard_input_.AdvanceFrame();
-#endif
+#endif  // ANDROID_CARDBOARD
 }
 
 void InputSystem::HandleJoystickEvent(Event event) {
@@ -786,7 +791,7 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
     JNIEnv *env) {
 #if ANDROID_CARDBOARD
   InputSystem::OnCardboardTrigger();
-#endif
+#endif  // ANDROID_CARDBOARD
 }
 
 extern "C" JNIEXPORT void JNICALL
