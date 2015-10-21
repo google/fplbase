@@ -88,6 +88,14 @@ bool SaveFile(const char *filename, const std::string &data);
 // Save binary data to a file, overwriting the existing contents.
 bool SaveFile(const char *filename, const void *data, size_t size);
 
+// Loads/Saves a preference settings.
+// The API uses a dedicated API when an optimal API is avaialable instead of
+// regular file IO APIs.
+// Returns false if the file couldn't be loaded (usually means it's not
+// present, but can also mean there was a read error).
+bool LoadPreferences(const char *filename, std::string *dest);
+bool SavePreferences(const char *filename, const void *data, size_t size);
+
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.
