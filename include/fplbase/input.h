@@ -339,6 +339,8 @@ class InputSystem {
   Button &GetButton(int button);
 
   bool RelativeMouseMode() const;
+  /// Enable / disable relative mouse mode (disabled by default).
+  /// @note Relative mouse mode is currently ignored on Android devices.
   void SetRelativeMouseMode(bool enabled);
 
   // Get a joystick object describing the current input state of the specified

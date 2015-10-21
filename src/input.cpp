@@ -269,9 +269,13 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         }
         break;
       }
+      case SDL_MULTIGESTURE: {
+        // We don't do anything with gesture events at the moment.
+        break;
+      }
       default: {
         LogInfo(kApplication, "----Unknown SDL event!\n");
-        LogInfo(kApplication, "----Event ID: %d!\n", event.type);
+        LogInfo(kApplication, "----Event ID: 0x%x!\n", event.type);
       }
     }
   }
@@ -357,7 +361,17 @@ bool InputSystem::RelativeMouseMode() const {
 }
 
 void InputSystem::SetRelativeMouseMode(bool enabled) {
+#if defined(__ANDROID__)
+  (void)enabled;
+#else
+  // SDL on Android does not support relative mouse mode.  Enabling this
+  // causes a slew of errors reported caused by the SDL_androidtouch.c module
+  // sending touch events to SDL_SendMouseMotion() without a window handle,
+  // where the window handle is required to get the screen size in order
+  // to move the mouse pointer (not present on Android) back to the middle of
+  // the screen.
   SDL_SetRelativeMouseMode(static_cast<SDL_bool>(enabled));
+#endif  // defined(__ANDROID__)
 }
 
 Joystick &InputSystem::GetJoystick(JoystickId joystick_id) {
