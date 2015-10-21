@@ -496,6 +496,9 @@ class InputSystem {
 #ifdef __ANDROID__
   // Store current relative mouse mode before entering background.
   bool relative_mouse_mode_;
+
+  // How long since we've sent a keypress event to keep the CPU alive.
+  int32_t last_android_keypress_;
 #endif
 };
 

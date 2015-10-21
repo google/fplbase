@@ -22,7 +22,7 @@
 #endif  // ANDROID_GAMEPAD
 
 //#if defined(_DEBUG) || DEBUG==1
-#define LOG_FRAMERATE
+//#define LOG_FRAMERATE
 //#endif
 
 namespace fpl {
@@ -96,6 +96,7 @@ void InputSystem::AddAppEventCallback(AppEventCallback callback) {
   app_event_callbacks_.push_back(callback);
 }
 
+
 void InputSystem::AdvanceFrame(vec2i *window_size) {
   // Update timing.
   assert(time_freq_);
@@ -104,6 +105,18 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   frame_time_ = current - elapsed_time_;
   elapsed_time_ = current;
   frames_++;
+
+#ifdef __ANDROID__
+  // For performance mode, we send keypress events to the Android system, so
+  // that it knows it's still in active use, even if the user isn't currently
+  // touching the screen.
+  const HighPerformanceParams& hp_params = GetHighPerformanceParameters();
+  WorldTime current_time = GetTicks();
+  if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
+    last_android_keypress_ = current_time;
+    SendKeypressEventToAndroid(hp_params.android_key_code);
+  }
+#endif
 
 #ifdef LOG_FRAMERATE
   // Framerate statistics over the last N frames.

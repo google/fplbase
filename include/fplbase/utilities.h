@@ -57,8 +57,32 @@ enum LogCategory {
 };
 #endif
 
+// Enums for use with the Set/GetPerformanceMode() functions.
+enum PerformanceMode {
+  // Normal mode.  No special actions taken.
+  kNormalPerformance = 0,
+
+  // High performance mode.  Attempt to keep the CPU frequency up.
+  kHighPerformance
+};
+
 #ifdef __ANDROID__
 typedef void (*VsyncCallback)(void);
+
+const int kDefaultAndroidKeycode = 115;   // F24, unavailable on most keyboards.
+const int kDefaultTimeBetweenPresses = 1000;  // Time in milliseconds
+
+struct HighPerformanceParams {
+  HighPerformanceParams()
+    : android_key_code(kDefaultAndroidKeycode),
+      time_between_presses(kDefaultTimeBetweenPresses) {}
+  HighPerformanceParams(int keycode, int presses)
+    : android_key_code(keycode),
+      time_between_presses(presses) {}
+
+  int android_key_code;
+  int time_between_presses;
+};
 #endif
 
 typedef int32_t WorldTime;
@@ -137,6 +161,9 @@ JNIEnv* AndroidGetJNIEnv();
 // Return value is whatever callback was previously registered.  (Or nullptr
 // if none.)
 VsyncCallback RegisterVsyncCallback(VsyncCallback callback);
+
+// Triggers a keypress event on an Android device.
+void SendKeypressEventToAndroid(int android_keycode);
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
@@ -151,6 +178,22 @@ bool GetStoragePath(const char *app_name, std::string *path);
 // Checks whether Head Mounted Displays, such as Cardboard, are supported by
 // the system being run on.
 bool SupportsHeadMountedDisplay();
+
+// Sets the performance mode.
+void SetPerformanceMode(PerformanceMode new_mode);
+
+// Returns the current performance mode.
+PerformanceMode GetPerformanceMode();
+
+#ifdef __ANDROID__
+// Sets the specific parameters used by high-performance mode on Android.
+// android_key_code is the key to press repeatedly, to keep the CPU active.
+// time_between_presses is the time (in milliseconds) between keypress events.
+void SetHighPerformanceParameters(const HighPerformanceParams& params);
+
+// Returns the current performance parameters, in the form of a struct.
+const HighPerformanceParams& GetHighPerformanceParameters();
+#endif
 }  // namespace fpl
 
 #endif  // FPLBASE_UTILITIES_H
