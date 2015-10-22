@@ -13,9 +13,11 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 2.8.12)
 
-project(fplbase-samples)
+project(fplbase-mesh)
 
-add_subdirectory(triangle)
-add_subdirectory(texture)
-add_subdirectory(mesh)
+add_executable(fplbase-mesh mesh.cpp)
+add_dependencies(fplbase-mesh fplbase)
+mathfu_configure_flags(fplbase-mesh)
+target_link_libraries(fplbase-mesh fplbase)
+file(COPY assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
