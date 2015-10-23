@@ -22,6 +22,9 @@
 #include <stdarg.h>
 
 #if defined(__ANDROID__)
+#ifdef FPL_BASE_BACKEND_SDL
+#include "SDL_thread.h"
+#endif
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
@@ -638,6 +641,74 @@ VsyncCallback RegisterVsyncCallback(VsyncCallback callback) {
   return old_callback;
 }
 
+#ifdef FPL_BASE_BACKEND_SDL
+// Mutexes and ConditionVariables used for vsync synchonization:
+SDL_mutex *frame_id_mutex;
+SDL_mutex *vsync_cv_mutex;
+SDL_cond *android_vsync_cv;
+int vsync_frame_id = 0;
+#endif  // FPL_BASE_BACKEND_SDL
+
+static void InitVsyncMutexes() {
+#ifdef FPL_BASE_BACKEND_SDL
+  frame_id_mutex = SDL_CreateMutex();
+  vsync_cv_mutex = SDL_CreateMutex();
+  android_vsync_cv = SDL_CreateCond();
+  vsync_frame_id = 0;
+#endif  // FPL_BASE_BACKEND_SDL
+}
+
+static void CleanupVsyncMutexes() {
+#ifdef FPL_BASE_BACKEND_SDL
+  SDL_DestroyMutex(frame_id_mutex);
+  SDL_DestroyMutex(vsync_cv_mutex);
+  SDL_DestroyCond(android_vsync_cv);
+#endif  // FPL_BASE_BACKEND_SDL
+}
+
+// Initialize the Vsync mutexes.  Called by android lifecycle events.
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeInitVsync(JNIEnv *env,
+                                                          jobject thiz,
+                                                          jobject activity) {
+  (void)env;
+  (void)thiz;
+  (void)activity;
+  InitVsyncMutexes();
+}
+
+// Clean up the Vsync mutexes.  Called by android lifecycle events.
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fpl_1base_FPLActivity_nativeCleanupVsync(JNIEnv *env,
+                                                             jobject thiz,
+                                                             jobject activity) {
+  (void)env;
+  (void)thiz;
+  (void)activity;
+  CleanupVsyncMutexes();
+}
+
+// Blocks until the next time a VSync event occurs.
+void WaitForVsync() {
+#ifdef FPL_BASE_BACKEND_SDL
+  SDL_LockMutex(frame_id_mutex);
+  int starting_id = vsync_frame_id;
+  SDL_UnlockMutex(frame_id_mutex);
+
+  SDL_LockMutex(vsync_cv_mutex);
+  // CondWait will normally only wake up when we receive an actual vsync
+  // event, but it's not *guaranteed* not to wake up other times as well.
+  // It is generally good practice to verify that your wake condition has
+  // been satisfied before actually moving on to do work.
+  while (starting_id == vsync_frame_id) {
+    SDL_CondWait(android_vsync_cv, vsync_cv_mutex);
+  }
+  SDL_UnlockMutex(vsync_cv_mutex);
+#else  // FPL_BASE_BACKEND_SDL
+  // TODO: Write STDLIB version
+#endif
+}
+
 // Receive native vsync updates from the choreographer, and use them to
 // signal starting a frame update and render.
 // Note that this callback is signaled from another thread, and so
@@ -652,6 +723,12 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv *env,
   if (g_vsync_callback != nullptr) {
     g_vsync_callback();
   }
+#ifdef FPL_BASE_BACKEND_SDL
+  SDL_LockMutex(frame_id_mutex);
+  vsync_frame_id++;
+  SDL_UnlockMutex(frame_id_mutex);
+  SDL_CondBroadcast(android_vsync_cv);
+#endif  // FPL_BASE_BACKEND_SDL
 }
 
 #endif  // __ANDROID__
@@ -690,12 +767,12 @@ void SendKeypressEventToAndroid(int android_key_code) {
 HighPerformanceParams high_performance_params;
 
 // Sets the specific parameters for high performance mode on Android
-void SetHighPerformanceParameters(const HighPerformanceParams& params) {
+void SetHighPerformanceParameters(const HighPerformanceParams &params) {
   high_performance_params = params;
 }
 
 // Returns the high performance mode parameters in a struct.
-const HighPerformanceParams& GetHighPerformanceParameters() {
+const HighPerformanceParams &GetHighPerformanceParameters() {
   return high_performance_params;
 }
 #endif  // __ANDROID
@@ -703,13 +780,10 @@ const HighPerformanceParams& GetHighPerformanceParameters() {
 static PerformanceMode performance_mode = kNormalPerformance;
 
 // Sets the performance mode.
-void SetPerformanceMode(PerformanceMode new_mode){
+void SetPerformanceMode(PerformanceMode new_mode) {
   performance_mode = new_mode;
 }
 
-PerformanceMode GetPerformanceMode() {
-  return performance_mode;
-}
-
+PerformanceMode GetPerformanceMode() { return performance_mode; }
 
 }  // namespace fpl

@@ -87,7 +87,7 @@ public class FPLActivity extends SDLActivity implements
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     tracker = GoogleAnalytics.getInstance(this).newTracker(PROPERTY_ID);
-
+    nativeInitVsync();
     // Instantiate fields used by Cardboard, if we support HMDs.
     if (SupportsHeadMountedDisplay()) {
       cardboardView = new CardboardView(this);
@@ -106,8 +106,12 @@ public class FPLActivity extends SDLActivity implements
         updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
       }
     }
-    // Start receiving vsync callbacks:
-    Choreographer.getInstance().postFrameCallback(this);
+  }
+
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    nativeCleanupVsync();
   }
 
   @Override
@@ -484,6 +488,12 @@ public class FPLActivity extends SDLActivity implements
     // Renew our callback:
     Choreographer.getInstance().postFrameCallback(this);
   }
+
+  // Implemented in C++. (utilities.cpp)
+  private static native void nativeInitVsync();
+
+  // Implemented in C++. (utilities.cpp)
+  private static native void nativeCleanupVsync();
 
   // Implemented in C++. (utilities.cpp)
   private static native void nativeOnVsync();
