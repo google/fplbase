@@ -75,10 +75,40 @@ set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
 set(dependencies_webp_distr_dir "${third_party_root}/webp"
     CACHE PATH "Directory containing the Webp distribution.")
 
+# Detect clang
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
+   CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
+  set(CMAKE_COMPILER_IS_CLANGXX 1)
+endif()
+
 # Include MathFu in this project with test and benchmark builds disabled.
 set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
 add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
+
+# External code should be compiled with these compiler options.
+# Call this function before add_subdirectory([external project]), and then
+# call restore_comiler_flags() after.
+function(set_compiler_flags_for_external_libraries)
+  # Save current compiler flags so that we can restore them in
+  # restore_compiler_flags()
+  set(FPLBASE_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(FPLBASE_SAVED_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+
+  # Suppress all warnings.
+  if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
+     CMAKE_COMPILER_IS_CLANGXX)
+    set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
+  endif()
+endfunction()
+
+# Restore the compiler flags to the values they had before
+# set_compiler_flags_for_external_libraries() was called.
+function(restore_compiler_flags)
+  set(CMAKE_CXX_FLAGS "${FPLBASE_SAVED_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS "${FPLBASE_SAVED_C_FLAGS}" PARENT_SCOPE)
+endfunction()
 
 # Include SDL in this project while working around SDL requirement of out of
 # tree builds.
@@ -99,7 +129,9 @@ if(APPLE)
 endif(APPLE)
 
 if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
+  set_compiler_flags_for_external_libraries()
   add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
+  restore_compiler_flags()
 endif()
 
 set(CMAKE_BINARY_DIR ${BIN_DIR})
@@ -211,13 +243,6 @@ include_directories(${dependencies_webp_distr_dir}/src)
 # SDL includes.
 include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
 
-# Detect clang
-# Detect clang
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
-   CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
-  set(CMAKE_COMPILER_IS_CLANGXX 1)
-endif()
-
 # Compiler flags.
 set(C_FLAGS_WARNINGS "")
 if(MSVC)
@@ -228,7 +253,6 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
        CMAKE_COMPILER_IS_CLANGXX)
   add_definitions(-g)
   set(CMAKE_CXX_FLAGS "-std=c++0x -pedantic -Wno-unused-function")
-  message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
   # -Wno-unused-function is because of webp encode.h
 endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
