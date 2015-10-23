@@ -36,9 +36,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 
-# We have a parent if we're being included as `add_subdirectory` from elsewhere.
-get_directory_property(fplbase_has_parent PARENT_DIRECTORY)
-
 # Directory which contains the source for 3rd party libraries.
 if(NOT DEFINED third_party_root)
   get_filename_component(
@@ -125,10 +122,6 @@ endif()
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
-if(fplbase_has_parent)
-  set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
-      ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR} PARENT_SCOPE)
-endif()
 file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
@@ -144,13 +137,15 @@ foreach(flatbuffers_schema ${FLATBUFFERS_SCHEMAS})
   endif()
   add_custom_command(
     OUTPUT ${flatbuffers_include}
-    COMMAND flatc --gen-includes
-                  -o ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}
+    COMMAND flatc -o ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}
                   -c ${flatbuffers_schema}
     DEPENDS flatc ${flatbuffers_schema})
   list(APPEND FLATBUFFERS_GENERATED_INCLUDES ${flatbuffers_include})
 endforeach()
-add_custom_target(fplbase_generated_includes DEPENDS ${FLATBUFFERS_GENERATED_INCLUDES})
+add_custom_target(fplbase_generated_includes DEPENDS
+                  ${FLATBUFFERS_GENERATED_INCLUDES})
+set_property(TARGET fplbase_generated_includes PROPERTY FPLBASE_DIR
+             ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 
 # Build rule that uses make to build the assets.
 add_custom_target(fplbase_assets
