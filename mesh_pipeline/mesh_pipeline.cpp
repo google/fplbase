@@ -968,18 +968,17 @@ class FbxMeshParser {
     // Remember the source file name so we can search for textures nearby.
     mesh_file_name_ = std::string(file_name);
 
-    // Convert to our exported co-ordinate system.
+    // Log nodes before we do anything to them.
     LogNodes("Original scene nodes\n");
-    if (axis_system != kUnspecifiedAxisSystem) {
-      assert(axis_system >= 0);
-      const FbxAxisSystem export_axes = CalculateFbxAxisSystem(axis_system);
-      export_axes.ConvertScene(scene_);
-    }
+
+    // Ensure the correct axis system is being used.
+    ConvertAxes(axis_system);
 
     // Bring the geo into our format.
     ConvertGeometry(recenter);
-    LogNodes("Converted scene nodes\n");
 
+    // Log nodes after we've processed them.
+    LogNodes("Converted scene nodes\n");
     return true;
   }
 
@@ -1057,6 +1056,25 @@ class FbxMeshParser {
     for (int i = 0; i < node->GetChildCount(); i++) {
       LogNodesRecursive(node->GetChild(i), pivot_set);
     }
+  }
+
+  void ConvertAxes(AxisSystem axis_system) {
+    if (axis_system < 0) return;
+
+    const FbxAxisSystem import_axes =
+        scene_->GetGlobalSettings().GetAxisSystem();
+    const FbxAxisSystem export_axes = CalculateFbxAxisSystem(axis_system);
+    if (import_axes == export_axes) {
+      log_.Log(kLogInfo, "Scene's axes are already correct."
+                         " Not converting axis system.\n");
+      return;
+    }
+
+    log_.Log(kLogImportant,
+             "Converting scene's axes (%s) to requested axes (%s)\n",
+             kAxisSystemNames[AxisSystemFromFbx(import_axes)],
+             kAxisSystemNames[AxisSystemFromFbx(export_axes)]);
+    export_axes.ConvertScene(scene_);
   }
 
   void ConvertGeometry(bool recenter) {
@@ -1420,9 +1438,10 @@ class FbxMeshParser {
                  "will be incorrect.\n",
                  post_rotation[0], post_rotation[1], post_rotation[2]);
       }
-      if (pre_rotation != zero) {
+      if (pre_rotation != zero && node->GetSkeleton() == nullptr) {
         log_.Log(kLogWarning,
-                 "pre_rotation (%.3f, %.3f, %.3f) is non-zero. Animations will "
+                 "pre_rotation (%.3f, %.3f, %.3f) is non-zero. Only joints are "
+                 "allowed to have non-zero pre_rotations. Animations will "
                  "be incorrect.\n",
                  pre_rotation[0], pre_rotation[1], pre_rotation[2]);
       }
@@ -1607,6 +1626,21 @@ class FbxMeshParser {
       }
     }
   };
+
+  static inline AxisSystem AxisSystemFromFbx(const FbxAxisSystem& axis) {
+    int up_sign = 0;
+    int front_sign = 0;
+    const FbxAxisSystem::EUpVector up = axis.GetUpVector(up_sign);
+    const FbxAxisSystem::EFrontVector front = axis.GetFrontVector(front_sign);
+    const FbxAxisSystem::ECoordSystem coord = axis.GetCoorSystem();
+    assert(up_sign > 0);
+    const int up_idx = up - FbxAxisSystem::EUpVector::eXAxis;
+    const int front_idx = front - FbxAxisSystem::EFrontVector::eParityEven;
+    const int front_sign_idx = front_sign > 0 ? 0 : 1;
+    const int coord_idx = coord - FbxAxisSystem::eRightHanded;
+    return static_cast<AxisSystem>(
+        8 * up_idx + 4 * front_idx + 2 * front_sign_idx + coord_idx);
+  }
 
   static inline FbxAxisSystem::EUpVector CalculateFbxUpVector(
       AxisSystem system) {
