@@ -102,14 +102,15 @@ class Renderer {
   // Returns RGBA array of returned dimensions or nullptr if the
   // format is not understood.
   // You must free() the returned pointer when done.
-  uint8_t *UnpackTGA(const void *tga_buf, vec2i *dimensions, bool *has_alpha);
+  static uint8_t *UnpackTGA(const void *tga_buf, vec2i *dimensions,
+                            bool *has_alpha);
 
   // Unpacks a memory buffer containing a Webp format file.
   // Returns RGBA array of the returned dimensions or nullptr if the format
   // is not understood.
   // You must free() the returned pointer when done.
-  uint8_t *UnpackWebP(const void *webp_buf, size_t size, vec2i *dimensions,
-                      bool *has_alpha);
+  static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
+                             vec2i *dimensions, bool *has_alpha);
 
   // Loads the file in filename, and then unpacks the file format (supports
   // TGA and WebP).
