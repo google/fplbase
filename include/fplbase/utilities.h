@@ -162,6 +162,9 @@ JNIEnv* AndroidGetJNIEnv();
 // if none.)
 VsyncCallback RegisterVsyncCallback(VsyncCallback callback);
 
+// Blocks until the next time a VSync happens.
+void WaitForVsync();
+
 // Triggers a keypress event on an Android device.
 void SendKeypressEventToAndroid(int android_keycode);
 #endif  // __ANDROID__
