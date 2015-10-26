@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH:=$(call my-dir)
+LOCAL_PATH := $(call my-dir)/..
 
-APP_PLATFORM:=android-10
-# TODO: webp doesn't build for mips64 at the moment.
-APP_ABI:=armeabi armeabi-v7a-hard mips x86 x86_64
-APP_STL:=gnustl_static
-APP_MODULES:=libfplbase libfplbase_stdlib
-# Required for FlatBuffers
-NDK_TOOLCHAIN_VERSION:=4.8
+FPLBASE_DIR := $(LOCAL_PATH)/../../
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := main
+LOCAL_ARM_MODE := arm
+LOCAL_STATIC_LIBRARIES := fplbase
+LOCAL_SRC_FILES := mesh.cpp
+include $(BUILD_SHARED_LIBRARY)
+
+$(call import-add-path,$(FPLBASE_DIR)/..)
+$(call import-module, fplbase/jni)

@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 
-#include "precompiled.h"
 #include "fplbase/renderer.h"
 #include "fplbase/mesh.h"
 #include "fplbase/input.h"
@@ -26,7 +25,7 @@
 // - fpl::Mesh for rendering simple geometry.
 // - fpl::InputSystem to query for exit events and elapsed time.
 
-int main() {
+extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
   fpl::Renderer renderer;
   fpl::InputSystem input;
 
@@ -45,7 +44,8 @@ int main() {
   auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
   assert(shader);
 
-  while (!input.exit_requested()) {
+  while (!(input.exit_requested() ||
+           input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
     input.AdvanceFrame(&renderer.window_size());
     renderer.AdvanceFrame(input.minimized(), input.Time());
 

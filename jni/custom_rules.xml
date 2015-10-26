@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2015 Google Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<project name="configure-fpl-base" default="debug">
+  <!-- Location of Java source directory. -->
+  <property name="source.dir" value="src_java" />
+
+  <!-- Location of the Android SDL activity. -->
+  <property name="sdlactivity" value="org/libsdl/app/SDLActivity.java" />
+
+  <!-- Directory containing the Android FPLBase activities. -->
+  <property name="fplbase_activities"
+            value="com/google/fpl/fplbase" />
+
+  <!-- ndk-build executable required to get the path of dependencies -->
+  <condition property="ndkbuild_exe" value="ndk-build.cmd" else="ndk-build">
+    <os family="windows" />
+  </condition>
+
+  <target name="get-sdl-path"
+          description="Get SDL's location and save it in sdlpath.">
+    <exec executable="${ndkbuild_exe}" outputproperty="sdlpath">
+      <arg value="print_dependency"/>
+      <arg value="DEP_DIR=SDL"/>
+    </exec>
+  </target>
+
+  <target name="make-source-dir">
+    <mkdir dir="${source.dir}" />
+  </target>
+
+  <target name="copy-sdl-activity"
+          description="Copy SDL activity into the source directory."
+          depends="get-sdl-path, make-source-dir">
+    <copy tofile="${source.dir}/${sdlactivity}"
+          file="${sdlpath}/android-project/src/${sdlactivity}"/>
+  </target>
+
+  <target name="get-fplbase-path"
+          description="Get FPLBase's location and save it in fplbase_path.">
+    <exec executable="${ndkbuild_exe}" outputproperty="fplbase_path">
+      <arg value="print_dependency"/>
+      <arg value="DEP_DIR=FPLBASE"/>
+    </exec>
+  </target>
+
+  <target name="copy-fplbase-activities"
+          description="Copy FPLBase activity into the source directory."
+          depends="get-fplbase-path, make-source-dir">
+    <copy todir="${source.dir}/${fplbase_activities}">
+      <fileset dir="${fplbase_path}/src_java/${fplbase_activities}"/>
+    </copy>
+  </target>
+
+  <target name="get-cardboard-path"
+          description="Save the Cardboard SDK's location in cardboardpath.">
+    <exec executable="${ndkbuild_exe}" outputproperty="cardboardpath">
+      <arg value="print_dependency"/>
+      <arg value="DEP_DIR=CARDBOARD"/>
+    </exec>
+  </target>
+
+  <target name="copy-cardboard-libs"
+          description="Copy the Cardboard sdk into the libs directory."
+          depends="get-cardboard-path">
+    <copy todir="libs/">
+      <fileset dir="${cardboardpath}/libs"/>
+    </copy>
+  </target>
+
+  <!-- Override the -pre-build target in sdk/tools/ant/build.xml to copy
+       the SDL Android activity, FPL base activities and cardboard libraries
+       to this directory before the build process starts. -->
+  <target name="setup-fplbase"
+          depends="copy-sdl-activity, copy-fplbase-activities,
+                   copy-cardboard-libs" />
+  <target name="-pre-build" depends="setup-fplbase" />
+</project>

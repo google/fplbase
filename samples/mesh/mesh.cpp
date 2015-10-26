@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 
-#include "precompiled.h"
 #include "fplbase/renderer.h"
 #include "fplbase/input.h"
 #include "fplbase/asset_manager.h"
@@ -29,7 +28,7 @@
 // - fpl::Renderer to setup rendering and transform models.
 // - fpl::InputSystem to query for exit events and elapsed time.
 
-int main(int argc, char** argv) {
+extern "C" int FPL_main(int /*argc*/, char** argv) {
   fpl::Renderer renderer;
   renderer.Initialize();
 
@@ -50,7 +49,8 @@ int main(int argc, char** argv) {
   while (!assetMgr.TryFinalize()) {
   }
 
-  while (!input.exit_requested()) {
+  while (!(input.exit_requested() ||
+           input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
     input.AdvanceFrame(&renderer.window_size());
     renderer.AdvanceFrame(input.minimized(), input.Time());
     renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));

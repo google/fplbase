@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PIE_NOON_SRC_PRECOMPILED_H
-#define PIE_NOON_SRC_PRECOMPILED_H
+#ifndef FPLBASE_PRECOMPILED_H
+#define FPLBASE_PRECOMPILED_H
 
 #include "fplbase/config.h" // Must come first.
 
@@ -58,4 +58,4 @@
 #pragma hdrstop
 #endif  //  _WIN32
 
-#endif  // PIE_NOON_SRC_PRECOMPILED_H
+#endif  // FPLBASE_PRECOMPILED_H

@@ -15,7 +15,7 @@
 // An activity for AndroidTV.
 // Just extending FPLActivty without any changes.
 
-package com.google.fpl.fpl_base;
+package com.google.fpl.fplbase;
 
 public class FPLTvActivity extends FPLActivity {
 }

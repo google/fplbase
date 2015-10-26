@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH:=$(call my-dir)
-
-APP_PLATFORM:=android-10
-# TODO: webp doesn't build for mips64 at the moment.
+APP_PLATFORM := android-15
 APP_ABI:=armeabi armeabi-v7a-hard mips x86 x86_64
-APP_STL:=gnustl_static
-APP_MODULES:=libfplbase libfplbase_stdlib
-# Required for FlatBuffers
-NDK_TOOLCHAIN_VERSION:=4.8
+APP_STL := gnustl_static
+APP_MODULES := main
+NDK_TOOLCHAIN_VERSION := 4.8
+APP_CPPFLAGS += -std=c++11 -Wno-literal-suffix
+
+

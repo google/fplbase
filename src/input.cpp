@@ -675,7 +675,7 @@ int Gamepad::GetGamepadCodeFromJavaKeyCode(int java_keycode) {
 
 #ifdef __ANDROID__
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnGamepadInput(
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnGamepadInput(
     JNIEnv *env, jobject thiz, jint controller_id, jint event_code,
     jint control_code, jfloat x, jfloat y) {
   InputSystem::ReceiveGamepadEvent(
@@ -855,7 +855,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
 // Android, even without the Cardboard flag
 #ifdef __ANDROID__
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnCardboardTrigger(
     JNIEnv *env) {
 #if ANDROID_CARDBOARD
   InputSystem::OnCardboardTrigger();
@@ -863,7 +863,7 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnCardboardTrigger(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeSetDeviceInCardboard(
+Java_com_google_fpl_fplbase_FPLActivity_nativeSetDeviceInCardboard(
     JNIEnv *env, jobject thiz, jboolean in_cardboard) {
 #if ANDROID_CARDBOARD
   InputSystem::SetDeviceInCardboard(in_cardboard);

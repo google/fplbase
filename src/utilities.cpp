@@ -656,9 +656,9 @@ static void CleanupVsyncMutexes() {
 
 // Initialize the Vsync mutexes.  Called by android lifecycle events.
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeInitVsync(JNIEnv *env,
-                                                          jobject thiz,
-                                                          jobject activity) {
+Java_com_google_fpl_fplbase_FPLActivity_nativeInitVsync(JNIEnv *env,
+                                                        jobject thiz,
+                                                        jobject activity) {
   (void)env;
   (void)thiz;
   (void)activity;
@@ -667,9 +667,9 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeInitVsync(JNIEnv *env,
 
 // Clean up the Vsync mutexes.  Called by android lifecycle events.
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeCleanupVsync(JNIEnv *env,
-                                                             jobject thiz,
-                                                             jobject activity) {
+Java_com_google_fpl_fplbase_FPLActivity_nativeCleanupVsync(JNIEnv *env,
+                                                           jobject thiz,
+                                                           jobject activity) {
   (void)env;
   (void)thiz;
   (void)activity;
@@ -702,9 +702,9 @@ void WaitForVsync() {
 // Note that this callback is signaled from another thread, and so
 // needs to be thread-safe.
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv *env,
-                                                        jobject thiz,
-                                                        jobject activity) {
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnVsync(JNIEnv *env,
+                                                      jobject thiz,
+                                                      jobject activity) {
   (void)env;
   (void)thiz;
   (void)activity;

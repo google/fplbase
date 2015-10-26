@@ -15,7 +15,7 @@
 // Helper class that allows us to rename our app.
 // Can't just modify SDLActivity, since the native code depends on that package.
 
-package com.google.fpl.fpl_base;
+package com.google.fpl.fplbase;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -47,9 +47,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import com.google.android.gms.analytics.GoogleAnalytics;
-import com.google.android.gms.analytics.HitBuilders;
-import com.google.android.gms.analytics.Tracker;
 import com.google.vr.cardboard.UiLayer;
 import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
 import com.google.vrtoolkit.cardboard.CardboardView;
@@ -67,8 +64,6 @@ public class FPLActivity extends SDLActivity implements
     Choreographer.FrameCallback {
 
   private static final float METERS_PER_INCH = 0.0254f;
-  private final String PROPERTY_ID = "XX-XXXXXXXX-X";
-  private Tracker tracker = null;
   private final Instrumentation instrumentation = new Instrumentation();
 
   // Fields used in order to interact with a Cardboard device
@@ -86,7 +81,6 @@ public class FPLActivity extends SDLActivity implements
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    tracker = GoogleAnalytics.getInstance(this).newTracker(PROPERTY_ID);
     nativeInitVsync();
     // Instantiate fields used by Cardboard, if we support HMDs.
     if (SupportsHeadMountedDisplay()) {
@@ -347,30 +341,6 @@ public class FPLActivity extends SDLActivity implements
     // Convert the dps to pixels, based on density scale
     return (int)TypedValue.applyDimension(
       TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
-  }
-
-  public void SendTrackerEvent(String category, String action) {
-    tracker.send(new HitBuilders.EventBuilder()
-             .setCategory(category)
-             .setAction(action)
-             .build());
-  }
-
-  public void SendTrackerEvent(String category, String action, String label) {
-    tracker.send(new HitBuilders.EventBuilder()
-           .setCategory(category)
-           .setAction(action)
-           .setLabel(label)
-           .build());
-  }
-
-  public void SendTrackerEvent(String category, String action, String label, int value) {
-    tracker.send(new HitBuilders.EventBuilder()
-           .setCategory(category)
-           .setAction(action)
-           .setLabel(label)
-           .setValue(value)
-           .build());
   }
 
   public int[] GetLandscapedSize() {

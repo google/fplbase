@@ -24,8 +24,16 @@ demo/CMakeFiles/*
 demo/Makefile
 demo/cmake_install.cmake
 samples/CMakeFiles/*
-samples/texture/CMakeFiles/*
-samples/triangle/CMakeFiles/*
+samples/*/CMakeFiles/*
+samples/*/apks/*
+samples/*/bin/*
+samples/*/build.xml
+samples/*/gen/*
+samples/*/libs/*
+samples/*/local.properties
+samples/*/proguard-project.txt
+samples/*/project.properties
+samples/*/src_java
 
 # Visual Studio files
 *.opensdf
