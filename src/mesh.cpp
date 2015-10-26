@@ -191,12 +191,12 @@ void Mesh::AddIndices(const unsigned short *index_data, int count,
   idxs.mat = mat;
 }
 
-void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
+void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
                     const uint8_t *bone_parents, const char **bone_names,
                     size_t num_bones, const uint8_t *shader_bone_indices,
                     size_t num_shader_bones) {
   delete[] bone_transforms_;
-  bone_transforms_ = new mathfu::mat4[num_bones];
+  bone_transforms_ = new mathfu::AffineTransform[num_bones];
   bone_parents_.resize(num_bones);
   shader_bone_indices_.resize(num_shader_bones);
 
@@ -220,15 +220,15 @@ void Mesh::SetBones(const mathfu::mat4 *bone_transforms,
   // the mesh, even if it's not animated.
   static const uint8_t kInvalidBoneIdx = 0xFF;
   delete[] bone_global_transforms_;
-  bone_global_transforms_ = new mathfu::mat4[num_bones];
+  bone_global_transforms_ = new mathfu::AffineTransform[num_bones];
   for (size_t i = 0; i < num_bones; ++i) {
     const size_t parent_idx = bone_parents[i];
     if (parent_idx == kInvalidBoneIdx) {
       bone_global_transforms_[i] = bone_transforms[i];
     } else {
       assert(i > parent_idx);
-      bone_global_transforms_[i] = bone_global_transforms_[parent_idx] *
-                                   bone_transforms[i];
+      bone_global_transforms_[i] = mat4::PackAffine(
+          mat4(bone_global_transforms_[parent_idx]) * mat4(bone_transforms[i]));
     }
   }
 }
@@ -353,8 +353,9 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
                     reinterpret_cast<const char *>(vertices), indices);
 }
 
-void Mesh::GatherShaderTransforms(const mat4 *bone_transforms,
-                                  mat4 *shader_transforms) const {
+void Mesh::GatherShaderTransforms(
+    const mathfu::AffineTransform *bone_transforms,
+    mathfu::AffineTransform *shader_transforms) const {
   for (size_t i = 0; i < shader_bone_indices_.size(); ++i) {
     shader_transforms[i] = bone_transforms[shader_bone_indices_[i]];
   }
