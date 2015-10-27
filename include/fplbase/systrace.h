@@ -16,9 +16,9 @@
 #define FPLBASE_SYSTRACE_H
 
 // Functions for creating systrace log events.
-// To enable, #define ENABLE_SYSTRACE 1
+// To enable, #define FPLBASE_ENABLE_SYSTRACE 1
 
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
 #ifndef __ANDROID__
 #error  Systrace is only suppported for Android Builds
 #endif
@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#endif  // ENABLE_SYSTRACE
+#endif  // FPLBASE_ENABLE_SYSTRACE
 
 #define MAX_SYSTRACE_LEN 256
 int     trace_marker = -1;
@@ -34,7 +34,7 @@ int     trace_marker = -1;
 // This needs to be called before other
 void SystraceInit()
 {
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
   trace_marker = open("/sys/kernel/debug/tracing/trace_marker", O_WRONLY);
   // Check that it didn't fail:
   assert(trace_marker == -1);
@@ -45,7 +45,7 @@ void SystraceInit()
 // called.  (Nesting is supported!)
 inline void SystraceBegin(const char *name) {
   (void) name;
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
   char buf[MAX_SYSTRACE_LEN];
   int len = snprintf(buf, MAX_SYSTRACE_LEN, "B|%d|%s", getpid(), name);
   write(trace_marker, buf, len);
@@ -54,7 +54,7 @@ inline void SystraceBegin(const char *name) {
 
 // Ends the most recently begun block.
 inline void SystraceEnd() {
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
   char c = 'E';
   write(trace_marker, &c, 1);
 #endif
@@ -64,7 +64,7 @@ inline void SystraceEnd() {
 inline void SystraceCounter(const char *name, const int value) {
   (void) name;
   (void) value;
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
     char buf[MAX_SYSTRACE_LEN];
     int len = snprintf(buf, MAX_SYSTRACE_LEN, "C|%d|%s|%i", getpid(), name, value);
     write(trace_marker, buf, len);
@@ -76,7 +76,7 @@ inline void SystraceCounter(const char *name, const int value) {
 inline void SystraceAsyncBegin(const char *name, const int32_t cookie) {
   (void) name;
   (void) cookie;
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
   char buf[MAX_SYSTRACE_LEN];
   int len = snprintf(buf, MAX_SYSTRACE_LEN, "S|%d|%s|%i", getpid(), name, cookie);
   write(trace_marker, buf, len);
@@ -87,7 +87,7 @@ inline void SystraceAsyncBegin(const char *name, const int32_t cookie) {
 inline void SystraceAsyncEnd(const char *name, const int32_t cookie) {
   (void) name;
   (void) cookie;
-#if ENABLE_SYSTRACE
+#if FPLBASE_ENABLE_SYSTRACE
   char buf[MAX_SYSTRACE_LEN];
   int len = snprintf(buf, MAX_SYSTRACE_LEN, "F|%d|%s|%i", getpid(), name, cookie);
   write(trace_marker, buf, len);
