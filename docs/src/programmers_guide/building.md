@@ -6,7 +6,12 @@ Build Targets    {#fplbase_guide_build_targets}
 
 The CMake build script can be used to generate standard
 makefiles on [Linux][], [Xcode][] projects on OSX,
-and [Visual Studio][] solutions on [Windows][]. See,
+and [Visual Studio][] solutions on [Windows][].
+
+The CMake build script also builds the samples, unless it is included from
+another project, in which case it omits them.
+
+For more detail, see:
 
    * [Building for Linux][]
    * [Building for OS X][]

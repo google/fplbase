@@ -15,13 +15,22 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase)
 
+set(fplbase_standalone_mode OFF)
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+  set(fplbase_standalone_mode ON)
+  message(STATUS "FPLBase standalone: building library and samples")
+else()
+  message(STATUS "FPLBase library: not building samples")
+endif()
+
 # Option to only build flatc
 set(fbx_sdk_msg "The FBX SDK must be installed and the FBX_SDK environment variable must be set to the SDK directory.")
 option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline
        "Build the mesh_pipeline binary (converts from FBX to FlatBuffers). ${fbx_sdk_msg}"
        OFF)
-option(fplbase_build_samples "Build the fplbase sample executables." OFF)
+option(fplbase_build_samples "Build the fplbase sample executables."
+       ${flatui_standalone_mode})
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
 
