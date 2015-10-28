@@ -108,7 +108,7 @@ struct InputPointer {
   vec2i mousedelta;
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
 };
 
 class Joystick {
@@ -327,7 +327,8 @@ class InputSystem {
         frames_(0),
         minimized_frame_(0),
         mousewheel_delta_(mathfu::kZeros2i),
-        record_text_input_(false) {
+        record_text_input_(false),
+        touch_device_(true) {
     pointers_.assign(kMaxSimultanuousPointers, InputPointer());
   }
 
@@ -507,13 +508,17 @@ class InputSystem {
   // A flag indicating a text input status.
   bool record_text_input_;
 
-#ifdef __ANDROID__
+  // True if most recent pointer events are coming from a touch screen,
+  // false if coming from a mouse or similar.
+  bool touch_device_;
+
+# ifdef __ANDROID__
   // Store current relative mouse mode before entering background.
   bool relative_mouse_mode_;
 
   // How long since we've sent a keypress event to keep the CPU alive.
   int32_t last_android_keypress_;
-#endif
+# endif
 };
 
 }  // namespace fpl

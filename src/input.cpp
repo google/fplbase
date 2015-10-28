@@ -158,6 +158,10 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   }
   for (auto it = pointers_.begin(); it != pointers_.end(); ++it) {
     it->mousedelta = mathfu::kZeros2i;
+    if (touch_device_ && !it->used) {
+      // A lifted finger should not intersect any position on screen.
+      it->mousepos = vec2i(-1, -1);
+    }
   }
   for (auto it = joystick_map_.begin(); it != joystick_map_.end(); ++it) {
     it->second.AdvanceFrame();
@@ -191,17 +195,20 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       }
 #ifdef PLATFORM_MOBILE
       case SDL_FINGERDOWN: {
+        touch_device_ = true;
         int i = UpdateDragPosition(&event.tfinger, event.type, *window_size);
         GetPointerButton(i).Update(true);
         break;
       }
       case SDL_FINGERUP: {
+        touch_device_ = true;
         int i = FindPointer(event.tfinger.fingerId);
         RemovePointer(i);
         GetPointerButton(i).Update(false);
         break;
       }
       case SDL_FINGERMOTION: {
+        touch_device_ = true;
         UpdateDragPosition(&event.tfinger, event.type, *window_size);
         break;
       }
@@ -217,6 +224,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
 #endif  // PLATFORM_MOBILE
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP: {
+        touch_device_ = false;
         GetPointerButton(event.button.button - 1)
             .Update(event.button.state == SDL_PRESSED);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
@@ -233,12 +241,14 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         // a backward compatible way of sending finger up / down / motion
         // events.
 #if !defined(PLATFORM_MOBILE)
+        touch_device_ = false;
         pointers_[0].mousedelta += vec2i(event.motion.xrel, event.motion.yrel);
         pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
 #endif  // !defined(PLATFORM_MOBILE)
         break;
       }
       case SDL_MOUSEWHEEL: {
+        touch_device_ = false;
         mousewheel_delta_ += vec2i(event.wheel.x, event.wheel.y);
         break;
       }
@@ -284,8 +294,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       }
     }
   }
-// Update the Cardboard input. Note this is after the mouse input, as that can
-// be treated as a trigger.
+  // Update the Cardboard input. Note this is after the mouse input, as that can
+  // be treated as a trigger.
 #if ANDROID_CARDBOARD
   cardboard_input_.AdvanceFrame();
 #endif  // ANDROID_CARDBOARD
@@ -397,7 +407,11 @@ Gamepad &InputSystem::GetGamepad(AndroidInputDeviceId gamepad_device_id) {
 }
 #endif  // ANDROID_GAMEPAD
 
-void InputSystem::RemovePointer(size_t i) { pointers_[i].used = false; }
+void InputSystem::RemovePointer(size_t i) {
+  // Can't clear the rest of the state here yet, since it may still
+  // need to be queried this frame.
+  pointers_[i].used = false;
+}
 
 size_t InputSystem::FindPointer(FingerId id) {
   for (size_t i = 0; i < pointers_.size(); i++) {

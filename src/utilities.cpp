@@ -359,7 +359,7 @@ inline int chdir(const char *dirname) { return _chdir(dirname); }
 // false otherwise.
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir) {
-#if !defined(__ANDROID__)
+# if !defined(__ANDROID__)
   {
     std::string current_dir = binary_dir;
 
@@ -381,11 +381,11 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
     }
     return false;
   }
-#else
+# else
   (void)binary_dir;
   (void)target_dir;
   return true;
-#endif  //  !defined(__ANDROID__)
+# endif  //  !defined(__ANDROID__)
 }
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }
@@ -437,11 +437,11 @@ bool AndroidSystemFeature(const char *feature_name) {
 #endif
 
 bool TouchScreenDevice() {
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+# if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
   return AndroidSystemFeature("android.hardware.touchscreen");
-#else
+# else
   return false;
-#endif
+# endif
 }
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
@@ -473,13 +473,13 @@ bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
 #endif
 
 bool MipmapGeneration16bppSupported() {
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+# if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
   const char *device_list[] = {"Galaxy Nexus"};
   return AndroidCheckDeviceList(device_list,
                                 sizeof(device_list) / sizeof(device_list[0]));
-#else
+# else
   return true;
-#endif
+# endif
 }
 
 #ifdef FPL_BASE_BACKEND_SDL
@@ -597,25 +597,13 @@ JNIEnv *AndroidGetJNIEnv() {
 void SetAAssetManager(AAssetManager *manager) { g_asset_manager = manager; }
 #endif
 
-#ifdef FPL_BASE_BACKEND_SDL
-WorldTime GetTicks() { return SDL_GetTicks(); }
-
-void Delay(WorldTime time) { SDL_Delay(time); }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
-WorldTime GetTicks() { return 0; }
-
-void Delay(WorldTime /*time*/) {}
-#else
-#error Please define a backend implementation of a monotonic clock.
-#endif
-
 #if defined(FPL_BASE_BACKEND_SDL)
 bool GetStoragePath(const char *app_name, std::string *path_string) {
-#if defined(__ANDROID__)
+# if defined(__ANDROID__)
   auto path = SDL_AndroidGetInternalStoragePath();
-#else
+# else
   auto path = SDL_GetPrefPath("FPLBase", app_name);
-#endif
+# endif
   if (path == nullptr) {
     return false;
   }
@@ -735,7 +723,7 @@ Java_com_google_fpl_fpl_1base_FPLActivity_nativeOnVsync(JNIEnv *env,
 
 // Checks whether Head Mounted Displays are supported by the system.
 bool SupportsHeadMountedDisplay() {
-#ifdef __ANDROID__
+# ifdef __ANDROID__
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
@@ -745,9 +733,9 @@ bool SupportsHeadMountedDisplay() {
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
   return supports_hmd;
-#else
+# else
   return false;
-#endif  // __ANDROID
+# endif  // __ANDROID
 }
 
 #ifdef __ANDROID__
