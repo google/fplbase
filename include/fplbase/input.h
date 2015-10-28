@@ -202,7 +202,9 @@ class CardboardInput {
         right_eye_transform_(),
         is_in_cardboard_(false),
         triggered_(false),
-        pending_trigger_(false) {}
+        pending_trigger_(false),
+        use_device_orientation_correction_(false),
+        device_orientation_(1) {}
 
   bool is_in_cardboard() const { return is_in_cardboard_; }
   void set_is_in_cardboard(bool is_in_cardboard) {
@@ -244,6 +246,11 @@ class CardboardInput {
   // Realign the head tracking with the current phone heading
   void ResetHeadTracker();
 
+  // Version 0.5.6 of the Cardboard SDK has a bug concerning not handling a
+  // device's default orientation. Calling this enables correction of that in
+  // the Cardboard Input.
+  void EnableDeviceOrientationCorrection();
+
  private:
   void UpdateCardboardTransforms();
 
@@ -252,6 +259,11 @@ class CardboardInput {
   bool is_in_cardboard_;
   bool triggered_;
   bool pending_trigger_;
+  // Whether correction should be applied to the view matrices.
+  bool use_device_orientation_correction_;
+  // The device's default rotation, as defined here:
+  // http://developer.android.com/reference/android/view/Surface.html#ROTATION_0
+  int device_orientation_;
 };
 #endif  // ANDROID_CARDBOARD
 

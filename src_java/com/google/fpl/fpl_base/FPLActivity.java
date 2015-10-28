@@ -384,6 +384,10 @@ public class FPLActivity extends SDLActivity implements
     return new int[] { Math.max(size.x, size.y), Math.min(size.x, size.y) };
   }
 
+  public int GetDisplayRotation() {
+    return getWindowManager().getDefaultDisplay().getRotation();
+  }
+
   public void SetHeadMountedDisplayResolution(int width, int height) {
     // If hardware scaling is used, the width x height will be less than the
     // displays natural resolution, so the PPI (pixels per inch) will also

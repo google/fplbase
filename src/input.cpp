@@ -706,10 +706,62 @@ void CardboardInput::UpdateCardboardTransforms() {
   jfloat *right_eye_floats = env->GetFloatArrayElements(right_eye, NULL);
   left_eye_transform_ = mat4(left_eye_floats);
   right_eye_transform_ = mat4(right_eye_floats);
+  if (use_device_orientation_correction_) {
+    mat4 post_correction = mat4::Identity();
+    mat4 pre_correction = mat4::Identity();
+    switch (device_orientation_) {
+      case 0: {
+        // 0 degree rotation.
+        pre_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationY(M_PI_2));
+        post_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationZ(-M_PI_2));
+        break;
+      }
+      case 2: {
+        // 180 degree rotation.
+        pre_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI_2));
+        post_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationZ(M_PI_2));
+        break;
+      }
+      case 3: {
+        // 270 degree rotation.
+        pre_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI));
+        post_correction =
+            mat4::FromRotationMatrix(mathfu::mat3::RotationZ(M_PI));
+        break;
+      }
+      default: {
+        // The HMD SDK assumes a 90 degree rotation, so nothing to do.
+        break;
+      }
+    }
+    left_eye_transform_ =
+        post_correction * left_eye_transform_ * pre_correction;
+    right_eye_transform_ =
+        post_correction * right_eye_transform_ * pre_correction;
+  }
   env->ReleaseFloatArrayElements(left_eye, left_eye_floats, JNI_ABORT);
   env->ReleaseFloatArrayElements(right_eye, right_eye_floats, JNI_ABORT);
   env->DeleteLocalRef(left_eye);
   env->DeleteLocalRef(right_eye);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+#endif  // __ANDROID__
+}
+
+void CardboardInput::EnableDeviceOrientationCorrection() {
+  use_device_orientation_correction_ = true;
+#ifdef __ANDROID__
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID get_display_rotation =
+      env->GetMethodID(fpl_class, "GetDisplayRotation", "()I");
+  device_orientation_ = env->CallIntMethod(activity, get_display_rotation);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
 #endif  // __ANDROID__
