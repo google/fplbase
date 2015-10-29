@@ -174,6 +174,16 @@ static const char* kLogPrefix[] = {
 static_assert(FPL_ARRAYSIZE(kLogPrefix) == kNumLogLevels,
               "kLogPrefix length is incorrect");
 
+static const char* kDistanceUnitNames[] = {"cm",   "m",     "inches",
+                                           "feet", "yards", nullptr};
+
+static const float kDistanceUnitScales[] = {
+    1.0f, 100.0f, 2.54f, 30.48f, 91.44f,
+};
+static_assert(FPL_ARRAYSIZE(kDistanceUnitNames) - 1 ==
+                  FPL_ARRAYSIZE(kDistanceUnitScales),
+              "kDistanceUnitNames and kDistanceUnitScales are not in sync.");
+
 /// @class Logger
 /// @brief Output log messages if they are above an adjustable threshold.
 class Logger {
@@ -916,8 +926,8 @@ class FbxMeshParser {
 
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
-  bool Load(const char* file_name, AxisSystem axis_system, bool recenter,
-            bool hierarchy) {
+  bool Load(const char* file_name, AxisSystem axis_system,
+            float distance_unit_scale, bool recenter, bool hierarchy) {
     if (!Valid()) return false;
 
     log_.Log(kLogImportant,
@@ -971,7 +981,8 @@ class FbxMeshParser {
     // Log nodes before we do anything to them.
     LogNodes("Original scene nodes\n");
 
-    // Ensure the correct axis system is being used.
+    // Ensure the correct distance unit and axis system are being used.
+    ConvertScale(distance_unit_scale);
     ConvertAxes(axis_system);
 
     // Bring the geo into our format.
@@ -1056,6 +1067,26 @@ class FbxMeshParser {
     for (int i = 0; i < node->GetChildCount(); i++) {
       LogNodesRecursive(node->GetChild(i), pivot_set);
     }
+  }
+
+  void ConvertScale(float distance_unit_scale) {
+    if (distance_unit_scale <= 0.0f) return;
+
+    const FbxSystemUnit import_unit =
+        scene_->GetGlobalSettings().GetSystemUnit();
+    const FbxSystemUnit export_unit(distance_unit_scale);
+
+    if (import_unit == export_unit) {
+      log_.Log(kLogInfo,
+               "Scene's distance unit is already %s. Skipping conversion.\n",
+               import_unit.GetScaleFactorAsString().Buffer());
+      return;
+    }
+
+    log_.Log(kLogImportant, "Converting scene's distance unit from %s to %s.\n",
+             import_unit.GetScaleFactorAsString().Buffer(),
+             export_unit.GetScaleFactorAsString().Buffer());
+    export_unit.ConvertScene(scene_);
   }
 
   void ConvertAxes(AxisSystem axis_system) {
@@ -1687,11 +1718,12 @@ class FbxMeshParser {
 
 struct MeshPipelineArgs {
   MeshPipelineArgs()
-    : blend_mode(static_cast<matdef::BlendMode>(-1)),
-      axis_system(kUnspecifiedAxisSystem),
-      recenter(false),
-      hierarchy(false),
-      log_level(kLogWarning) {}
+      : blend_mode(static_cast<matdef::BlendMode>(-1)),
+        axis_system(kUnspecifiedAxisSystem),
+        distance_unit_scale(-1.0f),
+        recenter(false),
+        hierarchy(false),
+        log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
@@ -1700,6 +1732,7 @@ struct MeshPipelineArgs {
   std::vector<matdef::TextureFormat> texture_formats;
   matdef::BlendMode blend_mode;
   AxisSystem axis_system;
+  float distance_unit_scale;
   bool recenter;               /// Translate geometry to origin.
   bool hierarchy;              /// Mesh vertices output relative to local pivot.
   LogLevel log_level;          /// Amount of logging to dump during conversion.
@@ -1719,6 +1752,18 @@ static int IndexOfString(const char* s, const char** array_of_strings) {
 
 static AxisSystem ParseAxisSystem(const char* s) {
   return static_cast<AxisSystem>(IndexOfString(s, kAxisSystemNames));
+}
+
+static float ParseDistanceUnitScale(const char* s) {
+  // Check for unit name.
+  const int unit_index = IndexOfString(s, kDistanceUnitNames);
+  if (unit_index >= 0) return kDistanceUnitScales[unit_index];
+
+  // Otherwise, must be a scale number.
+  // On failure, returns 0.0f, which is detected as an error by the command-line
+  // parser.
+  const float scale = static_cast<float>(atof(s));
+  return scale;
 }
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
@@ -1879,6 +1924,18 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+    } else if (arg == "-u" || arg == "--unit") {
+      if (i + 1 < argc - 1) {
+        args->distance_unit_scale = ParseDistanceUnitScale(argv[i + 1]);
+        valid_args = args->distance_unit_scale > 0.0f;
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown distance unit: %s\n\n", argv[i + 1]);
+        }
+        i++;
+      } else {
+        valid_args = false;
+      }
+
       // ignore empty arguments
     } else if (arg == "") {
       // Invalid switch.
@@ -1903,7 +1960,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         kLogImportant,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
         "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
-        "                     [-m BLEND_MODE] [-a AXES] [-h] [-c] [-v|-d|-i]\n"
+        "                     [-m BLEND_MODE] [-a AXES] [-u (unit)|(scale)]\n"
+        "                     [-h] [-c] [-v|-d|-i]\n"
         "                     FBX_FILE\n"
         "\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
@@ -1968,6 +2026,22 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                out of a character's belly button, positive x-axis\n"
         "                out of a character's left side.\n"
         "                If unspecified, use file's coordinate system.\n"
+        "  -u, --unit (unit)|(scale)\n"
+        "                Outputs mesh in target units. You can override the\n"
+        "                FBX file's distance unit with this option.\n"
+        "                For example, if your game runs in meters,\n"
+        "                specify '-u m' to ensure the output .fplmesh file\n"
+        "                is in meters, no matter the distance unit of the\n"
+        "                FBX file.\n"
+        "                (unit) can be one of the following:\n");
+    LogOptions(kOptionIndent, kDistanceUnitNames, log);
+
+    log.Log(
+        kLogImportant,
+        "                (scale) is the number of centimeters in your\n"
+        "                distance unit. For example, instead of '-u inches',\n"
+        "                you could also use '-u 2.54'.\n"
+        "                If unspecified, use FBX file's unit.\n"
         "  -h, --hierarchy\n"
         "                output vertices relative to local pivot of each\n"
         "                sub-mesh. The transforms from parent pivot to local\n"
@@ -1998,8 +2072,9 @@ int main(int argc, char** argv) {
 
   // Load the FBX file.
   FbxMeshParser pipe(log);
-  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.axis_system,
-                                     args.recenter, args.hierarchy);
+  const bool load_status =
+      pipe.Load(args.fbx_file.c_str(), args.axis_system,
+                args.distance_unit_scale, args.recenter, args.hierarchy);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.
