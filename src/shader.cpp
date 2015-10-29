@@ -77,9 +77,39 @@ void Shader::InitializeUniforms() {
   }
 }
 
-void Shader::Set(const Renderer &renderer) const {
-  const int kNumVec4InBoneTransform = 3;
+// Checks if a mat4 is a valid affine transform.
+// Returns 'true' if the mat4 contains a fourth ('w') row of (0, 0, 0, 1).
+static bool IsValidAffineTransform(const mat4 &m) {
+  return m(3, 0) == 0.0f && m(3, 1) == 0.0f && m(3, 2) == 0.0f &&
+         m(3, 3) == 1.0f;
+}
 
+// Packs a 4x4 matrix into three vec4's by omitting the 'w' row.
+// The fourth row of an affine transform is always (0, 0, 0, 1), so it can
+// be omitted. An 'assert' is used to ensure that the mat4 contains a valid
+// affine transform with a 'w' row containing (0, 0, 0, 1).
+// v is an array of length 4.
+static void PackAffineTransform(const mat4 &m, vec4 *v) {
+  assert(IsValidAffineTransform(m));
+
+  for (int i = 0; i < kNumVec4sInAffineTransform; i++) {
+    v[i] = (vec4(m(i, 0), m(i, 1), m(i, 2), m(i, 3)));
+  }
+}
+
+// Convert a mat4 array to a vector of vec4's, omitting the 'w' row.
+// Iterate through the mat4 array, and for each mat4, create three vec4's
+// without the 'w' row that is fixed for affine transforms.
+static void PackTransforms(const mat4 m[], const int num_bones,
+                           std::vector<vec4> *v) {
+  v->reserve(num_bones * kNumVec4sInAffineTransform);
+
+  for (int i = 0; i < num_bones; i++) {
+    PackAffineTransform(m[i], &(*v)[i * kNumVec4sInAffineTransform]);
+  }
+}
+
+void Shader::Set(const Renderer &renderer) const {
   GL_CALL(glUseProgram(program_));
 
   if (uniform_model_view_projection_ >= 0)
@@ -98,10 +128,19 @@ void Shader::Set(const Renderer &renderer) const {
   if (uniform_bone_transforms_ >= 0 && renderer.num_bones() > 0) {
     assert(renderer.bone_transforms() != nullptr);
 
-    const mathfu::AffineTransform *bone_transforms = renderer.bone_transforms();
+    // TODO(mrhappyasthma): Remove the temporary conversion from mat4 to vec4
+    //                      by propagating the changes into the 'renderer'
+    //                      as well.
+    const mat4 *bone_transforms_matrices = renderer.bone_transforms();
 
-    GL_CALL(glUniform4fv(uniform_bone_transforms_,
-                         renderer.num_bones() * kNumVec4InBoneTransform,
+    // Use an array of vec4 to save space, since we do not need the 'w'
+    // row of the 'bone_transforms_old' matrix.
+    std::vector<vec4> bone_transforms;
+
+    PackTransforms(bone_transforms_matrices, renderer.num_bones(),
+                   &bone_transforms);
+
+    GL_CALL(glUniform4fv(uniform_bone_transforms_, renderer.num_bones() * 3,
                          &bone_transforms[0][0]));
   }
 }

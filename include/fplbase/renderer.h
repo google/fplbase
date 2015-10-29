@@ -28,10 +28,10 @@
 
 namespace fpl {
 
-using mathfu::mat4;
 using mathfu::vec2i;
 using mathfu::vec3;
 using mathfu::vec4;
+using mathfu::mat4;
 
 typedef void *Window;
 typedef void *GLContext;
@@ -143,8 +143,7 @@ class Renderer {
 
   // Set bone transforms in vertex shader uniforms.
   // Allows vertex shader to skin each vertex to the bone position.
-  void SetAnimation(const mathfu::AffineTransform *bone_transforms,
-                    int num_bones);
+  void SetAnimation(const mathfu::mat4 *bone_transforms, int num_bones);
 
   // Shader uniform: model_view_projection
   const mat4 &model_view_projection() const { return model_view_projection_; }
@@ -169,12 +168,9 @@ class Renderer {
   void set_camera_pos(const vec3 &camera_pos) { camera_pos_ = camera_pos; }
 
   // Shader uniform: bone_transforms
-  const mathfu::AffineTransform *bone_transforms() const {
-    return bone_transforms_;
-  }
+  const mat4 *bone_transforms() const { return bone_transforms_; }
   int num_bones() const { return num_bones_; }
-  void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
-                         int num_bones) {
+  void SetBoneTransforms(const mat4 *bone_transforms, int num_bones) {
     bone_transforms_ = bone_transforms;
     num_bones_ = num_bones;
   }
@@ -228,7 +224,7 @@ class Renderer {
   vec4 color_;
   vec3 light_pos_;
   vec3 camera_pos_;
-  const mathfu::AffineTransform *bone_transforms_;
+  const mat4 *bone_transforms_;
   int num_bones_;
   double time_;
   vec2i window_size_;

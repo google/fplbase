@@ -58,7 +58,7 @@ class Mesh {
   // So, we don't have to pass every bone transform up to the shader. Instead,
   // we compact the bone transforms by passing only those in
   // shader_bone_indices.
-  void SetBones(const mathfu::AffineTransform *bone_transforms,
+  void SetBones(const mathfu::mat4 *bone_transforms,
                 const uint8_t *bone_parents, const char **bone_names,
                 size_t num_bones, const uint8_t *shader_bone_indices,
                 size_t num_shader_bones);
@@ -67,8 +67,8 @@ class Mesh {
   // weighted to them.
   // `bone_transforms` is an input array of length num_bones().
   // `shader_transforms` is an output array of length num_shder_bones().
-  void GatherShaderTransforms(const mathfu::AffineTransform *bone_transforms,
-                              mathfu::AffineTransform *shader_transforms) const;
+  void GatherShaderTransforms(const mat4 *bone_transforms,
+                              mat4 *shader_transforms) const;
 
   // Render itself. Uniforms must have been set before calling this.
   // Use a value >1 for instances to get instanced rendering (this needs
@@ -200,10 +200,8 @@ class Mesh {
 
   const mathfu::vec3 &min_position() const { return min_position_; }
   const mathfu::vec3 &max_position() const { return max_position_; }
-  const mathfu::AffineTransform *bone_transforms() const {
-    return bone_transforms_;
-  }
-  const mathfu::AffineTransform *bone_global_transforms() const {
+  const mathfu::mat4 *bone_transforms() const { return bone_transforms_; }
+  const mathfu::mat4 *bone_global_transforms() const {
     return bone_global_transforms_;
   }
   const uint8_t *bone_parents() const { return &bone_parents_[0]; }
@@ -246,8 +244,8 @@ class Mesh {
   // Bone arrays are of length NumBones().
   // Note that vector<mat4> is not possible on Visual Studio 2010 because
   // it doesn't support vectors of aligned types.
-  mathfu::AffineTransform *bone_transforms_;
-  mathfu::AffineTransform *bone_global_transforms_;
+  mathfu::mat4* bone_transforms_;
+  mathfu::mat4* bone_global_transforms_;
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;
