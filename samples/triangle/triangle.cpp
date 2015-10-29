@@ -54,8 +54,20 @@ int main() {
 
     shader->Set(renderer);
 
-    fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
-                                  mathfu::vec3( 0.5f,  0.5f, 0));
+    // define geometry for a triangle
+    const fpl::Attribute format[] = {fpl::Attribute::kPosition3f,
+                                     fpl::Attribute::kEND};
+    const unsigned short indices[] = { 0, 1, 2 };
+    const float vertices[] = {
+      -.5f, -.5f, 0.0f,
+      0.0f, 0.5f, 0.0f,
+      0.5f, -.5f, 0.0f };
+    
+    fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles,
+                           3,
+                           format,
+                           sizeof(float) * 3,
+                           reinterpret_cast<const char *>(vertices), indices);
   }
 
   renderer.ShutDown();
