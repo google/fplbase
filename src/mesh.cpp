@@ -227,8 +227,9 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
       bone_global_transforms_[i] = bone_transforms[i];
     } else {
       assert(i > parent_idx);
-      bone_global_transforms_[i] = mat4::PackAffine(
-          mat4(bone_global_transforms_[parent_idx]) * mat4(bone_transforms[i]));
+      bone_global_transforms_[i] = mat4::ToAffineTransform(
+          mat4::FromAffineTransform(bone_global_transforms_[parent_idx]) *
+          mat4::FromAffineTransform(bone_transforms[i]));
     }
   }
 }

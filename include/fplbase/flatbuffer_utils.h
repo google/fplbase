@@ -67,7 +67,7 @@ inline mathfu::AffineTransform LoadAffine(const Mat3x4* m) {
   const mathfu::vec4 c1 = LoadVec4(&m->c1());
   const mathfu::vec4 c2 = LoadVec4(&m->c2());
 
-  return mathfu::mat4::PackAffine(
+  return mathfu::mat4::ToAffineTransform(
       mathfu::mat4(c0, c1, c2, mathfu::kAxisW4f).Transpose());
 }
 
