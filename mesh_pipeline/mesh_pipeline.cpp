@@ -59,34 +59,34 @@ enum AxisSystem {
   kInvalidAxisSystem = -2,
   kUnspecifiedAxisSystem = -1,
 
-  kXUp_PositiveYFront_PositiveZ = 0,
-  kXUp_PositiveYFront_NegativeZ,
-  kXUp_NegativeYFront_PositiveZ,
-  kXUp_NegativeYFront_NegativeZ,
-  kXUp_PositiveZFront_PositiveY,
-  kXUp_PositiveZFront_NegativeY,
-  kXUp_NegativeZFront_PositiveY,
-  kXUp_NegativeZFront_NegativeY,
+  kXUp_PositiveYFront_PositiveZLeft = 0,
+  kXUp_PositiveYFront_NegativeZLeft,
+  kXUp_NegativeYFront_PositiveZLeft,
+  kXUp_NegativeYFront_NegativeZLeft,
+  kXUp_PositiveZFront_PositiveYLeft,
+  kXUp_PositiveZFront_NegativeYLeft,
+  kXUp_NegativeZFront_PositiveYLeft,
+  kXUp_NegativeZFront_NegativeYLeft,
   kLastXUpAxisSystem,
 
-  kYUp_PositiveXFront_PositiveZ = kLastXUpAxisSystem,
-  kYUp_PositiveXFront_NegativeZ,
-  kYUp_NegativeXFront_PositiveZ,
-  kYUp_NegativeXFront_NegativeZ,
-  kYUp_PositiveZFront_PositiveX,
-  kYUp_PositiveZFront_NegativeX,
-  kYUp_NegativeZFront_PositiveX,
-  kYUp_NegativeZFront_NegativeX,
+  kYUp_PositiveXFront_PositiveZLeft = kLastXUpAxisSystem,
+  kYUp_PositiveXFront_NegativeZLeft,
+  kYUp_NegativeXFront_PositiveZLeft,
+  kYUp_NegativeXFront_NegativeZLeft,
+  kYUp_PositiveZFront_PositiveXLeft,
+  kYUp_PositiveZFront_NegativeXLeft,
+  kYUp_NegativeZFront_PositiveXLeft,
+  kYUp_NegativeZFront_NegativeXLeft,
   kLastYUpAxisSystem,
 
-  kZUp_PositiveXFront_PositiveY = kLastYUpAxisSystem,
-  kZUp_PositiveXFront_NegativeY,
-  kZUp_NegativeXFront_PositiveY,
-  kZUp_NegativeXFront_NegativeY,
-  kZUp_PositiveYFront_PositiveX,
-  kZUp_PositiveYFront_NegativeX,
-  kZUp_NegativeYFront_PositiveX,
-  kZUp_NegativeYFront_NegativeX,
+  kZUp_PositiveXFront_PositiveYLeft = kLastYUpAxisSystem,
+  kZUp_PositiveXFront_NegativeYLeft,
+  kZUp_NegativeXFront_PositiveYLeft,
+  kZUp_NegativeXFront_NegativeYLeft,
+  kZUp_PositiveYFront_PositiveXLeft,
+  kZUp_PositiveYFront_NegativeXLeft,
+  kZUp_NegativeYFront_PositiveXLeft,
+  kZUp_NegativeYFront_NegativeXLeft,
   kLastZUpAxisSystem,
 
   kNumAxisSystems = kLastZUpAxisSystem
@@ -124,30 +124,30 @@ static const char* kTextureProperties[] = {
 };
 
 static const char* kAxisSystemNames[] = {
-  "x+y+z", // kXUp_PositiveYFront_PositiveZ
-  "x+y-z", // kXUp_PositiveYFront_NegativeZ
-  "x-y+z", // kXUp_NegativeYFront_PositiveZ
-  "x-y-z", // kXUp_NegativeYFront_NegativeZ
-  "x+z+y", // kXUp_PositiveZFront_PositiveY
-  "x+z-y", // kXUp_PositiveZFront_NegativeY
-  "x-z+y", // kXUp_NegativeZFront_PositiveY
-  "x-z-y", // kXUp_NegativeZFront_NegativeY
-  "y+x+z", // kYUp_PositiveXFront_PositiveZ
-  "y+x-z", // kYUp_PositiveXFront_NegativeZ
-  "y-x+z", // kYUp_NegativeXFront_PositiveZ
-  "y-x-z", // kYUp_NegativeXFront_NegativeZ
-  "y+z+x", // kYUp_PositiveZFront_PositiveX
-  "y+z-x", // kYUp_PositiveZFront_NegativeX
-  "y-z+x", // kYUp_NegativeZFront_PositiveX
-  "y-z-x", // kYUp_NegativeZFront_NegativeX
-  "z+x+y", // kZUp_PositiveXFront_PositiveY
-  "z+x-y", // kZUp_PositiveXFront_NegativeY
-  "z-x+y", // kZUp_NegativeXFront_PositiveY
-  "z-x-y", // kZUp_NegativeXFront_NegativeY
-  "z+y+x", // kZUp_PositiveYFront_PositiveX
-  "z+y-x", // kZUp_PositiveYFront_NegativeX
-  "z-y+x", // kZUp_NegativeYFront_PositiveX
-  "z-y-x", // kZUp_NegativeYFront_NegativeX
+  "x+y+z", // kXUp_PositiveYFront_PositiveZLeft
+  "x+y-z", // kXUp_PositiveYFront_NegativeZLeft
+  "x-y+z", // kXUp_NegativeYFront_PositiveZLeft
+  "x-y-z", // kXUp_NegativeYFront_NegativeZLeft
+  "x+z+y", // kXUp_PositiveZFront_PositiveYLeft
+  "x+z-y", // kXUp_PositiveZFront_NegativeYLeft
+  "x-z+y", // kXUp_NegativeZFront_PositiveYLeft
+  "x-z-y", // kXUp_NegativeZFront_NegativeYLeft
+  "y+x+z", // kYUp_PositiveXFront_PositiveZLeft
+  "y+x-z", // kYUp_PositiveXFront_NegativeZLeft
+  "y-x+z", // kYUp_NegativeXFront_PositiveZLeft
+  "y-x-z", // kYUp_NegativeXFront_NegativeZLeft
+  "y+z+x", // kYUp_PositiveZFront_PositiveXLeft
+  "y+z-x", // kYUp_PositiveZFront_NegativeXLeft
+  "y-z+x", // kYUp_NegativeZFront_PositiveXLeft
+  "y-z-x", // kYUp_NegativeZFront_NegativeXLeft
+  "z+x+y", // kZUp_PositiveXFront_PositiveYLeft
+  "z+x-y", // kZUp_PositiveXFront_NegativeYLeft
+  "z-x+y", // kZUp_NegativeXFront_PositiveYLeft
+  "z-x-y", // kZUp_NegativeXFront_NegativeYLeft
+  "z+y+x", // kZUp_PositiveYFront_PositiveXLeft
+  "z+y-x", // kZUp_PositiveYFront_NegativeXLeft
+  "z-y+x", // kZUp_NegativeYFront_PositiveXLeft
+  "z-y-x", // kZUp_NegativeYFront_NegativeXLeft
   nullptr
 };
 static_assert(FPL_ARRAYSIZE(kAxisSystemNames) == kNumAxisSystems + 1, "");
@@ -165,11 +165,11 @@ enum LogLevel {
 
 // Prefix log messages at this level with this message.
 static const char* kLogPrefix[] = {
-    "",           // kLogVerbose
-    "",           // kLogInfo
-    "",           // kLogImportant
-    "Warning: ",  // kLogWarning
-    "Error: "     // kLogError
+  "",           // kLogVerbose
+  "",           // kLogInfo
+  "",           // kLogImportant
+  "Warning: ",  // kLogWarning
+  "Error: "     // kLogError
 };
 static_assert(FPL_ARRAYSIZE(kLogPrefix) == kNumLogLevels,
               "kLogPrefix length is incorrect");
@@ -1063,17 +1063,17 @@ class FbxMeshParser {
 
     const FbxAxisSystem import_axes =
         scene_->GetGlobalSettings().GetAxisSystem();
-    const FbxAxisSystem export_axes = CalculateFbxAxisSystem(axis_system);
+    const FbxAxisSystem export_axes = ConvertAxisSystemToFbx(axis_system);
     if (import_axes == export_axes) {
-      log_.Log(kLogInfo, "Scene's axes are already correct."
-                         " Not converting axis system.\n");
+      log_.Log(kLogInfo, "Scene's axes are already %s.\n",
+               kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
       return;
     }
 
     log_.Log(kLogImportant,
-             "Converting scene's axes (%s) to requested axes (%s)\n",
-             kAxisSystemNames[AxisSystemFromFbx(import_axes)],
-             kAxisSystemNames[AxisSystemFromFbx(export_axes)]);
+             "Converting scene's axes (%s) to requested axes (%s).\n",
+             kAxisSystemNames[ConvertAxisSystemFromFbx(import_axes)],
+             kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
     export_axes.ConvertScene(scene_);
   }
 
@@ -1627,13 +1627,14 @@ class FbxMeshParser {
     }
   };
 
-  static inline AxisSystem AxisSystemFromFbx(const FbxAxisSystem& axis) {
+  static AxisSystem ConvertAxisSystemFromFbx(const FbxAxisSystem& axis) {
     int up_sign = 0;
     int front_sign = 0;
     const FbxAxisSystem::EUpVector up = axis.GetUpVector(up_sign);
     const FbxAxisSystem::EFrontVector front = axis.GetFrontVector(front_sign);
     const FbxAxisSystem::ECoordSystem coord = axis.GetCoorSystem();
     assert(up_sign > 0);
+
     const int up_idx = up - FbxAxisSystem::EUpVector::eXAxis;
     const int front_idx = front - FbxAxisSystem::EFrontVector::eParityEven;
     const int front_sign_idx = front_sign > 0 ? 0 : 1;
@@ -1642,30 +1643,16 @@ class FbxMeshParser {
         8 * up_idx + 4 * front_idx + 2 * front_sign_idx + coord_idx);
   }
 
-  static inline FbxAxisSystem::EUpVector CalculateFbxUpVector(
-      AxisSystem system) {
-    return system <= kLastXUpAxisSystem ? FbxAxisSystem::EUpVector::eXAxis :
-           system <= kLastYUpAxisSystem ? FbxAxisSystem::EUpVector::eYAxis :
-           FbxAxisSystem::EUpVector::eZAxis;
-  }
+  static FbxAxisSystem ConvertAxisSystemToFbx(AxisSystem system) {
+    const int up_idx = system / 8 + FbxAxisSystem::EUpVector::eXAxis;
+    const int front_sign = system % 4 < 2 ? 1 : -1;
+    const int front_idx = (system % 8) / 4 + FbxAxisSystem::EFrontVector::eParityEven;
+    const int coord_idx = system % 2;
 
-  static inline FbxAxisSystem::EFrontVector CalculateFbxFrontVector(
-      AxisSystem system) {
-    return (system % kLastXUpAxisSystem) < kLastXUpAxisSystem / 2 ?
-           FbxAxisSystem::EFrontVector::eParityEven :
-           FbxAxisSystem::EFrontVector::eParityOdd;
-  }
-
-  static inline FbxAxisSystem::ECoordSystem CalculateFbxHandedness(
-      AxisSystem system) {
-    return system % 2 == 0 ? FbxAxisSystem::eRightHanded
-                           : FbxAxisSystem::eLeftHanded;
-  }
-
-  static FbxAxisSystem CalculateFbxAxisSystem(AxisSystem system) {
-    return FbxAxisSystem(CalculateFbxUpVector(system),
-                         CalculateFbxFrontVector(system),
-                         CalculateFbxHandedness(system));
+    const auto up = static_cast<FbxAxisSystem::EUpVector>(up_idx);
+    const auto front = static_cast<FbxAxisSystem::EFrontVector>(front_sign * front_idx);
+    const auto coord = static_cast<FbxAxisSystem::ECoordSystem>(coord_idx);
+    return FbxAxisSystem(up, front, coord);
   }
 
   // Return true if `node` or any of its children has a mesh.
@@ -1779,6 +1766,13 @@ static matdef::BlendMode DefaultBlendMode(
     const std::vector<matdef::TextureFormat>& texture_formats) {
   return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0]) ?
       matdef::BlendMode_ALPHA : matdef::BlendMode_OFF;
+}
+
+static void LogOptions(const char* indent, const char** array_of_options,
+                       Logger& log) {
+  for (const char** option = array_of_options; *option != nullptr; ++option) {
+    log.Log(kLogImportant, "%s%s\n", indent, *option);
+  }
 }
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
@@ -1904,6 +1898,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
   // Print usage.
   if (!valid_args) {
+    static const char kOptionIndent[] = "                           ";
     log.Log(
         kLogImportant,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
@@ -1943,10 +1938,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                Default is %s.\n"
         "                Valid possibilities:\n",
         matdef::EnumNameTextureFormat(kDefaultTextureFormat));
-    for (const char** format = matdef::EnumNamesTextureFormat();
-         *format != nullptr; ++format) {
-      log.Log(kLogImportant, "                           %s\n", *format);
-    }
+    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), log);
 
     log.Log(
         kLogImportant,
@@ -1955,10 +1947,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                If texture format has an alpha channel, defaults to\n"
         "                ALPHA. Otherwise, defaults to OFF.\n"
         "                Valid possibilities:\n");
-    for (const char** mode = matdef::EnumNamesBlendMode();
-         *mode != nullptr; ++mode) {
-      log.Log(kLogImportant, "                           %s\n", *mode);
-    }
+    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), log);
 
     log.Log(
         kLogImportant,
