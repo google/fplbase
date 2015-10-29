@@ -133,9 +133,11 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       sum_delta += delta_times[i];
       min_delta = std::min(min_delta, delta_times[i]);
       max_delta = std::max(max_delta, delta_times[i]);
-      // Closest "bin" to which frame it is.
-      auto bin = static_cast<int>((delta_times[i] + (1.0 / 120.0)) /
-                                  (1.0 / 60.0));
+      // Frame-count "bin".
+      // Bin 0: 0 ~ 16.6ms (=1/60s)
+      // Bin 1: 16.6 ~ 32.3ms (=2/60s)
+      // Bin 2: 32.3 ~ 50ms (=3/60s)
+      auto bin = static_cast<int>(delta_times[i] * 60.0);
       bins[std::max(1, std::min(bin, kMaxBins - 1))]++;
     }
     std::ostringstream os;
