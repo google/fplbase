@@ -46,7 +46,12 @@ class Renderer {
   Renderer();
   ~Renderer();
 
-  enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
+  enum CullingMode {
+    kNoCulling,
+    kCullFront,
+    kCullBack,
+    kCullFrontAndBack
+  };
 
   // OpenGL ES feature level we are able to obtain.
   enum FeatureLevel {
@@ -109,15 +114,18 @@ class Renderer {
   // Returns RGBA array of the returned dimensions or nullptr if the format
   // is not understood.
   // You must free() the returned pointer when done.
-  static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
-                             vec2i *dimensions, bool *has_alpha);
+  // Can apply scaling with scale parameter. A scale value have to be in power
+  // of two to have correct texture sizes.
+  uint8_t *UnpackWebP(const void *webp_buf, size_t size, const vec2 &scale,
+                      vec2i *dimensions, bool *has_alpha);
 
   // Loads the file in filename, and then unpacks the file format (supports
   // TGA and WebP).
   // last_error() contains more information if nullptr is returned.
   // You must free() the returned pointer when done.
-  uint8_t *LoadAndUnpackTexture(const char *filename, vec2i *dimensions,
-                                bool *has_alpha);
+  // Can apply scaling with scale parameter.
+  uint8_t *LoadAndUnpackTexture(const char *filename, const vec2 &scale,
+                                vec2i *dimensions, bool *has_alpha);
 
   // Utility functions to convert 32bit RGBA to 16bit.
   // You must delete[] the return value afterwards.
@@ -198,8 +206,12 @@ class Renderer {
 
   // Set this to override the blend used for all draw calls (after calling
   // SetBlendMode for it).
-  BlendMode force_blend_mode() const { return force_blend_mode_; };
-  void set_force_blend_mode(BlendMode bm) { force_blend_mode_ = bm; };
+  BlendMode force_blend_mode() const {
+    return force_blend_mode_;
+  };
+  void set_force_blend_mode(BlendMode bm) {
+    force_blend_mode_ = bm;
+  };
 
   // Set this force any shader that gets loaded to use this pixel shader
   // instead (for debugging purposes).

@@ -29,12 +29,12 @@ using mathfu::vec4i;
 using mathfu::mat4;
 
 void Texture::Load() {
-  data_ =
-      renderer_->LoadAndUnpackTexture(filename_.c_str(), &size_, &has_alpha_);
+  data_ = renderer_->LoadAndUnpackTexture(filename_.c_str(), scale_, &size_,
+                                          &has_alpha_);
   SetOriginalSizeIfNotYetSet(size_);
   if (!data_) {
-    LogError(kApplication, "texture load: %s: %s",
-             filename_.c_str(), renderer_->last_error().c_str());
+    LogError(kApplication, "texture load: %s: %s", filename_.c_str(),
+             renderer_->last_error().c_str());
   }
 }
 
@@ -51,7 +51,8 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = renderer_->CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
+    id_ =
+        renderer_->CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
     free(data_);
     data_ = nullptr;
   }

@@ -57,7 +57,8 @@ void DestructAssetsInMap(std::map<std::string, T> &map) {
   map.clear();
 }
 
-AssetManager::AssetManager(Renderer &renderer) : renderer_(renderer) {
+AssetManager::AssetManager(Renderer &renderer) : renderer_(renderer),
+  texture_scale_(mathfu::kOnes2f) {
   // Empty material for default case.
   material_map_[""] = new Material();
 }
@@ -149,6 +150,8 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               ? LoadVec2i(matdef->original_size()->Get(i))
               : tex->size();
       tex->set_original_size(original_size);
+
+      tex->set_scale(texture_scale_);
     }
     material_map_[filename] = mat;
     return mat;

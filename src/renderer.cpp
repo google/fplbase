@@ -31,13 +31,14 @@ Renderer::Renderer()
       camera_pos_(mathfu::kZeros3f),
       bone_transforms_(nullptr),
       num_bones_(0),
-#     ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
       window_(nullptr),
       context_(nullptr),
-#     endif
+#endif
       feature_level_(kFeatureLevel20),
       force_blend_mode_(kBlendModeCount),
-      max_vertex_uniform_components_(0) {}
+      max_vertex_uniform_components_(0) {
+}
 
 #ifndef FPL_BASE_RENDERER_BACKEND_SDL
 
@@ -62,11 +63,11 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 
   SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
 
-# ifdef __ANDROID__
+#ifdef __ANDROID__
   // Setup HW scaler in Android
   AndroidSetScalerResolution(window_size);
   AndroidPreCreateWindow();
-# endif
+#endif
 
   // Always double buffer.
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -85,14 +86,14 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   window_ = SDL_CreateWindow(
       window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       window_size.x(), window_size.y(), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
-#     ifdef PLATFORM_MOBILE
-        SDL_WINDOW_BORDERLESS
-#     else
-        SDL_WINDOW_RESIZABLE
-#       ifndef _DEBUG
-          //| SDL_WINDOW_FULLSCREEN_DESKTOP
-#       endif
-#     endif
+#ifdef PLATFORM_MOBILE
+                                            SDL_WINDOW_BORDERLESS
+#else
+                                            SDL_WINDOW_RESIZABLE
+#ifndef _DEBUG
+//| SDL_WINDOW_FULLSCREEN_DESKTOP
+#endif
+#endif
       );
   if (!window_) {
     last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
@@ -109,54 +110,54 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   // On desktop, we assume we can get function pointers for all ES 3 equivalent
   // functions.
   feature_level_ = kFeatureLevel30;
-# ifdef PLATFORM_MOBILE
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-# else
-#   ifdef __APPLE__
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-#   else
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-#   endif
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-# endif
+#ifdef PLATFORM_MOBILE
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
+#ifdef __APPLE__
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+#else
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+#endif
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                      SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+#endif
   context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-# ifdef PLATFORM_MOBILE
-    if (context_) {
-#     ifdef __ANDROID__
-#     if __ANDROID_API__ < 18
-        // Get all function pointers.
-        // Using this rather than GLES3/gl3.h directly means we can still
-        // compile on older SDKs and run on older devices too.
-        gl3stubInit();
-#     endif
-#     endif
-    } else {
-      // Failed to get ES 3.0 context, let's try 2.0.
-      feature_level_ = kFeatureLevel20;
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-      SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-      context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-    }
-# endif
+#ifdef PLATFORM_MOBILE
+  if (context_) {
+#ifdef __ANDROID__
+#if __ANDROID_API__ < 18
+    // Get all function pointers.
+    // Using this rather than GLES3/gl3.h directly means we can still
+    // compile on older SDKs and run on older devices too.
+    gl3stubInit();
+#endif
+#endif
+  } else {
+    // Failed to get ES 3.0 context, let's try 2.0.
+    feature_level_ = kFeatureLevel20;
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
+  }
+#endif
   if (!context_) {
     last_error_ = std::string("SDL_GL_CreateContext fail: ") + SDL_GetError();
     return false;
   }
 
-# ifdef PLATFORM_MOBILE
-    LogInfo("FPLBase: got OpenGL ES context level %s",
-            feature_level_ == kFeatureLevel20 ? "2.0" : "3.0");
-# endif
+#ifdef PLATFORM_MOBILE
+  LogInfo("FPLBase: got OpenGL ES context level %s",
+          feature_level_ == kFeatureLevel20 ? "2.0" : "3.0");
+#endif
 
 // Enable Vsync on desktop
-# ifndef PLATFORM_MOBILE
-    SDL_GL_SetSwapInterval(1);
-# endif
+#ifndef PLATFORM_MOBILE
+  SDL_GL_SetSwapInterval(1);
+#endif
 
-# ifndef PLATFORM_MOBILE
+#ifndef PLATFORM_MOBILE
   auto exts = (char *)glGetString(GL_EXTENSIONS);
 
   if (!strstr(exts, "GL_ARB_vertex_buffer_object") ||
@@ -167,36 +168,35 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
     return false;
   }
 
-# endif
+#endif
 
-# if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#   define GLEXT(type, name)                                          \
-    union {                                                          \
-      void *data;                                                    \
-      type function;                                                 \
-    } data_function_union_##name;                                    \
-    data_function_union_##name.data = SDL_GL_GetProcAddress(#name);  \
-    if (!data_function_union_##name.data) {                          \
-      last_error_ = "could not retrieve GL function pointer " #name; \
-      return false;                                                  \
-    }                                                                \
-    name = data_function_union_##name.function;
-    GLBASEEXTS GLEXTS
-#   undef GLEXT
-# endif
-
-  blend_mode_ = kBlendModeOff;
+#if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
+#define GLEXT(type, name)                                          \
+  union {                                                          \
+    void *data;                                                    \
+    type function;                                                 \
+  } data_function_union_##name;                                    \
+  data_function_union_##name.data = SDL_GL_GetProcAddress(#name);  \
+  if (!data_function_union_##name.data) {                          \
+    last_error_ = "could not retrieve GL function pointer " #name; \
+    return false;                                                  \
+  }                                                                \
+  name = data_function_union_##name.function;
+  GLBASEEXTS GLEXTS
+#undef GLEXT
+#endif
+      blend_mode_ = kBlendModeOff;
 
   GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
                         &max_vertex_uniform_components_));
-# if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
-    if (max_vertex_uniform_components_ == 0) {
-      // If missing the number of uniform components, use the number of vectors.
-      GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
+#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+  if (max_vertex_uniform_components_ == 0) {
+    // If missing the number of uniform components, use the number of vectors.
+    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
                           &max_vertex_uniform_components_));
-      max_vertex_uniform_components_ *= 4;
-    }
-# endif // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+    max_vertex_uniform_components_ *= 4;
+  }
+#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
 
   return true;
 }
@@ -236,9 +236,7 @@ void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
-void Renderer::ClearDepthBuffer() {
-  GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
-}
+void Renderer::ClearDepthBuffer() { GL_CALL(glClear(GL_DEPTH_BUFFER_BIT)); }
 
 GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
@@ -246,11 +244,11 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
     source = override_pixel_shader_.c_str();
   GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
   std::string platform_source =
-# ifdef PLATFORM_MOBILE
+#ifdef PLATFORM_MOBILE
       "#ifdef GL_ES\nprecision highp float;\n#endif\n";
-# else
+#else
       "#version 120\n#define lowp\n#define mediump\n#define highp\n";
-# endif
+#endif
   assert(max_vertex_uniform_components_);
   platform_source += "#define MAX_VERTEX_UNIFORM_COMPONENTS ";
   platform_source += flatbuffers::NumToString(max_vertex_uniform_components_);
@@ -290,8 +288,10 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
       GL_CALL(
           glBindAttribLocation(program, Mesh::kAttributeTexCoord, "aTexCoord"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor, "aColor"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices, "aBoneIndices"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights, "aBoneWeights"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices,
+                                   "aBoneIndices"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights,
+                                   "aBoneWeights"));
       GL_CALL(glLinkProgram(program));
       GLint status;
       GL_CALL(glGetProgramiv(program, GL_LINK_STATUS, &status));
@@ -404,13 +404,14 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
     case kFormatLuminance: {
       assert(!has_alpha);
       format = GL_LUMINANCE;
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                           0, format, type, buffer));
+      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
+                           format, type, buffer));
       break;
     }
     default:
       assert(false);
   }
+
   if (mipmaps) {
     // Work around for some Android devices to correctly generate miplevels.
     auto levels = ceil(log(std::min(size.x(), size.y())) / log(2.0f));
@@ -425,7 +426,6 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
     GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
   }
-
   return texture_id;
 }
 
@@ -436,8 +436,8 @@ void Renderer::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
   // TODO: Optimize glTexSubImage2D call in ES3.0 capable platform.
   switch (format) {
     case kFormatLuminance:
-      GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width,
-                              height, GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
+      GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
+                              GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
       break;
     default:
       assert(false);  // TODO: not implemented.
@@ -492,23 +492,35 @@ uint8_t *Renderer::UnpackTGA(const void *tga_buf, vec2i *dimensions,
 }
 
 uint8_t *Renderer::UnpackWebP(const void *webp_buf, size_t size,
-                              vec2i *dimensions, bool *has_alpha) {
-  WebPBitstreamFeatures features;
-  auto status =
-      WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size, &features);
+                              const vec2 &scale, vec2i *dimensions,
+                              bool *has_alpha) {
+  WebPDecoderConfig config;
+  memset(&config, 0, sizeof(WebPDecoderConfig));
+  auto status = WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size,
+                                &config.input);
   if (status != VP8_STATUS_OK) return nullptr;
-  *has_alpha = features.has_alpha != 0;
-  if (features.has_alpha) {
-    return WebPDecodeRGBA(static_cast<const uint8_t *>(webp_buf), size,
-                          &dimensions->x(), &dimensions->y());
-  } else {
-    return WebPDecodeRGB(static_cast<const uint8_t *>(webp_buf), size,
-                         &dimensions->x(), &dimensions->y());
+
+  // Apply scaling.
+  if (scale.x() != 1.0f || scale.y() != 1.0f) {
+    config.options.use_scaling = true;
+    config.options.scaled_width = config.input.width * scale.x();
+    config.options.scaled_height = config.input.height * scale.y();
   }
+
+  if (config.input.has_alpha) {
+    config.output.colorspace = MODE_RGBA;
+  }
+  status = WebPDecode(static_cast<const uint8_t *>(webp_buf), size, &config);
+  if (status != VP8_STATUS_OK) return nullptr;
+
+  *dimensions = vec2i(config.output.width, config.output.height);
+  *has_alpha = config.input.has_alpha != 0;
+  return config.output.private_memory;
 }
 
-uint8_t *Renderer::LoadAndUnpackTexture(const char *filename, vec2i *dimensions,
-                                        bool *has_alpha) {
+uint8_t *Renderer::LoadAndUnpackTexture(const char *filename,
+                                        const vec2 &scale,
+                                        vec2i *dimensions, bool *has_alpha) {
   std::string file;
   if (LoadFile(filename, &file)) {
     std::string ext = filename;
@@ -519,7 +531,8 @@ uint8_t *Renderer::LoadAndUnpackTexture(const char *filename, vec2i *dimensions,
       if (!buf) last_error_ = std::string("TGA format problem: ") + filename;
       return buf;
     } else if (ext == "webp") {
-      auto buf = UnpackWebP(file.c_str(), file.length(), dimensions, has_alpha);
+      auto buf = UnpackWebP(file.c_str(), file.length(), scale,
+                            dimensions, has_alpha);
       if (!buf) last_error_ = std::string("WebP format problem: ") + filename;
       return buf;
     } else {
@@ -551,10 +564,10 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
-#     ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
-        GL_CALL(glDisable(GL_ALPHA_TEST));
-        break;
-#     endif
+#ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
+      GL_CALL(glDisable(GL_ALPHA_TEST));
+      break;
+#endif
     case kBlendModeAlpha:
     case kBlendModeAdd:
     case kBlendModeAddAlpha:
@@ -571,27 +584,27 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
-#     ifndef PLATFORM_MOBILE
-        GL_CALL(glEnable(GL_ALPHA_TEST));
-        GL_CALL(glAlphaFunc(GL_GREATER, amount));
-        break;
-#     endif
+#ifndef PLATFORM_MOBILE
+      GL_CALL(glEnable(GL_ALPHA_TEST));
+      GL_CALL(glAlphaFunc(GL_GREATER, amount));
+      break;
+#endif
     case kBlendModeAlpha:
       GL_CALL(glEnable(GL_BLEND));
       GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
       break;
-   case kBlendModeAdd:
+    case kBlendModeAdd:
       GL_CALL(glEnable(GL_BLEND));
       GL_CALL(glBlendFunc(GL_ONE, GL_ONE));
       break;
     case kBlendModeAddAlpha:
-       GL_CALL(glEnable(GL_BLEND));
-       GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
-       break;
+      GL_CALL(glEnable(GL_BLEND));
+      GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
+      break;
     case kBlendModeMultiply:
-       GL_CALL(glEnable(GL_BLEND));
-       GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
-       break;
+      GL_CALL(glEnable(GL_BLEND));
+      GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
+      break;
     default:
       assert(false);  // Not yet implemented
       break;
@@ -624,15 +637,15 @@ void Renderer::SetCulling(CullingMode mode) {
 }
 
 vec2i Renderer::GetViewportSize() {
-# if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
   // Check HW scaler setting and change a viewport size if they are set
   vec2i scaled_size = AndroidGetScalerResolution();
-  vec2i viewport_size = scaled_size.x() && scaled_size.y() ?
-  scaled_size : window_size_;
+  vec2i viewport_size =
+      scaled_size.x() && scaled_size.y() ? scaled_size : window_size_;
   return viewport_size;
-# else
+#else
   return window_size_;
-# endif
+#endif
 }
 
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
@@ -643,10 +656,10 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   auto scaling_ratio = vec2(viewport_size) / vec2(window_size_);
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
-  glScissor(
-      static_cast<GLint>(scaled_pos.x()), static_cast<GLint>(scaled_pos.y()),
-      static_cast<GLsizei>(scaled_size.x()),
-      static_cast<GLsizei>(scaled_size.y()));
+  glScissor(static_cast<GLint>(scaled_pos.x()),
+            static_cast<GLint>(scaled_pos.y()),
+            static_cast<GLsizei>(scaled_size.x()),
+            static_cast<GLsizei>(scaled_size.y()));
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }

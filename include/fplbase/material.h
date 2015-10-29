@@ -67,6 +67,7 @@ class Texture : public AsyncResource {
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),
         uv_(vec4(0.0f, 0.0f, 1.0f, 1.0f)),
+        scale_(mathfu::kOnes2f),
         has_alpha_(false),
         mipmaps_(true),
         desired_(kFormatAuto) {}
@@ -90,6 +91,9 @@ class Texture : public AsyncResource {
   const vec4 &uv() const { return uv_; }
   void set_uv(const vec4 &uv) { uv_ = uv; }
 
+  const vec2 &scale() const { return scale_; }
+  void set_scale(const vec2 &scale) { scale_ = scale; }
+
   void set_desired_format(TextureFormat format) { desired_ = format; }
 
   const vec2i &original_size() const { return original_size_; }
@@ -107,6 +111,7 @@ class Texture : public AsyncResource {
   vec2i size_;
   vec2i original_size_;
   vec4 uv_;
+  vec2 scale_;
   bool has_alpha_;
   bool mipmaps_;
   TextureFormat desired_;

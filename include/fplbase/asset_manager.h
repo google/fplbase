@@ -94,6 +94,11 @@ class AssetManager {
   // OpenGL context to still be alive.
   void ClearAllAssets();
 
+  // Set a scaling factor to apply when loading texture materials.
+  // By setting the scaling factor, an application save a memory footprint
+  // on low RAM devices.
+  void SetTextureScale(const vec2 &scale) { texture_scale_ = scale; }
+
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 
@@ -103,6 +108,7 @@ class AssetManager {
   std::map<std::string, Material *> material_map_;
   std::map<std::string, Mesh *> mesh_map_;
   AsyncLoader loader_;
+  vec2 texture_scale_;
 };
 
 }  // namespace fpl

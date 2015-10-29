@@ -111,7 +111,7 @@ bool SaveFile(const char *filename, const std::string &data);
 // Save binary data to a file, overwriting the existing contents.
 bool SaveFile(const char *filename, const void *data, size_t size);
 
-// Loads/Saves a preference settings.
+// Load/Save a preference settings.
 // The API uses a dedicated API when an optimal API is avaialable instead of
 // regular file IO APIs.
 // Returns false if the file couldn't be loaded (usually means it's not
@@ -125,9 +125,12 @@ bool SavePreferences(const char *filename, const void *data, size_t size);
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir);
 
-// Returns true if 16bpp MipMap generation is supported.
+// Return true if 16bpp MipMap generation is supported.
 // (Basically always true, except on certain android devices.)
 bool MipmapGeneration16bppSupported();
+
+// Return the system RAM size in MB.
+int32_t GetSystemRamSize();
 
 // Basic logging functions.  They will output to the console.
 void LogInfo(const char *fmt, va_list args);
