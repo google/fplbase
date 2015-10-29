@@ -70,7 +70,7 @@ enum PerformanceMode {
 typedef void (*VsyncCallback)(void);
 
 const int kDefaultAndroidKeycode = 115;   // F24, unavailable on most keyboards.
-const int kDefaultTimeBetweenPresses = 1000;  // Time in milliseconds
+const double kDefaultTimeBetweenPresses = 1.0;  // Time in seconds
 
 struct HighPerformanceParams {
   HighPerformanceParams()
@@ -81,7 +81,7 @@ struct HighPerformanceParams {
       time_between_presses(presses) {}
 
   int android_key_code;
-  int time_between_presses;
+  double time_between_presses;
 };
 #endif
 
@@ -181,7 +181,7 @@ PerformanceMode GetPerformanceMode();
 #ifdef __ANDROID__
 // Sets the specific parameters used by high-performance mode on Android.
 // android_key_code is the key to press repeatedly, to keep the CPU active.
-// time_between_presses is the time (in milliseconds) between keypress events.
+// time_between_presses is the time (in seconds) between keypress events.
 void SetHighPerformanceParameters(const HighPerformanceParams& params);
 
 // Returns the current performance parameters, in the form of a struct.
