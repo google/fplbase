@@ -111,7 +111,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   // that it knows it's still in active use, even if the user isn't currently
   // touching the screen.
   const HighPerformanceParams& hp_params = GetHighPerformanceParameters();
-  WorldTime current_time = GetTicks();
+  double current_time = Time();
   if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
     last_android_keypress_ = current_time;
     SendKeypressEventToAndroid(hp_params.android_key_code);

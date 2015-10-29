@@ -517,7 +517,7 @@ class InputSystem {
   bool relative_mouse_mode_;
 
   // How long since we've sent a keypress event to keep the CPU alive.
-  int32_t last_android_keypress_;
+  double last_android_keypress_;
 # endif
 };
 
