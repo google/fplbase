@@ -374,11 +374,11 @@ class FlatMesh {
     cur_index_buf_ = &index_buffer;
 
     // Log the surface switch.
-    log_.Log(kLogInfo, "Surface:");
+    log_.Log(kLogVerbose, "Surface:");
     for (size_t i = 0; i < textures.Count(); ++i) {
-      log_.Log(kLogInfo, " %s", textures[i].c_str());
+      log_.Log(kLogVerbose, " %s", textures[i].c_str());
     }
-    log_.Log(kLogInfo, "\n");
+    log_.Log(kLogVerbose, "\n");
   }
 
   void SetExportVertexColor(bool should_export) {
@@ -476,7 +476,21 @@ class FlatMesh {
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
     OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir, skin);
+
+    // Log summary
+    log_.Log(kLogImportant, "  %s (%d vertices, %d triangles)\n",
+             (mesh_name + '.' + meshdef::MeshExtension()).c_str(),
+             points_.size(), NumTriangles());
     return true;
+  }
+
+  int NumTriangles() const {
+    size_t num_indices = 0;
+    for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
+      const IndexBuffer& index_buf = it->second;
+      num_indices += index_buf.size();
+    }
+    return static_cast<int>(num_indices / 3);
   }
 
   static std::string RepeatCharacter(char c, int count) {
@@ -492,7 +506,7 @@ class FlatMesh {
     std::vector<BoneIndex> shader_to_mesh_bones;
     CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
 
-    log_.Log(kLogImportant, "Mesh hierarchy (bone indices in brackets):\n");
+    log_.Log(kLogInfo, "Mesh hierarchy (bone indices in brackets):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
       std::string indent = RepeatCharacter(' ', 2 * b.depth);
@@ -501,16 +515,16 @@ class FlatMesh {
       // hierarchy.
       const BoneIndex shader_bone = mesh_to_shader_bones[j];
       const bool has_verts = shader_bone != kInvalidBoneIdx;
-      log_.Log(kLogImportant, "  %s[%d] %s", indent.c_str(), j, b.name.c_str());
+      log_.Log(kLogInfo, "  %s[%d] %s", indent.c_str(), j, b.name.c_str());
       if (has_verts) {
-        log_.Log(kLogImportant, " (shader bone %d)", shader_bone);
+        log_.Log(kLogInfo, " (shader bone %d)", shader_bone);
       }
-      log_.Log(kLogImportant, "\n");
+      log_.Log(kLogInfo, "\n");
 
       // Output local matrix transform too.
       const mat4& t = b.relative_transform;
       for (size_t k = 0; k < 3; ++k) {
-        log_.Log(kLogInfo, "   %s  (%.3f, %.3f, %.3f, %.3f)\n", indent.c_str(),
+        log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n", indent.c_str(),
                  t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
 
@@ -520,7 +534,7 @@ class FlatMesh {
         const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
         const Vertex& first_vertex = points_[b.first_vertex_index];
         const vec3 first_point = glob * vec3(first_vertex.vertex);
-        log_.Log(kLogInfo, "   %s  first-point (%.3f, %.3f, %.3f)\n",
+        log_.Log(kLogVerbose, "   %s  first-point (%.3f, %.3f, %.3f)\n",
                  indent.c_str(), first_point.x(), first_point.y(),
                  first_point.z());
       }
@@ -652,7 +666,7 @@ class FlatMesh {
       const std::string& assets_sub_dir, const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
       matdef::BlendMode blend_mode) const {
-    log_.Log(kLogImportant, "Materials:\n");
+    log_.Log(kLogInfo, "Materials:\n");
 
     size_t surface_idx = 0;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
@@ -661,7 +675,7 @@ class FlatMesh {
 
       const std::string material_file_name =
           MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
-      log_.Log(kLogImportant, "  %s:", material_file_name.c_str());
+      log_.Log(kLogInfo, "  %s:", material_file_name.c_str());
 
       // Create FlatBuffer arrays of texture names and formats.
       flatbuffers::FlatBufferBuilder fbb;
@@ -682,14 +696,14 @@ class FlatMesh {
         formats_fb.push_back(static_cast<uint8_t>(texture_format));
 
         // Log texture and format.
-        log_.Log(kLogImportant, "%s %s", i == 0 ? "" : ",",
+        log_.Log(kLogInfo, "%s %s", i == 0 ? "" : ",",
                  RemoveDirectoryFromName(texture_file_name).c_str());
         if (texture_format != kDefaultTextureFormat) {
-          log_.Log(kLogImportant, "(%s)",
+          log_.Log(kLogInfo, "(%s)",
                    matdef::EnumNameTextureFormat(texture_format));
         }
       }
-      log_.Log(kLogImportant, "\n");
+      log_.Log(kLogInfo, "\n");
 
       // Create final material FlatBuffer.
       auto textures_vector_fb = fbb.CreateVector(textures_fb);
@@ -707,7 +721,7 @@ class FlatMesh {
 
     // Log blend mode, if blend mode is being used.
     if (blend_mode != matdef::BlendMode_OFF) {
-      log_.Log(kLogImportant, "  blend mode: %s\n",
+      log_.Log(kLogInfo, "  blend mode: %s\n",
                matdef::EnumNameBlendMode(blend_mode));
     }
   }
@@ -722,7 +736,7 @@ class FlatMesh {
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
-    log_.Log(kLogImportant, "Mesh:\n  %s has %d verts\n",
+    log_.Log(kLogInfo, "Mesh:\n  %s has %d verts\n",
              rel_mesh_file_name.c_str(), points_.size());
 
     // Get the mapping from mesh bones (i.e. all bones in the model)
@@ -747,7 +761,7 @@ class FlatMesh {
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
-      log_.Log(kLogImportant, "  Surface %d (%s) has %d triangles\n",
+      log_.Log(kLogInfo, "  Surface %d (%s) has %d triangles\n",
                surface_idx, material_file_name.c_str(), index_buf.size() / 3);
       surface_idx++;
     }
@@ -818,7 +832,7 @@ class FlatMesh {
         shader_to_mesh_bones_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
-    log_.Log(kLogImportant, "Skin: %s\n", skin ? "yes" : "no");
+    log_.Log(kLogInfo, "Skin: %s\n", skin ? "yes" : "no");
 
     // Write the buffer to a file.
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
@@ -930,8 +944,8 @@ class FbxMeshParser {
             float distance_unit_scale, bool recenter, bool hierarchy) {
     if (!Valid()) return false;
 
-    log_.Log(kLogImportant,
-        "\n---- mesh_pipeline: %s ------------------------------------------\n",
+    log_.Log(kLogInfo,
+        "---- mesh_pipeline: %s ------------------------------------------\n",
         BaseFileName(file_name).c_str());
 
     // Create the importer and initialize with the file.
@@ -946,10 +960,10 @@ class FbxMeshParser {
     importer->GetFileVersion(file_major, file_minor, file_revision);
 
     // Report version information.
-    log_.Log(kLogInfo,
-             "Loading %s (version %d.%d.%d) with SDK version %d.%d.%d\n",
-             RemoveDirectoryFromName(file_name).c_str(), file_major, file_minor,
-             file_revision, sdk_major, sdk_minor, sdk_revision);
+    log_.Log(kLogVerbose,
+             "File version %d.%d.%d, SDK version %d.%d.%d\n",
+             file_major, file_minor, file_revision,
+             sdk_major, sdk_minor, sdk_revision);
 
     // Exit on load error.
     if (!init_status) {
@@ -1077,13 +1091,13 @@ class FbxMeshParser {
     const FbxSystemUnit export_unit(distance_unit_scale);
 
     if (import_unit == export_unit) {
-      log_.Log(kLogInfo,
+      log_.Log(kLogVerbose,
                "Scene's distance unit is already %s. Skipping conversion.\n",
                import_unit.GetScaleFactorAsString().Buffer());
       return;
     }
 
-    log_.Log(kLogImportant, "Converting scene's distance unit from %s to %s.\n",
+    log_.Log(kLogInfo, "Converting scene's distance unit from %s to %s.\n",
              import_unit.GetScaleFactorAsString().Buffer(),
              export_unit.GetScaleFactorAsString().Buffer());
     export_unit.ConvertScene(scene_);
@@ -1096,12 +1110,12 @@ class FbxMeshParser {
         scene_->GetGlobalSettings().GetAxisSystem();
     const FbxAxisSystem export_axes = ConvertAxisSystemToFbx(axis_system);
     if (import_axes == export_axes) {
-      log_.Log(kLogInfo, "Scene's axes are already %s.\n",
+      log_.Log(kLogVerbose, "Scene's axes are already %s.\n",
                kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
       return;
     }
 
-    log_.Log(kLogImportant,
+    log_.Log(kLogInfo,
              "Converting scene's axes (%s) to requested axes (%s).\n",
              kAxisSystemNames[ConvertAxisSystemFromFbx(import_axes)],
              kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
@@ -1118,7 +1132,7 @@ class FbxMeshParser {
       if (recentered) {
         log_.Log(kLogInfo, "Recentering\n");
       } else {
-        log_.Log(kLogImportant,
+        log_.Log(kLogInfo,
                  "Already centered so ignoring recenter request\n");
       }
     }
@@ -1400,7 +1414,7 @@ class FbxMeshParser {
       if (texture == "") continue;
 
       // Append texture to our list of textures.
-      log_.Log(kLogInfo, " Mapping %s texture `%s` to shader texture %d\n",
+      log_.Log(kLogVerbose, " Mapping %s texture `%s` to shader texture %d\n",
                texture_property, RemoveDirectoryFromName(texture).c_str(),
                textures.Count());
       textures.Append(texture);
@@ -1452,10 +1466,10 @@ class FbxMeshParser {
       //       ourselves because there could be intermediate nodes that are
       //       not animated. These intermediate nodes do not have the same
       //       restrictions.
+      //
+      // Note: anim_pipeline should be able to handle 90 degree pre-rotations.
       const FbxVector4 post_rotation =
           node->GetPostRotation(FbxNode::eSourcePivot);
-      const FbxVector4 pre_rotation =
-          node->GetPreRotation(FbxNode::eSourcePivot);
       const FbxVector4 scaling_offset =
           node->GetScalingOffset(FbxNode::eSourcePivot);
       const FbxVector4 rotation_pivot =
@@ -1468,13 +1482,6 @@ class FbxMeshParser {
                  "post_rotation (%.3f, %.3f, %.3f) is non-zero. Animations "
                  "will be incorrect.\n",
                  post_rotation[0], post_rotation[1], post_rotation[2]);
-      }
-      if (pre_rotation != zero && node->GetSkeleton() == nullptr) {
-        log_.Log(kLogWarning,
-                 "pre_rotation (%.3f, %.3f, %.3f) is non-zero. Only joints are "
-                 "allowed to have non-zero pre_rotations. Animations will "
-                 "be incorrect.\n",
-                 pre_rotation[0], pre_rotation[1], pre_rotation[2]);
       }
       if (scaling_offset != zero) {
         log_.Log(kLogWarning,
@@ -1514,7 +1521,7 @@ class FbxMeshParser {
     // We're only interested in mesh nodes. If a node and all nodes under it
     // have no meshes, we early out.
     if (node == nullptr || !NodeHasMesh(node)) return;
-    log_.Log(kLogInfo, "Node: %s\n", node->GetName());
+    log_.Log(kLogVerbose, "Node: %s\n", node->GetName());
 
     // The root node cannot have a transform applied to it, so we do not
     // export it as a bone.
