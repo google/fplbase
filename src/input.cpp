@@ -99,7 +99,7 @@ void InputSystem::AddAppEventCallback(AppEventCallback callback) {
 
 void InputSystem::AdvanceFrame(vec2i *window_size) {
   // Update timing.
-  auto current = CurrentTime();
+  auto current = Time();
   frame_time_ = current - elapsed_time_;
   elapsed_time_ = current;
   frames_++;
@@ -358,17 +358,9 @@ vec2 InputSystem::ConvertHatToVector(uint32_t hat_enum) const {
 }
 
 double InputSystem::Time() const {
-  return elapsed_time_;
-}
-
-double InputSystem::CurrentTime() const {
   assert(time_freq_);
   return static_cast<double>(SDL_GetPerformanceCounter() - start_time_)
           / static_cast<double>(time_freq_);
-}
-
-double InputSystem::DeltaTime() const {
-  return frame_time_;
 }
 
 Button &InputSystem::GetButton(int button) {
