@@ -29,23 +29,15 @@ limitations under the License.
     <os family="windows" />
   </condition>
 
-  <target name="get-sdl-path"
-          description="Get SDL's location and save it in sdlpath.">
-    <exec executable="${ndkbuild_exe}" outputproperty="sdlpath">
-      <arg value="print_dependency"/>
-      <arg value="DEP_DIR=SDL"/>
-    </exec>
-  </target>
-
   <target name="make-source-dir">
     <mkdir dir="${source.dir}" />
   </target>
 
   <target name="copy-sdl-activity"
           description="Copy SDL activity into the source directory."
-          depends="get-sdl-path, make-source-dir">
+          depends="make-source-dir, get-fplbase-path">
     <copy tofile="${source.dir}/${sdlactivity}"
-          file="${sdlpath}/android-project/src/${sdlactivity}"/>
+          file="${fplbase_path}/src_java/${sdlactivity}"/>
   </target>
 
   <target name="get-fplbase-path"
