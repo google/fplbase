@@ -116,8 +116,9 @@ class Renderer {
   // You must free() the returned pointer when done.
   // Can apply scaling with scale parameter. A scale value have to be in power
   // of two to have correct texture sizes.
-  uint8_t *UnpackWebP(const void *webp_buf, size_t size, const vec2 &scale,
-                      vec2i *dimensions, bool *has_alpha);
+  static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
+                             const vec2 &scale, vec2i *dimensions,
+                             bool *has_alpha);
 
   // Loads the file in filename, and then unpacks the file format (supports
   // TGA and WebP).
