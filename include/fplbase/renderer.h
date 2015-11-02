@@ -209,10 +209,10 @@ class Renderer {
   // SetBlendMode for it).
   BlendMode force_blend_mode() const {
     return force_blend_mode_;
-  };
+  }
   void set_force_blend_mode(BlendMode bm) {
     force_blend_mode_ = bm;
-  };
+  }
 
   // Set this force any shader that gets loaded to use this pixel shader
   // instead (for debugging purposes).
