@@ -741,6 +741,19 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeOnVsync(JNIEnv *env,
 #endif  // FPL_BASE_BACKEND_SDL
 }
 
+int GetVsyncFrameId() {
+#ifdef FPL_BASE_BACKEND_SDL
+
+  SDL_LockMutex(frame_id_mutex);
+  int return_value = vsync_frame_id;
+  SDL_UnlockMutex(frame_id_mutex);
+  return return_value;
+#else  // FPL_BASE_BACKEND_SDL
+  // TODO: Write STDLIB version
+  return 0;
+#endif
+}
+
 #endif  // __ANDROID__
 
 // Checks whether Head Mounted Displays are supported by the system.
