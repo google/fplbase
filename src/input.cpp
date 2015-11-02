@@ -99,7 +99,7 @@ void InputSystem::AddAppEventCallback(AppEventCallback callback) {
 
 void InputSystem::AdvanceFrame(vec2i *window_size) {
   // Update timing.
-  auto current = CurrentTime();
+  auto current = RealTime();
   frame_time_ = current - elapsed_time_;
   elapsed_time_ = current;
   frames_++;
@@ -361,7 +361,7 @@ double InputSystem::Time() const {
   return elapsed_time_;
 }
 
-double InputSystem::CurrentTime() const {
+double InputSystem::RealTime() const {
   assert(time_freq_);
   return static_cast<double>(SDL_GetPerformanceCounter() - start_time_)
           / static_cast<double>(time_freq_);
