@@ -25,6 +25,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -446,9 +448,14 @@ public class FPLActivity extends SDLActivity implements
     if (uiLayer != null) {
       uiLayer.setButtonEnabled(enabled);
     } else if (enabled) {
-      uiLayer = new UiLayer(this, null);
+      uiLayer = new UiLayer(this, GetCardboardButtonDrawable());
       uiLayer.attachUiLayer(null);
     }
+  }
+
+  // The drawable used by the Cardboard setting button. null uses the default gear.
+  protected Drawable GetCardboardButtonDrawable() {
+    return null;
   }
 
   // Sends a keypress event to the Android system.
