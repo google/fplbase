@@ -344,10 +344,14 @@ class InputSystem {
   void AdvanceFrame(vec2i *window_size);
 
   // Get time in seconds since the start of the game. Updated once per frame.
+  // This is the time you'd want to use for any gameplay simulation or
+  // animation the game does, such that you are in sync with what's
+  // rendered each frame.
   double Time() const;
 
-  // Get time in seconds since start of the game. Valid in the middle of the
-  // frame, too. Prefer Time(), when possible, since it's faster.
+  // Get time in seconds since start of the game. Unlike Time(), it is
+  // recomputed every time it is called (slower).
+  // Mostly useful for profiling/benchmarking.
   double CurrentTime() const;
 
   // Get time in seconds of the previous frame. Updated once per frame.
