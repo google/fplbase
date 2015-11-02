@@ -69,11 +69,8 @@ enum PerformanceMode {
 #ifdef __ANDROID__
 typedef void (*VsyncCallback)(void);
 
-// F24, unavailable on most keyboards.
-static const int kDefaultAndroidKeycode = 115;
-
-// Time in seconds
-static const double kDefaultTimeBetweenPresses = 0.1;
+const int kDefaultAndroidKeycode = 115;   // F24, unavailable on most keyboards.
+const double kDefaultTimeBetweenPresses = 1.0;  // Time in seconds
 
 struct HighPerformanceParams {
   HighPerformanceParams()
