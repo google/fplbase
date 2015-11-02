@@ -343,17 +343,15 @@ class InputSystem {
   // resizes.
   void AdvanceFrame(vec2i *window_size);
 
-  // Get time in seconds since start of the game. Valid in the middle of the
-  // frame, too. Prefer CachedTime(), when possible, since it's faster.
+  // Get time in seconds since the start of the game. Updated once per frame.
   double Time() const;
 
-  // Get time in seconds since the start of the game. Updated once per frame.
-  // Prefer this function over Time(), since it doesn't have to hit the
-  // performance counters and so is faster.
-  double CachedTime() const { return elapsed_time_; }
+  // Get time in seconds since start of the game. Valid in the middle of the
+  // frame, too. Prefer Time(), when possible, since it's faster.
+  double CurrentTime() const;
 
   // Get time in seconds of the previous frame. Updated once per frame.
-  double DeltaTime() const { return frame_time_; }
+  double DeltaTime() const;
 
   // Get a Button object describing the current input state (see SDLK_ enum
   // above.
