@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-
-#include "precompiled.h"
+#include "precompiled.h"  // NOLINT
 #include "fplbase/renderer.h"
 #include "fplbase/render_target.h"
 #include "fplbase/utilities.h"
@@ -87,14 +85,10 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
       window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       window_size.x(), window_size.y(), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
 #ifdef PLATFORM_MOBILE
-                                            SDL_WINDOW_BORDERLESS
+                                            SDL_WINDOW_BORDERLESS);
 #else
-                                            SDL_WINDOW_RESIZABLE
-#ifndef _DEBUG
-//| SDL_WINDOW_FULLSCREEN_DESKTOP
+                                            SDL_WINDOW_RESIZABLE);
 #endif
-#endif
-      );
   if (!window_) {
     last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
     return false;
@@ -158,7 +152,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #endif
 
 #ifndef PLATFORM_MOBILE
-  auto exts = (char *)glGetString(GL_EXTENSIONS);
+  auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
   if (!strstr(exts, "GL_ARB_vertex_buffer_object") ||
       !strstr(exts, "GL_ARB_multitexture") ||
@@ -342,7 +336,7 @@ GLuint Renderer::CreateTexture(const uint8_t *buffer, const vec2i &size,
              size.x(), size.y());
     return 0;
   }
-  // TODO: support default args for mipmap/wrap/trilinear
+  // TODO(wvo): support default args for mipmap/wrap/trilinear
   GLuint texture_id;
   GL_CALL(glGenTextures(1, &texture_id));
   GL_CALL(glActiveTexture(GL_TEXTURE0));
@@ -433,33 +427,33 @@ void Renderer::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
                              int width, int height, const void *data) {
   // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
   // that we are updating entire row at once.
-  // TODO: Optimize glTexSubImage2D call in ES3.0 capable platform.
+  // TODO(wvo): Optimize glTexSubImage2D call in ES3.0 capable platform.
   switch (format) {
     case kFormatLuminance:
       GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
                               GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
       break;
     default:
-      assert(false);  // TODO: not implemented.
+      assert(false);  // TODO(wvo): not implemented.
   }
 }
 
 uint8_t *Renderer::UnpackTGA(const void *tga_buf, vec2i *dimensions,
                              bool *has_alpha) {
   struct TGA {
-    unsigned char id_len, color_map_type, image_type, color_map_data[5];
-    unsigned short x_origin, y_origin, width, height;
-    unsigned char bpp, image_descriptor;
+    uint8_t id_len, color_map_type, image_type, color_map_data[5];
+    uint16_t x_origin, y_origin, width, height;
+    uint8_t bpp, image_descriptor;
   };
   static_assert(sizeof(TGA) == 18,
                 "Members of struct TGA need to be packed with no padding.");
   int little_endian = 1;
   if (!*reinterpret_cast<char *>(&little_endian)) {
-    return nullptr;  // TODO: endian swap the shorts instead
+    return nullptr;  // TODO(wvo): Endian swap the shorts instead.
   }
   auto header = reinterpret_cast<const TGA *>(tga_buf);
-  if (header->color_map_type != 0  // no color map
-      || header->image_type != 2   // RGB or RGBA only
+  if (header->color_map_type != 0  // No color map.
+      || header->image_type != 2   // RGB or RGBA only.
       || (header->bpp != 32 && header->bpp != 24))
     return nullptr;
   auto pixels = reinterpret_cast<const unsigned char *>(header + 1);
@@ -467,8 +461,7 @@ uint8_t *Renderer::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   int size = header->width * header->height;
   auto dest = reinterpret_cast<uint8_t *>(malloc(size * header->bpp / 8));
   int start_y, end_y, y_direction;
-  if (header->image_descriptor & 0x20)  // y is not flipped
-  {
+  if (header->image_descriptor & 0x20) {  // y is not flipped.
     start_y = 0;
     end_y = header->height;
     y_direction = 1;
@@ -606,7 +599,7 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
       GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
       break;
     default:
-      assert(false);  // Not yet implemented
+      assert(false);  // Not yet implemented.
       break;
   }
 
@@ -638,7 +631,7 @@ void Renderer::SetCulling(CullingMode mode) {
 
 vec2i Renderer::GetViewportSize() {
 #if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
-  // Check HW scaler setting and change a viewport size if they are set
+  // Check HW scaler setting and change a viewport size if they are set.
   vec2i scaled_size = AndroidGetScalerResolution();
   vec2i viewport_size =
       scaled_size.x() && scaled_size.y() ? scaled_size : window_size_;
