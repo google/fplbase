@@ -460,7 +460,18 @@ public class FPLActivity extends SDLActivity implements
 
   // Sends a keypress event to the Android system.
   public void SendKeypressEventToAndroid(int androidKeycode) {
-    instrumentation.sendKeyDownUpSync(androidKeycode);
+    // SendKeyDownUpSync is only allowed (at our current permission level)
+    // as long as we only send events to ourselves.  Unfortunately,
+    // SendKeyDownUpSync just sends them to whatever has current focus, and
+    // key-up events are sent shortly after, with no guarantees that we still
+    // have focus by then.  Swapping between activities sometimes causes this
+    // to send events to other activities, so while they will bounce harmlessly,
+    // we still need to catch the exceptions they generate.
+    try {
+      instrumentation.sendKeyDownUpSync(androidKeycode);
+    } catch (SecurityException e) {
+      Log.e("SDL", "exception", e);
+    }
   }
 
   public void doFrame(long frameTimeNanos) {
