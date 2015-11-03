@@ -352,7 +352,7 @@ class InputSystem {
   // Get time in seconds since start of the game. Unlike Time(), it is
   // recomputed every time it is called (slower).
   // Mostly useful for profiling/benchmarking.
-  double CurrentTime() const;
+  double RealTime() const;
 
   // Get time in seconds of the previous frame. Updated once per frame.
   double DeltaTime() const;
