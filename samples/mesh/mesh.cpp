@@ -30,7 +30,7 @@
 
 extern "C" int FPL_main(int /*argc*/, char** argv) {
   fpl::Renderer renderer;
-  renderer.Initialize();
+  renderer.Initialize(mathfu::vec2i(800, 600), "Simple mesh test");
 
   fpl::InputSystem input;
   input.Initialize();

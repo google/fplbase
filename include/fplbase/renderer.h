@@ -61,9 +61,10 @@ class Renderer {
 
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
   // Creates the window + OpenGL context.
+  // window_size is used on desktop platforms, but typically is ignored on
+  // mobile platforms in favor of the native resolution.
   // A descriptive error is in last_error() if it returns false.
-  bool Initialize(const vec2i &window_size = vec2i(800, 600),
-                  const char *window_title = "");
+  bool Initialize(const vec2i &window_size, const char *window_title);
 
   // Swaps frames. Call this once per frame inside your main loop.
   // The two arguments are typically the result of the InputManager's
@@ -92,10 +93,14 @@ class Renderer {
   Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source);
 
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
+  // buffer must contain either 24 or 32 bits per pixel data (has_alpha
+  // indicates which). If desired is a 16 bit format it will automatically be
+  // converted (presence of alpha must match), pass kFormatAuto to get the
+  // default.
   // Return 0 if not a power of two in size.
   TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              bool has_alpha, bool mipmaps = true,
-                              TextureFormat desired = kFormatAuto);
+                              bool has_alpha, bool mipmaps,
+                              TextureFormat desired);
 
   // Update (part of) the current texture with new pixel data.
   // For now, must always update at least entire rows.
@@ -135,8 +140,10 @@ class Renderer {
 
   // Set alpha test (cull pixels with alpha below amount) vs alpha blend
   // (blend with framebuffer pixel regardedless).
-  // blend_mode: see materials.fbs for valid enum values.
-  void SetBlendMode(BlendMode blend_mode, float amount = 0.5f);
+  // Pass amount for use with kBlendModeTest, default 0.5f.
+  // blend_mode: see materials.h for valid enum values.
+  void SetBlendMode(BlendMode blend_mode, float amount);
+  void SetBlendMode(BlendMode blend_mode);
 
   // Set culling mode.  By default, no culling happens.
   void SetCulling(CullingMode mode);

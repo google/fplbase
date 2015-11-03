@@ -31,7 +31,7 @@ extern "C" int FPL_main(int /*argc*/, char** argv) {
   input.Initialize();
 
   fpl::Renderer renderer;
-  renderer.Initialize();
+  renderer.Initialize(mathfu::vec2i(800, 600), "Simple asset loading test");
 
   fpl::AssetManager asset_manager(renderer);
 

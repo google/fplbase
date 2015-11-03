@@ -547,6 +547,10 @@ void Renderer::DepthTest(bool on) {
   }
 }
 
+void Renderer::SetBlendMode(BlendMode blend_mode) {
+  SetBlendMode(blend_mode, 0.5f);
+}
+
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   if (blend_mode == blend_mode_) return;
 

@@ -29,7 +29,7 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
   fpl::Renderer renderer;
   fpl::InputSystem input;
 
-  renderer.Initialize();
+  renderer.Initialize(mathfu::vec2i(800, 600), "Simple rendering test");
   input.Initialize();
 
   // A vertex shader that passes untransformed position thru.
@@ -62,7 +62,7 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
       -.5f, -.5f, 0.0f,
       0.0f, 0.5f, 0.0f,
       0.5f, -.5f, 0.0f };
-    
+
     fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles,
                            3,
                            format,
