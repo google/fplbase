@@ -29,6 +29,9 @@
 #      to SDL_JNI_OnLoad() so that applications have the option of providing
 #      their own initialization prior to calling SDL.
 #      See SDL/src/core/android/SDL_android.c
+#   5. JNI function definitions not having JNICALL declaration. The issue will
+#      be fixed in the SDL soon (SDL bug ID #2523), and when it happens, the
+#      patch need to be removed.
 #
 # Lines that are patches are marked up with (X) where X corresponds to an issue
 # described above.
@@ -93,6 +96,13 @@ SDL_SRC_FILES := \
 LOCAL_SRC_FILES := $(SDL_SRC_FILES)
 
 SDL_CFLAGS := -DGL_GLEXT_PROTOTYPES
+# (5) SDL JNI function definitions
+# Overriding JNI function definitions with jfloat arguments, which is affected by 'hard float' ABI setting.
+SDL_CFLAGS += -D'Java_org_libsdl_app_SDLActivity_onNativeTouch=__NDK_FPABI__ Java_org_libsdl_app_SDLActivity_onNativeTouch' \
+-D'Java_org_libsdl_app_SDLActivity_onNativeAccel=__NDK_FPABI__ Java_org_libsdl_app_SDLActivity_onNativeAccel' \
+-D'Java_org_libsdl_app_SDLActivity_onNativeJoy=__NDK_FPABI__ Java_org_libsdl_app_SDLActivity_onNativeJoy'
+# (5) SDL JNI function definitions: end
+
 LOCAL_CFLAGS += $(SDL_CFLAGS)
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -llog -landroid
 
