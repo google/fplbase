@@ -28,7 +28,7 @@
 // - fpl::Renderer to setup rendering and transform models.
 // - fpl::InputSystem to query for exit events and elapsed time.
 
-extern "C" int FPL_main(int /*argc*/, char** argv) {
+extern "C" int FPL_main(int /*argc*/, char **argv) {
   fpl::Renderer renderer;
   renderer.Initialize(mathfu::vec2i(800, 600), "Simple mesh test");
 
@@ -39,7 +39,7 @@ extern "C" int FPL_main(int /*argc*/, char** argv) {
   assert(result);
 
   fpl::AssetManager assetMgr(renderer);
-  fpl::Shader* shader = assetMgr.LoadShader("mesh");
+  fpl::Shader *shader = assetMgr.LoadShader("mesh");
   assert(shader);
 
   fpl::Mesh *mesh = assetMgr.LoadMesh("meshes/sushi_shrimp.fplmesh");
@@ -62,8 +62,10 @@ extern "C" int FPL_main(int /*argc*/, char** argv) {
     auto rotz = mathfu::mat3::RotationZ(s * 3);
     auto rotx = mathfu::mat3::RotationX(s * 5);
     auto zoom = mathfu::vec3(10.0f, 10.0f, 10.0f) + mathfu::vec3(c, c, 1.0f);
-
-    auto mvp = mathfu::mat4::FromRotationMatrix(rotz) *
+    auto aspect = static_cast<float>(renderer.window_size().y()) /
+                  renderer.window_size().x();
+    auto mvp = mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
+               mathfu::mat4::FromRotationMatrix(rotz) *
                mathfu::mat4::FromRotationMatrix(rotx) *
                mathfu::mat4::FromScaleVector(zoom);
     renderer.set_model_view_projection(mvp);
