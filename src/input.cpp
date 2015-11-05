@@ -706,6 +706,7 @@ void CardboardInput::AdvanceFrame() {
 }
 
 void CardboardInput::ResetHeadTracker() {
+  device_orientation_at_reset_ = device_orientation_;
 #ifdef __ANDROID__
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
@@ -740,28 +741,47 @@ void CardboardInput::UpdateCardboardTransforms() {
         // 0 degree rotation.
         pre_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationY(M_PI_2));
+        // If the device flips rotation after reseting the head tracker, it
+        // introduces another 180 turn, which needs to be accounted for.
+        if (device_orientation_at_reset_ == 2) {
+          pre_correction *=
+              mat4::FromRotationMatrix(mathfu::mat3::RotationY(M_PI));
+        }
         post_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationZ(-M_PI_2));
+        break;
+      }
+      case 1: {
+        // 90 degree rotation.
+        if (device_orientation_at_reset_ == 3) {
+          pre_correction =
+              mat4::FromRotationMatrix(mathfu::mat3::RotationY(M_PI));
+        }
         break;
       }
       case 2: {
         // 180 degree rotation.
         pre_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI_2));
+        if (device_orientation_at_reset_ == 0) {
+          pre_correction *=
+              mat4::FromRotationMatrix(mathfu::mat3::RotationY(M_PI));
+        }
         post_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationZ(M_PI_2));
         break;
       }
       case 3: {
         // 270 degree rotation.
-        pre_correction =
-            mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI));
+        if (device_orientation_at_reset_ != 1) {
+          pre_correction =
+             mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI));
+        }
         post_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationZ(M_PI));
         break;
       }
       default: {
-        // The HMD SDK assumes a 90 degree rotation, so nothing to do.
         break;
       }
     }
@@ -781,16 +801,6 @@ void CardboardInput::UpdateCardboardTransforms() {
 
 void CardboardInput::EnableDeviceOrientationCorrection() {
   use_device_orientation_correction_ = true;
-#ifdef __ANDROID__
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
-  jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID get_display_rotation =
-      env->GetMethodID(fpl_class, "GetDisplayRotation", "()I");
-  device_orientation_ = env->CallIntMethod(activity, get_display_rotation);
-  env->DeleteLocalRef(fpl_class);
-  env->DeleteLocalRef(activity);
-#endif  // __ANDROID__
 }
 
 void InputSystem::OnCardboardTrigger() {
@@ -799,6 +809,10 @@ void InputSystem::OnCardboardTrigger() {
 
 void InputSystem::SetDeviceInCardboard(bool in_cardboard) {
   cardboard_input_.set_is_in_cardboard(in_cardboard);
+}
+
+void InputSystem::SetDisplayRotation(int rotation) {
+  cardboard_input_.set_device_orientation(rotation);
 }
 #endif  // ANDROID_CARDBOARD
 
@@ -878,6 +892,15 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeSetDeviceInCardboard(
   InputSystem::SetDeviceInCardboard(in_cardboard);
 #endif
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnDisplayRotationChanged(
+    JNIEnv *env, jobject thiz, jint rotation) {
+#if ANDROID_CARDBOARD
+  InputSystem::SetDisplayRotation(rotation);
+#endif
+}
+
 #endif  // __ANDROID__
 
 }  // namespace fpl

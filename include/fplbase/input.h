@@ -251,6 +251,9 @@ class CardboardInput {
   // the Cardboard Input.
   void EnableDeviceOrientationCorrection();
 
+  void set_device_orientation(int rotation) { device_orientation_ = rotation; }
+  int device_orientation() { return device_orientation_; }
+
  private:
   void UpdateCardboardTransforms();
 
@@ -264,6 +267,8 @@ class CardboardInput {
   // The device's default rotation, as defined here:
   // http://developer.android.com/reference/android/view/Surface.html#ROTATION_0
   int device_orientation_;
+  // The device's rotation the last time reset head tracker was called.
+  int device_orientation_at_reset_;
 };
 #endif  // ANDROID_CARDBOARD
 
@@ -396,6 +401,7 @@ class InputSystem {
 
   static void OnCardboardTrigger();
   static void SetDeviceInCardboard(bool in_cardboard);
+  static void SetDisplayRotation(int rotation);
 #endif  // ANDROID_CARDBOARD
 
   // Get a Button object for a pointer index.
