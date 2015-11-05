@@ -63,6 +63,8 @@ int InputSystem::HandleAppEvents(void *userdata, void *ev) {
       input_system->set_minimized(false);
       input_system->set_minimized_frame(input_system->frames());
 #ifdef __ANDROID__
+      // Reset the input state when the app becomes foreground.
+      input_system->ResetInputState();
       // Restore relative mousemode.
       input_system->SetRelativeMouseMode(input_system->relative_mouse_mode_);
 #endif
@@ -89,13 +91,19 @@ void InputSystem::Initialize() {
   // Initialize time.
   start_time_ = SDL_GetPerformanceCounter();
   time_freq_ = SDL_GetPerformanceFrequency();
-  elapsed_time_ = -0.02f;    // Ensure first frame doesn't get a crazy delta.
+  elapsed_time_ = -0.02f;  // Ensure first frame doesn't get a crazy delta.
+}
+
+void InputSystem::ResetInputState() {
+  button_map_.clear();
+#if ANDROID_GAMEPAD
+  gamepad_map_.clear();
+#endif
 }
 
 void InputSystem::AddAppEventCallback(AppEventCallback callback) {
   app_event_callbacks_.push_back(callback);
 }
-
 
 void InputSystem::AdvanceFrame(vec2i *window_size) {
   // Update timing.
@@ -108,7 +116,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   // For performance mode, we send keypress events to the Android system, so
   // that it knows it's still in active use, even if the user isn't currently
   // touching the screen.
-  const HighPerformanceParams& hp_params = GetHighPerformanceParameters();
+  const HighPerformanceParams &hp_params = GetHighPerformanceParameters();
   double current_time = Time();
   if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
     last_android_keypress_ = current_time;
@@ -126,7 +134,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
     cur_delta_idx = 0;
     double sum_delta = 0, min_delta = 99999, max_delta = 0;
     const int kMaxBins = 8;
-    int bins[kMaxBins] = { 0 };
+    int bins[kMaxBins] = {0};
     for (int i = 0; i < kNumDeltaTimes; i++) {
       sum_delta += delta_times[i];
       min_delta = std::min(min_delta, delta_times[i]);
@@ -144,10 +152,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
     }
     LogInfo(kApplication,
             "DeltaTime (ms) avg: %.1f, max: %.1f, min: %.1f, bins: %s",
-            (sum_delta / kNumDeltaTimes * 1000),
-            max_delta * 1000,
-            min_delta * 1000,
-            os.str().c_str());
+            (sum_delta / kNumDeltaTimes * 1000), max_delta * 1000,
+            min_delta * 1000, os.str().c_str());
   }
 #endif
 
@@ -212,7 +218,7 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         UpdateDragPosition(&event.tfinger, event.type, *window_size);
         break;
       }
-#else  // PLATFORM_MOBILE
+#else   // PLATFORM_MOBILE
       // These fire from e.g. OS X touchpads. Ignore them because we just
       // want the mouse events.
       case SDL_FINGERDOWN:
@@ -227,7 +233,13 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         touch_device_ = false;
         GetPointerButton(event.button.button - 1)
             .Update(event.button.state == SDL_PRESSED);
-        pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
+
+        // When SDL can not find a focus window for some reasons (This
+        // particularly happens on Android), the windowID and positions becomes
+        // 0. In such case, we don't use the value.
+        if (event.button.windowID != 0) {
+          pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
+        }
         pointers_[0].used = true;
 #if ANDROID_CARDBOARD
         if (event.button.state == SDL_PRESSED) {
@@ -237,9 +249,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
         break;
       }
       case SDL_MOUSEMOTION: {
-        // Mouse events are superfluous on mobile platforms as they're simply
-        // a backward compatible way of sending finger up / down / motion
-        // events.
+// Mouse events are superfluous on mobile platforms as they're simply
+// a backward compatible way of sending finger up / down / motion
+// events.
 #if !defined(PLATFORM_MOBILE)
         touch_device_ = false;
         pointers_[0].mousedelta += vec2i(event.motion.xrel, event.motion.yrel);
@@ -272,15 +284,15 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       case SDL_TEXTEDITING:
         if (record_text_input_) {
           TextInputEvent edit(kTextInputEventTypeEdit);
-          text_input_events_.push_back(TextInputEvent(kTextInputEventTypeEdit,
-                                          event.edit.text, event.edit.start,
-                                          event.edit.length));
+          text_input_events_.push_back(
+              TextInputEvent(kTextInputEventTypeEdit, event.edit.text,
+                             event.edit.start, event.edit.length));
         }
         break;
       case SDL_TEXTINPUT: {
         if (record_text_input_) {
-          text_input_events_.push_back(TextInputEvent(kTextInputEventTypeText,
-                                          event.text.text));
+          text_input_events_.push_back(
+              TextInputEvent(kTextInputEventTypeText, event.text.text));
         }
         break;
       }
@@ -294,8 +306,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       }
     }
   }
-  // Update the Cardboard input. Note this is after the mouse input, as that can
-  // be treated as a trigger.
+// Update the Cardboard input. Note this is after the mouse input, as that can
+// be treated as a trigger.
 #if ANDROID_CARDBOARD
   cardboard_input_.AdvanceFrame();
 #endif  // ANDROID_CARDBOARD
@@ -310,9 +322,8 @@ void InputSystem::HandleJoystickEvent(Event event) {
       break;
     case SDL_JOYAXISMOTION:
       // Axis data is normalized to a range of [-1.0, 1.0]
-      GetJoystick(sdl_event->jaxis.which)
-          .SetAxis(sdl_event->jaxis.axis,
-                   sdl_event->jaxis.value / kJoystickAxisRange);
+      GetJoystick(sdl_event->jaxis.which).SetAxis(
+          sdl_event->jaxis.axis, sdl_event->jaxis.value / kJoystickAxisRange);
       break;
     case SDL_JOYBUTTONDOWN:
     case SDL_JOYBUTTONUP:
@@ -321,9 +332,8 @@ void InputSystem::HandleJoystickEvent(Event event) {
           .Update(sdl_event->jbutton.state == SDL_PRESSED);
       break;
     case SDL_JOYHATMOTION:
-      GetJoystick(sdl_event->jhat.which)
-          .SetHat(sdl_event->jhat.hat,
-                  ConvertHatToVector(sdl_event->jhat.value));
+      GetJoystick(sdl_event->jhat.which).SetHat(
+          sdl_event->jhat.hat, ConvertHatToVector(sdl_event->jhat.value));
       break;
   }
 }
@@ -357,19 +367,15 @@ vec2 InputSystem::ConvertHatToVector(uint32_t hat_enum) const {
   }
 }
 
-double InputSystem::Time() const {
-  return elapsed_time_;
-}
+double InputSystem::Time() const { return elapsed_time_; }
 
 double InputSystem::RealTime() const {
   assert(time_freq_);
-  return static_cast<double>(SDL_GetPerformanceCounter() - start_time_)
-          / static_cast<double>(time_freq_);
+  return static_cast<double>(SDL_GetPerformanceCounter() - start_time_) /
+         static_cast<double>(time_freq_);
 }
 
-double InputSystem::DeltaTime() const {
-  return frame_time_;
-}
+double InputSystem::DeltaTime() const { return frame_time_; }
 
 Button &InputSystem::GetButton(int button) {
   auto it = button_map_.find(button);
@@ -826,7 +832,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
   }
 }
 
-TextInputEvent::TextInputEvent(TextInputEventType t, const char * str) {
+TextInputEvent::TextInputEvent(TextInputEventType t, const char *str) {
   type = t;
   switch (type) {
     case kTextInputEventTypeText:
@@ -839,7 +845,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, const char * str) {
   }
 }
 
-TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
+TextInputEvent::TextInputEvent(TextInputEventType t, const char *str,
                                int32_t start, int32_t length) {
   type = t;
   switch (type) {
@@ -859,8 +865,7 @@ TextInputEvent::TextInputEvent(TextInputEventType t, const char * str,
 // Android, even without the Cardboard flag
 #ifdef __ANDROID__
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fplbase_FPLActivity_nativeOnCardboardTrigger(
-    JNIEnv *env) {
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnCardboardTrigger(JNIEnv *env) {
 #if ANDROID_CARDBOARD
   InputSystem::OnCardboardTrigger();
 #endif  // ANDROID_CARDBOARD
