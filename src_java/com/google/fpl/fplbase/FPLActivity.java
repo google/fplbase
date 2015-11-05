@@ -42,6 +42,7 @@ import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
@@ -79,6 +80,8 @@ public class FPLActivity extends SDLActivity implements
   private Eye leftEyeNoDistortion;
   private Eye rightEyeNoDistortion;
   private UiLayer uiLayer;
+  private OrientationEventListener orientationListener;
+  private int cachedDeviceRotation;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -101,6 +104,7 @@ public class FPLActivity extends SDLActivity implements
       if (tagContents != null) {
         updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
       }
+      orientationListener = CreateOrientationListener();
     }
   }
 
@@ -117,6 +121,7 @@ public class FPLActivity extends SDLActivity implements
       cardboardView.onResume();
       magnetSensor.start();
       nfcSensor.onResume(this);
+      orientationListener.enable();
     }
     Choreographer.getInstance().postFrameCallback(this);
   }
@@ -128,6 +133,7 @@ public class FPLActivity extends SDLActivity implements
       cardboardView.onPause();
       magnetSensor.stop();
       nfcSensor.onPause(this);
+      orientationListener.disable();
     }
     Choreographer.getInstance().removeFrameCallback(this);
   }
@@ -356,10 +362,6 @@ public class FPLActivity extends SDLActivity implements
     return new int[] { Math.max(size.x, size.y), Math.min(size.x, size.y) };
   }
 
-  public int GetDisplayRotation() {
-    return getWindowManager().getDefaultDisplay().getRotation();
-  }
-
   public void SetHeadMountedDisplayResolution(int width, int height) {
     // If hardware scaling is used, the width x height will be less than the
     // displays natural resolution, so the PPI (pixels per inch) will also
@@ -458,6 +460,19 @@ public class FPLActivity extends SDLActivity implements
     return null;
   }
 
+  private OrientationEventListener CreateOrientationListener() {
+    return new OrientationEventListener(this) {
+        @Override
+        public void onOrientationChanged(int orientation) {
+          int rotation = getWindowManager().getDefaultDisplay().getRotation();
+          if (rotation != cachedDeviceRotation) {
+            cachedDeviceRotation = rotation;
+            nativeOnDisplayRotationChanged(rotation);
+          }
+        }
+      };
+  }
+
   // Sends a keypress event to the Android system.
   public void SendKeypressEventToAndroid(int androidKeycode) {
     // SendKeyDownUpSync is only allowed (at our current permission level)
@@ -510,5 +525,8 @@ public class FPLActivity extends SDLActivity implements
 
   // Implemented in C++. (input.cpp)
   private static native void nativeSetDeviceInCardboard(boolean inCardboard);
+
+  // Implemented in C++. (input.cpp)
+  private static native void nativeOnDisplayRotationChanged(int rotation);
 
 }
