@@ -463,6 +463,9 @@ class InputSystem {
   bool exit_requested() { return exit_requested_; }
 
  private:
+  // Reset pointer/gamepad input state to released state.
+  void ResetInputState();
+
   static const int kMillisecondsPerSecond = 1000;
 
   static int HandleAppEvents(void *userdata, void *event);
