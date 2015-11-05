@@ -280,8 +280,9 @@ void Mesh::RenderStereo(Renderer &renderer,
 
 void Mesh::RenderArray(Primitive primitive, int index_count,
                        const Attribute *format, int vertex_size,
-                       const char *vertices, const unsigned short *indices) {
-  SetAttributes(0, format, vertex_size, vertices);
+                       const void *vertices, const unsigned short *indices) {
+  SetAttributes(0, format, vertex_size,
+                reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
   auto gl_primitive = primitive == kLines ? GL_LINES : GL_TRIANGLES;
   GL_CALL(glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT,

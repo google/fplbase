@@ -51,8 +51,8 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
 
   while (!(input.exit_requested() ||
            input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
-    input.AdvanceFrame(&renderer.window_size());
     renderer.AdvanceFrame(input.minimized(), input.Time());
+    input.AdvanceFrame(&renderer.window_size());
 
     renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));
 

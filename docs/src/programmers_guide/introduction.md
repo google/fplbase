@@ -19,59 +19,98 @@ cross platform games.
 
 # Components {#fplbase_components}
 
-Directly on top of SDL sit two systems, the renderer and input systems.
-On top of the renderer sits two more (optional) systems, asset manager and
-the asynchronous loader.
+Directly on top of SDL sit two systems, the renderer (`renderer.h`)
+and the input system (`input.h`).
+On top of the renderer sits two more (optional) systems, the asset manager
+(`asset_manager.h`) and the asynchronous loader (`async_loader.h`).
+
+To represent resources created by the renderer (or asset manager) we have:
+* `Shader` (`shader.h`)
+* `Mesh` (`mesh.h`)
+* `Texture` / `Material` (`material.h`)
 
 The renderer also depends upon our [MathFu] library for all its vector and
 matrix datatypes. The asset manager depends on our [FlatBuffers]
 serialization library.
 
-# Renderer {#fplbase_renderer}
+# Basic initialization and rendering {#fplbase_renderer}
 
-The Renderer (`renderer.h/.cpp`) is the core of the engine, and is responsible
+The Renderer is the core of the engine, and is responsible
 for creating the OpenGL context and OpenGL resources such as
 shaders and textures.
 
-To actually represent these resources, we have:
-* `Shader` (`shader.h/.cpp`)
-* `Mesh` (`mesh.h/.cpp`)
-* `Texture` / `Material` (`material.h/.cpp`)
-
-The basic flow of using this lower level layer is as follows:
+The basic flow of using this lower level layer to create a fully functioning
+program is as follows:
 
 * Instantiate the `Renderer`, and call `Initialize` on it. This will get your
-  OpenGL context set up, and a window/screen ready to draw on.
-* Load resources. `CompileAndLinkShader` will turn two shader strings (GLSL
-  vertex and pixel shader) into a `Shader` object
+  OpenGL context set up, and a window/screen ready to draw on:
+  ~~~{.cpp}
+  Renderer renderer;
+  renderer.Initialize(vec2i(960, 640), "Simple FPLBase example");
+  ~~~
+  The size argument is only really used for the desktop.
+  If initialize fails (returns false), you can get a more informative error
+  string by calling `renderer.last_error()`.
+* Create the input system:
+  ~~~{.cpp}
+  InputSystem input;
+  input.Initialize();
+  ~~~
+  This doesn't fail.
+* Create resources. `CompileAndLinkShader` will turn two shader strings (GLSL
+  vertex and pixel shader) into a `Shader` object:
+  ~~~{.cpp}
+  auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
+  ~~~
   (for even more convenient methods that will load directly from file, see the
   material manager below).
-  `LoadAndUnpackTexture` will take a file (currently TGA or WebP formats)
-  and turn it into a raw buffer which `CreateTexture` turns into an OpenGL
-  texture.
-  Methods like this can generate complex errors, so whenever anything fails in
-  the renderer, human readable errors are available in `last_error()`.
-* Create a `Mesh`. You supply vertex data, and add one or more sets of indices
-  referring to it with `AddIndices`.
+  Shaders failing to compiler can generate complex errors, so be sure to
+  check the contents of `last_error()` when `shader` is null.
+  For more resource types, see below.
 * Now you're ready to run your main loop. Call `AdvanceFrame` on the renderer
   to swap buffers and do general initialisation of the frame, likely followed
   by `ClearFrameBuffer`.
-* Before rendering anything, set up the renderer's `model_view_projection()`.
+  ~~~{.cpp}
+  while (!input.exit_requested()) {
+    renderer.AdvanceFrame(input.minimized(), input.Time());
+    input.AdvanceFrame(&renderer.window_size());
+    renderer.ClearFrameBuffer(background_color);
+    // Render stuff here.
+  }
+  ~~~
+  We use the input system to see if an exit has been requested (close button,
+  app shut down). `AdvanceFrame` for the input system advances the time, and
+  collects new input events.
+* Before rendering anything, call the renderer's `set_model_view_projection()`.
   Use our separate [MathFu] library to combine matrices depending on whether
-  you're creating a 2D or 3D scene, e.g. `mathfu::OrthoHelper` and
-  `mathfu::PerspectiveHelper`.
+  you're creating a 2D or 3D scene, e.g. `mathfu::mat4::Ortho` and
+  `mathfu::mat4::Perspective`.
+  ~~~{.cpp}
+  renderer.set_model_view_projection(
+    mathfu::mat4::Ortho(-1.0, 1.0, -1.5, 1.5, -1.0, 1.0));
+  ~~~
+  Creates a 2D coordinate space with (0,0) in the center and (3,2) in size.
 * Now use the shader you've created by calling `Set` on it. This will make it
   active, and also upload any renderer variables (such as
-  `model_view_projection()`), ready to be used by the shader.
-* Finally, calling `Render` on your mesh will display it on screen.
+  `model_view_projection`), ready to be used by the shader.
+  ~~~{.cpp}
+  shader->Set(renderer);
+  ~~~
+* Finally, you can now render something! Lets use use convenient helper
+  function that gets us a quad (or 2 sprite):
+  ~~~{.cpp}
+  Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
+                           mathfu::vec3( 0.5f,  0.5f, 0));
+  ~~~
+  For more complex meshes, see below.
 
-A simple example of how this can work together (displays a quad):
+Putting this all together, we get:
 
 ~~~{.cpp}
-fpl::Renderer renderer;
-fpl::InputSystem input;
+Renderer renderer;
+renderer.Initialize(vec2i(960, 640), "Simple FPLBase example");
 
-renderer.Initialize();
+InputSystem input;
 input.Initialize();
 
 // A vertex shader that passes untransformed position thru.
@@ -87,16 +126,19 @@ auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
 assert(shader);
 
 while (!input.exit_requested()) {
-  input.AdvanceFrame(&renderer.window_size());
   renderer.AdvanceFrame(input.minimized(), input.Time());
+  input.AdvanceFrame(&renderer.window_size());
 
   float color = (1.0f - cos(input.Time())) / 2.0f;
   renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
 
+  renderer.set_model_view_projection(
+    mathfu::mat4::Ortho(-1.0, 1.0, -1.5, 1.5, -1.0, 1.0));
+
   shader->Set(renderer);
 
-  fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
-                                mathfu::vec3( 0.5f,  0.5f, 0));
+  Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
+                           mathfu::vec3( 0.5f,  0.5f, 0));
 }
 
 renderer.ShutDown();
@@ -114,15 +156,30 @@ Where the renderer reads from memory buffers, the material manager loads files.
 To keep this cross platform, any resources should be in a folder called `assets`
 under the project root. All paths you specify are relative to this folder.
 
+Create one by passing the Renderer that will do the actual creation of
+resources:
+~~~{.cpp}
+fpl::AssetManager asset_manager(renderer);
+~~~
+
 Once you've instantiated the `AssetManager`, calls like `LoadShader`
 will conveniently construct a `Shader` from two files. It does this by
 suffixing `.glslv` and `.glslf` to the filename you pass.
 
-Similarly, `LoadTexture` will load a TGA or WebP file straight into a `Texture`.
+Similarly, `LoadTexture` will load a TGA or WebP file straight into a `Texture`:
+
+~~~{.cpp}
+auto shader = asset_manager.LoadShader("tex");
+assert(shader);
+
+auto tex = asset_manager.LoadTexture("tex.webp");
+assert(tex);
+~~~
 
 All methods that start with `Load` have the property that if you ask to load a
 file that has been loaded before, it just instantly return the previously
-created resource, and only do any actual loading if not.
+created resource, and only do any actual loading if not. As before,
+`last_error()` will have a descriptive message if this fails.
 
 Alternatively, there are `Find` versions of these methods that will return
 `nullptr` if the resource wasn't previously loaded.
@@ -131,10 +188,21 @@ More high-level than loading individual textures is loading a `Material`,
 which is a set of textures all meant to be used in the same draw call,
 bundled with rendering flags such as the desired alpha blending mode etc.
 You create an actual material file by writing a small .json file which specifies
-the texture filenames and other properties. This JSON file can be converted
-to a binary file by our [FlatBuffers] serialization library, the result
+the texture filenames and other properties, e.g.:
+
+~~~{.json}
+{
+  texture_filenames: [ "diffuse.webp", "normal.webp" ],
+  blendmode: OFF
+}
+~~~
+(for more, see `schemas/material.fbs`). This JSON file can be converted
+to a binary file by our [FlatBuffers][] serialization library, the result
 of which can be passed to `LoadMaterial` that will load all referenced
 textures and create a `Material` object (which can be attached to `Mesh`).
+
+Meshes load similary using `LoadMesh`, to find out how to create these files,
+see [MeshPipeline][].
 
 A simple example, which could replace the shader loading in the above example,
 and also loads a texture:
@@ -181,28 +249,90 @@ relatively simple:
   it can already be used.
 
 
+# Instantiating resources with the renderer {#fplbase_renderer_resources}
+
+We already saw how to load shaders directly from memory without using the
+asset manager, we can do that with other resources too, if you prefer to
+do your own asset management:
+
+`LoadAndUnpackTexture` will take a file (currently TGA or WebP formats)
+and turn it into a raw buffer which `CreateTexture` turns into an OpenGL
+texture.
+
+There's several ways to render or create meshes. We already saw
+`RenderAAQuadAlongX` which is the simplest way to get geometry on screen.
+A more general way is `RenderArray` which will render a mesh on the fly
+from any indices and vertices:
+
+~~~{.cpp}
+const fpl::Attribute format[] = {
+  fpl::Attribute::kPosition3f, fpl::Attribute::kEND
+};
+
+const unsigned short indices[] = { 0, 1, 2 };
+const float vertices[] = {
+  -.5f, -.5f, 0.0f,
+  0.0f, 0.5f, 0.0f,
+  0.5f, -.5f, 0.0f
+};
+
+fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles, 3, format,
+                       sizeof(float) * 3, vertices, indices);
+~~~
+
+`format` specifies what kind of attributes our vertex data contains, here only
+positions. Vertex data must always be interleaved.
+
+Rendering on the fly is convenient, but for the best performance you should
+always construct Mesh objects, which deal with uploading of vertex and index
+data just once. Given the data in the above example, that would look like:
+~~~{.cpp}
+auto mesh = new Mesh(vertices, 3, sizeof(float) * 3, format);
+mesh->AddIndices(indices, 3, material);
+~~~
+You may call AddIndices more than once to create multiple different surfaces
+(with different textures) that make use of the same geometry.
+
+You'll need a material which you can instantiate using the asset manager, or
+manually.
+
+Inside your rendering loop, now all you have to do is call:
+~~~{.cpp}
+mesh->Render(renderer);
+~~~
+This will render all surfaces contained, set all textures etc.
 
 # Input System {#fplbase_input}
 
-`InputSystem` (`input.h/.cpp`) deals with time, touch/mouse/keyboard/gamepad
+`InputSystem` deals with time, touch/mouse/keyboard/gamepad
 input, and lifecycle events.
 
-Similar to the renderer, instantiate it, then call `Initialize`, and once
+As we saw above, to initialize it call `Initialize`, and once
 per frame call `AdvanceFrame` right after you called the same method on
 the renderer. This collects new input events from the system to be reflected
 in its internal state.
 
 Call `Time` for seconds since game start, and `DeltaTime` for seconds since
-the last frame.
+the last frame. `Time` is updated only once per frame, to ensure that all
+animations/simulations that happen during a frame stay in sync with rendering.
+If instead you want time for profiling, call `RealTime` which recomputes the
+current time each time it is called.
 
 Now you can query the state of the inputs you're interested in. For example,
 call `GetButton` with one of the constants from `input.h` which can either be
 a keyboard key, or a pointer (meaning the mouse or touch inputs, depending
 on platform) or a gamepad button, and you can see if it went down or up
 this last frame, or wether it is currently down. The `Pointer` objects can
-tell you more about their current position.
+tell you more about their current position. For example:
 
+~~~{.cpp}
+if (input.GetButton(K_POINTER1).went_down()) {
+  auto &pos = input.get_pointers()[0].mousepos;
+  printf("finger/mouse hit at %d, %d\n", pos.x, pos.y);
+}
+~~~
 
   [SDL]: https://www.libsdl.org/
   [MathFu]: http://google.github.io/mathfu
   [FlatBuffers]: http://google.github.io/flatbuffers/
+  [MeshPipeline]: @ref fplbase_guide_mesh_pipeline

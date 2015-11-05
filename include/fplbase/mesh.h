@@ -101,7 +101,7 @@ class Mesh {
   // amounts of data, or dynamic data.
   static void RenderArray(Primitive primitive, int index_count,
                           const Attribute *format, int vertex_size,
-                          const char *vertices, const unsigned short *indices);
+                          const void *vertices, const unsigned short *indices);
 
   // Convenience method for rendering a Quad. bottom_left and top_right must
   // have their X coordinate be different, but either Y or Z can be the same.
