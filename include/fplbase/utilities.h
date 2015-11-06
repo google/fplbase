@@ -164,6 +164,10 @@ int GetVsyncFrameId();
 
 // Triggers a keypress event on an Android device.
 void SendKeypressEventToAndroid(int android_keycode);
+
+// Get the name of the current activity class.  This can be used by C++ code
+// to determine how the application was started.
+std::string AndroidGetActivityName();
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)

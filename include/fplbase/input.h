@@ -33,13 +33,14 @@
 // gamepads.  Also enables the gamepad_controller controller class.
 #define ANDROID_GAMEPAD 1
 #include "pthread.h"
-#endif
+#endif  // !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
 
-#if !defined(ANDROID_CARDBOARD) && defined(__ANDROID__)
-// Enable the android cardboard code.  It receives events about Cardboard from
-// java, via JNI, and creates a local representation of the state to be used.
-#define ANDROID_CARDBOARD 1
-#endif
+#if !defined(ANDROID_HMD) && defined(__ANDROID__)
+// Enable the android head mounted display (cardboard) code.  It receives
+// events about Cardboard from java, via JNI, and creates a local
+// representation of the state to be used.
+#define ANDROID_HMD 1
+#endif  //  !defined(ANDROID_HMD) && defined(__ANDROID__)
 
 namespace fpl {
 
@@ -192,24 +193,27 @@ struct AndroidInputEvent {
 };
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_CARDBOARD
-// Cardboard input class.  Manages the state of the device in cardboard
-// based on events passed in from java, and read via JNI.
-class CardboardInput {
+#if ANDROID_HMD
+// Head mounted input class.  Manages the state of the device in a head mounted
+// input device like cardboard based on events passed in from java, and read
+// via JNI.
+class HeadMountedDisplayInput {
  public:
-  CardboardInput()
+  HeadMountedDisplayInput()
       : head_transform_(),
         left_eye_transform_(),
         right_eye_transform_(),
-        is_in_cardboard_(false),
+        is_in_head_mounted_display_(false),
         triggered_(false),
         pending_trigger_(false),
         use_device_orientation_correction_(false),
         device_orientation_(0) {}
 
-  bool is_in_cardboard() const { return is_in_cardboard_; }
-  void set_is_in_cardboard(bool is_in_cardboard) {
-    is_in_cardboard_ = is_in_cardboard;
+  bool is_in_head_mounted_display() const {
+    return is_in_head_mounted_display_;
+  }
+  void set_is_in_head_mounted_display(bool is_in_head_mounted_display) {
+    is_in_head_mounted_display_ = is_in_head_mounted_display;
   }
   bool triggered() const { return triggered_; }
 
@@ -243,7 +247,7 @@ class CardboardInput {
   }
 
   void AdvanceFrame();
-  void OnCardboardTrigger() { pending_trigger_ = true; }
+  void OnTrigger() { pending_trigger_ = true; }
 
   // Realign the head tracking with the current phone heading
   void ResetHeadTracker();
@@ -257,12 +261,12 @@ class CardboardInput {
   int device_orientation() { return device_orientation_; }
 
  private:
-  void UpdateCardboardTransforms();
+  void UpdateTransforms();
 
   mat4 head_transform_;
   mat4 left_eye_transform_;
   mat4 right_eye_transform_;
-  bool is_in_cardboard_;
+  bool is_in_head_mounted_display_;
   bool triggered_;
   bool pending_trigger_;
   // Whether correction should be applied to the view matrices.
@@ -273,7 +277,7 @@ class CardboardInput {
   // The device's rotation the last time reset head tracker was called.
   int device_orientation_at_reset_;
 };
-#endif  // ANDROID_CARDBOARD
+#endif  // ANDROID_HMD
 
 // Text input structures and enums.
 
@@ -325,20 +329,8 @@ struct TextInputEvent {
 
 class InputSystem {
  public:
-  InputSystem()
-      : exit_requested_(false),
-        minimized_(false),
-        frame_time_(0),
-        elapsed_time_(0),
-        start_time_(0),
-        time_freq_(0),
-        frames_(0),
-        minimized_frame_(0),
-        mousewheel_delta_(mathfu::kZeros2i),
-        record_text_input_(false),
-        touch_device_(true) {
-    pointers_.assign(kMaxSimultanuousPointers, InputPointer());
-  }
+  InputSystem();
+  ~InputSystem();
 
   static const int kMaxSimultanuousPointers = 10;  // All current touch screens.
 
@@ -399,13 +391,15 @@ class InputSystem {
   void HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_CARDBOARD
-  CardboardInput &cardboard_input() const { return cardboard_input_; }
+#if ANDROID_HMD
+  HeadMountedDisplayInput &head_mounted_display_input() {
+    return head_mounted_display_input_;
+  }
 
-  static void OnCardboardTrigger();
-  static void SetDeviceInCardboard(bool in_cardboard);
-  static void SetDisplayRotation(int rotation);
-#endif  // ANDROID_CARDBOARD
+  const HeadMountedDisplayInput &head_mounted_display_input() const {
+    return head_mounted_display_input_;
+  }
+#endif  // ANDROID_HMD
 
   // Get a Button object for a pointer index.
   Button &GetPointerButton(FingerId pointer) {
@@ -498,9 +492,10 @@ class InputSystem {
   static std::queue<AndroidInputEvent> unhandled_java_input_events_;
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_CARDBOARD
-  static CardboardInput cardboard_input_;
-#endif
+#if ANDROID_HMD
+  // Head mounted display input class.
+  HeadMountedDisplayInput head_mounted_display_input_;
+#endif  // ANDROID_HMD
 
   // Most recent frame delta, in seconds.
   double frame_time_;
@@ -534,13 +529,13 @@ class InputSystem {
   // false if coming from a mouse or similar.
   bool touch_device_;
 
-# ifdef __ANDROID__
+#ifdef __ANDROID__
   // Store current relative mouse mode before entering background.
   bool relative_mouse_mode_;
 
   // How long since we've sent a keypress event to keep the CPU alive.
   double last_android_keypress_;
-# endif
+#endif  // __ANDROID__
 };
 
 }  // namespace fpl

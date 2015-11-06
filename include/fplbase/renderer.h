@@ -209,6 +209,10 @@ class Renderer {
   vec2i &window_size() { return window_size_; }
   void set_window_size(const vec2i &ws) { window_size_ = ws; }
 
+  // Get the size of the viewport.  This may be larger than the framebuffer /
+  // window on Android if the hardware scalar is enabled.
+  vec2i GetViewportSize();
+
   // Time in seconds since program start, as used by animated shaders,
   // updated once per frame only.
   double time() const { return time_; }
@@ -240,7 +244,6 @@ class Renderer {
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
-  vec2i GetViewportSize();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.

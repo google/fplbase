@@ -48,7 +48,9 @@
 extern "C" int FPL_main(int argc, char* argv[]);
 
 // main() is redefined as SDL_main() (see SDL_main.h) on some platforms.
-int main(int argc, char* argv[]) { return FPL_main(argc, argv); }
+int main(int argc, char* argv[]) {
+  return FPL_main(argc, argv);
+}
 
 
 // NOTE: The following code is included in this module to prevent the linker

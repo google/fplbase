@@ -34,56 +34,46 @@ void FinishUndistortFramebuffer();
 // and rendering.
 void SetCardboardButtonEnabled(bool enabled);
 
-// Call used for rendering to HMDs, handling the split and multiple matrices.
-// Calls back on the provided render_callback twice, with the transforms from
-// the device representing each eye, which are gotten from the input system.
-// As an example:
-// HeadMountedDisplayRender(&input_system, &renderer,
-//                          vec4(0, 0, 0, 1),  // Clear screen to black
-//                          [](const vec4i* viewport, const mat4* transform) {
-//                            RenderSceneFromView(transform);
-//                          });
+/// Dimensions and transforms for viewport when using stereoscopic rendering.
+struct HeadMountedDisplayViewSettings {
+  /// Extents of each viewport.
+  mathfu::vec4i viewport_extents[2];
+  /// Transformation matrix for each viewport.
+  mathfu::mat4 viewport_transforms[2];
+};
+
+// Prepare to render to a Head Mounted Display (HMD).
+void HeadMountedDisplayRenderStart(
+    const HeadMountedDisplayInput& head_mounted_display_input,
+    Renderer* renderer, const mathfu::vec4& clear_color, bool use_undistortion,
+    HeadMountedDisplayViewSettings *view_settings);
+
+// Reset viewport settings, finish applying undistortion effect (if enabled)
+// and disable blending.
+void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion);
+
+// Call render_callback between HeadMountedDisplayRenderStart() and
+// HeadMountedDisplayRenderEnd() passing
+// HeadMountedDisplayViewSettings.viewport_extents and
+// HeadMountedDisplayViewSettings.viewport_transforms as arguments to
+// render_callback.
 template <typename RenderCallback>
-void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
-                              const vec4& clear_color,
+void HeadMountedDisplayRender(const InputSystem* input_system,
+                              Renderer* renderer, const vec4& clear_color,
                               RenderCallback render_callback,
                               bool use_undistortion) {
-  if (use_undistortion) {
-    BeginUndistortFramebuffer();
-  }
-  renderer->ClearFrameBuffer(clear_color);
-  renderer->set_color(mathfu::kOnes4f);
-  renderer->DepthTest(true);
-
-  vec2i size = AndroidGetScalerResolution();
-  const vec2i viewport_size =
-      size.x() && size.y() ? size : renderer->window_size();
-  float window_width = viewport_size.x();
-  float half_width = window_width / 2.0f;
-  float window_height = viewport_size.y();
-
-  // Render stereoscopic views.
-  vec4i viewport[2] = {vec4i(0, 0, static_cast<int32_t>(half_width),
-                             static_cast<int32_t>(window_height)),
-                       vec4i(static_cast<int32_t>(half_width), 0,
-                             static_cast<int32_t>(half_width),
-                             static_cast<int32_t>(window_height))};
-  mat4 transforms[2] = {
-      input_system->cardboard_input().left_eye_transform(),
-      input_system->cardboard_input().right_eye_transform(), };
-  render_callback(viewport, transforms);
-
-  // Reset the screen, and finish
-  GL_CALL(glViewport(0, 0, window_width, window_height));
-  if (use_undistortion) {
-    FinishUndistortFramebuffer();
-    renderer->SetBlendMode(kBlendModeOff);
-  }
+  HeadMountedDisplayViewSettings view_settings;
+  HeadMountedDisplayRenderStart(input_system->head_mounted_display_input(),
+                                renderer, clear_color, use_undistortion,
+                                &view_settings);
+  render_callback(view_settings.viewport_extents,
+                  view_settings.viewport_transforms);
+  HeadMountedDisplayRenderEnd(renderer, use_undistortion);
 }
 
 template <typename RenderCallback>
-void HeadMountedDisplayRender(InputSystem* input_system, Renderer* renderer,
-                              const vec4& clear_color,
+void HeadMountedDisplayRender(const InputSystem* input_system,
+                              Renderer* renderer, const vec4& clear_color,
                               RenderCallback render_callback) {
   HeadMountedDisplayRender(input_system, renderer, clear_color, render_callback,
                            true);

@@ -15,6 +15,10 @@
 #include "precompiled.h"
 #include "fplbase/utilities.h"
 
+#if defined(__ANDROID__)
+#include <string>
+#endif  // defined(__ANDROID__)
+
 #ifdef FPL_BASE_BACKEND_STDLIB
 #define _CRT_SECURE_NO_DEPRECATE
 #include <cstdio>
@@ -772,6 +776,36 @@ bool SupportsHeadMountedDisplay() {
   return false;
 #endif  // __ANDROID
 }
+
+#if defined(__ANDROID__)
+// Get the name of the current activity class.
+std::string AndroidGetActivityName() {
+  JNIEnv* env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass activity_class = env->GetObjectClass(activity);
+  jmethodID get_class_method = env->GetMethodID(activity_class, "getClass",
+                                                "()Ljava/lang/Class;");
+  // Get the class instance.
+  jclass activity_class_object = (jclass)env->CallObjectMethod(
+      activity, get_class_method);
+  jclass activity_class_object_class = env->GetObjectClass(
+      activity_class_object);
+  jmethodID get_name_method = env->GetMethodID(
+      activity_class_object_class, "getName", "()Ljava/lang/String;");
+  jstring class_name_object = (jstring)env->CallObjectMethod(
+      activity_class_object, get_name_method);
+  char* class_name = (char*)env->GetStringUTFChars(class_name_object,
+                                                   JNI_FALSE);
+  std::string activity_name(class_name);
+  env->ReleaseStringUTFChars(class_name_object, class_name);
+  env->DeleteLocalRef(class_name_object);
+  env->DeleteLocalRef(activity_class_object_class);
+  env->DeleteLocalRef(activity_class_object);
+  env->DeleteLocalRef(activity_class);
+  env->DeleteLocalRef(activity);
+  return activity_name;
+}
+#endif  // defined(__ANDROID__)
 
 #ifdef __ANDROID__
 // Sends a keypress event to the android system.  This will show up in android
