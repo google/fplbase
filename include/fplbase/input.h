@@ -204,7 +204,7 @@ class CardboardInput {
         triggered_(false),
         pending_trigger_(false),
         use_device_orientation_correction_(false),
-        device_orientation_(1) {}
+        device_orientation_(0) {}
 
   bool is_in_cardboard() const { return is_in_cardboard_; }
   void set_is_in_cardboard(bool is_in_cardboard) {
