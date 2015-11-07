@@ -396,13 +396,11 @@ public class FPLActivity extends SDLActivity implements
   @Override
   public void onInsertedIntoCardboard(CardboardDeviceParams cardboardDeviceParams) {
     updateCardboardDeviceParams(cardboardDeviceParams);
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     nativeSetDeviceInCardboard(true);
   }
 
   @Override
   public void onRemovedFromCardboard() {
-    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     nativeSetDeviceInCardboard(false);
   }
 
