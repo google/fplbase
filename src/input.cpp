@@ -725,12 +725,15 @@ void CardboardInput::UpdateCardboardTransforms() {
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
   jclass fpl_class = env->GetObjectClass(activity);
   jmethodID get_eye_views =
-      env->GetMethodID(fpl_class, "GetEyeViews", "([F[F)V");
+      env->GetMethodID(fpl_class, "GetEyeViews", "([F[F[F)V");
+  jfloatArray head = env->NewFloatArray(16);
   jfloatArray left_eye = env->NewFloatArray(16);
   jfloatArray right_eye = env->NewFloatArray(16);
-  env->CallVoidMethod(activity, get_eye_views, left_eye, right_eye);
+  env->CallVoidMethod(activity, get_eye_views, head, left_eye, right_eye);
+  jfloat *head_floats = env->GetFloatArrayElements(head, NULL);
   jfloat *left_eye_floats = env->GetFloatArrayElements(left_eye, NULL);
   jfloat *right_eye_floats = env->GetFloatArrayElements(right_eye, NULL);
+  head_transform_ = mat4(head_floats);
   left_eye_transform_ = mat4(left_eye_floats);
   right_eye_transform_ = mat4(right_eye_floats);
   if (use_device_orientation_correction_) {
@@ -785,13 +788,16 @@ void CardboardInput::UpdateCardboardTransforms() {
         break;
       }
     }
+    head_transform_ = post_correction * head_transform_ * pre_correction;
     left_eye_transform_ =
         post_correction * left_eye_transform_ * pre_correction;
     right_eye_transform_ =
         post_correction * right_eye_transform_ * pre_correction;
   }
+  env->ReleaseFloatArrayElements(head, head_floats, JNI_ABORT);
   env->ReleaseFloatArrayElements(left_eye, left_eye_floats, JNI_ABORT);
   env->ReleaseFloatArrayElements(right_eye, right_eye_floats, JNI_ABORT);
+  env->DeleteLocalRef(head);
   env->DeleteLocalRef(left_eye);
   env->DeleteLocalRef(right_eye);
   env->DeleteLocalRef(fpl_class);

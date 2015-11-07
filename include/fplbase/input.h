@@ -198,7 +198,8 @@ struct AndroidInputEvent {
 class CardboardInput {
  public:
   CardboardInput()
-      : left_eye_transform_(),
+      : head_transform_(),
+        left_eye_transform_(),
         right_eye_transform_(),
         is_in_cardboard_(false),
         triggered_(false),
@@ -212,16 +213,17 @@ class CardboardInput {
   }
   bool triggered() const { return triggered_; }
 
+  const mat4 &head_transform() const { return head_transform_; }
   const mat4 &left_eye_transform() const { return left_eye_transform_; }
   const mat4 &right_eye_transform() const { return right_eye_transform_; }
 
   // The rightwards direction of the head.
-  vec3 right() const { return (mathfu::kAxisX4f * left_eye_transform_).xyz(); }
+  vec3 right() const { return (mathfu::kAxisX4f * head_transform_).xyz(); }
   // The upwards direction of the head.
-  vec3 up() const { return (mathfu::kAxisY4f * left_eye_transform_).xyz(); }
+  vec3 up() const { return (mathfu::kAxisY4f * head_transform_).xyz(); }
   // The forward direction of the head.  Note that it points into -Z.
   vec3 forward() const {
-    return (-mathfu::kAxisZ4f * left_eye_transform_).xyz();
+    return (-mathfu::kAxisZ4f * head_transform_).xyz();
   }
   // The translation of the left eye
   vec3 left_eye_translation() const {
@@ -257,6 +259,7 @@ class CardboardInput {
  private:
   void UpdateCardboardTransforms();
 
+  mat4 head_transform_;
   mat4 left_eye_transform_;
   mat4 right_eye_transform_;
   bool is_in_cardboard_;

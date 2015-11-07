@@ -409,7 +409,7 @@ public class FPLActivity extends SDLActivity implements
   }
 
   // Function to access the transforms of the eyes, which includes head tracking
-  public void GetEyeViews(float[] leftTransform, float[] rightTransform) {
+  public void GetEyeViews(float[] headView, float[] leftTransform, float[] rightTransform) {
     if (cardboardView == null) return;
     cardboardView.getCurrentEyeParams(headTransform,
                                       leftEye,
@@ -417,6 +417,9 @@ public class FPLActivity extends SDLActivity implements
                                       monocularEye,
                                       leftEyeNoDistortion,
                                       rightEyeNoDistortion);
+    if (headView != null && headView.length >= 16) {
+      headTransform.getHeadView(headView, 0);
+    }
     if (leftTransform != null && leftTransform.length >= 16) {
       float[] leftView = leftEye.getEyeView();
       System.arraycopy(leftView, 0, leftTransform, 0, 16);
