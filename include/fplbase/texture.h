@@ -46,7 +46,9 @@ typedef unsigned int TextureHandle;
 
 class Texture : public AsyncResource {
  public:
-  explicit Texture(const char *filename = nullptr)
+  explicit Texture(const char *filename = nullptr,
+                   TextureFormat format = kFormatAuto,
+                   bool mipmaps = true)
       : AsyncResource(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),
@@ -54,17 +56,13 @@ class Texture : public AsyncResource {
         uv_(vec4(0.0f, 0.0f, 1.0f, 1.0f)),
         scale_(mathfu::kOnes2f),
         has_alpha_(false),
-        // TODO(25560304): Turning mipmaps to false is a temporary hack to fix
-        // rendering errors.  This should be set back to true when the root
-        // cause has been found and fixed.
-        mipmaps_(false),
-        desired_(kFormatAuto) {}
+        mipmaps_(mipmaps),
+        desired_(format) {}
   ~Texture() { Delete(); }
 
   virtual void Load();
   virtual void LoadFromMemory(const uint8_t *data, const vec2i &size,
-                              TextureFormat format, bool has_alpha,
-                              bool mipmaps);
+                              bool has_alpha);
   virtual void Finalize();
 
   void Set(size_t unit);
@@ -123,8 +121,6 @@ class Texture : public AsyncResource {
 
   const vec2 &scale() const { return scale_; }
   void set_scale(const vec2 &scale) { scale_ = scale; }
-
-  void set_desired_format(TextureFormat format) { desired_ = format; }
 
   const vec2i &original_size() const { return original_size_; }
   void set_original_size(const vec2i &size) { original_size_ = size; }

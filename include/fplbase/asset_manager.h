@@ -53,7 +53,8 @@ class AssetManager {
   // Returned texture isn't usable until TryFinalize() succeeds and the id
   // is non-zero.
   Texture *LoadTexture(const char *filename,
-                       TextureFormat format = kFormatAuto);
+                       TextureFormat format = kFormatAuto,
+                       bool mipmaps = true);
   // LoadTextures doesn't actually load anything, this will start the async
   // loading of all files, and decompression.
   void StartLoadingTextures();

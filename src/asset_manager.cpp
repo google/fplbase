@@ -108,11 +108,11 @@ Texture *AssetManager::FindTexture(const char *filename) {
   return FindInMap(texture_map_, filename);
 }
 
-Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format) {
+Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
+                                   bool mipmaps) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
-  tex = new Texture(filename);
-  tex->set_desired_format(format);
+  tex = new Texture(filename, format, mipmaps);
   loader_.QueueJob(tex);
   texture_map_[filename] = tex;
   return tex;
@@ -143,7 +143,8 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(i))
               : kFormatAuto;
       auto tex =
-          LoadTexture(matdef->texture_filenames()->Get(i)->c_str(), format);
+          LoadTexture(matdef->texture_filenames()->Get(i)->c_str(), format,
+                      matdef->mipmaps());
       mat->textures().push_back(tex);
 
       auto original_size =

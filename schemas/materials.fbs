@@ -46,6 +46,8 @@ table Material {
   // This vector corresponds to the textures above, if not present,
   // all of them will default to texture's size.
   original_size:[fpl.Vec2i];
+
+  mipmaps:bool = true;
 }
 
 root_type Material;

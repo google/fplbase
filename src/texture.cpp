@@ -29,13 +29,10 @@ void Texture::Load() {
 }
 
 void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
-                             TextureFormat format, bool has_alpha,
-                             bool mipmaps) {
+                             bool has_alpha) {
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
   has_alpha_ = has_alpha;
-  desired_ = format;
-  mipmaps_ = mipmaps;
   id_ = CreateTexture(data, size_, has_alpha_, mipmaps_, desired_);
 }
 
