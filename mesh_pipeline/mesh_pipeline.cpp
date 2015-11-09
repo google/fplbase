@@ -13,8 +13,10 @@
 // limitations under the License.
 
 // Suppress warnings in external header.
+#ifdef _MSC_VER
 #pragma warning(push)            // for Visual Studio
 #pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
+#endif  // _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -23,7 +25,9 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include <fbxsdk.h>
 #pragma GCC diagnostic pop
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif  // _MSC_VER
 
 #include <assert.h>
 #include <cfloat>
