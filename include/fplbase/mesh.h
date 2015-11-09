@@ -20,6 +20,8 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/material.h"
+#include "fplbase/shader.h"
+#include "mathfu/constants.h"
 
 namespace fpl {
 

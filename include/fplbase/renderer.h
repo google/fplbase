@@ -20,6 +20,7 @@
 #include "fplbase/material.h"
 #include "fplbase/mesh.h"
 #include "fplbase/shader.h"
+#include "fplbase/texture.h"
 #include "mathfu/glsl_mappings.h"
 
 #ifdef __ANDROID__
@@ -91,52 +92,6 @@ class Renderer {
   // aTexCoord, aColor, aBoneIndices and aBoneWeights, to match whatever
   // attributes your vertex data has.
   Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source);
-
-  // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
-  // buffer must contain either 24 or 32 bits per pixel data (has_alpha
-  // indicates which). If desired is a 16 bit format it will automatically be
-  // converted (presence of alpha must match), pass kFormatAuto to get the
-  // default.
-  // Return 0 if not a power of two in size.
-  TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              bool has_alpha, bool mipmaps,
-                              TextureFormat desired);
-
-  // Update (part of) the current texture with new pixel data.
-  // For now, must always update at least entire rows.
-  void UpdateTexture(TextureFormat format, int xoffset, int yoffset, int width,
-                     int height, const void *data);
-
-  // Unpacks a memory buffer containing a TGA format file.
-  // May only be uncompressed RGB or RGBA data, Y-flipped or not.
-  // Returns RGBA array of returned dimensions or nullptr if the
-  // format is not understood.
-  // You must free() the returned pointer when done.
-  static uint8_t *UnpackTGA(const void *tga_buf, vec2i *dimensions,
-                            bool *has_alpha);
-
-  // Unpacks a memory buffer containing a Webp format file.
-  // Returns RGBA array of the returned dimensions or nullptr if the format
-  // is not understood.
-  // You must free() the returned pointer when done.
-  // Can apply scaling with scale parameter. A scale value have to be in power
-  // of two to have correct texture sizes.
-  static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
-                             const vec2 &scale, vec2i *dimensions,
-                             bool *has_alpha);
-
-  // Loads the file in filename, and then unpacks the file format (supports
-  // TGA and WebP).
-  // last_error() contains more information if nullptr is returned.
-  // You must free() the returned pointer when done.
-  // Can apply scaling with scale parameter.
-  uint8_t *LoadAndUnpackTexture(const char *filename, const vec2 &scale,
-                                vec2i *dimensions, bool *has_alpha);
-
-  // Utility functions to convert 32bit RGBA to 16bit.
-  // You must delete[] the return value afterwards.
-  uint16_t *Convert8888To5551(const uint8_t *buffer, const vec2i &size);
-  uint16_t *Convert888To565(const uint8_t *buffer, const vec2i &size);
 
   // Set alpha test (cull pixels with alpha below amount) vs alpha blend
   // (blend with framebuffer pixel regardedless).
@@ -267,8 +222,6 @@ class Renderer {
   BlendMode blend_mode_;
 
   FeatureLevel feature_level_;
-
-  bool use_16bpp_;
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;

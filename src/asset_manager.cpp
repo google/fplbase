@@ -16,6 +16,7 @@
 #include "common_generated.h"
 #include "fplbase/asset_manager.h"
 #include "fplbase/flatbuffer_utils.h"
+#include "fplbase/texture.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
@@ -110,7 +111,7 @@ Texture *AssetManager::FindTexture(const char *filename) {
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
-  tex = new Texture(renderer_, filename);
+  tex = new Texture(filename);
   tex->set_desired_format(format);
   loader_.QueueJob(tex);
   texture_map_[filename] = tex;

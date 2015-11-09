@@ -492,9 +492,11 @@ bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
 
 bool MipmapGeneration16bppSupported() {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-  const char *device_list[] = {"Galaxy Nexus", "Nexus S", "Nexus S 4G"};
-  return AndroidCheckDeviceList(device_list,
-                                sizeof(device_list) / sizeof(device_list[0]));
+  static const char *device_list[] = {"Galaxy Nexus", "Nexus S", "Nexus S 4G"};
+  static bool supported =
+      AndroidCheckDeviceList(device_list,
+                             sizeof(device_list) / sizeof(device_list[0]));
+  return supported;
 #else
   return true;
 #endif

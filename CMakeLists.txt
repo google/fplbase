@@ -215,6 +215,7 @@ set(fplbase_common_SRCS
   include/fplbase/renderer_android.h
   include/fplbase/render_target.h
   include/fplbase/shader.h
+  include/fplbase/texture.h
   include/fplbase/utilities.h
   schemas
   src/asset_manager.cpp
@@ -225,6 +226,7 @@ set(fplbase_common_SRCS
   src/renderer.cpp
   src/render_target.cpp
   src/shader.cpp
+  src/texture.cpp
   src/utilities.cpp)
 
 set(fplbase_SRCS

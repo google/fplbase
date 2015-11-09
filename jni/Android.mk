@@ -28,6 +28,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/renderer_hmd.cpp \
   src/render_target.cpp \
   src/shader.cpp \
+  src/texture.cpp \
   src/utilities.cpp \
   $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
 

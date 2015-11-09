@@ -15,22 +15,15 @@
 #ifndef FPLBASE_MATERIAL_H
 #define FPLBASE_MATERIAL_H
 
-#include <string>
+#include <assert.h>
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
 
-#include "fplbase/async_loader.h"
-#include "fplbase/shader.h"
-#include "mathfu/constants.h"
-#include "mathfu/glsl_mappings.h"
-
 namespace fpl {
 
-using mathfu::vec2i;
-using mathfu::vec4;
-
 class Renderer;
+class Texture;
 
 enum BlendMode {
   kBlendModeOff = 0,
@@ -41,80 +34,6 @@ enum BlendMode {
   kBlendModeMultiply,
 
   kBlendModeCount  // Must be at end.
-};
-
-enum TextureFormat {
-  kFormatAuto = 0,  // The default, picks based on loaded data.
-  kFormat8888,
-  kFormat888,
-  kFormat5551,
-  kFormat565,
-  kFormatLuminance,
-
-  kFormatCount  // Must be at end.
-};
-
-// This typedef is compatible with its OpenGL equivalent, but doesn't require
-// this header to depend on OpenGL.
-typedef unsigned int TextureHandle;
-
-class Texture : public AsyncResource {
- public:
-  Texture(Renderer &renderer, const char *filename = nullptr)
-      : AsyncResource(filename ? filename : ""),
-        renderer_(&renderer),
-        id_(0),
-        size_(mathfu::kZeros2i),
-        original_size_(mathfu::kZeros2i),
-        uv_(vec4(0.0f, 0.0f, 1.0f, 1.0f)),
-        scale_(mathfu::kOnes2f),
-        has_alpha_(false),
-        mipmaps_(true),
-        desired_(kFormatAuto) {}
-  ~Texture() { Delete(); }
-
-  virtual void Load();
-  virtual void LoadFromMemory(const uint8_t *data, const vec2i &size,
-                              TextureFormat format, bool has_alpha,
-                              bool mipmaps);
-  virtual void Finalize();
-
-  void Set(size_t unit);
-  // Const version of Set() API. Note that the API modifies global OpenGL state.
-  void Set(size_t unit) const;
-
-  void Delete();
-
-  const TextureHandle &id() const { return id_; }
-  const vec2i &size() const { return size_; }
-
-  const vec4 &uv() const { return uv_; }
-  void set_uv(const vec4 &uv) { uv_ = uv; }
-
-  const vec2 &scale() const { return scale_; }
-  void set_scale(const vec2 &scale) { scale_ = scale; }
-
-  void set_desired_format(TextureFormat format) { desired_ = format; }
-
-  const vec2i &original_size() const { return original_size_; }
-  void set_original_size(const vec2i &size) { original_size_ = size; }
-  void SetOriginalSizeIfNotYetSet(const vec2i &size) {
-    if (original_size_.x() == 0 && original_size_.y() == 0) {
-      original_size_ = size;
-    }
-  }
-
- private:
-  Renderer *renderer_;
-
-  TextureHandle id_;
-  vec2i size_;
-  vec2i original_size_;
-  vec4 uv_;
-  vec2 scale_;
-  bool has_alpha_;
-  bool mipmaps_;
-  TextureFormat desired_;
 };
 
 class Material {
