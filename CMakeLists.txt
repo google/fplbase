@@ -30,7 +30,7 @@ option(fplbase_build_mesh_pipeline
        "Build the mesh_pipeline binary (converts from FBX to FlatBuffers). ${fbx_sdk_msg}"
        OFF)
 option(fplbase_build_samples "Build the fplbase sample executables."
-       ${flatui_standalone_mode})
+       ${fplbase_standalone_mode})
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
 
