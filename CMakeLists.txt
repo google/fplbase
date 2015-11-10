@@ -188,13 +188,6 @@ add_custom_target(fplbase_generated_includes DEPENDS
 set_property(TARGET fplbase_generated_includes PROPERTY FPLBASE_DIR
              ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 
-# Build rule that uses make to build the assets.
-add_custom_target(fplbase_assets
-  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_assets.py
-                 --flatc $<TARGET_FILE:flatc>
-                 --output ${CMAKE_BINARY_DIR}/fplbase_assets
-  DEPENDS flatc ${CWEBP_TARGET})
-
 
 if(APPLE)
   find_library(OPENGL_LIBRARIES NAMES GL GLU)
@@ -284,7 +277,7 @@ function(fplbase_common_config target)
   mathfu_configure_flags(${target})
 
   # Dependencies for the executable target.
-  add_dependencies(${target} fplbase_generated_includes fplbase_assets)
+  add_dependencies(${target} fplbase_generated_includes)
   target_link_libraries(${target} ${OPENGL_LIBRARIES} webp)
 endfunction()
 
