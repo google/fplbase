@@ -18,7 +18,7 @@
 #include "fplbase/input.h"
 #include <cassert>
 
-// This is a sample that displays a colored quad.
+// This is a sample that displays a colored triangle.
 //
 // It demonstrates usage of:
 // - fpl::Renderer to load shaders from strings and setup rendering.
