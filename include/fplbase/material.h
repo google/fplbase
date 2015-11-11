@@ -20,7 +20,7 @@
 
 #include "fplbase/config.h"  // Must come first.
 
-namespace fpl {
+namespace fplbase {
 
 class Renderer;
 class Texture;
@@ -32,7 +32,6 @@ enum BlendMode {
   kBlendModeAdd,
   kBlendModeAddAlpha,
   kBlendModeMultiply,
-
   kBlendModeCount  // Must be at end.
 };
 
@@ -59,6 +58,6 @@ class Material {
   BlendMode blend_mode_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_MATERIAL_H

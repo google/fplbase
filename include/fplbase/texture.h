@@ -23,11 +23,7 @@
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
-namespace fpl {
-
-using mathfu::vec2;
-using mathfu::vec2i;
-using mathfu::vec4;
+namespace fplbase {
 
 enum TextureFormat {
   kFormatAuto = 0,  // The default, picks based on loaded data.
@@ -36,7 +32,6 @@ enum TextureFormat {
   kFormat5551,
   kFormat565,
   kFormatLuminance,
-
   kFormatCount  // Must be at end.
 };
 
@@ -56,7 +51,7 @@ class Texture : public AsyncResource {
         id_(0),
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),
-        uv_(vec4(0.0f, 0.0f, 1.0f, 1.0f)),
+        uv_(mathfu::vec4(0.0f, 0.0f, 1.0f, 1.0f)),
         scale_(mathfu::kOnes2f),
         has_alpha_(false),
         mipmaps_(mipmaps),
@@ -64,7 +59,7 @@ class Texture : public AsyncResource {
   ~Texture() { Delete(); }
 
   virtual void Load();
-  virtual void LoadFromMemory(const uint8_t *data, const vec2i &size,
+  virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i &size,
                               bool has_alpha);
   virtual void Finalize();
 
@@ -76,8 +71,9 @@ class Texture : public AsyncResource {
 
   // Create a texture from a memory buffer containing xsize * ysize RGBA pixels.
   // Return 0 if not a power of two in size.
-  static TextureHandle CreateTexture(const uint8_t *buffer, const vec2i &size,
-                                     bool has_alpha, bool mipmaps = true,
+  static TextureHandle CreateTexture(const uint8_t *buffer,
+                                     const mathfu::vec2i &size, bool has_alpha,
+                                     bool mipmaps = true,
                                      TextureFormat desired = kFormatAuto);
 
   // Update (part of) the current texture with new pixel data.
@@ -90,7 +86,7 @@ class Texture : public AsyncResource {
   // Returns RGBA array of returned dimensions or nullptr if the
   // format is not understood.
   // You must free() the returned pointer when done.
-  static uint8_t *UnpackTGA(const void *tga_buf, vec2i *dimensions,
+  static uint8_t *UnpackTGA(const void *tga_buf, mathfu::vec2i *dimensions,
                             bool *has_alpha);
 
   // Unpacks a memory buffer containing a Webp format file.
@@ -100,34 +96,38 @@ class Texture : public AsyncResource {
   // Can apply scaling with scale parameter. A scale value have to be in power
   // of two to have correct texture sizes.
   static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
-                             const vec2 &scale, vec2i *dimensions,
-                             bool *has_alpha);
+                             const mathfu::vec2 &scale,
+                             mathfu::vec2i *dimensions, bool *has_alpha);
 
   // Loads the file in filename, and then unpacks the file format (supports
   // TGA and WebP).
   // last_error() contains more information if nullptr is returned.
   // You must free() the returned pointer when done.
   // Can apply scaling with scale parameter.
-  static uint8_t *LoadAndUnpackTexture(const char *filename, const vec2 &scale,
-                                       vec2i *dimensions, bool *has_alpha);
+  static uint8_t *LoadAndUnpackTexture(const char *filename,
+                                       const mathfu::vec2 &scale,
+                                       mathfu::vec2i *dimensions,
+                                       bool *has_alpha);
 
   // Utility functions to convert 32bit RGBA to 16bit.
   // You must delete[] the return value afterwards.
-  static uint16_t *Convert8888To5551(const uint8_t *buffer, const vec2i &size);
-  static uint16_t *Convert888To565(const uint8_t *buffer, const vec2i &size);
+  static uint16_t *Convert8888To5551(const uint8_t *buffer,
+                                     const mathfu::vec2i &size);
+  static uint16_t *Convert888To565(const uint8_t *buffer,
+                                   const mathfu::vec2i &size);
 
   const TextureHandle &id() const { return id_; }
-  const vec2i &size() const { return size_; }
+  const mathfu::vec2i &size() const { return size_; }
 
-  const vec4 &uv() const { return uv_; }
-  void set_uv(const vec4 &uv) { uv_ = uv; }
+  const mathfu::vec4 &uv() const { return uv_; }
+  void set_uv(const mathfu::vec4 &uv) { uv_ = uv; }
 
-  const vec2 &scale() const { return scale_; }
-  void set_scale(const vec2 &scale) { scale_ = scale; }
+  const mathfu::vec2 &scale() const { return scale_; }
+  void set_scale(const mathfu::vec2 &scale) { scale_ = scale; }
 
-  const vec2i &original_size() const { return original_size_; }
-  void set_original_size(const vec2i &size) { original_size_ = size; }
-  void SetOriginalSizeIfNotYetSet(const vec2i &size) {
+  const mathfu::vec2i &original_size() const { return original_size_; }
+  void set_original_size(const mathfu::vec2i &size) { original_size_ = size; }
+  void SetOriginalSizeIfNotYetSet(const mathfu::vec2i &size) {
     if (original_size_.x() == 0 && original_size_.y() == 0) {
       original_size_ = size;
     }
@@ -135,15 +135,15 @@ class Texture : public AsyncResource {
 
  private:
   TextureHandle id_;
-  vec2i size_;
-  vec2i original_size_;
-  vec4 uv_;
-  vec2 scale_;
+  mathfu::vec2i size_;
+  mathfu::vec2i original_size_;
+  mathfu::vec4 uv_;
+  mathfu::vec2 scale_;
   bool has_alpha_;
   bool mipmaps_;
   TextureFormat desired_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_TEXTURE_H

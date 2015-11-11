@@ -24,7 +24,7 @@
 #include "fplbase/fpl_common.h"
 #include "fplbase/renderer.h"
 
-namespace fpl {
+namespace fplbase {
 
 /// @class AssetManager
 /// @brief Central place to own game assets loaded from disk.
@@ -153,7 +153,7 @@ class AssetManager {
   ///
   /// By setting the scaling factor, an application save a memory footprint
   /// on low RAM devices.
-  void SetTextureScale(const vec2 &scale) { texture_scale_ = scale; }
+  void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
@@ -164,9 +164,9 @@ class AssetManager {
   std::map<std::string, Material *> material_map_;
   std::map<std::string, Mesh *> mesh_map_;
   AsyncLoader loader_;
-  vec2 texture_scale_;
+  mathfu::vec2 texture_scale_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_ASSET_MANAGER_H

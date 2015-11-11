@@ -19,7 +19,7 @@
 
 #include "keyboard_scancodes.h"
 
-namespace fpl {
+namespace fplbase {
 
 /**
  *  \brief The SDL keyboard scancode representation.
@@ -40,7 +40,6 @@ typedef enum {
    *  These values are from usage page 0x07 (USB keyboard page).
    */
   /* @{ */
-
   FPL_SCANCODE_A = 4,
   FPL_SCANCODE_B = 5,
   FPL_SCANCODE_C = 6,
@@ -67,7 +66,6 @@ typedef enum {
   FPL_SCANCODE_X = 27,
   FPL_SCANCODE_Y = 28,
   FPL_SCANCODE_Z = 29,
-
   FPL_SCANCODE_1 = 30,
   FPL_SCANCODE_2 = 31,
   FPL_SCANCODE_3 = 32,
@@ -78,13 +76,11 @@ typedef enum {
   FPL_SCANCODE_8 = 37,
   FPL_SCANCODE_9 = 38,
   FPL_SCANCODE_0 = 39,
-
   FPL_SCANCODE_RETURN = 40,
   FPL_SCANCODE_ESCAPE = 41,
   FPL_SCANCODE_BACKSPACE = 42,
   FPL_SCANCODE_TAB = 43,
   FPL_SCANCODE_SPACE = 44,
-
   FPL_SCANCODE_MINUS = 45,
   FPL_SCANCODE_EQUALS = 46,
   FPL_SCANCODE_LEFTBRACKET = 47,
@@ -137,9 +133,7 @@ typedef enum {
   FPL_SCANCODE_COMMA = 54,
   FPL_SCANCODE_PERIOD = 55,
   FPL_SCANCODE_SLASH = 56,
-
   FPL_SCANCODE_CAPSLOCK = 57,
-
   FPL_SCANCODE_F1 = 58,
   FPL_SCANCODE_F2 = 59,
   FPL_SCANCODE_F3 = 60,
@@ -152,7 +146,6 @@ typedef enum {
   FPL_SCANCODE_F10 = 67,
   FPL_SCANCODE_F11 = 68,
   FPL_SCANCODE_F12 = 69,
-
   FPL_SCANCODE_PRINTSCREEN = 70,
   FPL_SCANCODE_SCROLLLOCK = 71,
   FPL_SCANCODE_PAUSE = 72,
@@ -167,7 +160,6 @@ typedef enum {
   FPL_SCANCODE_LEFT = 80,
   FPL_SCANCODE_DOWN = 81,
   FPL_SCANCODE_UP = 82,
-
   FPL_SCANCODE_NUMLOCKCLEAR = 83, /**< num lock on PC, clear on Mac keyboards
                                    */
   FPL_SCANCODE_KP_DIVIDE = 84,
@@ -186,7 +178,6 @@ typedef enum {
   FPL_SCANCODE_KP_9 = 97,
   FPL_SCANCODE_KP_0 = 98,
   FPL_SCANCODE_KP_PERIOD = 99,
-
   FPL_SCANCODE_NONUSBACKSLASH = 100, /**< This is the additional key that ISO
                                       *   keyboards have over ANSI ones,
                                       *   located between left shift and Y.
@@ -197,7 +188,7 @@ typedef enum {
                                       *   LESS-THAN SIGN and GREATER-THAN SIGN
                                       *   in a Swiss German, German, or French
                                       *   layout. */
-  FPL_SCANCODE_APPLICATION = 101,    /**< windows contextual menu, compose */
+  FPL_SCANCODE_APPLICATION = 101, /**< windows contextual menu, compose */
   FPL_SCANCODE_POWER = 102, /**< The USB document says this is a status flag,
                              *   not a physical key - but some Mac keyboards
                              *   do have a power key. */
@@ -234,7 +225,6 @@ typedef enum {
   /*     FPL_SCANCODE_LOCKINGSCROLLLOCK = 132, */
   FPL_SCANCODE_KP_COMMA = 133,
   FPL_SCANCODE_KP_EQUALSAS400 = 134,
-
   FPL_SCANCODE_INTERNATIONAL1 = 135, /**< used on Asian keyboards, see
                                           footnotes in USB doc */
   FPL_SCANCODE_INTERNATIONAL2 = 136,
@@ -245,16 +235,15 @@ typedef enum {
   FPL_SCANCODE_INTERNATIONAL7 = 141,
   FPL_SCANCODE_INTERNATIONAL8 = 142,
   FPL_SCANCODE_INTERNATIONAL9 = 143,
-  FPL_SCANCODE_LANG1 = 144, /**< Hangul/English toggle */
-  FPL_SCANCODE_LANG2 = 145, /**< Hanja conversion */
-  FPL_SCANCODE_LANG3 = 146, /**< Katakana */
-  FPL_SCANCODE_LANG4 = 147, /**< Hiragana */
-  FPL_SCANCODE_LANG5 = 148, /**< Zenkaku/Hankaku */
-  FPL_SCANCODE_LANG6 = 149, /**< reserved */
-  FPL_SCANCODE_LANG7 = 150, /**< reserved */
-  FPL_SCANCODE_LANG8 = 151, /**< reserved */
-  FPL_SCANCODE_LANG9 = 152, /**< reserved */
-
+  FPL_SCANCODE_LANG1 = 144,    /**< Hangul/English toggle */
+  FPL_SCANCODE_LANG2 = 145,    /**< Hanja conversion */
+  FPL_SCANCODE_LANG3 = 146,    /**< Katakana */
+  FPL_SCANCODE_LANG4 = 147,    /**< Hiragana */
+  FPL_SCANCODE_LANG5 = 148,    /**< Zenkaku/Hankaku */
+  FPL_SCANCODE_LANG6 = 149,    /**< reserved */
+  FPL_SCANCODE_LANG7 = 150,    /**< reserved */
+  FPL_SCANCODE_LANG8 = 151,    /**< reserved */
+  FPL_SCANCODE_LANG9 = 152,    /**< reserved */
   FPL_SCANCODE_ALTERASE = 153, /**< Erase-Eaze */
   FPL_SCANCODE_SYSREQ = 154,
   FPL_SCANCODE_CANCEL = 155,
@@ -267,7 +256,6 @@ typedef enum {
   FPL_SCANCODE_CLEARAGAIN = 162,
   FPL_SCANCODE_CRSEL = 163,
   FPL_SCANCODE_EXSEL = 164,
-
   FPL_SCANCODE_KP_00 = 176,
   FPL_SCANCODE_KP_000 = 177,
   FPL_SCANCODE_THOUSANDSSEPARATOR = 178,
@@ -314,7 +302,6 @@ typedef enum {
   FPL_SCANCODE_KP_OCTAL = 219,
   FPL_SCANCODE_KP_DECIMAL = 220,
   FPL_SCANCODE_KP_HEXADECIMAL = 221,
-
   FPL_SCANCODE_LCTRL = 224,
   FPL_SCANCODE_LSHIFT = 225,
   FPL_SCANCODE_LALT = 226, /**< alt, option */
@@ -323,7 +310,6 @@ typedef enum {
   FPL_SCANCODE_RSHIFT = 229,
   FPL_SCANCODE_RALT = 230, /**< alt gr, option */
   FPL_SCANCODE_RGUI = 231, /**< windows, command (apple), meta */
-
   FPL_SCANCODE_MODE = 257, /**< I'm not sure if this is really not covered
                             *   by any of the above, but since there's a
                             *   special KMOD_MODE for it I'm adding it here
@@ -337,7 +323,6 @@ typedef enum {
    *  These values are mapped from usage page 0x0C (USB consumer page).
    */
   /* @{ */
-
   FPL_SCANCODE_AUDIONEXT = 258,
   FPL_SCANCODE_AUDIOPREV = 259,
   FPL_SCANCODE_AUDIOSTOP = 260,
@@ -364,7 +349,6 @@ typedef enum {
    *  These are values that Christian Walther added (for mac keyboard?).
    */
   /* @{ */
-
   FPL_SCANCODE_BRIGHTNESSDOWN = 275,
   FPL_SCANCODE_BRIGHTNESSUP = 276,
   FPL_SCANCODE_DISPLAYSWITCH = 277, /**< display mirroring/dual display
@@ -374,18 +358,16 @@ typedef enum {
   FPL_SCANCODE_KBDILLUMUP = 280,
   FPL_SCANCODE_EJECT = 281,
   FPL_SCANCODE_SLEEP = 282,
-
   FPL_SCANCODE_APP1 = 283,
   FPL_SCANCODE_APP2 = 284,
 
   /* @} */ /* Walther keys */
 
   /* Add any other keys here. */
-
   SDL_NUM_SCANCODES = 512 /**< not a key, just marks the number of scancodes
                                for array bounds */
 } FPL_SCANCODE;
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_KEYBOARD_SCANCODES_H

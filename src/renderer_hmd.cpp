@@ -18,7 +18,9 @@
 #include "fplbase/renderer_hmd.h"
 #include "fplbase/utilities.h"
 
-namespace fpl {
+using mathfu::vec2i;
+
+namespace fplbase {
 
 // The framebuffer that is used for undistortion in Head Mounted Displays.
 // After rendering to it, passed to Cardboard's undistortTexture call, which
@@ -119,4 +121,4 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
   }
 }
 
-}  // namespace fpl
+}  // namespace fplbase

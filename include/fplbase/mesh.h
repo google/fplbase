@@ -23,7 +23,7 @@
 #include "fplbase/shader.h"
 #include "mathfu/constants.h"
 
-namespace fpl {
+namespace fplbase {
 
 class Renderer;
 
@@ -45,12 +45,15 @@ enum Attribute {
 /// A mesh instance contains a VBO and one or more IBO's.
 class Mesh {
  public:
-  enum Primitive { kTriangles, kLines };
+  enum Primitive {
+    kTriangles,
+    kLines
+  };
 
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
   Mesh(const void *vertex_data, int count, int vertex_size,
-       const Attribute *format, vec3 *max_position = nullptr,
-       vec3 *min_position = nullptr);
+       const Attribute *format, mathfu::vec3 *max_position = nullptr,
+       mathfu::vec3 *min_position = nullptr);
   ~Mesh();
 
   /// @brief Add an index buffer object to be part of this mesh
@@ -110,9 +113,9 @@ class Mesh {
   // viewport, mvp, camera_position arugments need to be a pointer to an array
   // with 2 entries for left and right parameters.
   void RenderStereo(Renderer &renderer, const Shader *shader,
-                    const vec4i *viewport, const mat4 *mvp,
-                    const vec3 *camera_position, bool ignore_material = false,
-                    size_t instances = 1);
+                    const mathfu::vec4i *viewport, const mathfu::mat4 *mvp,
+                    const mathfu::vec3 *camera_position,
+                    bool ignore_material = false, size_t instances = 1);
 
   /// @brief Get the material associated with the IBO at the given index.
   ///
@@ -154,9 +157,12 @@ class Mesh {
   /// @param top_right The bottom left coordinate of the Quad.
   /// @param tex_bottom_left The texture coordinates at the bottom left.
   /// @param tex_top_right The texture coordinates at the top right.
-  static void RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
-                                 const vec2 &tex_bottom_left = vec2(0, 0),
-                                 const vec2 &tex_top_right = vec2(1, 1));
+  static void RenderAAQuadAlongX(const mathfu::vec3 &bottom_left,
+                                 const mathfu::vec3 &top_right,
+                                 const mathfu::vec2 &tex_bottom_left =
+                                     mathfu::vec2(0, 0),
+                                 const mathfu::vec2 &tex_top_right =
+                                     mathfu::vec2(1, 1));
 
   /// @brief Convenience method for rendering a Quad with nine patch settings.
   ///
@@ -169,10 +175,10 @@ class Mesh {
   /// @param top_right The top right coordinate of the Quad.
   /// @param texture_size The size of the texture used by the patches.
   /// @param patch_info Defines how the patches are set up.
-  static void RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
-                                          const vec3 &top_right,
-                                          const vec2i &texture_size,
-                                          const vec4 &patch_info);
+  static void RenderAAQuadAlongXNinePatch(const mathfu::vec3 &bottom_left,
+                                          const mathfu::vec3 &top_right,
+                                          const mathfu::vec2i &texture_size,
+                                          const mathfu::vec4 &patch_info);
 
   /// @brief Compute normals and tangents given position and texcoords.
   ///
@@ -189,7 +195,7 @@ class Mesh {
   template <typename T>
   static void ComputeNormalsTangents(T *vertices, const unsigned short *indices,
                                      int numverts, int numindices) {
-    std::unique_ptr<vec3[]> binormals(new vec3[numverts]);
+    std::unique_ptr<mathfu::vec3[]> binormals(new mathfu::vec3[numverts]);
 
     // set all normals to 0, as we'll accumulate
     for (int i = 0; i < numverts; i++) {
@@ -207,22 +213,22 @@ class Mesh {
       auto &v2 = vertices[indices[i + 2]];
       // The cross product of two vectors along the triangle surface from the
       // first vertex gives us this triangle's normal.
-      auto q1 = vec3(v1.pos) - vec3(v0.pos);
-      auto q2 = vec3(v2.pos) - vec3(v0.pos);
+      auto q1 = mathfu::vec3(v1.pos) - mathfu::vec3(v0.pos);
+      auto q2 = mathfu::vec3(v2.pos) - mathfu::vec3(v0.pos);
       auto norm = normalize(cross(q1, q2));
       // Contribute the triangle normal into all 3 verts:
-      v0.norm = vec3(v0.norm) + norm;
-      v1.norm = vec3(v1.norm) + norm;
-      v2.norm = vec3(v2.norm) + norm;
+      v0.norm = mathfu::vec3(v0.norm) + norm;
+      v1.norm = mathfu::vec3(v1.norm) + norm;
+      v2.norm = mathfu::vec3(v2.norm) + norm;
       // Similarly create uv space vectors:
-      auto uv1 = vec2(v1.tc) - vec2(v0.tc);
-      auto uv2 = vec2(v2.tc) - vec2(v0.tc);
+      auto uv1 = mathfu::vec2(v1.tc) - mathfu::vec2(v0.tc);
+      auto uv2 = mathfu::vec2(v2.tc) - mathfu::vec2(v0.tc);
       float m = 1 / (uv1.x() * uv2.y() - uv2.x() * uv1.y());
-      auto tangent = vec4((uv2.y() * q1 - uv1.y() * q2) * m, 0);
+      auto tangent = mathfu::vec4((uv2.y() * q1 - uv1.y() * q2) * m, 0);
       auto binorm = (uv1.x() * q2 - uv2.x() * q1) * m;
-      v0.tangent = vec4(v0.tangent) + tangent;
-      v1.tangent = vec4(v1.tangent) + tangent;
-      v2.tangent = vec4(v2.tangent) + tangent;
+      v0.tangent = mathfu::vec4(v0.tangent) + tangent;
+      v1.tangent = mathfu::vec4(v1.tangent) + tangent;
+      v2.tangent = mathfu::vec4(v2.tangent) + tangent;
       binormals[indices[i + 0]] = binorm;
       binormals[indices[i + 1]] = binorm;
       binormals[indices[i + 2]] = binorm;
@@ -230,13 +236,13 @@ class Mesh {
     // Normalize per vertex tangent space constributions, and pack tangent /
     // binormal into a 4 component tangent.
     for (int i = 0; i < numverts; i++) {
-      auto norm = vec3(vertices[i].norm);
-      auto tangent = vec4(vertices[i].tangent);
+      auto norm = mathfu::vec3(vertices[i].norm);
+      auto tangent = mathfu::vec4(vertices[i].tangent);
       // Renormalize all 3 axes:
       norm = normalize(norm);
-      tangent = vec4(normalize(tangent.xyz()), 0);
+      tangent = mathfu::vec4(normalize(tangent.xyz()), 0);
       binormals[i] = normalize(binormals[i]);
-      tangent = vec4(
+      tangent = mathfu::vec4(
           // Gram-Schmidt orthogonalize xyz components:
           normalize(tangent.xyz() - norm * dot(norm, tangent.xyz())),
           // The w component is the handedness, set as difference between the
@@ -344,6 +350,6 @@ class Mesh {
   std::vector<uint8_t> shader_bone_indices_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPL_MESH_H

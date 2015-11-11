@@ -17,7 +17,13 @@
 #include "fplbase/render_target.h"
 #include "fplbase/utilities.h"
 
-namespace fpl {
+using mathfu::mat4;
+using mathfu::vec2;
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+
+namespace fplbase {
 
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
@@ -398,7 +404,7 @@ void Renderer::SetCulling(CullingMode mode) {
 vec2i Renderer::GetViewportSize() {
 #if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
   // Check HW scaler setting and change a viewport size if they are set.
-  vec2i scaled_size = AndroidGetScalerResolution();
+  vec2i scaled_size = fplbase::AndroidGetScalerResolution();
   vec2i viewport_size =
       scaled_size.x() && scaled_size.y() ? scaled_size : window_size_;
   return viewport_size;
@@ -423,7 +429,7 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION
 #define GL_INVALID_FRAMEBUFFER_OPERATION GL_INVALID_FRAMEBUFFER_OPERATION_EXT
@@ -450,8 +456,8 @@ void LogGLError(const char *file, int line, const char *call) {
       err_str = "GL_OUT_OF_MEMORY";
       break;
   }
-  LogError(fpl::kError, "%s(%d): OpenGL Error: %s from %s", file, line, err_str,
-           call);
+  LogError(fplbase::kError, "%s(%d): OpenGL Error: %s from %s", file, line,
+           err_str, call);
   assert(0);
 }
 

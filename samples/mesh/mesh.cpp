@@ -24,26 +24,26 @@
 // Mesh is a sample that draws from mesh of a red hot shrimp on a white box.
 //
 // It demonstrates the usage of:
-// - fpl::asset_manager to load mesh as asset.
-// - fpl::Renderer to setup rendering and transform models.
-// - fpl::InputSystem to query for exit events and elapsed time.
+// - asset_manager to load mesh as asset.
+// - Renderer to setup rendering and transform models.
+// - InputSystem to query for exit events and elapsed time.
 
 extern "C" int FPL_main(int /*argc*/, char **argv) {
-  fpl::Renderer renderer;
+  fplbase::Renderer renderer;
   renderer.Initialize(mathfu::vec2i(800, 600), "Simple mesh test");
 
-  fpl::InputSystem input;
+  fplbase::InputSystem input;
   input.Initialize();
 
-  bool result = fpl::ChangeToUpstreamDir(argv[0], "assets");
+  bool result = fplbase::ChangeToUpstreamDir(argv[0], "assets");
   (void)result;
   assert(result);
 
-  fpl::AssetManager assetMgr(renderer);
-  fpl::Shader *shader = assetMgr.LoadShader("mesh");
+  fplbase::AssetManager assetMgr(renderer);
+  fplbase::Shader *shader = assetMgr.LoadShader("mesh");
   assert(shader);
 
-  fpl::Mesh *mesh = assetMgr.LoadMesh("meshes/sushi_shrimp.fplmesh");
+  fplbase::Mesh *mesh = assetMgr.LoadMesh("meshes/sushi_shrimp.fplmesh");
   assert(mesh);
 
   assetMgr.StartLoadingTextures();
@@ -51,10 +51,10 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
   }
 
   while (!(input.exit_requested() ||
-           input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
+           input.GetButton(fplbase::FPLK_AC_BACK).went_down())) {
     renderer.AdvanceFrame(input.minimized(), input.Time());
     input.AdvanceFrame(&renderer.window_size());
-    renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));
+    renderer.ClearFrameBuffer(mathfu::vec4(0.0, 0.0f, 0.0, 1.0f));
 
     // generate animation matrix
     auto time = static_cast<float>(input.Time());

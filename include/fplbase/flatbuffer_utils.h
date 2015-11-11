@@ -25,7 +25,7 @@
 /// @brief Contains helper functions for loading the structs in common.fbs from
 ///        Flatbuffer files.
 
-namespace fpl {
+namespace fplbase {
 
 /// @brief Converts a Vec2.
 ///
@@ -111,6 +111,6 @@ inline mathfu::AffineTransform LoadAffine(const Mat3x4* m) {
       mathfu::mat4(c0, c1, c2, mathfu::kAxisW4f).Transpose());
 }
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_FLATBUFFER_UTILS_H

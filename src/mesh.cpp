@@ -16,7 +16,14 @@
 #include "fplbase/mesh.h"
 #include "fplbase/renderer.h"
 
-namespace fpl {
+using mathfu::mat4;
+using mathfu::vec2;
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::vec4i;
+
+namespace fplbase {
 
 void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                          const char *buffer) {
@@ -368,4 +375,4 @@ void Mesh::GatherShaderTransforms(
   }
 }
 
-}  // namespace fpl
+}  // namespace fplbase
