@@ -189,6 +189,9 @@ void SetPerformanceMode(PerformanceMode new_mode);
 // Returns the current performance mode.
 PerformanceMode GetPerformanceMode();
 
+// Relaunch the application.
+void RelaunchApplication();
+
 #ifdef __ANDROID__
 // Sets the specific parameters used by high-performance mode on Android.
 // android_key_code is the key to press repeatedly, to keep the CPU active.

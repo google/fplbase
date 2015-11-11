@@ -15,12 +15,17 @@
 #ifndef FPLBASE_RENDERER_ANDROID_H
 #define FPLBASE_RENDERER_ANDROID_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 namespace fpl {
 
 #ifdef __ANDROID__
 void AndroidPreCreateWindow();
+// Occasionally the scaler setting API would fail on some Android devices.
+// In such case, the caller may check if the API was success by checking
+// if AndroidGetScalerResolution() returns expected resolution.
+// The caller may handle that as an error situation (e.g. re-launching an app
+// etc.).
 void AndroidSetScalerResolution(const vec2i& resolution);
 const vec2i& AndroidGetScalerResolution();
 #endif
