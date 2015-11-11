@@ -36,7 +36,7 @@ static AAssetManager *g_asset_manager = nullptr;
 #endif
 #endif
 
-namespace fpl {
+namespace fplbase {
 
 #ifdef FPL_BASE_BACKEND_SDL
 static_assert(kApplication ==
@@ -149,8 +149,8 @@ static jobject GetSharedPreference(JNIEnv *env, jobject activity) {
 bool LoadPreferences(const char *filename, std::string *dest) {
 #if defined(__ANDROID__)
   // Use Android preference API to store blob as a Java String.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
@@ -196,8 +196,8 @@ bool LoadPreferences(const char *filename, std::string *dest) {
 int32_t LoadPreference(const char *key, int32_t initial_value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
@@ -337,8 +337,8 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 bool SavePreferences(const char *filename, const void *data, size_t size) {
 #if defined(__ANDROID__)
   // Use Android preference API to store blob as a Java String.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
@@ -385,8 +385,8 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
 bool SavePreference(const char *key, int32_t value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
@@ -503,8 +503,8 @@ std::string FileNameFromEnumName(const char *const enum_name,
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidSystemFeature(const char *feature_name) {
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
   jmethodID has_system_feature =
       env->GetMethodID(fpl_class, "hasSystemFeature", "(Ljava/lang/String;)Z");
@@ -521,7 +521,7 @@ bool AndroidSystemFeature(const char *feature_name) {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 int32_t AndroidGetAPILevel() {
   // Retrieve API level through JNI.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  JNIEnv *env = AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android/os/Build$VERSION");
   jfieldID apilevel_id = env->GetStaticFieldID(build_class, "SDK_INT", "I");
   jint apilevel = env->GetStaticIntField(build_class, apilevel_id);
@@ -543,7 +543,7 @@ bool TouchScreenDevice() {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
   // Retrieve device name through JNI.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  JNIEnv *env = AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android/os/Build");
   jfieldID model_id =
       env->GetStaticFieldID(build_class, "MODEL", "Ljava/lang/String;");
@@ -974,7 +974,7 @@ const HighPerformanceParams &GetHighPerformanceParameters() {
 
 void RelaunchApplication() {
   JNIEnv *env = AndroidGetJNIEnv();
-  jobject activity = AndroidGetActivity();
+  jobject activity = fplbase::AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
 
   jmethodID mid_relaunch = env->GetMethodID(fpl_class, "relaunch", "()V");
@@ -994,4 +994,4 @@ void SetPerformanceMode(PerformanceMode new_mode) {
 
 PerformanceMode GetPerformanceMode() { return performance_mode; }
 
-}  // namespace fpl
+}  // namespace fplbase

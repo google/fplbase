@@ -22,20 +22,20 @@
 // Game is a sample that displays a textured quad.
 //
 // It demonstrates usage of:
-// - fpl::asset_manager to load textures and shaders.
-// - fpl::Renderer to setup rendering and transform models.
-// - fpl::InputSystem to query for exit events and elapsed time.
+// - asset_manager to load textures and shaders.
+// - Renderer to setup rendering and transform models.
+// - InputSystem to query for exit events and elapsed time.
 
 extern "C" int FPL_main(int /*argc*/, char **argv) {
-  fpl::InputSystem input;
+  fplbase::InputSystem input;
   input.Initialize();
 
-  fpl::Renderer renderer;
+  fplbase::Renderer renderer;
   renderer.Initialize(mathfu::vec2i(800, 600), "Simple asset loading test");
 
-  fpl::AssetManager asset_manager(renderer);
+  fplbase::AssetManager asset_manager(renderer);
 
-  bool result = fpl::ChangeToUpstreamDir(argv[0], "assets");
+  bool result = fplbase::ChangeToUpstreamDir(argv[0], "assets");
   (void)result;
   assert(result);
 
@@ -51,11 +51,11 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
   }
 
   while (!(input.exit_requested() ||
-           input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
+           input.GetButton(fplbase::FPLK_AC_BACK).went_down())) {
     renderer.AdvanceFrame(input.minimized(), input.Time());
     input.AdvanceFrame(&renderer.window_size());
 
-    renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));
+    renderer.ClearFrameBuffer(mathfu::vec4(0.0, 0.0f, 0.0, 1.0f));
 
     shader->Set(renderer);
     tex->Set(0);
@@ -71,9 +71,9 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
         mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
         mathfu::mat4::FromRotationMatrix(rotz) *
         mathfu::mat4::FromScaleVector(zoom));
-    fpl::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
-                                  mathfu::vec3(1, 1, 0), mathfu::vec2(0, 0),
-                                  mathfu::vec2(10, 10));
+    fplbase::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
+                                      mathfu::vec3(1, 1, 0), mathfu::vec2(0, 0),
+                                      mathfu::vec2(10, 10));
   }
 
   asset_manager.ClearAllAssets();

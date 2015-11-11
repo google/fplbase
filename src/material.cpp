@@ -16,7 +16,7 @@
 #include "fplbase/material.h"
 #include "fplbase/renderer.h"
 
-namespace fpl {
+namespace fplbase {
 
 void Material::Set(Renderer &renderer) {
   renderer.SetBlendMode(blend_mode_);
@@ -27,4 +27,4 @@ void Material::DeleteTextures() {
   for (size_t i = 0; i < textures_.size(); i++) textures_[i]->Delete();
 }
 
-}  // namespace fpl
+}  // namespace fplbase

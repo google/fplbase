@@ -25,7 +25,7 @@
 /// @brief Contains helper functions for interacting with rendering aspects of
 ///        using a Head Mounted Display device, such as Cardboard.
 
-namespace fpl {
+namespace fplbase {
 
 /// @brief Initializes the framebuffer needed for Head Mounted Display
 ///        undistortion.
@@ -84,7 +84,8 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion);
 /// @param use_undistortion If the undistortion effect should be applied.
 template <typename RenderCallback>
 void HeadMountedDisplayRender(const InputSystem* input_system,
-                              Renderer* renderer, const vec4& clear_color,
+                              Renderer* renderer,
+                              const mathfu::vec4& clear_color,
                               RenderCallback render_callback,
                               bool use_undistortion) {
   HeadMountedDisplayViewSettings view_settings;
@@ -98,12 +99,13 @@ void HeadMountedDisplayRender(const InputSystem* input_system,
 
 template <typename RenderCallback>
 void HeadMountedDisplayRender(const InputSystem* input_system,
-                              Renderer* renderer, const vec4& clear_color,
+                              Renderer* renderer,
+                              const mathfu::vec4& clear_color,
                               RenderCallback render_callback) {
   HeadMountedDisplayRender(input_system, renderer, clear_color, render_callback,
                            true);
 }
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_RENDERER_CARDBOARD_H

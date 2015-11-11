@@ -15,7 +15,7 @@
 #ifndef FPL_COMMON_H
 #define FPL_COMMON_H
 
-namespace fpl {
+namespace fplbase {
 
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
@@ -36,6 +36,6 @@ namespace fpl {
   ((sizeof(a) / sizeof(*(a))) / \
    static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPL_COMMON_H

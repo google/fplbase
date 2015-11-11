@@ -18,7 +18,9 @@
 
 #include "webp/decode.h"
 
-namespace fpl {
+using mathfu::vec2i;
+
+namespace fplbase {
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions) {
   Initialize(dimensions, GL_UNSIGNED_BYTE, true);
@@ -123,7 +125,7 @@ RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
   mathfu::vec2i window_size = renderer.window_size();
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
 #ifdef __ANDROID__
-  vec2i size = AndroidGetScalerResolution();
+  vec2i size = fplbase::AndroidGetScalerResolution();
   if (size.x() && size.y()) {
     window_size = size;
   }
@@ -134,4 +136,4 @@ RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
   return screen_render_target;
 }
 
-}  // namespace fpl
+}  // namespace fplbase

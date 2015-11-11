@@ -21,13 +21,13 @@
 // This is a sample that displays a colored triangle.
 //
 // It demonstrates usage of:
-// - fpl::Renderer to load shaders from strings and setup rendering.
-// - fpl::Mesh for rendering simple geometry.
-// - fpl::InputSystem to query for exit events and elapsed time.
+// - fplbase::Renderer to load shaders from strings and setup rendering.
+// - fplbase::Mesh for rendering simple geometry.
+// - fplbase::InputSystem to query for exit events and elapsed time.
 
 extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
-  fpl::Renderer renderer;
-  fpl::InputSystem input;
+  fplbase::Renderer renderer;
+  fplbase::InputSystem input;
 
   renderer.Initialize(mathfu::vec2i(800, 600), "Simple rendering test");
   input.Initialize();
@@ -45,7 +45,7 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
   assert(shader);
 
   while (!(input.exit_requested() ||
-           input.GetButton(fpl::FPLK_AC_BACK).went_down())) {
+           input.GetButton(fplbase::FPLK_AC_BACK).went_down())) {
     renderer.AdvanceFrame(input.minimized(), input.Time());
     input.AdvanceFrame(&renderer.window_size());
 
@@ -55,8 +55,8 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
     shader->Set(renderer);
 
     // define geometry for a triangle
-    const fpl::Attribute format[] = {fpl::kPosition3f,
-                                     fpl::kEND};
+    const fplbase::Attribute format[] = {fplbase::kPosition3f,
+                                     fplbase::kEND};
     const unsigned short indices[] = {0, 1, 2};
     // clang-format off
     const float vertices[] = {
@@ -66,7 +66,7 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
     };
     // clang-format on
 
-    fpl::Mesh::RenderArray(fpl::Mesh::kTriangles, 3, format,
+    fplbase::Mesh::RenderArray(fplbase::Mesh::kTriangles, 3, format,
                            sizeof(float) * 3, vertices, indices);
   }
 

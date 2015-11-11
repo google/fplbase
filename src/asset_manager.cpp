@@ -21,7 +21,14 @@
 #include "materials_generated.h"
 #include "mesh_generated.h"
 
-namespace fpl {
+using mathfu::mat4;
+using mathfu::vec2;
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::vec4i;
+
+namespace fplbase {
 
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
@@ -279,4 +286,4 @@ void AssetManager::UnloadMesh(const char *filename) {
   delete mesh;
 }
 
-}  // namespace fpl
+}  // namespace fplbase

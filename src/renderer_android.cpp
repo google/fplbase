@@ -31,7 +31,14 @@ extern "C" {
 #undef TARGET_OS_IPHONE
 #endif  // defined(FPL_BASE_BACKEND_SDL)
 
-namespace fpl {
+using mathfu::mat4;
+using mathfu::vec2;
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::vec4i;
+
+namespace fplbase {
 
 // Quick hack for HW scaler setting
 static vec2i g_android_scaler_resolution;
@@ -104,4 +111,4 @@ void AndroidPreCreateWindow() {
 }
 #endif  // FPL_BASE_BACKEND_SDL
 
-}  // namespace fpl
+}  // namespace fplbase

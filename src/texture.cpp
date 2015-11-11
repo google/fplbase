@@ -19,9 +19,10 @@
 #include "mathfu/glsl_mappings.h"
 #include "webp/decode.h"
 
-namespace fpl {
-
+using mathfu::vec2;
 using mathfu::vec2i;
+
+namespace fplbase {
 
 void Texture::Load() {
   data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &has_alpha_);
@@ -90,7 +91,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   // In some Android devices (particulary Galaxy Nexus), there is an issue
   // of glGenerateMipmap() with 16BPP texture format.
   // In that case, we are going to fallback to 888/8888 textures
-  const bool use_16bpp = fpl::MipmapGeneration16bppSupported();
+  const bool use_16bpp = MipmapGeneration16bppSupported();
 
   // TODO(wvo): support default args for mipmap/wrap/trilinear
   GLuint texture_id;
@@ -301,4 +302,4 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   }
 }
 
-}  // namespace fpl
+}  // namespace fplbase
