@@ -70,7 +70,21 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   ANativeWindow* window = Android_JNI_GetNativeWindow();
   ANativeWindow_setBuffersGeometry(window, g_android_scaler_resolution.x(),
                                    g_android_scaler_resolution.y(), 0);
-  return eglCreateWindowSurface(dpy, config, win, attrib_list);
+
+  auto surface = eglCreateWindowSurface(dpy, config, win, attrib_list);
+  // Check surface size if the HW scaler setting was successful.
+  int32_t width;
+  int32_t height;
+  eglQuerySurface(dpy, surface, EGL_WIDTH, &width);
+  eglQuerySurface(dpy, surface, EGL_HEIGHT, &height);
+  if (width != g_android_scaler_resolution.x() ||
+    height != g_android_scaler_resolution.y()) {
+    LogError("Failed to initialize HW scaler.");
+    // Reset scaler resolution.
+    g_android_scaler_resolution.x() = width;
+    g_android_scaler_resolution.y() = height;
+  }
+  return surface;
 }
 
 #ifdef FPL_BASE_BACKEND_SDL

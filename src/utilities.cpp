@@ -834,6 +834,18 @@ void SetHighPerformanceParameters(const HighPerformanceParams &params) {
 const HighPerformanceParams &GetHighPerformanceParameters() {
   return high_performance_params;
 }
+
+void RelaunchApplication() {
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+
+  jmethodID mid_relaunch = env->GetMethodID(fpl_class, "relaunch", "()V");
+  env->CallVoidMethod(activity, mid_relaunch);
+
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+}
 #endif  // __ANDROID
 
 static PerformanceMode performance_mode = kNormalPerformance;
