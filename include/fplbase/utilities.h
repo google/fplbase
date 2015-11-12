@@ -116,6 +116,10 @@ bool SaveFile(const char *filename, const void *data, size_t size);
 bool LoadPreferences(const char *filename, std::string *dest);
 bool SavePreferences(const char *filename, const void *data, size_t size);
 
+// Load/Save single integer value to a preference.
+int32_t LoadPreference(const char* key, int32_t initial_value);
+bool SavePreference(const char* key, int32_t value);
+
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.

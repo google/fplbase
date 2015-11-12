@@ -115,14 +115,9 @@ bool LoadFile(const char *filename, std::string *dest) {
 #error Please define a backend implementation for LoadFile.
 #endif
 
-#ifdef FPL_BASE_BACKEND_SDL
-bool LoadPreferences(const char *filename, std::string *dest) {
 #if defined(__ANDROID__)
-  // Use Android preference API to store blob as a Java String.
-  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+static jobject GetSharedPreference(JNIEnv *env, jobject activity) {
   jclass activity_class = env->GetObjectClass(activity);
-  // Retrieve a preference.
   jmethodID get_preferences = env->GetMethodID(
       activity_class, "getSharedPreferences",
       "(Ljava/lang/String;I)Landroid/content/SharedPreferences;");
@@ -130,6 +125,19 @@ bool LoadPreferences(const char *filename, std::string *dest) {
   // The last value: Content.MODE_PRIVATE = 0.
   jobject preference =
       env->CallObjectMethod(activity, get_preferences, file, 0);
+  env->DeleteLocalRef(activity_class);
+  env->DeleteLocalRef(file);
+  return preference;
+}
+#endif
+
+#ifdef FPL_BASE_BACKEND_SDL
+bool LoadPreferences(const char *filename, std::string *dest) {
+#if defined(__ANDROID__)
+  // Use Android preference API to store blob as a Java String.
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
   // Retrieve blob as a String.
@@ -158,8 +166,6 @@ bool LoadPreferences(const char *filename, std::string *dest) {
   env->DeleteLocalRef(key);
   env->DeleteLocalRef(preference_class);
   env->DeleteLocalRef(preference);
-  env->DeleteLocalRef(file);
-  env->DeleteLocalRef(activity_class);
   env->DeleteLocalRef(activity);
 
   return ret;
@@ -172,6 +178,33 @@ bool LoadPreferences(const char *filename, std::string *dest) {
   return LoadFile(filename, dest);
 }
 #endif
+
+int32_t LoadPreference(const char* key, int32_t initial_value) {
+#ifdef __ANDROID__
+  // Use Android preference API to store an integer value.
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jobject preference = GetSharedPreference(env, activity);
+  jclass preference_class = env->GetObjectClass(preference);
+
+  // Retrieve blob as a String.
+  jstring pref_key = env->NewStringUTF(key);
+  jmethodID get_int= env->GetMethodID(
+      preference_class, "getInt",
+      "(Ljava/lang/String;I)I");
+  auto value = env->CallIntMethod(preference, get_int, pref_key, initial_value);
+
+  // Release objects references.
+  env->DeleteLocalRef(pref_key);
+  env->DeleteLocalRef(preference_class);
+  env->DeleteLocalRef(preference);
+  env->DeleteLocalRef(activity);
+  return value;
+#else
+  (void)key;
+  return initial_value;
+#endif
+}
 
 bool LoadFileWithIncludesHelper(const char *filename, std::string *dest,
                                 std::string *failedfilename,
@@ -293,14 +326,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
   // Use Android preference API to store blob as a Java String.
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
-  jclass activity_class = env->GetObjectClass(activity);
-  // Retrieve a preference.
-  jmethodID get_preferences = env->GetMethodID(
-      activity_class, "getSharedPreferences",
-      "(Ljava/lang/String;I)Landroid/content/SharedPreferences;");
-  jstring file = env->NewStringUTF("preference");
-  jobject preference =
-      env->CallObjectMethod(activity, get_preferences, file, 0);
+  jobject preference = GetSharedPreference(env, activity);
   jclass preference_class = env->GetObjectClass(preference);
 
   // Retrieve an editor.
@@ -330,8 +356,6 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
   env->DeleteLocalRef(editor);
   env->DeleteLocalRef(preference_class);
   env->DeleteLocalRef(preference);
-  env->DeleteLocalRef(file);
-  env->DeleteLocalRef(activity_class);
   env->DeleteLocalRef(activity);
 
   return ret;
@@ -344,6 +368,48 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
   return SaveFile(filename, data, size);
 }
 #endif
+
+bool SavePreference(const char* key, int32_t value) {
+#ifdef __ANDROID__
+  // Use Android preference API to store an integer value.
+  JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+  jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
+  jobject preference = GetSharedPreference(env, activity);
+  jclass preference_class = env->GetObjectClass(preference);
+
+  // Retrieve an editor.
+  jmethodID edit = env->GetMethodID(
+      preference_class, "edit", "()Landroid/content/SharedPreferences$Editor;");
+  jobject editor = env->CallObjectMethod(preference, edit);
+  jclass editor_class = env->GetObjectClass(editor);
+
+  // Put blob as a String.
+  jstring pref_key = env->NewStringUTF(key);
+  jmethodID put_int =
+      env->GetMethodID(editor_class, "putInt",
+                       "(Ljava/lang/String;I)Landroid/content/"
+                       "SharedPreferences$Editor;");
+  env->CallObjectMethod(editor, put_int, pref_key, value);
+
+  // Commit a change.
+  jmethodID commit = env->GetMethodID(editor_class, "commit", "()Z");
+  jboolean ret = env->CallBooleanMethod(editor, commit);
+
+  // Release objects references.
+  env->DeleteLocalRef(pref_key);
+  env->DeleteLocalRef(editor_class);
+  env->DeleteLocalRef(editor);
+  env->DeleteLocalRef(preference_class);
+  env->DeleteLocalRef(preference);
+  env->DeleteLocalRef(activity);
+
+  return ret;
+#else
+  (void)key;
+  (void)value;
+#endif
+}
+
 
 bool SaveFile(const char *filename, const std::string &src) {
   return SaveFile(filename, static_cast<const void *>(src.c_str()),
