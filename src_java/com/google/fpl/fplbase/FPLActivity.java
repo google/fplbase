@@ -337,16 +337,6 @@ public class FPLActivity extends SDLActivity implements
     return getPackageManager().hasSystemFeature(featureName);
   }
 
-  public void WritePreference(String key, int value) {
-    SharedPreferences.Editor ed = getPreferences(Context.MODE_PRIVATE).edit();
-    ed.putInt(key, value);
-    ed.commit();
-  }
-
-  public int ReadPreference(String key, int default_value) {
-    return getPreferences(Context.MODE_PRIVATE).getInt(key, default_value);
-  }
-
   public int DpToPx(int dp) {
     // Convert the dps to pixels, based on density scale
     return (int)TypedValue.applyDimension(
