@@ -90,23 +90,27 @@ public class FPLActivity extends SDLActivity implements
     super.onCreate(savedInstanceState);
     nativeInitVsync();
     // Instantiate fields used by Cardboard, if we support HMDs.
-    if (SupportsHeadMountedDisplay()) {
+    if (InitializeHeadMountedDisplayOnStart()) {
       cardboardView = new CardboardView(this);
-      headTransform = new HeadTransform();
-      leftEye = new Eye(Eye.Type.LEFT);
-      rightEye = new Eye(Eye.Type.RIGHT);
-      monocularEye = new Eye(Eye.Type.MONOCULAR);
-      leftEyeNoDistortion = new Eye(Eye.Type.LEFT);
-      rightEyeNoDistortion = new Eye(Eye.Type.RIGHT);
-      magnetSensor = new MagnetSensor(this);
-      magnetSensor.setOnCardboardTriggerListener(this);
-      nfcSensor = NfcSensor.getInstance(this);
-      nfcSensor.addOnCardboardNfcListener(this);
-      NdefMessage tagContents = nfcSensor.getTagContents();
-      if (tagContents != null) {
-        updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
+      if (cardboardView != null) {
+        headTransform = new HeadTransform();
+        leftEye = new Eye(Eye.Type.LEFT);
+        rightEye = new Eye(Eye.Type.RIGHT);
+        monocularEye = new Eye(Eye.Type.MONOCULAR);
+        leftEyeNoDistortion = new Eye(Eye.Type.LEFT);
+        rightEyeNoDistortion = new Eye(Eye.Type.RIGHT);
+        magnetSensor = new MagnetSensor(this);
+        magnetSensor.setOnCardboardTriggerListener(this);
+        nfcSensor = NfcSensor.getInstance(this);
+        nfcSensor.addOnCardboardNfcListener(this);
+        NdefMessage tagContents = nfcSensor.getTagContents();
+        if (tagContents != null) {
+          updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
+        }
+        orientationListener = CreateOrientationListener();
+      } else {
+        Log.w("SDL", "Failed to create CardboardView");
       }
-      orientationListener = CreateOrientationListener();
     }
   }
 
@@ -384,10 +388,15 @@ public class FPLActivity extends SDLActivity implements
     }
   }
 
-  public boolean SupportsHeadMountedDisplay() {
+  protected boolean InitializeHeadMountedDisplayOnStart() {
     SensorManager sensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
     return sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null &&
            sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null;
+  }
+
+  public boolean SupportsHeadMountedDisplay() {
+    // Only supports head mounted display if the SDK initialized correctly.
+    return cardboardView != null;
   }
 
   @Override

@@ -773,7 +773,7 @@ bool SupportsHeadMountedDisplay() {
   jboolean result = env->CallBooleanMethod(activity, supports_hmd);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
-  return supports_hmd;
+  return result;
 #else
   return false;
 #endif  // __ANDROID
