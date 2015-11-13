@@ -32,6 +32,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.media.AudioManager;
 import android.nfc.NdefMessage;
 import android.os.Bundle;
 import android.text.Html;
@@ -130,6 +131,15 @@ public class FPLActivity extends SDLActivity implements
       orientationListener.enable();
     }
     Choreographer.getInstance().postFrameCallback(this);
+
+    // Request audio focus for playback.
+    // Purposefully not registering a callback here as the app should monitor
+    // activity lifecycle events to pause / resume audio playback accordingly.
+    Context context = getBaseContext();
+    AudioManager am = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    am.requestAudioFocus(null,
+                         AudioManager.STREAM_MUSIC,
+                         AudioManager.AUDIOFOCUS_GAIN);
   }
 
   @Override
@@ -142,6 +152,10 @@ public class FPLActivity extends SDLActivity implements
       orientationListener.disable();
     }
     Choreographer.getInstance().removeFrameCallback(this);
+
+    Context context = getBaseContext();
+    AudioManager am = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    am.abandonAudioFocus(null);
   }
 
   // GPG's GUIs need activity lifecycle events to function properly, but
