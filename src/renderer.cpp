@@ -214,6 +214,7 @@ void Renderer::ShutDown() {
     SDL_DestroyWindow(static_cast<SDL_Window *>(window_));
     window_ = nullptr;
   }
+  SDL_Quit();
 }
 
 #endif

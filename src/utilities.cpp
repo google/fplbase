@@ -419,6 +419,7 @@ bool SavePreference(const char *key, int32_t value) {
 #else
   (void)key;
   (void)value;
+  return false;
 #endif
 }
 

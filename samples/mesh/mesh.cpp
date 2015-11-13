@@ -36,6 +36,7 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
   input.Initialize();
 
   bool result = fpl::ChangeToUpstreamDir(argv[0], "assets");
+  (void)result;
   assert(result);
 
   fpl::AssetManager assetMgr(renderer);
@@ -56,7 +57,7 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
     renderer.ClearFrameBuffer(fpl::vec4(0.0, 0.0f, 0.0, 1.0f));
 
     // generate animation matrix
-    auto time = input.Time();
+    auto time = static_cast<float>(input.Time());
     auto c = cos(time);
     auto s = sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 3);

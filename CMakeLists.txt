@@ -109,6 +109,9 @@ function(set_compiler_flags_for_external_libraries)
      CMAKE_COMPILER_IS_CLANGXX)
     set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
     set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
+  elseif(MSVC)
+    set(CMAKE_CXX_FLAGS "/WX" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS "" PARENT_SCOPE)
   endif()
 endfunction()
 
@@ -327,13 +330,19 @@ if(fplbase_build_mesh_pipeline)
     NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
     PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
           ${fbx_sdk_dir}/lib/clang/release
-          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/release)
+          ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/release
+          ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/release
+          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/release
+          ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/release)
 
   find_library(fbx_sdk_lib_debug
     NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
     PATHS ${fbx_sdk_dir}/lib/gcc4/x64/debug
           ${fbx_sdk_dir}/lib/clang/debug
-          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/debug)
+          ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/debug
+          ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/debug
+          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/debug
+          ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/debug)
 
   set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
 

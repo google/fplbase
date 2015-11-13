@@ -237,6 +237,7 @@ void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
   if (instances == 1) {
     GL_CALL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0));
   } else {
+    (void)renderer;
     assert(renderer.feature_level() == Renderer::kFeatureLevel30);
     GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0,
                                     instances));

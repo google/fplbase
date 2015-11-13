@@ -36,6 +36,7 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
   fpl::AssetManager asset_manager(renderer);
 
   bool result = fpl::ChangeToUpstreamDir(argv[0], "assets");
+  (void)result;
   assert(result);
 
   auto shader = asset_manager.LoadShader("tex");
@@ -59,7 +60,7 @@ extern "C" int FPL_main(int /*argc*/, char **argv) {
     shader->Set(renderer);
     tex->Set(0);
 
-    auto time = input.Time();
+    auto time = static_cast<float>(input.Time());
     auto c = cos(time);
     auto s = sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 2);

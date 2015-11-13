@@ -288,7 +288,7 @@ class Mesh {
   /// @brief The defines parents of each bone.
   ///
   /// @return Returns an array of indices of each bone's parent.
-  const uint8_t *bone_parents() const { return &bone_parents_[0]; }
+  const uint8_t *bone_parents() const { return bone_parents_.data(); }
   /// @brief The number of bones in the mesh.
   ///
   /// @return Returns the number of bones.

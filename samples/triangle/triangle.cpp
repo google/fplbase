@@ -49,14 +49,14 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
     renderer.AdvanceFrame(input.minimized(), input.Time());
     input.AdvanceFrame(&renderer.window_size());
 
-    float color = (1.0f - cos(input.Time())) / 2.0f;
+    float color = (1.0f - cos(static_cast<float>(input.Time())) / 2.0f);
     renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
 
     shader->Set(renderer);
 
     // define geometry for a triangle
-    const fpl::Attribute format[] = {fpl::Attribute::kPosition3f,
-                                     fpl::Attribute::kEND};
+    const fpl::Attribute format[] = {fpl::kPosition3f,
+                                     fpl::kEND};
     const unsigned short indices[] = {0, 1, 2};
     // clang-format off
     const float vertices[] = {
@@ -66,7 +66,7 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
     };
     // clang-format on
 
-    fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles, 3, format,
+    fpl::Mesh::RenderArray(fpl::Mesh::kTriangles, 3, format,
                            sizeof(float) * 3, vertices, indices);
   }
 

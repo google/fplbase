@@ -164,7 +164,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
   if (mipmaps) {
     // Work around for some Android devices to correctly generate miplevels.
-    auto levels = ceil(log(std::min(size.x(), size.y())) / log(2.0f));
+    auto min_dimension = static_cast<float>(std::min(size.x(), size.y()));
+    auto levels = ceil(log(min_dimension) / log(2.0f));
     auto width = size.x() / 2;
     auto height = size.y() / 2;
     for (auto i = 1; i < levels; ++i) {
@@ -252,8 +253,10 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   // Apply scaling.
   if (scale.x() != 1.0f || scale.y() != 1.0f) {
     config.options.use_scaling = true;
-    config.options.scaled_width = config.input.width * scale.x();
-    config.options.scaled_height = config.input.height * scale.y();
+    config.options.scaled_width =
+        static_cast<int>(config.input.width * scale.x());
+    config.options.scaled_height =
+        static_cast<int>(config.input.height * scale.y());
   }
 
   if (config.input.has_alpha) {

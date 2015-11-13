@@ -33,6 +33,7 @@
 #include <cfloat>
 #include <fstream>
 #include <functional>
+#include <sstream>
 #include <stdarg.h>
 #include <stdio.h>
 #include <unordered_map>
@@ -521,7 +522,7 @@ class FlatMesh {
       log_.Log(kLogInfo, "\n");
 
       // Output local matrix transform too.
-      const mat4& t = b.relative_transform;
+      const mat4 t(b.relative_transform);
       for (size_t k = 0; k < 3; ++k) {
         log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n",
                  indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
@@ -601,14 +602,15 @@ class FlatMesh {
     std::string name;
     int depth;
     size_t first_vertex_index;
-    mat4 relative_transform;
+    vec4_packed relative_transform[4];
     Bone() : depth(0), first_vertex_index(0) {}
     Bone(const char* name, const mat4& relative_transform, int depth,
          int first_vertex_index)
         : name(name),
           depth(depth),
-          first_vertex_index(first_vertex_index),
-          relative_transform(relative_transform) {}
+          first_vertex_index(first_vertex_index) {
+        relative_transform.Pack(this->relative_transform);
+    }
   };
 
   typedef std::unordered_map<FlatTextures, IndexBuffer, FlatTextureHash>
@@ -639,7 +641,9 @@ class FlatMesh {
                                const std::string& assets_sub_dir) const {
     std::string name = TextureBaseFileName(mesh_name, assets_sub_dir);
     if (surfaces_.size() > 1) {
-      name += std::string("_") + std::to_string(surface_idx);
+      std::stringstream ss;
+      ss << "_" << surface_idx;
+      name += ss.str();
     }
     name += std::string(".") + matdef::MaterialExtension();
     return name;
@@ -806,7 +810,7 @@ class FlatMesh {
     for (size_t i = 0; i < bones_.size(); ++i) {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
-      bone_transforms.push_back(FlatBufferMat3x4(bone.relative_transform));
+      bone_transforms.push_back(FlatBufferMat3x4(mat4(bone.relative_transform)));
       bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
     }
 
@@ -855,13 +859,13 @@ class FlatMesh {
   }
 
   mat4 BoneGlobalTransform(int i) const {
-    mat4 m = bones_[i].relative_transform;
+    mat4 m(bones_[i].relative_transform);
     for (;;) {
       i = BoneParent(i);
       if (i < 0) break;
 
       // Update with parent transform.
-      m = bones_[i].relative_transform * m;
+      m = mat4(bones_[i].relative_transform) * m;
     }
     return m;
   }
@@ -1669,8 +1673,8 @@ class FbxMeshParser {
     const FbxAxisSystem::ECoordSystem coord = axis.GetCoorSystem();
     assert(up_sign > 0);
 
-    const int up_idx = up - FbxAxisSystem::EUpVector::eXAxis;
-    const int front_idx = front - FbxAxisSystem::EFrontVector::eParityEven;
+    const int up_idx = up - FbxAxisSystem::eXAxis;
+    const int front_idx = front - FbxAxisSystem::eParityEven;
     const int front_sign_idx = front_sign > 0 ? 0 : 1;
     const int coord_idx = coord - FbxAxisSystem::eRightHanded;
     return static_cast<AxisSystem>(8 * up_idx + 4 * front_idx +
@@ -1678,10 +1682,9 @@ class FbxMeshParser {
   }
 
   static FbxAxisSystem ConvertAxisSystemToFbx(AxisSystem system) {
-    const int up_idx = system / 8 + FbxAxisSystem::EUpVector::eXAxis;
+    const int up_idx = system / 8 + FbxAxisSystem::eXAxis;
     const int front_sign = system % 4 < 2 ? 1 : -1;
-    const int front_idx =
-        (system % 8) / 4 + FbxAxisSystem::EFrontVector::eParityEven;
+    const int front_idx = (system % 8) / 4 + FbxAxisSystem::eParityEven;
     const int coord_idx = system % 2;
 
     const auto up = static_cast<FbxAxisSystem::EUpVector>(up_idx);

@@ -148,7 +148,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(i))
               : kFormatAuto;
       auto tex = LoadTexture(matdef->texture_filenames()->Get(i)->c_str(),
-                             format, matdef->mipmaps());
+                             format, matdef->mipmaps() != 0);
       mat->textures().push_back(tex);
 
       auto original_size =
