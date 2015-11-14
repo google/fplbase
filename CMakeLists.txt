@@ -26,7 +26,6 @@ else()
   message(STATUS "FPLBase library: not building samples")
 endif()
 
-# Option to only build flatc
 set(fbx_sdk_msg "The FBX SDK must be installed and the FBX_SDK environment variable must be set to the SDK directory.")
 option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline
@@ -34,10 +33,13 @@ option(fplbase_build_mesh_pipeline
        OFF)
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
+
+# Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_use_external_sdl2 "Use external SDL library." OFF)
 set(external_sdl2_include_dir "" CACHE PATH "Absolute path to directory containing external SDL includes.")
 set(external_sdl2_libraries "" CACHE PATH "List of semicolon separated absolute path to SDL libraries.")
+option(fplbase_use_host_flatc "Use host machine flatc." OFF)
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -78,6 +80,8 @@ set(dependencies_gtest_dir "${fpl_root}/googletest"
     CACHE PATH "Directory containing the GoogleTest library.")
 set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
     CACHE PATH "Directory containing the Flatbuffers library.")
+set(dependencies_flatbuffers_cmake_dir "${fpl_root}/flatbuffers/CMake"
+    CACHE PATH "Directory containing the Flatbuffers library cmake helpers.")
 set(dependencies_fplutil_dir "${fpl_root}/fplutil"
     CACHE PATH "Directory containing the fplutil library.")
 set(dependencies_mathfu_dir "${fpl_root}/mathfu"
@@ -162,9 +166,16 @@ if(NOT fplbase_only_flatc AND NOT TARGET webp)
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
 
-# Include FlatBuffers in this project.
+# Find or Include FlatBuffers in this project.
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
-if(NOT TARGET flatc)
+
+if(fplbase_use_host_flatc AND NOT fplbase_only_flatc)
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+      "${dependencies_flatbuffers_cmake_dir}")
+  find_package(FlatBuffers REQUIRED)
+endif()
+
+if(NOT TARGET flatc AND NOT FLATBUFFERS_FLATC_EXECUTABLE)
   add_subdirectory("${dependencies_flatbuffers_dir}" ${tmp_dir}/flatbuffers)
 endif()
 
