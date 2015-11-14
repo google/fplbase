@@ -187,6 +187,10 @@ bool GetStoragePath(const char *app_name, std::string *path);
 // the system being run on.
 bool SupportsHeadMountedDisplay();
 
+// Checks whether the device we are running on is an Android TV device.
+// Always returns false when not running on Android.
+bool IsTvDevice();
+
 // Sets the performance mode.
 void SetPerformanceMode(PerformanceMode new_mode);
 

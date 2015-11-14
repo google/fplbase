@@ -22,11 +22,13 @@ import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.app.PendingIntent;
+import android.app.UiModeManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.Point;
@@ -422,6 +424,12 @@ public class FPLActivity extends SDLActivity implements
 
   protected void updateCardboardDeviceParams(CardboardDeviceParams newParams) {
     cardboardView.updateCardboardDeviceParams(newParams);
+  }
+
+  // Returns true if the current device is a TV device, false otherwise.
+  public boolean IsTvDevice() {
+    UiModeManager uiModeManager = (UiModeManager)getSystemService(UI_MODE_SERVICE);
+    return uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
   }
 
   // Function to access the transforms of the eyes, which includes head tracking
