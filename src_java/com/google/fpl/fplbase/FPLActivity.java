@@ -378,6 +378,7 @@ public class FPLActivity extends SDLActivity implements
     // be different. So, we use this trick to recalculate the ScreenParam's PPI
     // values (which are normally just read from the display).
     try {
+      if (cardboardView == null) return;
       Display display = getWindowManager().getDefaultDisplay();
       ScreenParams sp = new ScreenParams(display);
       Phone.PhoneParams pp = new Phone.PhoneParams();
