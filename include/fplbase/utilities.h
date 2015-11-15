@@ -186,6 +186,10 @@ void SendKeypressEventToAndroid(int android_keycode);
 // Get the name of the current activity class.  This can be used by C++ code
 // to determine how the application was started.
 std::string AndroidGetActivityName();
+
+// Determine whether the activity was started with Intent.ACTION_VIEW and if
+// so return the data the user wants to "view" in the application.
+std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)

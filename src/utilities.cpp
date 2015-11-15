@@ -880,15 +880,14 @@ std::string AndroidGetActivityName() {
       env->GetMethodID(activity_class, "getClass", "()Ljava/lang/Class;");
   // Get the class instance.
   jclass activity_class_object =
-      (jclass)env->CallObjectMethod(activity, get_class_method);
+      static_cast<jclass>(env->CallObjectMethod(activity, get_class_method));
   jclass activity_class_object_class =
       env->GetObjectClass(activity_class_object);
   jmethodID get_name_method = env->GetMethodID(
       activity_class_object_class, "getName", "()Ljava/lang/String;");
-  jstring class_name_object =
-      (jstring)env->CallObjectMethod(activity_class_object, get_name_method);
-  char *class_name =
-      (char *)env->GetStringUTFChars(class_name_object, JNI_FALSE);
+  jstring class_name_object = static_cast<jstring>(
+      env->CallObjectMethod(activity_class_object, get_name_method));
+  const char *class_name = env->GetStringUTFChars(class_name_object, JNI_FALSE);
   std::string activity_name(class_name);
   env->ReleaseStringUTFChars(class_name_object, class_name);
   env->DeleteLocalRef(class_name_object);
@@ -897,6 +896,52 @@ std::string AndroidGetActivityName() {
   env->DeleteLocalRef(activity_class);
   env->DeleteLocalRef(activity);
   return activity_name;
+}
+#endif  // defined(__ANDROID__)
+
+#if defined(__ANDROID__)
+std::string AndroidGetViewIntentData() {
+  std::string view_data;
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass activity_class = env->GetObjectClass(activity);
+  // Get the Intent used to start this activity using Activity.getIntent().
+  jmethodID get_intent = env->GetMethodID(activity_class, "getIntent",
+                                          "()Landroid/content/Intent;");
+  jobject intent = env->CallObjectMethod(activity, get_intent);
+  jclass intent_class = env->GetObjectClass(intent);
+  // Get the action from the intent using Intent.getAction().
+  jmethodID intent_get_action =
+      env->GetMethodID(intent_class, "getAction", "()Ljava/lang/String;");
+  jstring intent_action_string =
+      static_cast<jstring>(env->CallObjectMethod(intent, intent_get_action));
+  if (intent_action_string) {
+    static const char *const kActionView = "android.intent.action.VIEW";
+    const char *intent_action =
+        env->GetStringUTFChars(intent_action_string, JNI_FALSE);
+    // If the Intent action is Intent.ACTION_VIEW, get the data associated with
+    // the Intent.
+    if (strcmp(kActionView, intent_action) == 0) {
+      jmethodID intent_get_data = env->GetMethodID(
+          intent_class, "getDataString", "()Ljava/lang/String;");
+      jstring intent_data_string =
+          static_cast<jstring>(env->CallObjectMethod(intent, intent_get_data));
+      if (intent_data_string) {
+        const char *intent_data =
+            env->GetStringUTFChars(intent_data_string, JNI_FALSE);
+        view_data = intent_data;
+        env->ReleaseStringUTFChars(intent_data_string, intent_data);
+        env->DeleteLocalRef(intent_data_string);
+      }
+    }
+    env->ReleaseStringUTFChars(intent_action_string, intent_action);
+    env->DeleteLocalRef(intent_action_string);
+  }
+  env->DeleteLocalRef(intent_class);
+  env->DeleteLocalRef(intent);
+  env->DeleteLocalRef(activity_class);
+  env->DeleteLocalRef(activity);
+  return view_data;
 }
 #endif  // defined(__ANDROID__)
 
