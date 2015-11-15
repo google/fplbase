@@ -21,7 +21,7 @@
 namespace fpl {
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions) {
- Initialize(dimensions, GL_UNSIGNED_BYTE, true);
+  Initialize(dimensions, GL_UNSIGNED_BYTE, true);
 }
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
@@ -46,8 +46,8 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
   // Give an empty image to OpenGL.  (It will allocate memory, but not bother
   // to populate it.  Which is fine, since we're going to render into it.)
-  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x(), dimensions.y(),
-                       0, GL_RGBA, format, nullptr));
+  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x(),
+                       dimensions.y(), 0, GL_RGBA, format, nullptr));
 
   // Define texture properties:
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -80,7 +80,6 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
   }
   assert(framebuffer_id_ != 0);
   assert(depth_buffer_id_ != 0);
-
 
   // Be good citizens and clean up:
   // Bind the framebuffer:
@@ -122,14 +121,14 @@ RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
   screen_render_target.rendered_texture_id_ = 0;
   screen_render_target.depth_buffer_id_ = 0;
   mathfu::vec2i window_size = renderer.window_size();
-# ifdef FPL_BASE_RENDERER_BACKEND_SDL
-# ifdef __ANDROID__
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
+#ifdef __ANDROID__
   vec2i size = AndroidGetScalerResolution();
   if (size.x() && size.y()) {
     window_size = size;
   }
-# endif
-# endif
+#endif
+#endif
   screen_render_target.dimensions_ = window_size;
   screen_render_target.initialized_ = true;
   return screen_render_target;

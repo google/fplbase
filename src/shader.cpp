@@ -15,8 +15,8 @@
 #include "precompiled.h"
 #include <vector>
 
-#include "fplbase/shader.h"
 #include "fplbase/renderer.h"
+#include "fplbase/shader.h"
 
 #ifdef _WIN32
 #define snprintf(buffer, count, format, ...) \
@@ -38,6 +38,7 @@ UniformHandle Shader::FindUniform(const char *uniform_name) {
 
 void Shader::SetUniform(GLint uniform_loc, const float *value,
                         size_t num_components) {
+  // clang-format off
   switch (num_components) {
     case 1: GL_CALL(glUniform1f(uniform_loc, *value)); break;
     case 2: GL_CALL(glUniform2fv(uniform_loc, 1, value)); break;
@@ -46,6 +47,7 @@ void Shader::SetUniform(GLint uniform_loc, const float *value,
     case 16: GL_CALL(glUniformMatrix4fv(uniform_loc, 1, false, value)); break;
     default: assert(0); break;
   }
+  // clang-format on
 }
 
 void Shader::InitializeUniforms() {

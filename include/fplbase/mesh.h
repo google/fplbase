@@ -109,12 +109,10 @@ class Mesh {
   // Render itself into stereoscopic viewports.
   // viewport, mvp, camera_position arugments need to be a pointer to an array
   // with 2 entries for left and right parameters.
-  void RenderStereo(Renderer &renderer,
-                    const Shader* shader,
-                    const vec4i* viewport,
-                    const mat4* mvp,
-                    const vec3* camera_position,
-                    bool ignore_material = false, size_t instances = 1);
+  void RenderStereo(Renderer &renderer, const Shader *shader,
+                    const vec4i *viewport, const mat4 *mvp,
+                    const vec3 *camera_position, bool ignore_material = false,
+                    size_t instances = 1);
 
   /// @brief Get the material associated with the IBO at the given index.
   ///
@@ -310,8 +308,8 @@ class Mesh {
   // Disallow copies because of pointers bone_transforms_ and
   // bone_global_transforms_. Feel free to implement copy or move operators
   // if required.
-  Mesh(const Mesh&);
-  Mesh& operator=(const Mesh&);
+  Mesh(const Mesh &);
+  Mesh &operator=(const Mesh &);
 
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
   // this header to depend on OpenGL.

@@ -50,12 +50,7 @@ class Renderer {
   Renderer();
   ~Renderer();
 
-  enum CullingMode {
-    kNoCulling,
-    kCullFront,
-    kCullBack,
-    kCullFrontAndBack
-  };
+  enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
 
   // OpenGL ES feature level we are able to obtain.
   enum FeatureLevel {
@@ -256,18 +251,14 @@ class Renderer {
 
   /// @brief The blend that will be used for all draw calls.
   /// @return Returns the blend mode that will be used.
-  BlendMode force_blend_mode() const {
-    return force_blend_mode_;
-  }
+  BlendMode force_blend_mode() const { return force_blend_mode_; }
   /// @brief Set to override the blend mode used for all draw calls.
   ///
   /// Overrides the blend that was set by calling SetBlendMode.
   /// Set to kBlendModeCount to disable.
   ///
   /// @param bm The blend mode to be used.
-  void set_force_blend_mode(BlendMode bm) {
-    force_blend_mode_ = bm;
-  }
+  void set_force_blend_mode(BlendMode bm) { force_blend_mode_ = bm; }
 
   /// @brief Set this force any shader that gets loaded to use this pixel shader
   ///        instead (for debugging purposes).

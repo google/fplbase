@@ -21,8 +21,7 @@
 
 namespace fpl {
 
-AsyncLoader::AsyncLoader() {
-}
+AsyncLoader::AsyncLoader() {}
 
 AsyncLoader::~AsyncLoader() {
   StopLoadingWhenComplete();
@@ -41,9 +40,7 @@ void AsyncLoader::StartLoading() {
   worker_thread_ = std::thread(AsyncLoader::LoaderThread, this);
 }
 
-void AsyncLoader::StopLoadingWhenComplete() {
-  QueueJob(nullptr);
-}
+void AsyncLoader::StopLoadingWhenComplete() { QueueJob(nullptr); }
 
 bool AsyncLoader::TryFinalize() {
   for (;;) {
@@ -93,9 +90,8 @@ void AsyncLoader::LoaderWorker() {
 }
 
 // static
-int AsyncLoader::LoaderThread(void *user_data) {
-  reinterpret_cast<AsyncLoader *>(user_data)->LoaderWorker();
+int AsyncLoader::LoaderThread(void* user_data) {
+  reinterpret_cast<AsyncLoader*>(user_data)->LoaderWorker();
   return 0;
 }
-
 }

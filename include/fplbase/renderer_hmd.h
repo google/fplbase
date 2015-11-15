@@ -60,7 +60,7 @@ struct HeadMountedDisplayViewSettings {
 void HeadMountedDisplayRenderStart(
     const HeadMountedDisplayInput& head_mounted_display_input,
     Renderer* renderer, const mathfu::vec4& clear_color, bool use_undistortion,
-    HeadMountedDisplayViewSettings *view_settings);
+    HeadMountedDisplayViewSettings* view_settings);
 
 /// @brief Reset viewport settings, finish applying undistortion effect (if
 ///        enabled) and disable blending.

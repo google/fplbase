@@ -15,7 +15,7 @@
 #ifndef FPLBASE_RENDER_TARGET_H
 #define FPLBASE_RENDER_TARGET_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "mathfu/glsl_mappings.h"
 #include "fplbase/material.h"

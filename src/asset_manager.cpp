@@ -25,32 +25,37 @@ namespace fpl {
 
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
-    kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
-    kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
-    kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD) &&
-    kBlendModeAddAlpha == static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
-    kBlendModeMultiply == static_cast<BlendMode>(matdef::BlendMode_MULTIPLY),
-              "BlendMode enums in material.h and material.fbs must match.");
+        kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
+        kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
+        kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD) &&
+        kBlendModeAddAlpha ==
+            static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
+        kBlendModeMultiply ==
+            static_cast<BlendMode>(matdef::BlendMode_MULTIPLY),
+    "BlendMode enums in material.h and material.fbs must match.");
 static_assert(kBlendModeCount == kBlendModeMultiply + 1,
               "Please update static_assert above with new enum values.");
 static_assert(
     kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
-    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
-    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
-    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
-    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
-    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8),
-              "TextureFormat enums in material.h and material.fbs must match.");
+        kFormat8888 ==
+            static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
+        kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
+        kFormat5551 ==
+            static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
+        kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
+        kFormatLuminance ==
+            static_cast<TextureFormat>(matdef::TextureFormat_F_8),
+    "TextureFormat enums in material.h and material.fbs must match.");
 static_assert(kFormatCount == kFormatLuminance + 1,
               "Please update static_assert above with new enum values.");
 
-template<typename T>
+template <typename T>
 T FindInMap(const std::map<std::string, T> &map, const char *name) {
   auto it = map.find(name);
   return it != map.end() ? it->second : 0;
 }
 
-template<typename T>
+template <typename T>
 void DestructAssetsInMap(std::map<std::string, T> &map) {
   for (auto it = map.begin(); it != map.end(); ++it) {
     delete it->second;
@@ -58,8 +63,8 @@ void DestructAssetsInMap(std::map<std::string, T> &map) {
   map.clear();
 }
 
-AssetManager::AssetManager(Renderer &renderer) : renderer_(renderer),
-  texture_scale_(mathfu::kOnes2f) {
+AssetManager::AssetManager(Renderer &renderer)
+    : renderer_(renderer), texture_scale_(mathfu::kOnes2f) {
   // Empty material for default case.
   material_map_[""] = new Material();
 }
@@ -142,9 +147,8 @@ Material *AssetManager::LoadMaterial(const char *filename) {
           matdef->desired_format() && i < matdef->desired_format()->size()
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(i))
               : kFormatAuto;
-      auto tex =
-          LoadTexture(matdef->texture_filenames()->Get(i)->c_str(), format,
-                      matdef->mipmaps());
+      auto tex = LoadTexture(matdef->texture_filenames()->Get(i)->c_str(),
+                             format, matdef->mipmaps());
       mat->textures().push_back(tex);
 
       auto original_size =
@@ -238,12 +242,12 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       assert(meshdef->bone_transforms()->Length() == num_bones);
       std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
           new mathfu::AffineTransform[num_bones]);
-      std::vector<const char*> bone_names(num_bones);
+      std::vector<const char *> bone_names(num_bones);
       for (size_t i = 0; i < num_bones; ++i) {
         bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(i));
         bone_names[i] = meshdef->bone_names()->Get(i)->c_str();
       }
-      const uint8_t* bone_parents = meshdef->bone_parents()->data();
+      const uint8_t *bone_parents = meshdef->bone_parents()->data();
       mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0],
                      num_bones, meshdef->shader_to_mesh_bones()->Data(),
                      meshdef->shader_to_mesh_bones()->Length());

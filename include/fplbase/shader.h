@@ -15,7 +15,7 @@
 #ifndef FPLBASE_SHADER_H
 #define FPLBASE_SHADER_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "mathfu/glsl_mappings.h"
 

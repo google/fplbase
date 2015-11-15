@@ -38,24 +38,24 @@ static const float kJoystickAxisRange = 32767.0;
 #if ANDROID_HMD
 // When attached to a head mounted display this global is used to reference the
 // input class from JNI methods.
-static HeadMountedDisplayInput* g_head_mounted_display_input = nullptr;
+static HeadMountedDisplayInput *g_head_mounted_display_input = nullptr;
 // This can be set before the input system is initialized, so the value is
 // cached in this global value and assigned when InputSystem is created.
 static int g_device_orientation = 0;
 #endif  // ANDROID_HMD
 
 InputSystem::InputSystem()
-  : exit_requested_(false),
-    minimized_(false),
-    frame_time_(0),
-    elapsed_time_(0),
-    start_time_(0),
-    time_freq_(0),
-    frames_(0),
-    minimized_frame_(0),
-    mousewheel_delta_(mathfu::kZeros2i),
-    record_text_input_(false),
-    touch_device_(true) {
+    : exit_requested_(false),
+      minimized_(false),
+      frame_time_(0),
+      elapsed_time_(0),
+      start_time_(0),
+      time_freq_(0),
+      frames_(0),
+      minimized_frame_(0),
+      mousewheel_delta_(mathfu::kZeros2i),
+      record_text_input_(false),
+      touch_device_(true) {
   pointers_.assign(kMaxSimultanuousPointers, InputPointer());
 #if ANDROID_HMD
   assert(!g_head_mounted_display_input);
@@ -342,8 +342,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
       }
     }
   }
-  // Update the head mounted display input. Note this is after the mouse
-  // input, as that can be treated as a trigger.
+// Update the head mounted display input. Note this is after the mouse
+// input, as that can be treated as a trigger.
 #if ANDROID_HMD
   head_mounted_display_input_.AdvanceFrame();
 #endif  // ANDROID_HMD
@@ -358,8 +358,9 @@ void InputSystem::HandleJoystickEvent(Event event) {
       break;
     case SDL_JOYAXISMOTION:
       // Axis data is normalized to a range of [-1.0, 1.0]
-      GetJoystick(sdl_event->jaxis.which).SetAxis(
-          sdl_event->jaxis.axis, sdl_event->jaxis.value / kJoystickAxisRange);
+      GetJoystick(sdl_event->jaxis.which)
+          .SetAxis(sdl_event->jaxis.axis,
+                   sdl_event->jaxis.value / kJoystickAxisRange);
       break;
     case SDL_JOYBUTTONDOWN:
     case SDL_JOYBUTTONUP:
@@ -368,8 +369,9 @@ void InputSystem::HandleJoystickEvent(Event event) {
           .Update(sdl_event->jbutton.state == SDL_PRESSED);
       break;
     case SDL_JOYHATMOTION:
-      GetJoystick(sdl_event->jhat.which).SetHat(
-          sdl_event->jhat.hat, ConvertHatToVector(sdl_event->jhat.value));
+      GetJoystick(sdl_event->jhat.which)
+          .SetHat(sdl_event->jhat.hat,
+                  ConvertHatToVector(sdl_event->jhat.value));
       break;
   }
 }
@@ -740,7 +742,7 @@ void HeadMountedDisplayInput::AdvanceFrame() {
 }
 
 void HeadMountedDisplayInput::ResetHeadTracker() {
-    device_orientation_at_reset_ = device_orientation_;
+  device_orientation_at_reset_ = device_orientation_;
 #ifdef __ANDROID__
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
   jobject activity = reinterpret_cast<jobject>(SDL_AndroidGetActivity());
@@ -812,15 +814,13 @@ void HeadMountedDisplayInput::UpdateTransforms() {
         // 270 degree rotation.
         if (device_orientation_at_reset_ != 1) {
           pre_correction =
-             mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI));
+              mat4::FromRotationMatrix(mathfu::mat3::RotationY(-M_PI));
         }
         post_correction =
             mat4::FromRotationMatrix(mathfu::mat3::RotationZ(M_PI));
         break;
       }
-      default: {
-        break;
-      }
+      default: { break; }
     }
     head_transform_ = post_correction * head_transform_ * pre_correction;
     left_eye_transform_ =
@@ -926,7 +926,7 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeSetDeviceInCardboard(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fplbase_FPLActivity_nativeOnDisplayRotationChanged(
-    JNIEnv */*env*/, jobject /*thiz*/, jint rotation) {
+    JNIEnv * /*env*/, jobject /*thiz*/, jint rotation) {
 #if ANDROID_HMD
   g_device_orientation = rotation;
   if (g_head_mounted_display_input)

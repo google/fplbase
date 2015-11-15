@@ -18,7 +18,7 @@
 #include <map>
 #include <string>
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
 #include "fplbase/fpl_common.h"
@@ -72,8 +72,7 @@ class AssetManager {
   /// @param format The texture format, defaults to kFormatAuto.
   /// @param mipmaps If mipmaps should be used, defaults to true.
   /// @return Returns an unloaded texture object.
-  Texture *LoadTexture(const char *filename,
-                       TextureFormat format = kFormatAuto,
+  Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
                        bool mipmaps = true);
   /// @brief Start loading all previously queued textures.
   ///

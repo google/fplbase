@@ -57,6 +57,9 @@ enum LogCategory {
 };
 #endif
 
+// Called by LoadFile().
+typedef bool (*LoadFileFunction)(const char *filename, std::string *dest);
+
 // Enums for use with the Set/GetPerformanceMode() functions.
 enum PerformanceMode {
   // Normal mode.  No special actions taken.
@@ -69,16 +72,15 @@ enum PerformanceMode {
 #ifdef __ANDROID__
 typedef void (*VsyncCallback)(void);
 
-const int kDefaultAndroidKeycode = 115;   // F24, unavailable on most keyboards.
+const int kDefaultAndroidKeycode = 115;  // F24, unavailable on most keyboards.
 const double kDefaultTimeBetweenPresses = 1.0;  // Time in seconds
 
 struct HighPerformanceParams {
   HighPerformanceParams()
-    : android_key_code(kDefaultAndroidKeycode),
-      time_between_presses(kDefaultTimeBetweenPresses) {}
+      : android_key_code(kDefaultAndroidKeycode),
+        time_between_presses(kDefaultTimeBetweenPresses) {}
   HighPerformanceParams(int keycode, int presses)
-    : android_key_code(keycode),
-      time_between_presses(presses) {}
+      : android_key_code(keycode), time_between_presses(presses) {}
 
   int android_key_code;
   double time_between_presses;
@@ -88,9 +90,21 @@ struct HighPerformanceParams {
 // Loads a file and returns its contents via string pointer.
 // Returns false if the file couldn't be loaded (usually means it's not
 // present, but can also mean there was a read error).
+bool LoadFileRaw(const char *filename, std::string *dest);
+
+// Loads a file and returns its contents via string pointer.
+// In contrast to LoadFileRaw(), this method simply calls function set by
+// SetLoadFileFunction() to read the specified file.
+// Returns false if the file couldn't be loaded (usually means it's not
+// present, but can also mean there was a read error).
 bool LoadFile(const char *filename, std::string *dest);
 
-// Load a file like above, but scan for #include "filename" statements
+// Set the function called by LoadFile().  If the specified function is nullptr,
+// LoadFileRaw is set as the function.
+// Returns the previously set LoadFileFunction.
+LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function);
+
+// Load a file like LoadFile(), but scan for #include "filename" statements
 // at the top of the file (only), and replace them with the contents of
 // those files.
 // Supports recursive includes, and only ever includes each file once.
@@ -117,8 +131,8 @@ bool LoadPreferences(const char *filename, std::string *dest);
 bool SavePreferences(const char *filename, const void *data, size_t size);
 
 // Load/Save single integer value to a preference.
-int32_t LoadPreference(const char* key, int32_t initial_value);
-bool SavePreference(const char* key, int32_t value);
+int32_t LoadPreference(const char *key, int32_t initial_value);
+bool SavePreference(const char *key, int32_t value);
 
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
@@ -150,7 +164,7 @@ jobject AndroidGetActivity();
 
 // Returns a pointer to the Java native interface object (JNIEnv) of the
 // current thread on an Android application.
-JNIEnv* AndroidGetJNIEnv();
+JNIEnv *AndroidGetJNIEnv();
 
 // Register for handling vsync callbacks on android.  As with most callbacks,
 // this will normally be called on a separate thread, so you'll need to be
@@ -177,7 +191,7 @@ std::string AndroidGetActivityName();
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
 // Provide a pointer to an already-created instance of AAssetManager. Must call
 // this function once before loading any assets.
-void SetAAssetManager(AAssetManager* manager);
+void SetAAssetManager(AAssetManager *manager);
 #endif
 
 // Retrieve a path where an app can store data files.
@@ -204,10 +218,10 @@ void RelaunchApplication();
 // Sets the specific parameters used by high-performance mode on Android.
 // android_key_code is the key to press repeatedly, to keep the CPU active.
 // time_between_presses is the time (in seconds) between keypress events.
-void SetHighPerformanceParameters(const HighPerformanceParams& params);
+void SetHighPerformanceParameters(const HighPerformanceParams &params);
 
 // Returns the current performance parameters, in the form of a struct.
-const HighPerformanceParams& GetHighPerformanceParameters();
+const HighPerformanceParams &GetHighPerformanceParameters();
 #endif
 }  // namespace fpl
 

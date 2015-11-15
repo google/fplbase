@@ -14,9 +14,9 @@
 //
 
 #include "fplbase/renderer.h"
-#include "fplbase/mesh.h"
-#include "fplbase/input.h"
 #include <cassert>
+#include "fplbase/input.h"
+#include "fplbase/mesh.h"
 
 // This is a sample that displays a colored triangle.
 //
@@ -34,12 +34,12 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
 
   // A vertex shader that passes untransformed position thru.
   auto vertex_shader =
-    "attribute vec4 aPosition;\n"
-    "void main() { gl_Position = aPosition; }\n";
+      "attribute vec4 aPosition;\n"
+      "void main() { gl_Position = aPosition; }\n";
 
   // A fragment shader that outputs a green pixel.
   auto fragment_shader =
-    "void main() { gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+      "void main() { gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }\n";
 
   auto shader = renderer.CompileAndLinkShader(vertex_shader, fragment_shader);
   assert(shader);
@@ -55,15 +55,16 @@ extern "C" int FPL_main(int /*argc*/, char** /*argv*/) {
     shader->Set(renderer);
 
     // define geometry for a triangle
-    const fpl::Attribute format[] = {
-      fpl::Attribute::kPosition3f, fpl::Attribute::kEND
-    };
-    const unsigned short indices[] = { 0, 1, 2 };
+    const fpl::Attribute format[] = {fpl::Attribute::kPosition3f,
+                                     fpl::Attribute::kEND};
+    const unsigned short indices[] = {0, 1, 2};
+    // clang-format off
     const float vertices[] = {
       -.5f, -.5f, 0.0f,
       0.0f, 0.5f, 0.0f,
       0.5f, -.5f, 0.0f
     };
+    // clang-format on
 
     fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles, 3, format,
                            sizeof(float) * 3, vertices, indices);

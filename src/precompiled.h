@@ -15,7 +15,7 @@
 #ifndef FPLBASE_PRECOMPILED_H
 #define FPLBASE_PRECOMPILED_H
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #include <assert.h>
 #include <math.h>

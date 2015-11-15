@@ -16,7 +16,7 @@
 #ifdef _MSC_VER
 #pragma warning(push)            // for Visual Studio
 #pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
-#endif  // _MSC_VER
+#endif                           // _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -96,8 +96,8 @@ enum AxisSystem {
   kNumAxisSystems = kLastZUpAxisSystem
 };
 
-static const char* const kImageExtensions[] =
-    { "jpg", "jpeg", "png", "webp", "tga" };
+static const char* const kImageExtensions[] = {"jpg", "jpeg", "png", "webp",
+                                               "tga"};
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
 static const BoneIndex kInvalidBoneIdx = 0xFF;
 static const matdef::TextureFormat kDefaultTextureFormat =
@@ -110,50 +110,49 @@ static const BoneIndex kMaxBoneIndex = 0xFE;
 // Defines the order in which textures are assigned shader indices.
 // Shader indices are assigned, starting from 0, as textures are found.
 static const char* kTextureProperties[] = {
-  FbxSurfaceMaterial::sDiffuse,
-  FbxSurfaceMaterial::sEmissive,
-  FbxSurfaceMaterial::sNormalMap,
-  FbxSurfaceMaterial::sBump,
-  FbxSurfaceMaterial::sDiffuseFactor,
-  FbxSurfaceMaterial::sEmissiveFactor,
-  FbxSurfaceMaterial::sAmbient,
-  FbxSurfaceMaterial::sAmbientFactor,
-  FbxSurfaceMaterial::sSpecular,
-  FbxSurfaceMaterial::sSpecularFactor,
-  FbxSurfaceMaterial::sShininess,
-  FbxSurfaceMaterial::sTransparentColor,
-  FbxSurfaceMaterial::sTransparencyFactor,
-  FbxSurfaceMaterial::sReflection,
-  FbxSurfaceMaterial::sReflectionFactor,
+    FbxSurfaceMaterial::sDiffuse,
+    FbxSurfaceMaterial::sEmissive,
+    FbxSurfaceMaterial::sNormalMap,
+    FbxSurfaceMaterial::sBump,
+    FbxSurfaceMaterial::sDiffuseFactor,
+    FbxSurfaceMaterial::sEmissiveFactor,
+    FbxSurfaceMaterial::sAmbient,
+    FbxSurfaceMaterial::sAmbientFactor,
+    FbxSurfaceMaterial::sSpecular,
+    FbxSurfaceMaterial::sSpecularFactor,
+    FbxSurfaceMaterial::sShininess,
+    FbxSurfaceMaterial::sTransparentColor,
+    FbxSurfaceMaterial::sTransparencyFactor,
+    FbxSurfaceMaterial::sReflection,
+    FbxSurfaceMaterial::sReflectionFactor,
 };
 
 static const char* kAxisSystemNames[] = {
-  "x+y+z", // kXUp_PositiveYFront_PositiveZLeft
-  "x+y-z", // kXUp_PositiveYFront_NegativeZLeft
-  "x-y+z", // kXUp_NegativeYFront_PositiveZLeft
-  "x-y-z", // kXUp_NegativeYFront_NegativeZLeft
-  "x+z+y", // kXUp_PositiveZFront_PositiveYLeft
-  "x+z-y", // kXUp_PositiveZFront_NegativeYLeft
-  "x-z+y", // kXUp_NegativeZFront_PositiveYLeft
-  "x-z-y", // kXUp_NegativeZFront_NegativeYLeft
-  "y+x+z", // kYUp_PositiveXFront_PositiveZLeft
-  "y+x-z", // kYUp_PositiveXFront_NegativeZLeft
-  "y-x+z", // kYUp_NegativeXFront_PositiveZLeft
-  "y-x-z", // kYUp_NegativeXFront_NegativeZLeft
-  "y+z+x", // kYUp_PositiveZFront_PositiveXLeft
-  "y+z-x", // kYUp_PositiveZFront_NegativeXLeft
-  "y-z+x", // kYUp_NegativeZFront_PositiveXLeft
-  "y-z-x", // kYUp_NegativeZFront_NegativeXLeft
-  "z+x+y", // kZUp_PositiveXFront_PositiveYLeft
-  "z+x-y", // kZUp_PositiveXFront_NegativeYLeft
-  "z-x+y", // kZUp_NegativeXFront_PositiveYLeft
-  "z-x-y", // kZUp_NegativeXFront_NegativeYLeft
-  "z+y+x", // kZUp_PositiveYFront_PositiveXLeft
-  "z+y-x", // kZUp_PositiveYFront_NegativeXLeft
-  "z-y+x", // kZUp_NegativeYFront_PositiveXLeft
-  "z-y-x", // kZUp_NegativeYFront_NegativeXLeft
-  nullptr
-};
+    "x+y+z",  // kXUp_PositiveYFront_PositiveZLeft
+    "x+y-z",  // kXUp_PositiveYFront_NegativeZLeft
+    "x-y+z",  // kXUp_NegativeYFront_PositiveZLeft
+    "x-y-z",  // kXUp_NegativeYFront_NegativeZLeft
+    "x+z+y",  // kXUp_PositiveZFront_PositiveYLeft
+    "x+z-y",  // kXUp_PositiveZFront_NegativeYLeft
+    "x-z+y",  // kXUp_NegativeZFront_PositiveYLeft
+    "x-z-y",  // kXUp_NegativeZFront_NegativeYLeft
+    "y+x+z",  // kYUp_PositiveXFront_PositiveZLeft
+    "y+x-z",  // kYUp_PositiveXFront_NegativeZLeft
+    "y-x+z",  // kYUp_NegativeXFront_PositiveZLeft
+    "y-x-z",  // kYUp_NegativeXFront_NegativeZLeft
+    "y+z+x",  // kYUp_PositiveZFront_PositiveXLeft
+    "y+z-x",  // kYUp_PositiveZFront_NegativeXLeft
+    "y-z+x",  // kYUp_NegativeZFront_PositiveXLeft
+    "y-z-x",  // kYUp_NegativeZFront_NegativeXLeft
+    "z+x+y",  // kZUp_PositiveXFront_PositiveYLeft
+    "z+x-y",  // kZUp_PositiveXFront_NegativeYLeft
+    "z-x+y",  // kZUp_NegativeXFront_PositiveYLeft
+    "z-x-y",  // kZUp_NegativeXFront_NegativeYLeft
+    "z+y+x",  // kZUp_PositiveYFront_PositiveXLeft
+    "z+y-x",  // kZUp_PositiveYFront_NegativeXLeft
+    "z-y+x",  // kZUp_NegativeYFront_PositiveXLeft
+    "z-y-x",  // kZUp_NegativeYFront_NegativeXLeft
+    nullptr};
 static_assert(FPL_ARRAYSIZE(kAxisSystemNames) == kNumAxisSystems + 1, "");
 
 // Each log message is given a level of importance.
@@ -169,11 +168,11 @@ enum LogLevel {
 
 // Prefix log messages at this level with this message.
 static const char* kLogPrefix[] = {
-  "",           // kLogVerbose
-  "",           // kLogInfo
-  "",           // kLogImportant
-  "Warning: ",  // kLogWarning
-  "Error: "     // kLogError
+    "",           // kLogVerbose
+    "",           // kLogInfo
+    "",           // kLogImportant
+    "Warning: ",  // kLogWarning
+    "Error: "     // kLogError
 };
 static_assert(FPL_ARRAYSIZE(kLogPrefix) == kNumLogLevels,
               "kLogPrefix length is incorrect");
@@ -242,8 +241,9 @@ template <class T>
 static T ElementFromIndices(const FbxLayerElementTemplate<T>& element,
                             int control_index, int vertex_counter) {
   const int index =
-      element.GetMappingMode() == FbxGeometryElement::eByControlPoint ?
-      control_index : vertex_counter;
+      element.GetMappingMode() == FbxGeometryElement::eByControlPoint
+          ? control_index
+          : vertex_counter;
   return Element(element, index);
 }
 
@@ -289,9 +289,7 @@ static inline Vec3 FlatBufferVec3(const vec3& v) {
   return Vec3(v.x(), v.y(), v.z());
 }
 
-static inline Vec2 FlatBufferVec2(const vec2& v) {
-  return Vec2(v.x(), v.y());
-}
+static inline Vec2 FlatBufferVec2(const vec2& v) { return Vec2(v.x(), v.y()); }
 
 static inline Vec4ub FlatBufferVec4ub(const vec4& v) {
   const vec4 scaled = 255.0f * v;
@@ -330,7 +328,6 @@ class FlatTextures {
   std::vector<std::string> textures_;
 };
 
-
 // Required for std::unordered_set. Only compare the primary texture.
 class FlatTextureHash {
  public:
@@ -342,7 +339,6 @@ class FlatTextureHash {
     return hash;
   }
 };
-
 
 class FlatMesh {
  public:
@@ -453,8 +449,7 @@ class FlatMesh {
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
-      matdef::BlendMode blend_mode,
-      bool skin) const {
+      matdef::BlendMode blend_mode, bool skin) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -528,8 +523,8 @@ class FlatMesh {
       // Output local matrix transform too.
       const mat4& t = b.relative_transform;
       for (size_t k = 0; k < 3; ++k) {
-        log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n", indent.c_str(),
-                 t(k, 0), t(k, 1), t(k, 2), t(k, 3));
+        log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n",
+                 indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
 
       // And the first point, in global space.
@@ -553,7 +548,7 @@ class FlatMesh {
   struct Vertex {
     vec3_packed vertex;
     vec3_packed normal;
-    vec4_packed tangent; // 4th element is handedness: +1 or -1
+    vec4_packed tangent;  // 4th element is handedness: +1 or -1
     vec2_packed uv;
     Vec4ub color;
     BoneIndex bone;
@@ -633,10 +628,11 @@ class FlatMesh {
   static std::string TextureFileName(const std::string& texture_file_name,
                                      const std::string& assets_sub_dir,
                                      const std::string& texture_extension) {
-    const std::string extension = texture_extension.length() == 0 ?
-        FileExtension(texture_file_name) : texture_extension;
-    return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.'
-           + extension;
+    const std::string extension = texture_extension.length() == 0
+                                      ? FileExtension(texture_file_name)
+                                      : texture_extension;
+    return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.' +
+           extension;
   }
 
   std::string MaterialFileName(const std::string& mesh_name, size_t surface_idx,
@@ -712,8 +708,8 @@ class FlatMesh {
       // Create final material FlatBuffer.
       auto textures_vector_fb = fbb.CreateVector(textures_fb);
       auto formats_vector_fb = fbb.CreateVector(formats_fb);
-      auto material_fb = matdef::CreateMaterial(
-          fbb, textures_vector_fb, blend_mode, formats_vector_fb);
+      auto material_fb = matdef::CreateMaterial(fbb, textures_vector_fb,
+                                                blend_mode, formats_vector_fb);
       matdef::FinishMaterialBuffer(fbb, material_fb);
 
       const std::string full_material_file_name =
@@ -740,8 +736,8 @@ class FlatMesh {
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
-    log_.Log(kLogInfo, "Mesh:\n  %s has %d verts\n",
-             rel_mesh_file_name.c_str(), points_.size());
+    log_.Log(kLogInfo, "Mesh:\n  %s has %d verts\n", rel_mesh_file_name.c_str(),
+             points_.size());
 
     // Get the mapping from mesh bones (i.e. all bones in the model)
     // to shader bones (i.e. bones that have verts weighted to them).
@@ -765,8 +761,8 @@ class FlatMesh {
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
-      log_.Log(kLogInfo, "  Surface %d (%s) has %d triangles\n",
-               surface_idx, material_file_name.c_str(), index_buf.size() / 3);
+      log_.Log(kLogInfo, "  Surface %d (%s) has %d triangles\n", surface_idx,
+               material_file_name.c_str(), index_buf.size() / 3);
       surface_idx++;
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
@@ -948,7 +944,8 @@ class FbxMeshParser {
             float distance_unit_scale, bool recenter, bool hierarchy) {
     if (!Valid()) return false;
 
-    log_.Log(kLogInfo,
+    log_.Log(
+        kLogInfo,
         "---- mesh_pipeline: %s ------------------------------------------\n",
         BaseFileName(file_name).c_str());
 
@@ -964,10 +961,9 @@ class FbxMeshParser {
     importer->GetFileVersion(file_major, file_minor, file_revision);
 
     // Report version information.
-    log_.Log(kLogVerbose,
-             "File version %d.%d.%d, SDK version %d.%d.%d\n",
-             file_major, file_minor, file_revision,
-             sdk_major, sdk_minor, sdk_revision);
+    log_.Log(kLogVerbose, "File version %d.%d.%d, SDK version %d.%d.%d\n",
+             file_major, file_minor, file_revision, sdk_major, sdk_minor,
+             sdk_revision);
 
     // Exit on load error.
     if (!init_status) {
@@ -1119,8 +1115,7 @@ class FbxMeshParser {
       return;
     }
 
-    log_.Log(kLogInfo,
-             "Converting scene's axes (%s) to requested axes (%s).\n",
+    log_.Log(kLogInfo, "Converting scene's axes (%s) to requested axes (%s).\n",
              kAxisSystemNames[ConvertAxisSystemFromFbx(import_axes)],
              kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
     export_axes.ConvertScene(scene_);
@@ -1136,8 +1131,7 @@ class FbxMeshParser {
       if (recentered) {
         log_.Log(kLogInfo, "Recentering\n");
       } else {
-        log_.Log(kLogInfo,
-                 "Already centered so ignoring recenter request\n");
+        log_.Log(kLogInfo, "Already centered so ignoring recenter request\n");
       }
     }
 
@@ -1180,7 +1174,8 @@ class FbxMeshParser {
     for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
       FbxNodeAttribute* attr = node->GetNodeAttributeByIndex(i);
       if (attr == nullptr ||
-          attr->GetAttributeType() != FbxNodeAttribute::eMesh) continue;
+          attr->GetAttributeType() != FbxNodeAttribute::eMesh)
+        continue;
       FbxMesh* mesh = static_cast<FbxMesh*>(attr);
 
       // Generate normals. Leaves existing normal data if it already exists.
@@ -1278,8 +1273,8 @@ class FbxMeshParser {
       // Final diffuse color is the factor times the base color.
       const double factor = diffuse_factor_property.Get<FbxDouble>();
       const FbxColor base = diffuse_property.Get<FbxColor>();
-      color->Set(factor * base.mRed, factor * base.mGreen,
-                 factor * base.mBlue, base.mAlpha);
+      color->Set(factor * base.mRed, factor * base.mGreen, factor * base.mBlue,
+                 base.mAlpha);
       return true;
     }
     return false;
@@ -1329,9 +1324,8 @@ class FbxMeshParser {
   }
 
   // Try variations of the texture name until we find one on disk.
-  std::string FindSourceTextureFileName(
-      const std::string& source_mesh_name,
-      const std::string& texture_name) const {
+  std::string FindSourceTextureFileName(const std::string& source_mesh_name,
+                                        const std::string& texture_name) const {
     std::string attempted_textures;
 
     // If the texture name is relative, check for it relative to the
@@ -1360,19 +1354,15 @@ class FbxMeshParser {
     // Gather potential base names for the texture (i.e. name without directory
     // or extension).
     const std::string base_name = BaseFileName(texture_no_dir);
-    const std::string base_names[] = {
-      base_name,
-      SnakeCase(base_name),
-      CamelCase(base_name),
-      source_name
-    };
+    const std::string base_names[] = {base_name, SnakeCase(base_name),
+                                      CamelCase(base_name), source_name};
 
     // For each potential base name, loop through known image file extensions.
     // The image may have been converted to a new format.
     for (size_t i = 0; i < FPL_ARRAYSIZE(base_names); ++i) {
       for (size_t j = 0; j < FPL_ARRAYSIZE(kImageExtensions); ++j) {
-        const std::string potential_name = source_dir + base_names[i] + "." +
-                                           kImageExtensions[j];
+        const std::string potential_name =
+            source_dir + base_names[i] + "." + kImageExtensions[j];
         if (TextureFileExists(potential_name)) return potential_name;
         attempted_textures += potential_name + '\n';
       }
@@ -1385,7 +1375,8 @@ class FbxMeshParser {
     attempted_textures += texture_name + '\n';
 
     // Texture can't be found.
-    log_.Log(kLogWarning, "Can't find texture `%s`. Tried these variants:\n%s\n",
+    log_.Log(kLogWarning,
+             "Can't find texture `%s`. Tried these variants:\n%s\n",
              texture_name.c_str(), attempted_textures.c_str());
     return "";
   }
@@ -1393,7 +1384,8 @@ class FbxMeshParser {
   std::string TextureFileName(FbxNode* node, const FbxMesh* mesh,
                               const char* texture_property) const {
     // Grab the texture attached to this node.
-    const FbxFileTexture* texture = TextureFromNode(node, mesh, texture_property);
+    const FbxFileTexture* texture =
+        TextureFromNode(node, mesh, texture_property);
     if (texture == nullptr) return "";
 
     // Look for a texture on disk that matches the texture referenced by
@@ -1411,7 +1403,6 @@ class FbxMeshParser {
     // kTextureProperties. When we find a texture, we assign it the next
     // shader index.
     for (size_t i = 0; i < FPL_ARRAYSIZE(kTextureProperties); ++i) {
-
       // Find the filename for the texture type given by `texture_property`.
       const char* texture_property = kTextureProperties[i];
       std::string texture = TextureFileName(node, mesh, texture_property);
@@ -1584,14 +1575,13 @@ class FbxMeshParser {
                          FlatMesh* out) const {
     const FbxAMatrix& t = point_transform;
     log_.Log(kLogVerbose,
-        "    transform: {%.3f %.3f %.3f %.3f}\n"
-        "               {%.3f %.3f %.3f %.3f}\n"
-        "               {%.3f %.3f %.3f %.3f}\n"
-        "               {%.3f %.3f %.3f %.3f}\n",
-        t[0][0], t[0][1], t[0][2], t[0][3],
-        t[1][0], t[1][1], t[1][2], t[1][3],
-        t[2][0], t[2][1], t[2][2], t[2][3],
-        t[3][0], t[3][1], t[3][2], t[3][3]);
+             "    transform: {%.3f %.3f %.3f %.3f}\n"
+             "               {%.3f %.3f %.3f %.3f}\n"
+             "               {%.3f %.3f %.3f %.3f}\n"
+             "               {%.3f %.3f %.3f %.3f}\n",
+             t[0][0], t[0][1], t[0][2], t[0][3], t[1][0], t[1][1], t[1][2],
+             t[1][3], t[2][0], t[2][1], t[2][2], t[2][3], t[3][0], t[3][1],
+             t[3][2], t[3][3]);
 
     // Affine matrix only supports multiplication by a point, not a vector.
     // That is, there is no way to ignore the translation (as is required
@@ -1605,16 +1595,18 @@ class FbxMeshParser {
     const FbxVector4* vertices = mesh->GetControlPoints();
     const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
-    const FbxGeometryElementTangent* tangent_element = mesh->GetElementTangent();
+    const FbxGeometryElementTangent* tangent_element =
+        mesh->GetElementTangent();
     const FbxGeometryElementVertexColor* color_element =
         mesh->GetElementVertexColor();
     assert(uv_element != nullptr && normal_element != nullptr &&
            tangent_element != nullptr);
     out->SetExportVertexColor(color_element != nullptr || has_solid_color);
-    log_.Log(kLogVerbose,
-             color_element != nullptr ? "Mesh has vertex colors\n" :
-             has_solid_color ? "Mesh material has a solid color\n" :
-             "Mesh does not have vertex colors\n");
+    log_.Log(kLogVerbose, color_element != nullptr
+                              ? "Mesh has vertex colors\n"
+                              : has_solid_color
+                                    ? "Mesh material has a solid color\n"
+                                    : "Mesh does not have vertex colors\n");
 
     // Loop through every poly in the mesh.
     int vertex_counter = 0;
@@ -1681,18 +1673,20 @@ class FbxMeshParser {
     const int front_idx = front - FbxAxisSystem::EFrontVector::eParityEven;
     const int front_sign_idx = front_sign > 0 ? 0 : 1;
     const int coord_idx = coord - FbxAxisSystem::eRightHanded;
-    return static_cast<AxisSystem>(
-        8 * up_idx + 4 * front_idx + 2 * front_sign_idx + coord_idx);
+    return static_cast<AxisSystem>(8 * up_idx + 4 * front_idx +
+                                   2 * front_sign_idx + coord_idx);
   }
 
   static FbxAxisSystem ConvertAxisSystemToFbx(AxisSystem system) {
     const int up_idx = system / 8 + FbxAxisSystem::EUpVector::eXAxis;
     const int front_sign = system % 4 < 2 ? 1 : -1;
-    const int front_idx = (system % 8) / 4 + FbxAxisSystem::EFrontVector::eParityEven;
+    const int front_idx =
+        (system % 8) / 4 + FbxAxisSystem::EFrontVector::eParityEven;
     const int coord_idx = system % 2;
 
     const auto up = static_cast<FbxAxisSystem::EUpVector>(up_idx);
-    const auto front = static_cast<FbxAxisSystem::EFrontVector>(front_sign * front_idx);
+    const auto front =
+        static_cast<FbxAxisSystem::EFrontVector>(front_sign * front_idx);
     const auto coord = static_cast<FbxAxisSystem::ECoordSystem>(coord_idx);
     return FbxAxisSystem(up, front, coord);
   }
@@ -1739,14 +1733,14 @@ struct MeshPipelineArgs {
   std::string fbx_file;        /// FBX input file to convert.
   std::string asset_base_dir;  /// Directory from which all assets are loaded.
   std::string asset_rel_dir;   /// Directory (relative to base) to output files.
-  std::string texture_extension;/// Extension of textures in material file.
+  std::string texture_extension;  /// Extension of textures in material file.
   std::vector<matdef::TextureFormat> texture_formats;
   matdef::BlendMode blend_mode;
   AxisSystem axis_system;
   float distance_unit_scale;
-  bool recenter;               /// Translate geometry to origin.
-  bool hierarchy;              /// Mesh vertices output relative to local pivot.
-  LogLevel log_level;          /// Amount of logging to dump during conversion.
+  bool recenter;       /// Translate geometry to origin.
+  bool hierarchy;      /// Mesh vertices output relative to local pivot.
+  LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
 
 // Returns index of `s` in `array_of_strings`, or -1 if `s` not found.
@@ -1779,12 +1773,12 @@ static float ParseDistanceUnitScale(const char* s) {
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
   return static_cast<matdef::TextureFormat>(
-        IndexOfString(s, matdef::EnumNamesTextureFormat()));
+      IndexOfString(s, matdef::EnumNamesTextureFormat()));
 }
 
 static matdef::BlendMode ParseBlendMode(const char* s) {
   return static_cast<matdef::BlendMode>(
-        IndexOfString(s, matdef::EnumNamesBlendMode()));
+      IndexOfString(s, matdef::EnumNamesBlendMode()));
 }
 
 static bool ParseTextureFormats(
@@ -1815,13 +1809,14 @@ static bool ParseTextureFormats(
 }
 
 static bool TextureFormatHasAlpha(matdef::TextureFormat format) {
- return format == matdef::TextureFormat_F_8888;
+  return format == matdef::TextureFormat_F_8888;
 }
 
 static matdef::BlendMode DefaultBlendMode(
     const std::vector<matdef::TextureFormat>& texture_formats) {
-  return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0]) ?
-      matdef::BlendMode_ALPHA : matdef::BlendMode_OFF;
+  return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0])
+             ? matdef::BlendMode_ALPHA
+             : matdef::BlendMode_OFF;
 }
 
 static void LogOptions(const char* indent, const char** array_of_options,
@@ -1900,8 +1895,8 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       // -f switch
     } else if (arg == "-f" || arg == "--texture-formats") {
       if (i + 1 < argc - 1) {
-        valid_args = ParseTextureFormats(
-            std::string(argv[i + 1]), log, &args->texture_formats);
+        valid_args = ParseTextureFormats(std::string(argv[i + 1]), log,
+                                         &args->texture_formats);
         if (!valid_args) {
           log.Log(kLogError, "Unknown texture format: %s\n\n", argv[i + 1]);
         }

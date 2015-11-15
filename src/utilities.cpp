@@ -21,9 +21,9 @@
 
 #ifdef FPL_BASE_BACKEND_STDLIB
 #define _CRT_SECURE_NO_DEPRECATE
-#include <cstdio>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <cstdio>
 
 #if defined(__ANDROID__)
 #ifdef FPL_BASE_BACKEND_SDL
@@ -58,8 +58,22 @@ static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
               "update kCustom");
 #endif  // FPL_BASE_BACKEND_SDL
 
-#ifdef FPL_BASE_BACKEND_SDL
+// Function called by LoadFile().
+static LoadFileFunction g_load_file_function = LoadFileRaw;
+
+LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
+  LoadFileFunction previous_function = g_load_file_function;
+  g_load_file_function = load_file_function ? load_file_function : LoadFileRaw;
+  return previous_function;
+}
+
 bool LoadFile(const char *filename, std::string *dest) {
+  assert(g_load_file_function);
+  return g_load_file_function(filename, dest);
+}
+
+#ifdef FPL_BASE_BACKEND_SDL
+bool LoadFileRaw(const char *filename, std::string *dest) {
   auto handle = SDL_RWFromFile(filename, "rb");
   if (!handle) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -74,7 +88,7 @@ bool LoadFile(const char *filename, std::string *dest) {
 }
 #elif defined(FPL_BASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
-bool LoadFile(const char *filename, std::string *dest) {
+bool LoadFileRaw(const char *filename, std::string *dest) {
   if (!g_asset_manager) {
     LogError(kError,
              "Need to call SetAssetManager() once before calling LoadFile()");
@@ -93,7 +107,7 @@ bool LoadFile(const char *filename, std::string *dest) {
   return len == rlen && len > 0;
 }
 #else
-bool LoadFile(const char *filename, std::string *dest) {
+bool LoadFileRaw(const char *filename, std::string *dest) {
   FILE *fd = fopen(filename, "rb");
   if (fd == NULL) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -179,7 +193,7 @@ bool LoadPreferences(const char *filename, std::string *dest) {
 }
 #endif
 
-int32_t LoadPreference(const char* key, int32_t initial_value) {
+int32_t LoadPreference(const char *key, int32_t initial_value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
@@ -189,9 +203,8 @@ int32_t LoadPreference(const char* key, int32_t initial_value) {
 
   // Retrieve blob as a String.
   jstring pref_key = env->NewStringUTF(key);
-  jmethodID get_int= env->GetMethodID(
-      preference_class, "getInt",
-      "(Ljava/lang/String;I)I");
+  jmethodID get_int =
+      env->GetMethodID(preference_class, "getInt", "(Ljava/lang/String;I)I");
   auto value = env->CallIntMethod(preference, get_int, pref_key, initial_value);
 
   // Release objects references.
@@ -369,7 +382,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
 }
 #endif
 
-bool SavePreference(const char* key, int32_t value) {
+bool SavePreference(const char *key, int32_t value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
   JNIEnv *env = reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
@@ -385,10 +398,9 @@ bool SavePreference(const char* key, int32_t value) {
 
   // Put blob as a String.
   jstring pref_key = env->NewStringUTF(key);
-  jmethodID put_int =
-      env->GetMethodID(editor_class, "putInt",
-                       "(Ljava/lang/String;I)Landroid/content/"
-                       "SharedPreferences$Editor;");
+  jmethodID put_int = env->GetMethodID(editor_class, "putInt",
+                                       "(Ljava/lang/String;I)Landroid/content/"
+                                       "SharedPreferences$Editor;");
   env->CallObjectMethod(editor, put_int, pref_key, value);
 
   // Commit a change.
@@ -409,7 +421,6 @@ bool SavePreference(const char* key, int32_t value) {
   (void)value;
 #endif
 }
-
 
 bool SaveFile(const char *filename, const std::string &src) {
   return SaveFile(filename, static_cast<const void *>(src.c_str()),
@@ -559,9 +570,8 @@ bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
 bool MipmapGeneration16bppSupported() {
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
   static const char *device_list[] = {"Galaxy Nexus", "Nexus S", "Nexus S 4G"};
-  static bool supported =
-      AndroidCheckDeviceList(device_list,
-                             sizeof(device_list) / sizeof(device_list[0]));
+  static bool supported = AndroidCheckDeviceList(
+      device_list, sizeof(device_list) / sizeof(device_list[0]));
   return supported;
 #else
   return true;
@@ -796,8 +806,7 @@ void WaitForVsync() {
 // Note that this callback is signaled from another thread, and so
 // needs to be thread-safe.
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_fpl_fplbase_FPLActivity_nativeOnVsync(JNIEnv *env,
-                                                      jobject thiz,
+Java_com_google_fpl_fplbase_FPLActivity_nativeOnVsync(JNIEnv *env, jobject thiz,
                                                       jobject activity) {
   (void)env;
   (void)thiz;
@@ -851,8 +860,7 @@ bool IsTvDevice() {
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID is_tv_device =
-      env->GetMethodID(fpl_class, "IsTvDevice", "()Z");
+  jmethodID is_tv_device = env->GetMethodID(fpl_class, "IsTvDevice", "()Z");
   jboolean result = env->CallBooleanMethod(activity, is_tv_device);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
@@ -865,22 +873,22 @@ bool IsTvDevice() {
 #if defined(__ANDROID__)
 // Get the name of the current activity class.
 std::string AndroidGetActivityName() {
-  JNIEnv* env = AndroidGetJNIEnv();
+  JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass activity_class = env->GetObjectClass(activity);
-  jmethodID get_class_method = env->GetMethodID(activity_class, "getClass",
-                                                "()Ljava/lang/Class;");
+  jmethodID get_class_method =
+      env->GetMethodID(activity_class, "getClass", "()Ljava/lang/Class;");
   // Get the class instance.
-  jclass activity_class_object = (jclass)env->CallObjectMethod(
-      activity, get_class_method);
-  jclass activity_class_object_class = env->GetObjectClass(
-      activity_class_object);
+  jclass activity_class_object =
+      (jclass)env->CallObjectMethod(activity, get_class_method);
+  jclass activity_class_object_class =
+      env->GetObjectClass(activity_class_object);
   jmethodID get_name_method = env->GetMethodID(
       activity_class_object_class, "getName", "()Ljava/lang/String;");
-  jstring class_name_object = (jstring)env->CallObjectMethod(
-      activity_class_object, get_name_method);
-  char* class_name = (char*)env->GetStringUTFChars(class_name_object,
-                                                   JNI_FALSE);
+  jstring class_name_object =
+      (jstring)env->CallObjectMethod(activity_class_object, get_name_method);
+  char *class_name =
+      (char *)env->GetStringUTFChars(class_name_object, JNI_FALSE);
   std::string activity_name(class_name);
   env->ReleaseStringUTFChars(class_name_object, class_name);
   env->DeleteLocalRef(class_name_object);

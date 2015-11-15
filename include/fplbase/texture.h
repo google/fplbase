@@ -51,8 +51,7 @@ typedef unsigned int TextureHandle;
 class Texture : public AsyncResource {
  public:
   explicit Texture(const char *filename = nullptr,
-                   TextureFormat format = kFormatAuto,
-                   bool mipmaps = true)
+                   TextureFormat format = kFormatAuto, bool mipmaps = true)
       : AsyncResource(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),

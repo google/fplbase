@@ -81,6 +81,7 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
     if (*attributes == end) {
       return size;
     }
+    // clang-format off
     switch (*attributes) {
       case kPosition3f:     size += 3 * sizeof(float); break;
       case kNormal3f:       size += 3 * sizeof(float); break;
@@ -91,6 +92,7 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
       case kBoneWeights4ub: size += 4;                 break;
       case kEND:            return size;
     }
+    // clang-format on
   }
 }
 
@@ -170,12 +172,10 @@ Mesh::~Mesh() {
 void Mesh::set_format(const Attribute *format) {
   for (int i = 0;; ++i) {
     assert(i < kMaxAttributes);
-    if (i >= kMaxAttributes)
-      break;
+    if (i >= kMaxAttributes) break;
 
     format_[i] = format[i];
-    if (format[i] == kEND)
-      break;
+    if (format[i] == kEND) break;
   }
 }
 
@@ -202,8 +202,7 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
 
   memcpy(&bone_transforms_[0], bone_transforms,
          num_bones * sizeof(bone_transforms_[0]));
-  memcpy(&bone_parents_[0], bone_parents,
-         num_bones * sizeof(bone_parents_[0]));
+  memcpy(&bone_parents_[0], bone_parents, num_bones * sizeof(bone_parents_[0]));
   memcpy(&shader_bone_indices_[0], shader_bone_indices,
          num_shader_bones * sizeof(shader_bone_indices_[0]));
 
@@ -239,8 +238,8 @@ void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
     GL_CALL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0));
   } else {
     assert(renderer.feature_level() == Renderer::kFeatureLevel30);
-    GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count,
-                                    GL_UNSIGNED_SHORT, 0, instances));
+    GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0,
+                                    instances));
   }
 }
 
@@ -254,12 +253,10 @@ void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   UnSetAttributes(format_);
 }
 
-void Mesh::RenderStereo(Renderer &renderer,
-                        const Shader* shader,
-                        const vec4i* viewport,
-                        const mat4* mvp,
-                        const vec3* camera_position,
-                        bool ignore_material, size_t instances) {
+void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
+                        const vec4i *viewport, const mat4 *mvp,
+                        const vec3 *camera_position, bool ignore_material,
+                        size_t instances) {
   SetAttributes(vbo_, format_, vertex_size_, nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
@@ -285,8 +282,8 @@ void Mesh::RenderArray(Primitive primitive, int index_count,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
   auto gl_primitive = primitive == kLines ? GL_LINES : GL_TRIANGLES;
-  GL_CALL(glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT,
-                         indices));
+  GL_CALL(
+      glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT, indices));
   UnSetAttributes(format);
 }
 
@@ -294,7 +291,9 @@ void Mesh::RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
                               const vec2 &tex_bottom_left,
                               const vec2 &tex_top_right) {
   static const Attribute format[] = {kPosition3f, kTexCoord2f, kEND};
-  static const unsigned short indices[] = { 0, 1, 2, 1, 3, 2 };
+  static const unsigned short indices[] = {0, 1, 2, 1, 3, 2};
+
+  // clang-format off
   // vertex format is [x, y, z] [u, v]:
   const float vertices[] = {
       bottom_left.x(),     bottom_left.y(),     bottom_left.z(),
@@ -305,6 +304,7 @@ void Mesh::RenderAAQuadAlongX(const vec3 &bottom_left, const vec3 &top_right,
       tex_top_right.x(),   tex_bottom_left.y(),
       top_right.x(),       top_right.y(),       top_right.z(),
       tex_top_right.x(),   tex_top_right.y()};
+  // clang-format on
   Mesh::RenderArray(kTriangles, 6, format, sizeof(float) * 5,
                     reinterpret_cast<const char *>(vertices), indices);
 }
@@ -315,9 +315,10 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
                                        const vec4 &patch_info) {
   static const Attribute format[] = {kPosition3f, kTexCoord2f, kEND};
   static const unsigned short indices[] = {
-      0, 2,  1, 1,  2, 3,  2, 4,  3,  3,  4,  5,  4,  6,  5,  5,  6,  7,
-      1, 3,  8, 8,  3, 9,  3, 5,  9,  9,  5,  10, 5,  7, 10,  10, 7,  11,
-      8,  9, 12, 12, 9, 13, 9, 10, 13, 13, 10, 14, 10, 11, 14, 14, 11, 15, };
+      0, 2, 1,  1,  2, 3,  2, 4,  3,  3,  4,  5,  4,  6,  5,  5,  6,  7,
+      1, 3, 8,  8,  3, 9,  3, 5,  9,  9,  5,  10, 5,  7,  10, 10, 7,  11,
+      8, 9, 12, 12, 9, 13, 9, 10, 13, 13, 10, 14, 10, 11, 14, 14, 11, 15,
+  };
   auto max = vec2::Max(bottom_left.xy(), top_right.xy());
   auto min = vec2::Min(bottom_left.xy(), top_right.xy());
   auto p0 = vec2(texture_size) * patch_info.xy() + min;
@@ -334,6 +335,7 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
 
   // vertex format is [x, y, z] [u, v]:
   float z = bottom_left.z();
+  // clang-format off
   const float vertices[] = {
       min.x(), min.y(), z, 0.0f,           0.0f,
       p0.x(),  min.y(), z, patch_info.x(), 0.0f,
@@ -350,7 +352,9 @@ void Mesh::RenderAAQuadAlongXNinePatch(const vec3 &bottom_left,
       max.x(), min.y(), z, 1.0f,           0.0f,
       max.x(), p0.y(),  z, 1.0f,           patch_info.y(),
       max.x(), p1.y(),  z, 1.0f,           patch_info.w(),
-      max.x(), max.y(), z, 1.0f,           1.0f, };
+      max.x(), max.y(), z, 1.0f,           1.0f,
+  };
+  // clang-format on
   Mesh::RenderArray(kTriangles, 6 * 9, format, sizeof(float) * 5,
                     reinterpret_cast<const char *>(vertices), indices);
 }

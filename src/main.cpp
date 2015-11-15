@@ -15,7 +15,7 @@
 // This is a wrapper around main, as SDL needs to modify the main function
 // directly.  Users of FPLBase should declare "FPL_main" which this will call.
 
-#include "fplbase/config.h" // Must come first.
+#include "fplbase/config.h"  // Must come first.
 
 #ifdef FPL_BASE_BACKEND_SDL
 #include "SDL_main.h"
@@ -48,10 +48,7 @@
 extern "C" int FPL_main(int argc, char* argv[]);
 
 // main() is redefined as SDL_main() (see SDL_main.h) on some platforms.
-int main(int argc, char* argv[]) {
-  return FPL_main(argc, argv);
-}
-
+int main(int argc, char* argv[]) { return FPL_main(argc, argv); }
 
 // NOTE: The following code is included in this module to prevent the linker
 // from stripping the JNI_OnLoad entry point from the application.  Since
@@ -73,16 +70,15 @@ FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_DECLARATIONS)
 // To override the default list define FPLBASE_JNI_ON_LOAD_FUNCTIONS.
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
   static JniOnLoadFunction jni_on_load_function_table[] = {
-    FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_TABLE)
-  };
+      FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_TABLE)};
 #if FPLBASE_JNI_LOG
-  static const char *jni_on_load_function_name[] = {
-    FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_STRINGS)
-  };
+  static const char* jni_on_load_function_name[] = {
+      FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_STRINGS)};
 #endif  // FPLBASE_JNI_LOG
   jint expected_jni_version = JNI_VERSION_1_4;
   for (int i = 0; i < sizeof(jni_on_load_function_table) /
-         sizeof(jni_on_load_function_table[0]); ++i) {
+                          sizeof(jni_on_load_function_table[0]);
+       ++i) {
     FPLBASE_JNI_ONLOAD_LOG("Running %s()", jni_on_load_function_name[i]);
     jint jni_version = jni_on_load_function_table[i](vm, reserved);
     (void)jni_version;

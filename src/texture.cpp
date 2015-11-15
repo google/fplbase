@@ -58,8 +58,7 @@ void Texture::Delete() {
   }
 }
 
-uint16_t *Texture::Convert8888To5551(const uint8_t *buffer,
-                                      const vec2i &size) {
+uint16_t *Texture::Convert8888To5551(const uint8_t *buffer, const vec2i &size) {
   auto buffer16 = new uint16_t[size.x() * size.y()];
   for (int i = 0; i < size.x() * size.y(); i++) {
     auto c = &buffer[i * 4];
@@ -79,8 +78,8 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                               bool has_alpha, bool mipmaps,
-                               TextureFormat desired) {
+                              bool has_alpha, bool mipmaps,
+                              TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
     LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
@@ -181,7 +180,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 }
 
 void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
-                             int width, int height, const void *data) {
+                            int width, int height, const void *data) {
   // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
   // that we are updating entire row at once.
   // TODO(wvo): Optimize glTexSubImage2D call in ES3.0 capable platform.
@@ -196,7 +195,7 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
 }
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
-                             bool *has_alpha) {
+                            bool *has_alpha) {
   struct TGA {
     uint8_t id_len, color_map_type, image_type, color_map_data[5];
     uint16_t x_origin, y_origin, width, height;
@@ -242,8 +241,8 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
-                              const vec2 &scale, vec2i *dimensions,
-                              bool *has_alpha) {
+                             const vec2 &scale, vec2i *dimensions,
+                             bool *has_alpha) {
   WebPDecoderConfig config;
   memset(&config, 0, sizeof(WebPDecoderConfig));
   auto status = WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size,
@@ -268,9 +267,8 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   return config.output.private_memory;
 }
 
-uint8_t *Texture::LoadAndUnpackTexture(const char *filename,
-                                        const vec2 &scale,
-                                        vec2i *dimensions, bool *has_alpha) {
+uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
+                                       vec2i *dimensions, bool *has_alpha) {
   std::string file;
   if (!LoadFile(filename, &file)) {
     LogError(kApplication, "Couldn\'t load: %s", filename);
@@ -287,8 +285,8 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename,
     }
     return buf;
   } else if (ext == "webp") {
-    auto buf = UnpackWebP(file.c_str(), file.length(), scale,
-                          dimensions, has_alpha);
+    auto buf =
+        UnpackWebP(file.c_str(), file.length(), scale, dimensions, has_alpha);
     if (!buf) {
       LogError(kApplication, "WebP format problem: %s", filename);
     }

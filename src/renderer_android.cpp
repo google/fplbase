@@ -14,20 +14,21 @@
 
 #include <EGL/egl.h>
 
-#include "precompiled.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
+#include "precompiled.h"
 
 #if defined(FPL_BASE_BACKEND_SDL)
 // Include SDL internal headers and external refs
 #define TARGET_OS_IPHONE \
   1  // This one is not to turn on 'SDL_DYNAMIC_API' defitnition
 extern "C" {
-#include "src/video/SDL_sysvideo.h"
-#include "src/video/SDL_egl_c.h"
 #include "src/core/android/SDL_android.h"
+#include "src/video/SDL_egl_c.h"
+#include "src/video/SDL_sysvideo.h"
 }
-#undef TARGET_OS_IPHONE  // We don't need this anymore
+// We don't need this anymore
+#undef TARGET_OS_IPHONE
 #endif  // defined(FPL_BASE_BACKEND_SDL)
 
 namespace fpl {
@@ -78,7 +79,7 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   eglQuerySurface(dpy, surface, EGL_WIDTH, &width);
   eglQuerySurface(dpy, surface, EGL_HEIGHT, &height);
   if (width != g_android_scaler_resolution.x() ||
-    height != g_android_scaler_resolution.y()) {
+      height != g_android_scaler_resolution.y()) {
     LogError("Failed to initialize HW scaler.");
     // Reset scaler resolution.
     g_android_scaler_resolution.x() = width;
@@ -101,6 +102,6 @@ void AndroidPreCreateWindow() {
     device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
   }
 }
-#endif // FPL_BASE_BACKEND_SDL
+#endif  // FPL_BASE_BACKEND_SDL
 
 }  // namespace fpl

@@ -112,7 +112,7 @@ struct InputPointer {
   vec2i mousedelta;
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
 };
 
 /// @class Joystick
@@ -238,9 +238,7 @@ class HeadMountedDisplayInput {
   // The upwards direction of the head.
   vec3 up() const { return (mathfu::kAxisY4f * head_transform_).xyz(); }
   // The forward direction of the head.  Note that it points into -Z.
-  vec3 forward() const {
-    return (-mathfu::kAxisZ4f * head_transform_).xyz();
-  }
+  vec3 forward() const { return (-mathfu::kAxisZ4f * head_transform_).xyz(); }
   // The translation of the left eye
   vec3 left_eye_translation() const {
     return (left_eye_transform_ * mathfu::kAxisW4f).xyz();
