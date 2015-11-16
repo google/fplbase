@@ -955,8 +955,9 @@ class FbxMeshParser {
 
     // Create the importer and initialize with the file.
     FbxImporter* importer = FbxImporter::Create(manager_, "");
-    const bool init_status =
+    const bool init_success =
         importer->Initialize(file_name, -1, manager_->GetIOSettings());
+    const FbxStatus init_status = importer->GetStatus();
 
     // Check the SDK and pipeline versions.
     int sdk_major = 0, sdk_minor = 0, sdk_revision = 0;
@@ -970,9 +971,8 @@ class FbxMeshParser {
              sdk_revision);
 
     // Exit on load error.
-    if (!init_status) {
-      FbxString error = importer->GetStatus().GetErrorString();
-      log_.Log(kLogError, "%s\n\n", error.Buffer());
+    if (!init_success) {
+      log_.Log(kLogError, "init, %s\n\n", init_status.GetErrorString());
       return false;
     }
     if (!importer->IsFBX()) {
@@ -981,13 +981,17 @@ class FbxMeshParser {
     }
 
     // Import the scene.
-    const bool import_status = importer->Import(scene_);
+    const bool import_success = importer->Import(scene_);
+    const FbxStatus import_status = importer->GetStatus();
 
     // Clean-up temporaries.
     importer->Destroy();
 
     // Exit if the import failed.
-    if (!import_status) return false;
+    if (!import_success) {
+      log_.Log(kLogError, "import, %s\n\n", import_status.GetErrorString());
+      return false;
+    }
 
     // Remember if we're recording hierarchy information for these meshes,
     // or flattening it.
