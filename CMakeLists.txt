@@ -32,6 +32,9 @@ option(fplbase_build_mesh_pipeline
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
+option(fplbase_use_external_sdl2 "Use external SDL library." OFF)
+set(external_sdl2_include_dir "" CACHE PATH "Absolute path to directory containing external SDL includes.")
+set(external_sdl2_libraries "" CACHE PATH "List of semicolon separated absolute path to SDL libraries.")
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -94,58 +97,59 @@ set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
 add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
-# External code should be compiled with these compiler options.
-# Call this function before add_subdirectory([external project]), and then
-# call restore_comiler_flags() after.
-function(set_compiler_flags_for_external_libraries)
-  # Save current compiler flags so that we can restore them in
-  # restore_compiler_flags()
-  set(FPLBASE_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-  set(FPLBASE_SAVED_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+if(NOT fplbase_use_external_sdl2)
+  # External code should be compiled with these compiler options.
+  # Call this function before add_subdirectory([external project]), and then
+  # call restore_comiler_flags() after.
+  function(set_compiler_flags_for_external_libraries)
+    # Save current compiler flags so that we can restore them in
+    # restore_compiler_flags()
+    set(FPLBASE_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+    set(FPLBASE_SAVED_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
 
-  # Suppress all warnings.
-  if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
-     CMAKE_COMPILER_IS_CLANGXX)
-    set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
-    set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
-  elseif(MSVC)
-    set(CMAKE_CXX_FLAGS "/WX" PARENT_SCOPE)
-    set(CMAKE_C_FLAGS "" PARENT_SCOPE)
+    # Suppress all warnings.
+    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
+       CMAKE_COMPILER_IS_CLANGXX)
+      set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
+      set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
+    elseif(MSVC)
+      set(CMAKE_CXX_FLAGS "/WX" PARENT_SCOPE)
+      set(CMAKE_C_FLAGS "" PARENT_SCOPE)
+    endif()
+  endfunction()
+
+  # Restore the compiler flags to the values they had before
+  # set_compiler_flags_for_external_libraries() was called.
+  function(restore_compiler_flags)
+    set(CMAKE_CXX_FLAGS "${FPLBASE_SAVED_CXX_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS "${FPLBASE_SAVED_C_FLAGS}" PARENT_SCOPE)
+  endfunction()
+
+  # Include SDL in this project while working around SDL requirement of out of
+  # tree builds.
+  set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
+  # (hack) We redefine install to stop SDL's CMakeLists.txt from referring to
+  # SDL2 lib
+  function(install)
+  endfunction(install)
+  # For some reason SDL defaults to these not being defined, and then defines
+  # their own,
+  # causing linker errors.
+  add_definitions(-DHAVE_LIBC)
+  add_definitions(-DHAVE_STDIO_H)
+  set(BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})
+  set(CMAKE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/.)
+  if(APPLE)
+    set(SDL_AUDIO_DRIVER_COREAUDIO 1)
+  endif(APPLE)
+
+  if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
+    set_compiler_flags_for_external_libraries()
+    add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
+    restore_compiler_flags()
   endif()
-endfunction()
-
-# Restore the compiler flags to the values they had before
-# set_compiler_flags_for_external_libraries() was called.
-function(restore_compiler_flags)
-  set(CMAKE_CXX_FLAGS "${FPLBASE_SAVED_CXX_FLAGS}" PARENT_SCOPE)
-  set(CMAKE_C_FLAGS "${FPLBASE_SAVED_C_FLAGS}" PARENT_SCOPE)
-endfunction()
-
-# Include SDL in this project while working around SDL requirement of out of
-# tree builds.
-set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
-# (hack) We redefine install to stop SDL's CMakeLists.txt from referring to
-# SDL2 lib
-function(install)
-endfunction(install)
-# For some reason SDL defaults to these not being defined, and then defines
-# their own,
-# causing linker errors.
-add_definitions(-DHAVE_LIBC)
-add_definitions(-DHAVE_STDIO_H)
-set(BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})
-set(CMAKE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/.)
-if(APPLE)
-  set(SDL_AUDIO_DRIVER_COREAUDIO 1)
-endif(APPLE)
-
-if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
-  set_compiler_flags_for_external_libraries()
-  add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
-  restore_compiler_flags()
+  set(CMAKE_BINARY_DIR ${BIN_DIR})
 endif()
-
-set(CMAKE_BINARY_DIR ${BIN_DIR})
 
 # Include Webp in this project, and force build in release mode for speed.
 set(original_build_type ${CMAKE_BUILD_TYPE})
@@ -234,7 +238,11 @@ include_directories(${dependencies_webp_distr_dir}/include)
 include_directories(${dependencies_webp_distr_dir}/src)
 
 # SDL includes.
-include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+if (NOT fplbase_use_external_sdl2)
+  include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+else()
+  include_directories(${external_sdl2_include_dir})
+endif()
 
 # Compiler flags.
 set(C_FLAGS_WARNINGS "")
@@ -251,12 +259,16 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
 
-set (SDL_LIBRARIES SDL2-static)
-if(WIN32)
-  add_definitions(-D_USE_MATH_DEFINES)
-  set(OPENGL_LIBRARIES opengl32)
-  set(SDL_LIBRARIES SDL2main ${SDL_LIBRARIES})
-  link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
+if (NOT fplbase_use_external_sdl2)
+  set (SDL_LIBRARIES SDL2-static)
+  if(WIN32)
+    add_definitions(-D_USE_MATH_DEFINES)
+    set(OPENGL_LIBRARIES opengl32)
+    set(SDL_LIBRARIES SDL2main ${SDL_LIBRARIES})
+    link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
+  endif()
+else()
+  set(SDL_LIBRARIES ${external_sdl2_libraries})
 endif()
 
 # Configure the specified target with the common dependencies and flags to
