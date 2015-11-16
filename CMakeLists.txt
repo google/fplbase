@@ -32,7 +32,6 @@ option(fplbase_build_mesh_pipeline
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
-option(fplbase_copy_schemas "Copy FlatBuffers schemas to assets folder." ON)
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -166,31 +165,18 @@ endif()
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
-file(GLOB_RECURSE FLATBUFFERS_SCHEMAS ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
+file(GLOB_RECURSE FPLBASE_FLATBUFFERS_SCHEMAS
+                  ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
 # schema files.
-unset(FLATBUFFERS_GENERATED_INCLUDES)
-foreach(flatbuffers_schema ${FLATBUFFERS_SCHEMAS})
-  get_filename_component(filename ${flatbuffers_schema} NAME_WE)
-  set(flatbuffers_include
-      ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}/${filename}_generated.h)
-  if(fplbase_copy_schemas)
-    file(COPY ${flatbuffers_schema}
-         DESTINATION ${CMAKE_BINARY_DIR}/assets/flatbufferschemas/)
-  endif()
-  add_custom_command(
-    OUTPUT ${flatbuffers_include}
-    COMMAND flatc -o ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}
-                  -c ${flatbuffers_schema}
-    DEPENDS flatc ${flatbuffers_schema})
-  list(APPEND FLATBUFFERS_GENERATED_INCLUDES ${flatbuffers_include})
-endforeach()
-add_custom_target(fplbase_generated_includes DEPENDS
-                  ${FLATBUFFERS_GENERATED_INCLUDES})
-set_property(TARGET fplbase_generated_includes PROPERTY FPLBASE_DIR
-             ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
-
+build_flatbuffers("${FPLBASE_FLATBUFFERS_SCHEMAS}"
+                  ""
+                  fplbase_generated_includes
+                  ""
+                  ${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR}
+                  ""
+                  "")
 
 if(APPLE)
   find_library(OPENGL_LIBRARIES NAMES GL GLU)
