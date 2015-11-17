@@ -145,7 +145,6 @@ LOCAL_SRC_FILES += \
 	$(SDL_SRC_FILES) \
 	src/main/android/SDL_android_main.c  # (1) fix path.
 
-LOCAL_SHARED_LIBRARIES := SDL2_empty  # (3) build libSDL2_empty.so
 LOCAL_CFLAGS += $(SDL_CFLAGS)
 LOCAL_CFLAGS += -DJNI_OnLoad=SDL_JNI_OnLoad  # (4) Rename JNI_OnLoad
 LOCAL_EXPORT_LDLIBS := -Wl,--undefined=Java_org_libsdl_app_SDLActivity_nativeInit -ldl -lGLESv1_CM -lGLESv2 -llog -landroid
