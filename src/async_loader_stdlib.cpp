@@ -19,7 +19,7 @@
 #error This version of AsyncLoader is designed for use with the C++ library.
 #endif
 
-namespace fpl {
+namespace fplbase {
 
 AsyncLoader::AsyncLoader() {}
 
@@ -94,4 +94,4 @@ int AsyncLoader::LoaderThread(void* user_data) {
   reinterpret_cast<AsyncLoader*>(user_data)->LoaderWorker();
   return 0;
 }
-}
+}  // namespace fplbase

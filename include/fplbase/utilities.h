@@ -28,7 +28,7 @@
 #endif  // defined(FPL_BASE_BACKEND_STDLIB)
 #endif
 
-namespace fpl {
+namespace fplbase {
 
 // General utility functions, used by FPLBase, and that might be of use to
 // people using the library:
@@ -227,6 +227,6 @@ void SetHighPerformanceParameters(const HighPerformanceParams &params);
 // Returns the current performance parameters, in the form of a struct.
 const HighPerformanceParams &GetHighPerformanceParameters();
 #endif
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_UTILITIES_H

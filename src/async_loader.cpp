@@ -20,7 +20,7 @@
 #error This version of AsyncLoader depends on SDL.
 #endif
 
-namespace fpl {
+namespace fplbase {
 
 // Push this to signal the worker thread that it's time to quit.
 class BookendAsyncResource : public AsyncResource {
@@ -120,4 +120,4 @@ void AsyncLoader::Lock(const std::function<void()> &body) {
   SDL_UnlockMutex(static_cast<SDL_mutex *>(mutex_));
 }
 
-}  // namespace fpl
+}  // namespace fplbase

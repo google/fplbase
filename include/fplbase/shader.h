@@ -19,16 +19,7 @@
 
 #include "mathfu/glsl_mappings.h"
 
-namespace fpl {
-
-using mathfu::vec2;
-using mathfu::vec2i;
-using mathfu::vec3;
-using mathfu::vec3i;
-using mathfu::vec4;
-using mathfu::vec4i;
-using mathfu::mat4;
-
+namespace fplbase {
 class Renderer;
 
 static const int kMaxTexturesPerShader = 8;
@@ -157,6 +148,6 @@ class Shader {
   UniformHandle uniform_bone_transforms_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_SHADER_H

@@ -42,7 +42,7 @@
 #define ANDROID_HMD 1
 #endif  //  !defined(ANDROID_HMD) && defined(__ANDROID__)
 
-namespace fpl {
+namespace fplbase {
 
 typedef uint64_t FingerId;
 typedef void *JoystickData;
@@ -50,12 +50,6 @@ typedef uint64_t JoystickId;
 
 typedef void *Event;
 typedef void *TouchFingerEvent;
-
-using mathfu::vec2;
-using mathfu::vec2i;
-using mathfu::vec3;
-using mathfu::vec4;
-using mathfu::mat4;
 
 #if ANDROID_GAMEPAD
 typedef int AndroidInputDeviceId;
@@ -96,7 +90,6 @@ enum {
   K_POINTER8,
   K_POINTER9,
   K_POINTER10,
-
   K_PAD_UP = -20,
   K_PAD_DOWN,
   K_PAD_LEFT,
@@ -108,11 +101,11 @@ enum {
 // Additional information stored for the pointer buttons.
 struct InputPointer {
   FingerId id;
-  vec2i mousepos;
-  vec2i mousedelta;
+  mathfu::vec2i mousepos;
+  mathfu::vec2i mousedelta;
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
 };
 
 /// @class Joystick
@@ -122,9 +115,9 @@ class Joystick {
   // Get a Button object for a pointer index.
   Button &GetButton(size_t button_index);
   float GetAxis(size_t axis_index);
-  vec2 GetHat(size_t hat_index);
+  mathfu::vec2 GetHat(size_t hat_index);
   void SetAxis(size_t axis_index, float axis);
-  void SetHat(size_t hat_index, const vec2 &hat);
+  void SetHat(size_t hat_index, const mathfu::vec2 &hat);
   void AdvanceFrame();
   JoystickData joystick_data() { return joystick_data_; }
   void set_joystick_data(JoystickData joy) { joystick_data_ = joy; }
@@ -137,7 +130,7 @@ class Joystick {
   JoystickData joystick_data_;
   std::vector<float> axis_list_;
   std::vector<Button> button_list_;
-  std::vector<vec2> hat_list_;
+  std::vector<mathfu::vec2> hat_list_;
 };
 
 #if ANDROID_GAMEPAD
@@ -157,7 +150,6 @@ class Gamepad {
     kButtonA,
     kButtonB,
     kButtonC,
-
     kControlCount
   };
 
@@ -229,31 +221,39 @@ class HeadMountedDisplayInput {
   }
   bool triggered() const { return triggered_; }
 
-  const mat4 &head_transform() const { return head_transform_; }
-  const mat4 &left_eye_transform() const { return left_eye_transform_; }
-  const mat4 &right_eye_transform() const { return right_eye_transform_; }
+  const mathfu::mat4 &head_transform() const { return head_transform_; }
+  const mathfu::mat4 &left_eye_transform() const { return left_eye_transform_; }
+  const mathfu::mat4 &right_eye_transform() const {
+    return right_eye_transform_;
+  }
 
   // The rightwards direction of the head.
-  vec3 right() const { return (mathfu::kAxisX4f * head_transform_).xyz(); }
+  mathfu::vec3 right() const {
+    return (mathfu::kAxisX4f * head_transform_).xyz();
+  }
   // The upwards direction of the head.
-  vec3 up() const { return (mathfu::kAxisY4f * head_transform_).xyz(); }
+  mathfu::vec3 up() const { return (mathfu::kAxisY4f * head_transform_).xyz(); }
   // The forward direction of the head.  Note that it points into -Z.
-  vec3 forward() const { return (-mathfu::kAxisZ4f * head_transform_).xyz(); }
+  mathfu::vec3 forward() const {
+    return (-mathfu::kAxisZ4f * head_transform_).xyz();
+  }
   // The translation of the left eye
-  vec3 left_eye_translation() const {
+  mathfu::vec3 left_eye_translation() const {
     return (left_eye_transform_ * mathfu::kAxisW4f).xyz();
   }
   // The translation of the right eye
-  vec3 right_eye_translation() const {
+  mathfu::vec3 right_eye_translation() const {
     return (right_eye_transform_ * mathfu::kAxisW4f).xyz();
   }
   // The translation of the left eye, factoring in the Cardboard rotation
-  vec3 left_eye_rotated_translation() const {
-    return (vec4(left_eye_translation(), 0) * left_eye_transform_).xyz();
+  mathfu::vec3 left_eye_rotated_translation() const {
+    return (mathfu::vec4(left_eye_translation(), 0) * left_eye_transform_)
+        .xyz();
   }
   // The translation of the right eye, factoring in the Cardboard rotation
-  vec3 right_eye_rotated_translation() const {
-    return (vec4(right_eye_translation(), 0) * right_eye_transform_).xyz();
+  mathfu::vec3 right_eye_rotated_translation() const {
+    return (mathfu::vec4(right_eye_translation(), 0) * right_eye_transform_)
+        .xyz();
   }
 
   void AdvanceFrame();
@@ -273,9 +273,9 @@ class HeadMountedDisplayInput {
  private:
   void UpdateTransforms();
 
-  mat4 head_transform_;
-  mat4 left_eye_transform_;
-  mat4 right_eye_transform_;
+  mathfu::mat4 head_transform_;
+  mathfu::mat4 left_eye_transform_;
+  mathfu::mat4 right_eye_transform_;
   bool is_in_head_mounted_display_;
   bool triggered_;
   bool pending_trigger_;
@@ -360,7 +360,7 @@ class InputSystem {
   /// resizes.
   ///
   /// @param window_size The current window size of the application.
-  void AdvanceFrame(vec2i *window_size);
+  void AdvanceFrame(mathfu::vec2i *window_size);
 
   /// @brief Get time in seconds since the start of the game. Updated once per
   ///        frame.
@@ -483,7 +483,7 @@ class InputSystem {
   /// @brief The total number of frames elapsed so far.
   int frames() const { return frames_; }
   /// @brief Accumulated mousewheel delta since the previous frame.
-  vec2i mousewheel_delta() { return mousewheel_delta_; }
+  mathfu::vec2i mousewheel_delta() { return mousewheel_delta_; }
 
   /// @brief Start/Stop recording text input events.
   ///
@@ -552,9 +552,9 @@ class InputSystem {
   std::vector<JoystickData> open_joystick_list;
   size_t FindPointer(FingerId id);
   size_t UpdateDragPosition(TouchFingerEvent e, uint32_t event_type,
-                            const vec2i &window_size);
+                            const mathfu::vec2i &window_size);
   void RemovePointer(size_t i);
-  vec2 ConvertHatToVector(uint32_t hat_enum) const;
+  mathfu::vec2 ConvertHatToVector(uint32_t hat_enum) const;
   std::vector<AppEventCallback> app_event_callbacks_;
   std::map<int, Button> button_map_;
   std::map<JoystickId, Joystick> joystick_map_;
@@ -590,7 +590,7 @@ class InputSystem {
   int minimized_frame_;
 
   // Accumulated mousewheel delta since the last frame.
-  vec2i mousewheel_delta_;
+  mathfu::vec2i mousewheel_delta_;
 
   // Event queue for a text input events.
   std::vector<TextInputEvent> text_input_events_;
@@ -611,6 +611,6 @@ class InputSystem {
 #endif  // __ANDROID__
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_INPUT_SYSTEM_H

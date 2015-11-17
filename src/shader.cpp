@@ -23,7 +23,7 @@
   _snprintf_s(buffer, count, count, format, __VA_ARGS__)
 #endif  // _WIN32
 
-namespace fpl {
+namespace fplbase {
 
 Shader::~Shader() {
   if (vs_) GL_CALL(glDeleteShader(vs_));
@@ -108,4 +108,5 @@ void Shader::Set(const Renderer &renderer) const {
   }
 }
 
-}  // namespace fpl
+}  // namespace fplbase
+

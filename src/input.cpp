@@ -25,7 +25,14 @@
 //#define LOG_FRAMERATE
 //#endif
 
-namespace fpl {
+using mathfu::mat4;
+using mathfu::vec2;
+using mathfu::vec2i;
+using mathfu::vec3;
+using mathfu::vec4;
+using mathfu::vec4i;
+
+namespace fplbase {
 
 // ANDROID_GAMEPAD is defined in input.h, if we're running on an android device.
 #if ANDROID_GAMEPAD
@@ -936,4 +943,4 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeOnDisplayRotationChanged(
 
 #endif  // __ANDROID__
 
-}  // namespace fpl
+}  // namespace fplbase

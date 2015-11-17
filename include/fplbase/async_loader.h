@@ -28,7 +28,7 @@
 #include <condition_variable>
 #endif
 
-namespace fpl {
+namespace fplbase {
 
 typedef void *Thread;
 typedef void *Mutex;
@@ -149,6 +149,6 @@ class AsyncLoader {
 #endif
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_ASYNC_LOADER_H

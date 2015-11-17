@@ -17,7 +17,7 @@
 
 #include "fplbase/config.h"  // Must come first.
 
-namespace fpl {
+namespace fplbase {
 
 #ifdef __ANDROID__
 void AndroidPreCreateWindow();
@@ -26,10 +26,10 @@ void AndroidPreCreateWindow();
 // if AndroidGetScalerResolution() returns expected resolution.
 // The caller may handle that as an error situation (e.g. re-launching an app
 // etc.).
-void AndroidSetScalerResolution(const vec2i& resolution);
-const vec2i& AndroidGetScalerResolution();
+void AndroidSetScalerResolution(const mathfu::vec2i& resolution);
+const mathfu::vec2i& AndroidGetScalerResolution();
 #endif
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_RENDERER_ANDROID_H

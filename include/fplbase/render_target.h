@@ -29,7 +29,7 @@
 
 #include "fplbase/glplatform.h"  // TODO: remove this dependency.
 
-namespace fpl {
+namespace fplbase {
 
 /// @class RenderTarget
 /// @brief Abstracts a surface that can be rendered to.
@@ -116,6 +116,6 @@ class RenderTarget {
   bool initialized_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_RENDER_TARGET_H

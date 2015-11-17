@@ -48,7 +48,7 @@
 #include "mathfu/glsl_mappings.h"
 #include "mesh_generated.h"
 
-namespace fpl {
+namespace fplbase {
 
 using mathfu::vec2;
 using mathfu::vec3;
@@ -452,15 +452,15 @@ class FlatMesh {
       const std::vector<matdef::TextureFormat>& texture_formats,
       matdef::BlendMode blend_mode, bool skin) const {
     // Ensure directory names end with a slash.
-    const std::string mesh_name = BaseFileName(mesh_name_unformated);
+    const std::string mesh_name = fplutil::BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
-        FormatAsDirectoryName(assets_base_dir_unformated);
+        fplutil::FormatAsDirectoryName(assets_base_dir_unformated);
     const std::string assets_sub_dir =
-        FormatAsDirectoryName(assets_sub_dir_unformated);
+        fplutil::FormatAsDirectoryName(assets_sub_dir_unformated);
 
     // Ensure output directory exists.
     const std::string assets_dir = assets_base_dir + assets_sub_dir;
-    if (!CreateDirectory(assets_dir.c_str())) {
+    if (!fplutil::CreateDirectory(assets_dir.c_str())) {
       log_.Log(kLogError, "Could not create output directory %s\n",
                assets_dir.c_str());
       return false;
@@ -624,15 +624,15 @@ class FlatMesh {
   static std::string TextureBaseFileName(const std::string& texture_file_name,
                                          const std::string& assets_sub_dir) {
     assert(texture_file_name != "");
-    return assets_sub_dir + BaseFileName(texture_file_name);
+    return assets_sub_dir + fplutil::BaseFileName(texture_file_name);
   }
 
   static std::string TextureFileName(const std::string& texture_file_name,
                                      const std::string& assets_sub_dir,
                                      const std::string& texture_extension) {
     const std::string extension = texture_extension.length() == 0
-                                      ? FileExtension(texture_file_name)
-                                      : texture_extension;
+                                  ? fplutil::FileExtension(texture_file_name)
+                                  : texture_extension;
     return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.' +
            extension;
   }
@@ -701,7 +701,7 @@ class FlatMesh {
 
         // Log texture and format.
         log_.Log(kLogInfo, "%s %s", i == 0 ? "" : ",",
-                 RemoveDirectoryFromName(texture_file_name).c_str());
+                 fplutil::RemoveDirectoryFromName(texture_file_name).c_str());
         if (texture_format != kDefaultTextureFormat) {
           log_.Log(kLogInfo, "(%s)",
                    matdef::EnumNameTextureFormat(texture_format));
@@ -951,7 +951,7 @@ class FbxMeshParser {
     log_.Log(
         kLogInfo,
         "---- mesh_pipeline: %s ------------------------------------------\n",
-        BaseFileName(file_name).c_str());
+        fplutil::BaseFileName(file_name).c_str());
 
     // Create the importer and initialize with the file.
     FbxImporter* importer = FbxImporter::Create(manager_, "");
@@ -1328,7 +1328,7 @@ class FbxMeshParser {
   }
 
   bool TextureFileExists(const std::string& file_name) const {
-    return FileExists(file_name, kCaseSensitive);
+    return FileExists(file_name, fplutil::kCaseSensitive);
   }
 
   // Try variations of the texture name until we find one on disk.
@@ -1338,22 +1338,23 @@ class FbxMeshParser {
 
     // If the texture name is relative, check for it relative to the
     // source mesh's directory.
-    const std::string source_dir = DirectoryName(source_mesh_name);
-    if (!AbsoluteFileName(texture_name)) {
+    const std::string source_dir = fplutil::DirectoryName(source_mesh_name);
+    if (!fplutil::AbsoluteFileName(texture_name)) {
       const std::string texture_rel_name = source_dir + texture_name;
       if (TextureFileExists(texture_rel_name)) return texture_rel_name;
       attempted_textures += texture_rel_name + '\n';
     }
 
     // If the texture exists in the same directory as the source mesh, use it.
-    const std::string texture_no_dir = RemoveDirectoryFromName(texture_name);
+    const std::string texture_no_dir =
+      fplutil::RemoveDirectoryFromName(texture_name);
     const std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
     attempted_textures += texture_in_source_dir + '\n';
 
     // Check to see if there's a texture with the same base name as the mesh.
-    const std::string source_name = BaseFileName(source_mesh_name);
-    const std::string texture_extension = FileExtension(texture_name);
+    const std::string source_name = fplutil::BaseFileName(source_mesh_name);
+    const std::string texture_extension = fplutil::FileExtension(texture_name);
     const std::string source_texture =
         source_dir + source_name + "." + texture_extension;
     if (TextureFileExists(source_texture)) return source_texture;
@@ -1361,9 +1362,10 @@ class FbxMeshParser {
 
     // Gather potential base names for the texture (i.e. name without directory
     // or extension).
-    const std::string base_name = BaseFileName(texture_no_dir);
-    const std::string base_names[] = {base_name, SnakeCase(base_name),
-                                      CamelCase(base_name), source_name};
+    const std::string base_name = fplutil::BaseFileName(texture_no_dir);
+    const std::string base_names[] = {base_name, fplutil::SnakeCase(base_name),
+                                      fplutil::CamelCase(base_name),
+                                      source_name};
 
     // For each potential base name, loop through known image file extensions.
     // The image may have been converted to a new format.
@@ -1418,7 +1420,8 @@ class FbxMeshParser {
 
       // Append texture to our list of textures.
       log_.Log(kLogVerbose, " Mapping %s texture `%s` to shader texture %d\n",
-               texture_property, RemoveDirectoryFromName(texture).c_str(),
+               texture_property,
+               fplutil::RemoveDirectoryFromName(texture).c_str(),
                textures.Count());
       textures.Append(texture);
     }
@@ -2070,21 +2073,20 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
   return valid_args;
 }
 
-}  // namespace fpl
+}  // namespace fplbase
 
 int main(int argc, char** argv) {
-  using namespace fpl;
-  Logger log;
+  fplbase::Logger log;
 
   // Parse the command line arguments.
-  MeshPipelineArgs args;
+  fplbase::MeshPipelineArgs args;
   if (!ParseMeshPipelineArgs(argc, argv, log, &args)) return 1;
 
   // Update the amount of information we're dumping.
   log.set_level(args.log_level);
 
   // Load the FBX file.
-  FbxMeshParser pipe(log);
+  fplbase::FbxMeshParser pipe(log);
   const bool load_status =
       pipe.Load(args.fbx_file.c_str(), args.axis_system,
                 args.distance_unit_scale, args.recenter, args.hierarchy);
@@ -2092,7 +2094,7 @@ int main(int argc, char** argv) {
 
   // Gather data into a format conducive to our FlatBuffer format.
   const int max_verts = pipe.NumVertsUpperBound();
-  FlatMesh mesh(max_verts, log);
+  fplbase::FlatMesh mesh(max_verts, log);
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.

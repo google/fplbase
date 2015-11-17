@@ -27,12 +27,7 @@
 #include "fplbase/renderer_android.h"
 #endif
 
-namespace fpl {
-
-using mathfu::mat4;
-using mathfu::vec2i;
-using mathfu::vec3;
-using mathfu::vec4;
+namespace fplbase {
 
 typedef void *Window;
 typedef void *GLContext;
@@ -50,7 +45,12 @@ class Renderer {
   Renderer();
   ~Renderer();
 
-  enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
+  enum CullingMode {
+    kNoCulling,
+    kCullFront,
+    kCullBack,
+    kCullFrontAndBack
+  };
 
   // OpenGL ES feature level we are able to obtain.
   enum FeatureLevel {
@@ -68,7 +68,7 @@ class Renderer {
   /// @param window_size The default size to initialize the window to.
   /// @param window_title The title of the created window.
   /// @return Returns true on success, false if there was an error.
-  bool Initialize(const vec2i &window_size, const char *window_title);
+  bool Initialize(const mathfu::vec2i &window_size, const char *window_title);
 
   /// @brief Swaps frames. Call this once per frame inside your main loop.
   ///
@@ -88,7 +88,7 @@ class Renderer {
   /// it changes.
   ///
   /// @param window_size The size to set the window to.
-  void SetWindowSize(const vec2i &window_size);
+  void SetWindowSize(const mathfu::vec2i &window_size);
 #endif
 
   /// @brief Clears the framebuffer.
@@ -96,7 +96,7 @@ class Renderer {
   /// Call this after AdvanceFrame if desired.
   ///
   /// @param color The color to clear the buffer to.
-  void ClearFrameBuffer(const vec4 &color);
+  void ClearFrameBuffer(const mathfu::vec4 &color);
 
   /// @brief Clears the depthbuffer. Leaves the colorbuffer untouched.
   void ClearDepthBuffer();
@@ -142,7 +142,7 @@ class Renderer {
   ///
   /// @param pos The lower left corner of the scissor box.
   /// @param size The width and height of the scissor box.s
-  void ScissorOn(const vec2i &pos, const vec2i &size);
+  void ScissorOn(const mathfu::vec2i &pos, const mathfu::vec2i &size);
   /// @brief Turn off the scissor region.
   void ScissorOff();
 
@@ -157,40 +157,44 @@ class Renderer {
 
   /// @brief Shader uniform: model_view_projection
   /// @return Returns the current model view projection being used.
-  const mat4 &model_view_projection() const { return model_view_projection_; }
+  const mathfu::mat4 &model_view_projection() const {
+    return model_view_projection_;
+  }
   /// @brief Sets the shader uniform model_view_projection
   /// @param mvp The model view projection to be passed to the shader.
-  void set_model_view_projection(const mat4 &mvp) {
+  void set_model_view_projection(const mathfu::mat4 &mvp) {
     model_view_projection_ = mvp;
   }
 
   /// @brief Shader uniform: model (object to world transform only)
   /// @return Returns the current model transform being used.
-  const mat4 &model() const { return model_; }
+  const mathfu::mat4 &model() const { return model_; }
   /// @brief Sets the shader uniform model transform.
   /// @param model The model transform to be passed to the shader.
-  void set_model(const mat4 &model) { model_ = model; }
+  void set_model(const mathfu::mat4 &model) { model_ = model; }
 
   /// @brief Shader uniform: color
   /// @return Returns the current color being used.
-  const vec4 &color() const { return color_; }
+  const mathfu::vec4 &color() const { return color_; }
   /// @brief Sets the shader uniform color.
   /// @param color The color to be passed to the shader.
-  void set_color(const vec4 &color) { color_ = color; }
+  void set_color(const mathfu::vec4 &color) { color_ = color; }
 
   /// @brief Shader uniform: light_pos
   /// @return Returns the current light position being used.
-  const vec3 &light_pos() const { return light_pos_; }
+  const mathfu::vec3 &light_pos() const { return light_pos_; }
   /// @brief Sets the shader uniform light position.
   /// @param light_pos The light position to be passed to the shader.
-  void set_light_pos(const vec3 &light_pos) { light_pos_ = light_pos; }
+  void set_light_pos(const mathfu::vec3 &light_pos) { light_pos_ = light_pos; }
 
   /// @brief Shader uniform: camera_pos
   /// @return Returns the current camera position being used.
-  const vec3 &camera_pos() const { return camera_pos_; }
+  const mathfu::vec3 &camera_pos() const { return camera_pos_; }
   /// @brief Sets the shader uniform camera position.
   /// @param camera_pos The camera position to be passed to the shader.
-  void set_camera_pos(const vec3 &camera_pos) { camera_pos_ = camera_pos; }
+  void set_camera_pos(const mathfu::vec3 &camera_pos) {
+    camera_pos_ = camera_pos;
+  }
 
   /// @brief Shader uniform: bone_transforms
   /// @return Returns the current array of bone transforms being used.
@@ -226,9 +230,9 @@ class Renderer {
   /// navigation buttons turning on/off.
   ///
   /// @return Returns the current framebuffer size.
-  const vec2i &window_size() const { return window_size_; }
-  vec2i &window_size() { return window_size_; }
-  void set_window_size(const vec2i &ws) { window_size_ = ws; }
+  const mathfu::vec2i &window_size() const { return window_size_; }
+  mathfu::vec2i &window_size() { return window_size_; }
+  void set_window_size(const mathfu::vec2i &ws) { window_size_ = ws; }
 
   /// @brief Get the size of the viewport.
   ///
@@ -236,7 +240,7 @@ class Renderer {
   /// scalar is enabled.
   ///
   /// @return Returns the current viewport size.
-  vec2i GetViewportSize();
+  mathfu::vec2i GetViewportSize();
 
   /// @brief Time in seconds since program start.
   ///
@@ -284,15 +288,15 @@ class Renderer {
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.
-  mat4 model_view_projection_;
-  mat4 model_;
-  vec4 color_;
-  vec3 light_pos_;
-  vec3 camera_pos_;
+  mathfu::mat4 model_view_projection_;
+  mathfu::mat4 model_;
+  mathfu::vec4 color_;
+  mathfu::vec3 light_pos_;
+  mathfu::vec3 camera_pos_;
   const mathfu::AffineTransform *bone_transforms_;
   int num_bones_;
   double time_;
-  vec2i window_size_;
+  mathfu::vec2i window_size_;
 
   std::string last_error_;
 
@@ -312,6 +316,6 @@ class Renderer {
   int max_vertex_uniform_components_;
 };
 
-}  // namespace fpl
+}  // namespace fplbase
 
 #endif  // FPLBASE_RENDERER_H
