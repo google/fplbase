@@ -26,7 +26,7 @@
 // - Renderer to setup rendering and transform models.
 // - InputSystem to query for exit events and elapsed time.
 
-extern "C" int FPL_main(int /*argc*/, char **argv) {
+extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   fplbase::InputSystem input;
   input.Initialize();
 
