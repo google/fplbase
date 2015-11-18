@@ -159,11 +159,13 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   // For performance mode, we send keypress events to the Android system, so
   // that it knows it's still in active use, even if the user isn't currently
   // touching the screen.
-  const HighPerformanceParams &hp_params = GetHighPerformanceParameters();
-  double current_time = Time();
-  if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
-    last_android_keypress_ = current_time;
-    SendKeypressEventToAndroid(hp_params.android_key_code);
+  if (GetPerformanceMode() == kHighPerformance) {
+    const HighPerformanceParams &hp_params = GetHighPerformanceParameters();
+    double current_time = Time();
+    if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
+      last_android_keypress_ = current_time;
+      SendKeypressEventToAndroid(hp_params.android_key_code);
+    }
   }
 #endif
 
