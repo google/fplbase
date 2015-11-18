@@ -52,7 +52,8 @@
     {
       "name": "cardboard-java",
       "url": "https://github.com/googlesamples/cardboard-java",
-      "branch": "1363a04a01f9fb4ed824c15ef9fb5d33da18883d",
+      "branch": "master",
+      "revision": "1363a04a01f9fb4ed824c15ef9fb5d33da18883d",
       "is_library": 1,
       "prebuilts": 1,
       "third_party": 0,
