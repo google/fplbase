@@ -311,6 +311,8 @@ public class FPLActivity extends SDLActivity implements
     return super.dispatchGenericMotionEvent(event);
   }
 
+  private boolean changingVolume = false;
+
   @Override
   public boolean dispatchKeyEvent(KeyEvent event)
   {
@@ -321,10 +323,16 @@ public class FPLActivity extends SDLActivity implements
     }
     int keyCode = event.getKeyCode();
     // Disable the volume keys while in a cardboard
-    if ((keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) &&
-        nfcSensor != null &&
-        nfcSensor.isDeviceInCardboard()) {
-      return true;
+    if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+      if (nfcSensor != null && nfcSensor.isDeviceInCardboard()) {
+        return true;
+      }
+      int action = event.getAction();
+      if (action == KeyEvent.ACTION_DOWN) {
+        changingVolume = true;
+      } else if (action == KeyEvent.ACTION_UP) {
+        changingVolume = false;
+      }
     }
     return super.dispatchKeyEvent(event);
   }
@@ -508,7 +516,9 @@ public class FPLActivity extends SDLActivity implements
     // to send events to other activities, so while they will bounce harmlessly,
     // we still need to catch the exceptions they generate.
     try {
-      instrumentation.sendKeyDownUpSync(androidKeycode);
+      if (hasWindowFocus() && changingVolume == false) {
+        instrumentation.sendKeyDownUpSync(androidKeycode);
+      }
     } catch (SecurityException e) {
       Log.e("SDL", "exception", e);
     }
