@@ -751,6 +751,7 @@ INPUT                  = "index.md" \
                          "programmers_guide/building_linux.md" \
                          "programmers_guide/building_mesh_pipeline.md" \
                          "programmers_guide/building_osx.md" \
+                         "programmers_guide/building_ios.md" \
                          "programmers_guide/building_windows.md" \
                          "programmers_guide/mesh_pipeline.md" \
                          "contributing.md" \

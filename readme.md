@@ -7,7 +7,7 @@ library. Go to our [landing page][] to browse our documentation.
 
 FPLBase aims to take the grunt work out of getting games or graphical
 applications up and running.
-FPLBase can be built for many different systems (Android, Windows, OS X, Linux),
+FPLBase can be built for many different systems (Android, Windows, OS X, Linux, iOS),
 see `docs/html/index.html`.
 
 Discuss FPLBase with other developers and users on the
