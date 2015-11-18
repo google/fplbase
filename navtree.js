@@ -9,6 +9,7 @@ var NAVTREE =
         [ "Building for Linux", "fplbase_guide_linux.html", null ],
         [ "Building for OS X", "fplbase_guide_osx.html", null ],
         [ "Building for Windows", "fplbase_guide_windows.html", null ],
+        [ "Building for iOS", "fplbase_guide_ios.html", null ],
         [ "Building mesh_pipeline", "fplbase_guide_building_mesh_pipeline.html", null ]
       ] ],
       [ "mesh_pipeline", "fplbase_guide_mesh_pipeline.html", null ]
