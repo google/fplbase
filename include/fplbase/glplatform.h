@@ -23,7 +23,7 @@
 
 #ifdef __APPLE__
 #include "TargetConditionals.h"
-#ifdef __IOS__
+#if defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #define PLATFORM_MOBILE
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
