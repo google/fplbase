@@ -15,9 +15,19 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase-mesh)
 
-add_executable(fplbase-mesh mesh.cpp)
+if(IOS)
+  file(GLOB ASSETS "assets/*")
+  set_source_files_properties(${ASSETS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+  add_executable(fplbase-mesh mesh.cpp ${ASSETS})
+  set_target_properties(fplbase-mesh
+    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "fplbase-mesh")
+  set_target_properties(fplbase-mesh
+    PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "fplbase-mesh")
+else()
+  add_executable(fplbase-mesh mesh.cpp)
+  file(COPY assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endif()
+  
 add_dependencies(fplbase-mesh fplbase)
 mathfu_configure_flags(fplbase-mesh)
 target_link_libraries(fplbase-mesh fplbase)
-file(COPY assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-

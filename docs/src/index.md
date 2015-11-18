@@ -47,6 +47,7 @@ to use the API.
    * [Android][]
    * [Linux][] (x86_64)
    * [OS X][]
+   * [iOS][]
    * [Windows][]
 
 This library is entirely written in portable C++11 and depends on the
@@ -88,6 +89,7 @@ upon so download the source using:
   [Introduction]: @ref fplbase_introduction
   [Building]: @ref fplbase_guide_build_targets
   [OS X]: http://www.apple.com/osx/
+  [iOS]: http://www.apple.com/ios/
   [Windows]: http://windows.microsoft.com/
   [stackoverflow.com]: http://www.stackoverflow.com
   [FreeType]: http://www.freetype.org/
@@ -100,6 +102,3 @@ upon so download the source using:
   [OpenGL]: https://www.opengl.org/
   [WebP]: https://developers.google.com/speed/webp/?hl=en
   [googletest]: https://code.google.com/p/googletest/
-
-
-
