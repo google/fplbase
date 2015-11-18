@@ -131,7 +131,9 @@ $(document).ready(function(){initNavTree('fplbase_guide_ios.html','');});
 <div class="line">mkdir -p ~/bin &amp;&amp; cp flatc ~/bin</div>
 <div class="line">export PATH=$PATH:~/bin</div>
 </div><!-- fragment --></li>
-<li>Build <code>libSDL2</code> for the Simulator architecture using the upstream provided <code>xcodeproj</code> ~~~{.sh} cd $SDL2_SOURCE_DIRECTORY xcodebuild ARCHS="x86_64 i386" -project Xcode-iOS/SDL/SDL.xcodeproj -sdk iphonesimulator8.3 build ~~~~</li>
+<li>Build <code>libSDL2</code> for the Simulator architecture using the upstream provided <code>xcodeproj</code> <div class="fragment"><div class="line">cd $SDL2_SOURCE_DIRECTORY</div>
+<div class="line">xcodebuild ARCHS=<span class="stringliteral">&quot;x86_64 i386&quot;</span> -project Xcode-iOS/SDL/SDL.xcodeproj -sdk iphonesimulator8.3 build</div>
+</div><!-- fragment --></li>
 <li>Generate the <a href="http://developer.apple.com/xcode/">Xcode</a> project needs to be generated using <a href="http://www.cmake.org">CMake</a>: <div class="fragment"><div class="line">cd fplbase</div>
 <div class="line">cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=$SDL2_SOURCE_DIRECTORY/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=$SDL2_SOURCE_DIRECTORY/include -Dfplbase_use_host_flatc=ON  -DCMAKE_TOOLCHAIN_FILE=CMake/ios.toolchain.xcode.cmake -GXcode .</div>
 </div><!-- fragment --></li>
