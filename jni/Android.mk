@@ -30,6 +30,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/shader.cpp \
   src/texture.cpp \
   src/utilities.cpp \
+  src/version.cpp \
   $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
 
 FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11

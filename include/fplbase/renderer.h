@@ -21,6 +21,7 @@
 #include "fplbase/mesh.h"
 #include "fplbase/shader.h"
 #include "fplbase/texture.h"
+#include "fplbase/version.h"
 #include "mathfu/glsl_mappings.h"
 
 #ifdef __ANDROID__
@@ -282,6 +283,10 @@ class Renderer {
   /// @return Returns the max number of uniform components.
   int max_vertex_uniform_components() { return max_vertex_uniform_components_; }
 
+
+  /// @brief Returns the version of the FPL Base Library.
+  const FplBaseVersion* GetFplBaseVersion() const { return version_; }
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
@@ -314,6 +319,10 @@ class Renderer {
   std::string override_pixel_shader_;
 
   int max_vertex_uniform_components_;
+
+
+  // Current version of the Corgi Entity Library.
+  const FplBaseVersion* version_;
 };
 
 }  // namespace fplbase

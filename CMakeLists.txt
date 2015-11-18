@@ -203,6 +203,7 @@ set(fplbase_common_SRCS
   include/fplbase/shader.h
   include/fplbase/texture.h
   include/fplbase/utilities.h
+  include/fplbase/version.h
   schemas
   src/asset_manager.cpp
   src/material.cpp
@@ -213,7 +214,8 @@ set(fplbase_common_SRCS
   src/render_target.cpp
   src/shader.cpp
   src/texture.cpp
-  src/utilities.cpp)
+  src/utilities.cpp
+  src/version.cpp)
 
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
