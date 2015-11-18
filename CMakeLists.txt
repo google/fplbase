@@ -14,6 +14,9 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase)
+if(NOT WIN32)
+  set(CMAKE_CXX_FLAGS "-std=c++11")
+endif()
 
 set(fplbase_standalone_mode OFF)
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
