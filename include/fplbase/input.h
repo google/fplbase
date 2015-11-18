@@ -63,11 +63,26 @@ typedef int AndroidInputDeviceId;
 class Button {
  public:
   Button() : is_down_(false) { AdvanceFrame(); }
+  /// @brief Advances the current state of the button by one frame.
+  ///
+  /// Important, because it tells the system where frame boundaries occur, so
+  /// that went_down() and went_up() can be updated correctly.
+  /// Normally called automatically by FPLBase.
   void AdvanceFrame() { went_down_ = went_up_ = false; }
+
+  /// @brief Updates the current state of the button.
+  ///
+  /// For buttons that are tracked by the input system (Keyboard buttons,
+  /// joysticks) this is invoked automatically by InputSystem::AdvanceFrame().)
   void Update(bool down);
 
+  /// @brief Returns true if the button is currently pressed.
   bool is_down() const { return is_down_; }
+
+  /// @brief Returns true if the button has been pressed since last update.
   bool went_down() const { return went_down_; }
+
+  /// @brief Returns true if the button has been released since last update.
   bool went_up() const { return went_up_; }
 
  private:
@@ -98,11 +113,31 @@ enum {
   K_PAD_B
 };
 
+
+/// @class InputPointer
+/// @brief Stores information about the current and recent state of a pointer.
+///
+/// An input pointer represents either a finger-touch on a touchscreen device,
+/// or a mouse-pointer.
 // Additional information stored for the pointer buttons.
 struct InputPointer {
+
+  /// @brief The pointer's ID
+  ///
+  /// The mouse pointer always has a pointerID of 0.  For fingertouches, they
+  /// are generally allocated in order as new touches happen.
   FingerId id;
+
+  /// @brief The position of the pointer, in pixels.
   mathfu::vec2i mousepos;
+
+  /// @brief The amount the pointer moved since the last update.
   mathfu::vec2i mousedelta;
+
+  /// @brief Whether this particular pointer is in use.
+  ///
+  /// When used is false, the pointer data is in an undefined state and
+  /// should be ignored.
   bool used;
 
   InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
@@ -112,18 +147,75 @@ struct InputPointer {
 /// @brief Represents the state of an SDL Joystick.
 class Joystick {
  public:
-  // Get a Button object for a pointer index.
+  /// @brief Get the current state of a button.
+  /// @param button_index The index of the button to querry.
+  /// @return A button object representing the current button state.
   Button &GetButton(size_t button_index);
+
+  /// @brief Get the current state of a joystick axis control.
+  /// @param axis_index The index of the axis to querry.
+  /// @return A float representing the position of the axis control.  Axis data
+  /// is automatically normalized to be within the range of [-1, 1].
   float GetAxis(size_t axis_index);
+
+  /// @brief Get the current state of a joystick hat control.
+  /// @param hat_index The index of the hat to querry.
+  /// @return A vec2 representing the direction the hat is pointing.
+  ///
+  /// The returned vector will always have an X, Y component of -1, 0, or 1.
+  /// (And thus will always be pointing in one of 8 possible directions, or
+  /// in the neutral position.)
   mathfu::vec2 GetHat(size_t hat_index);
+
+  /// @brief Sets the value of an axis
+  /// @param axis_index The index of the axis to modify.
+  /// @param axis The new value to record for the axis.
+  ///
+  /// Normally only called by input handlers in the Input class.
   void SetAxis(size_t axis_index, float axis);
+
+  /// @brief Sets the position of a hat.
+  /// @param hat_index The index of the hat to modify.
+  /// @param hat The new value to record for the hat.
+  ///
+  /// Normally only called by input handlers in the Input class.
   void SetHat(size_t hat_index, const mathfu::vec2 &hat);
+
+  /// @brief Updates the internal state of the joystick by one frame.
+  ///
+  /// This function ensures that the joystick readings are up-to-date, and that
+  /// buttons have their change-bits set correctly.  Normally called
+  /// automatically by InputSystem::AdvanceFrame().
   void AdvanceFrame();
+
+  /// @brief Returns the pointer to the raw joystick data.
+  ///
+  /// The type and layout of the joystick_data are implementation specific,
+  /// and should not generally be used by code outside of the FPLBase library.
   JoystickData joystick_data() { return joystick_data_; }
+
+  /// @brief Sets the pointer to the raw joystick data.
+  /// @param joy A pointer to the joystick data.
+  ///
+  /// The type and layout of the joystick_data are implementation specific,
+  /// and should not generally be used by code outside of the FPLBase library.
   void set_joystick_data(JoystickData joy) { joystick_data_ = joy; }
+
+  /// @brief Gets the ID of the joystick.
+  ///
+  /// Joystick IDs are guaranteed to be unique between joysticks, and on some
+  /// platforms, will be preserved even if the same controller is unplugged and
+  /// reconnected.  (Platform dependent.)  The Joystick ID is used to reference
+  /// a particular device.
   JoystickId GetJoystickId() const;
+
+  /// @brief Returns the number of buttons available on the joystick.
   int GetNumButtons() const;
+
+  /// @brief Returns the number of control axes available on the joystick.
   int GetNumAxes() const;
+
+  /// @brief Returns the number of hats available on the joystick.
   int GetNumHats() const;
 
  private:
@@ -137,10 +229,13 @@ class Joystick {
 /// @class Gamepad
 /// @brief Represents the state of a connected gamepad.
 ///
-/// This is based on events passed in from java. Depends on ANDROID_GAMEPAD
-/// being defined.
+/// Gamepads are an android-specific abstraction for controllers that are
+/// specifically gamepad-like.  (They have a d-pad and one or more buttons.)
+/// This is only present if ANDROID_GAMEPAD is defined.
 class Gamepad {
  public:
+
+  /// @brief Enum describing all possible button inputs on a gamepad.
   enum GamepadInputButton : int {
     kInvalid = -1,
     kUp = 0,
@@ -155,17 +250,27 @@ class Gamepad {
 
   Gamepad() { button_list_.resize(Gamepad::kControlCount); }
 
+  /// @brief Advances the internal state by one frame.
+  ///
+  /// This function ensures that the gamepad readings are up-to-date, and that
+  /// buttons have their change-bits set correctly.  Normally called
+  /// automatically by InputSystem::AdvanceFrame().
   void AdvanceFrame();
   Button &GetButton(GamepadInputButton i);
   const Button &GetButton(GamepadInputButton i) const {
     return const_cast<Gamepad *>(this)->GetButton(i);
   }
 
+  /// @brief Returns the Android controller_id of the gamepad
+  ///
+  /// The controller_id is the android-specific identifier for a given
+  /// gamepad.
   AndroidInputDeviceId controller_id() { return controller_id_; }
   void set_controller_id(AndroidInputDeviceId controller_id) {
     controller_id_ = controller_id;
   }
 
+  /// @brief Internal function for translating android input.
   static int GetGamepadCodeFromJavaKeyCode(int java_keycode);
 
  private:
@@ -173,6 +278,7 @@ class Gamepad {
   std::vector<Button> button_list_;
 };
 
+// Threshold for when we register a hat direction.  (The range is [0, 1]
 const float kGamepadHatThreshold = 0.5f;
 
 // Structure used for storing gamepad events when we get them from jni
