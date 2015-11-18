@@ -39,7 +39,7 @@ need to build [FPLBase][] for [OS X]:
 ~~~{.sh}
     cd $SDL2_SOURCE_DIRECTORY
     xcodebuild ARCHS="x86_64 i386" -project Xcode-iOS/SDL/SDL.xcodeproj -sdk iphonesimulator8.3 build
-~~~~
+~~~
 
 3. Generate the [Xcode][] project needs to be generated using [CMake][]:
 ~~~{.sh}
