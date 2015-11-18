@@ -441,7 +441,7 @@ inline int chdir(const char *dirname) { return _chdir(dirname); }
 // false otherwise.
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir) {
-#if !defined(__ANDROID__)
+#if !defined(__ANDROID__) && !(defined __IOS__)
   {
     std::string current_dir = binary_dir;
 
@@ -467,7 +467,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   (void)binary_dir;
   (void)target_dir;
   return true;
-#endif  //  !defined(__ANDROID__)
+#endif  //  !defined(__ANDROID__) && !(defined __IOS__)
 }
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }

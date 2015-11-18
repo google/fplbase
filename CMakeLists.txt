@@ -197,8 +197,17 @@ build_flatbuffers("${FPLBASE_FLATBUFFERS_SCHEMAS}"
                   "")
 
 if(APPLE)
-  find_library(OPENGL_LIBRARIES NAMES GL GLU)
-  SET(OPENGL_LIBRARIES "-framework OpenGL")
+  if(IOS)
+    set(OPENGL_LIBRARIES "-framework OpenGLES")
+    set(SYSTEM_LIBRARIES "-framework AudioToolbox"
+                         "-framework CoreGraphics"
+                         "-framework QuartzCore"
+                         "-framework UIKit"
+                         "-framework Foundation")
+  else()
+    find_library(OPENGL_LIBRARIES NAMES GL GLU)
+    SET(OPENGL_LIBRARIES "-framework OpenGL")
+  endif()
 endif()
 
 
@@ -295,7 +304,7 @@ function(fplbase_common_config target)
 
   # Dependencies for the executable target.
   add_dependencies(${target} fplbase_generated_includes)
-  target_link_libraries(${target} ${OPENGL_LIBRARIES} webp)
+  target_link_libraries(${target} ${OPENGL_LIBRARIES} ${SYSTEM_LIBRARIES} webp)
 endfunction()
 
 # The stdlib backend requires <mutex> and <thread> headers that were only
