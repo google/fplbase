@@ -33,6 +33,9 @@
         <tab type="usergroup" url="@ref fplbase_guide_windows"
              title="Building for Windows">
         </tab>
+        <tab type="usergroup" url="@ref fplbase_guide_ios"
+             title="Building for iOS">
+        </tab>
         <tab type="usergroup" url="@ref fplbase_guide_building_mesh_pipeline"
              title="Building mesh_pipeline">
         </tab>
