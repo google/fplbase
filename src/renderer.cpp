@@ -39,7 +39,8 @@ Renderer::Renderer()
 #endif
       feature_level_(kFeatureLevel20),
       force_blend_mode_(kBlendModeCount),
-      max_vertex_uniform_components_(0) {
+      max_vertex_uniform_components_(0),
+      version_(&Version()) {
 }
 
 #ifndef FPL_BASE_RENDERER_BACKEND_SDL
