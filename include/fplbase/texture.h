@@ -56,7 +56,7 @@ class Texture : public AsyncResource {
         has_alpha_(false),
         mipmaps_(mipmaps),
         desired_(format) {}
-  ~Texture() { Delete(); }
+  virtual ~Texture() { Delete(); }
 
   virtual void Load();
   virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i &size,
