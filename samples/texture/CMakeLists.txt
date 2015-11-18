@@ -15,8 +15,19 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase-texture)
 
-add_executable(fplbase-texture texture.cpp)
+if(IOS)
+  file(GLOB ASSETS "assets/*")
+  set_source_files_properties(${ASSETS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+  add_executable(fplbase-texture texture.cpp ${ASSETS})
+  set_target_properties(fplbase-texture
+    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "fplbase-texture")
+  set_target_properties(fplbase-texture
+    PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "fplbase-texture")
+else()
+  add_executable(fplbase-texture texture.cpp)
+  file(COPY assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endif()
+
 add_dependencies(fplbase-texture fplbase)
 mathfu_configure_flags(fplbase-texture)
 target_link_libraries(fplbase-texture fplbase)
-file(COPY assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

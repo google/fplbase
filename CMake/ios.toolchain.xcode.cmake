@@ -11,16 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-cmake_minimum_required(VERSION 2.8.12)
 
-project(fplbase-triangle)
+set(CMAKE_OSX_SYSROOT iphoneos)
+set(CMAKE_OSX_ARCHITECTURES "armv7")
+set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
+set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE "NO")
 
-add_executable(fplbase-triangle triangle.cpp)
-add_dependencies(fplbase-triangle fplbase)
-mathfu_configure_flags(fplbase-triangle)
-target_link_libraries(fplbase-triangle fplbase)
+# skip TRY_COMPILE checks
+set(CMAKE_CXX_COMPILER_WORKS TRUE)
+set(CMAKE_C_COMPILER_WORKS TRUE)
 
-if(IOS)
-  set_target_properties(fplbase-triangle PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "fplbase-triangle")
-  set_target_properties(fplbase-triangle PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "fplbase-triangle")
-endif()
+# force MAC_BUNDLE for executable
+set(CMAKE_MACOSX_BUNDLE YES)
+
+# add IOS hints
+set(IOS TRUE)
+add_definitions(-D__IOS__)
