@@ -73,7 +73,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     shader->Set(renderer);
     mesh->Render(renderer);
   }
-
+  assetMgr.ClearAllAssets();
   renderer.ShutDown();
   return 0;
 }
