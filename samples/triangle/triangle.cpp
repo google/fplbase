@@ -70,7 +70,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     fplbase::Mesh::RenderArray(fplbase::Mesh::kTriangles, 3, format,
                            sizeof(float) * 3, vertices, indices);
   }
-
+  delete shader;
   renderer.ShutDown();
   return 0;
 }
