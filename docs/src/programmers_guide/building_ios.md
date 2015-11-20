@@ -44,7 +44,7 @@ need to build [FPLBase][] for [OS X]:
 3. Generate the [Xcode][] project needs to be generated using [CMake][]:
 ~~~{.sh}
     cd fplbase
-    cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=$SDL2_SOURCE_DIRECTORY/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=$SDL2_SOURCE_DIRECTORY/include -Dfplbase_use_host_flatc=ON  -DCMAKE_TOOLCHAIN_FILE=CMake/ios.toolchain.xcode.cmake -GXcode .
+    cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=$SDL2_SOURCE_DIRECTORY/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=$SDL2_SOURCE_DIRECTORY/include -Dfplbase_use_host_flatc=ON  -DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.xcode.cmake -GXcode .
 ~~~
 
 4. Then the project can be opened in [Xcode][] and built:
