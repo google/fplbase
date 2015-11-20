@@ -14,7 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)/..
 
-FPLBASE_DIR := $(LOCAL_PATH)/../../
+FPLBASE_DIR := $(LOCAL_PATH)/../..
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := main

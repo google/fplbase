@@ -18,7 +18,7 @@
 // If using anim_pipeline to generate the meshes, you can see which bones
 // are assigned indices in the shader by running,
 // anim_pipeline --info my_model.fbx
-const int kMaxNumShaderBones = 34;
+const int kMaxNumShaderBones = 35;
 
 // Maximum number of animated bones that have vertices weighted to them.
 // If using anim_pipeline to generate the meshes, you can see which bones
