@@ -310,6 +310,8 @@ class Mesh {
   /// @return Returns the number of bones used by the shader.
   size_t num_shader_bones() const { return shader_bone_indices_.size(); }
 
+  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
+
  private:
   // Disallow copies because of pointers bone_transforms_ and
   // bone_global_transforms_. Feel free to implement copy or move operators

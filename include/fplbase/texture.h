@@ -133,6 +133,8 @@ class Texture : public AsyncResource {
     }
   }
 
+  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
+
  private:
   TextureHandle id_;
   mathfu::vec2i size_;
