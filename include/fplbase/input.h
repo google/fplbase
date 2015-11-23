@@ -491,6 +491,9 @@ class InputSystem {
   /// @return Return the incremental time, in seconds.
   double DeltaTime() const;
 
+  /// @brief Make the application go to sleep a certain duration.
+  void Delay(double seconds) const;
+
   /// @brief Get a Button object describing the input state of the specified
   ///        button ID.
   ///
@@ -643,6 +646,8 @@ class InputSystem {
 
   /// @brief Gets if exit has been requested by the system.
   bool exit_requested() { return exit_requested_; }
+  /// @brief Sets if exit has been requested.
+  void set_exit_requested(bool b) { exit_requested_ = b; }
 
  private:
   // Reset pointer/gamepad input state to released state.
