@@ -996,9 +996,5 @@ PerformanceMode GetPerformanceMode() { return performance_mode; }
 
 }  // namespace fplbase
 
-// We use SIMD types in dynamically allocated objects and arrays, so we'll
-// need this on Windows.
-#ifdef _WIN32
-#define noexcept
+// We use SIMD types in dynamically allocated objects and arrays.
 MATHFU_DEFINE_GLOBAL_SIMD_AWARE_NEW_DELETE
-#endif
