@@ -113,7 +113,6 @@ enum {
   K_PAD_B
 };
 
-
 /// @class InputPointer
 /// @brief Stores information about the current and recent state of a pointer.
 ///
@@ -121,7 +120,6 @@ enum {
 /// or a mouse-pointer.
 // Additional information stored for the pointer buttons.
 struct InputPointer {
-
   /// @brief The pointer's ID
   ///
   /// The mouse pointer always has a pointerID of 0.  For fingertouches, they
@@ -140,7 +138,7 @@ struct InputPointer {
   /// should be ignored.
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
 };
 
 /// @class Joystick
@@ -234,7 +232,6 @@ class Joystick {
 /// This is only present if ANDROID_GAMEPAD is defined.
 class Gamepad {
  public:
-
   /// @brief Enum describing all possible button inputs on a gamepad.
   enum GamepadInputButton : int {
     kInvalid = -1,
@@ -245,6 +242,19 @@ class Gamepad {
     kButtonA,
     kButtonB,
     kButtonC,
+    kButtonX,
+    kButtonY,
+    kButtonZ,
+    kButtonL1,
+    kButtonR1,
+    kButtonL2,
+    kButtonR2,
+    kButtonThumbL,
+    kButtonThumbR,
+    kButtonBack,
+    kButtonStart,
+    kButtonSelect,
+    kButtonMode,
     kControlCount
   };
 

@@ -16,9 +16,9 @@
 #include "fplbase/input.h"
 #include "fplbase/utilities.h"
 #if ANDROID_GAMEPAD
-#include <jni.h>
-#include <android/keycodes.h>
 #include <android/input.h>
+#include <android/keycodes.h>
+#include <jni.h>
 #endif  // ANDROID_GAMEPAD
 
 //#if defined(_DEBUG) || DEBUG==1
@@ -162,7 +162,8 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
   if (GetPerformanceMode() == kHighPerformance) {
     const HighPerformanceParams &hp_params = GetHighPerformanceParameters();
     double current_time = Time();
-    if (current_time > last_android_keypress_ + hp_params.time_between_presses) {
+    if (current_time >
+        last_android_keypress_ + hp_params.time_between_presses) {
       last_android_keypress_ = current_time;
       SendKeypressEventToAndroid(hp_params.android_key_code);
     }
@@ -721,7 +722,25 @@ int Gamepad::GetGamepadCodeFromJavaKeyCode(int java_keycode) {
       {AKEYCODE_DPAD_CENTER, Gamepad::kButtonA},
       {AKEYCODE_BUTTON_A, Gamepad::kButtonA},
       {AKEYCODE_BUTTON_B, Gamepad::kButtonB},
-      {AKEYCODE_BUTTON_C, Gamepad::kButtonC}};
+      {AKEYCODE_BUTTON_C, Gamepad::kButtonC},
+      {AKEYCODE_BUTTON_X, Gamepad::kButtonX},
+      {AKEYCODE_BUTTON_Y, Gamepad::kButtonY},
+      {AKEYCODE_BUTTON_Z, Gamepad::kButtonZ},
+      {AKEYCODE_BUTTON_L1, Gamepad::kButtonL1},
+      {AKEYCODE_BUTTON_R1, Gamepad::kButtonR1},
+      {AKEYCODE_BUTTON_L2, Gamepad::kButtonL2},
+      {AKEYCODE_BUTTON_R2, Gamepad::kButtonR2},
+      {AKEYCODE_BUTTON_THUMBL, Gamepad::kButtonThumbL},
+      {AKEYCODE_BUTTON_THUMBR, Gamepad::kButtonThumbR},
+      {AKEYCODE_BACK, Gamepad::kButtonBack},
+      {AKEYCODE_BUTTON_START, Gamepad::kButtonStart},
+      {AKEYCODE_BUTTON_SELECT, Gamepad::kButtonSelect},
+      // Menu should be functionality equivalent to select on Android.
+      // See Table 1
+      // http://developer.android.com/training/game-controllers/\
+      //   controller-input.html
+      {AKEYCODE_MENU, Gamepad::kButtonSelect},
+      {AKEYCODE_BUTTON_MODE, Gamepad::kButtonMode}};
   for (int i = 0; i < Gamepad::kControlCount; i++) {
     if (kJavaToGamepadMap[i].java_keycode == java_keycode) {
       return kJavaToGamepadMap[i].gamepad_code;
