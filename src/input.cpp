@@ -425,6 +425,10 @@ double InputSystem::RealTime() const {
 
 double InputSystem::DeltaTime() const { return frame_time_; }
 
+void InputSystem::Delay(double seconds) const {
+  SDL_Delay(static_cast<uint32_t>(seconds * 1000));
+}
+
 Button &InputSystem::GetButton(int button) {
   auto it = button_map_.find(button);
   return it != button_map_.end() ? it->second
