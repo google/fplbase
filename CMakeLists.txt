@@ -19,7 +19,7 @@ if(NOT WIN32)
 endif()
 
 set(fplbase_standalone_mode OFF)
-if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+if("${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
   set(fplbase_standalone_mode ON)
   message(STATUS "FPLBase standalone: building library and samples")
 else()
@@ -44,8 +44,8 @@ option(fplbase_use_host_flatc "Use host machine flatc." OFF)
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
-# Look in our local cmake director for includes before checking other paths.
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+# Look in our local cmake directory for includes before checking other paths.
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Output executables in `bin`, and libraries (both static and module) in `obj`.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
@@ -55,20 +55,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 # Directory which contains the source for 3rd party libraries.
 if(NOT DEFINED third_party_root)
   get_filename_component(
-    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external"
+    third_party_root "${CMAKE_CURRENT_LIST_DIR}/../../../../external"
     REALPATH)
 endif()
 
 # Directory which contains source for FPL libraries.
 if(NOT DEFINED fpl_root)
   get_filename_component(
-      fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../libs" REALPATH)
+      fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs" REALPATH)
 endif()
 
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
 if(NOT DEFINED dependencies_root)
-  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  set(dependencies_root "${CMAKE_CURRENT_LIST_DIR}/dependencies")
   if(EXISTS "${dependencies_root}")
     set(third_party_root "${dependencies_root}")
     set(fpl_root "${dependencies_root}")
@@ -184,7 +184,7 @@ endif()
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
 file(GLOB_RECURSE FPLBASE_FLATBUFFERS_SCHEMAS
-                  ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
+                  ${CMAKE_CURRENT_LIST_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
 # schema files.
@@ -254,7 +254,7 @@ set(fplbase_stdlib_SRCS
 include_directories(src)
 include_directories(include)
 if(WIN32)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/include)
+  include_directories(${CMAKE_CURRENT_LIST_DIR}/external/include)
 endif()
 include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 include_directories(${dependencies_flatbuffers_dir}/include)
