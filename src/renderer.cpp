@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"  // NOLINT
-#include "fplbase/renderer.h"
 #include "fplbase/render_target.h"
+#include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 
 using mathfu::mat4;
@@ -37,6 +37,7 @@ Renderer::Renderer()
       window_(nullptr),
       context_(nullptr),
 #endif
+      blend_mode_(kBlendModeOff),
       feature_level_(kFeatureLevel20),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
