@@ -36,7 +36,7 @@ Renderer::Renderer()
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
       window_(nullptr),
       context_(nullptr),
-#endif
+#endif  // FPL_BASE_RENDERER_BACKEND_SDL
       blend_mode_(kBlendModeOff),
       feature_level_(kFeatureLevel20),
       force_blend_mode_(kBlendModeCount),
@@ -48,11 +48,19 @@ Renderer::Renderer()
 
 Renderer::~Renderer() {}
 
+// When building without SDL we assume the window and rendering context have
+// already been created prior to calling initialize.
+bool Renderer::Initialize(const vec2i & /*window_size*/,
+                          const char * /*window_size*/) {
+  InitializeUniformLimits();
+  return true;
+}
+
 void Renderer::SetWindowSize(const vec2i &window_size) {
   window_size_ = window_size;
 }
 
-#else
+#else  // !FPL_BASE_RENDERER_BACKEND_SDL
 
 Renderer::~Renderer() { ShutDown(); }
 
@@ -180,18 +188,8 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
-      blend_mode_ = kBlendModeOff;
 
-  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
-                        &max_vertex_uniform_components_));
-#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
-  if (max_vertex_uniform_components_ == 0) {
-    // If missing the number of uniform components, use the number of vectors.
-    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
-                          &max_vertex_uniform_components_));
-    max_vertex_uniform_components_ *= 4;
-  }
-#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+  InitializeUniformLimits();
 
   return true;
 }
@@ -225,7 +223,20 @@ void Renderer::ShutDown() {
   SDL_Quit();
 }
 
-#endif
+#endif  // !FPL_BASE_RENDERER_BACKEND_SDL
+
+void Renderer::InitializeUniformLimits() {
+  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
+                        &max_vertex_uniform_components_));
+#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+  if (max_vertex_uniform_components_ == 0) {
+    // If missing the number of uniform components, use the number of vectors.
+    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
+                          &max_vertex_uniform_components_));
+    max_vertex_uniform_components_ *= 4;
+  }
+#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+}
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClearColor(color.x(), color.y(), color.z(), color.w()));
