@@ -57,6 +57,15 @@ class AssetManager {
   /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShader(const char *basename);
 
+  /// @brief Load a shader built by shader_pipeline.
+  ///
+  /// Loads a shader built by the shader_pipeline if it hasn't been loaded.
+  /// already.  If this returns nullptr, the error can be found in
+  /// Renderer::last_error().
+  /// @param filename Name of the shader file to load.
+  /// @return Returns the loaded shader, or nullptr if there was an error.
+  Shader *LoadShaderDef(const char *filename);
+
   /// @brief Returns a previously created texture.
   ///
   /// @param filename The name of the texture.
