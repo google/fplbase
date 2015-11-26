@@ -20,6 +20,7 @@
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
+#include "texture_atlas_generated.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -284,6 +285,45 @@ void AssetManager::UnloadMesh(const char *filename) {
   if (!mesh) return;
   mesh_map_.erase(filename);
   delete mesh;
+}
+
+TextureAtlas *AssetManager::FindTextureAtlas(const char *filename) {
+  return FindInMap(texture_atlas_map_, filename);
+}
+
+TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
+  auto atlas = FindTextureAtlas(filename);
+  if (atlas) return atlas;
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
+    auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
+    Texture *atlas_texture = LoadTexture(atlasdef->texture_filename()->c_str());
+    atlas = new TextureAtlas();
+    atlas->set_atlas_texture(atlas_texture);
+    atlas->set_size(LoadVec2i(atlasdef->size()));
+    for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
+      atlas->index_map().insert(
+          std::make_pair(atlasdef->entries()->Get(i)->name()->str(), i));
+      vec2i size = LoadVec2i(atlasdef->entries()->Get(i)->size());
+      vec2i location = LoadVec2i(atlasdef->entries()->Get(i)->location());
+      atlas->subtexture_bounds().push_back(
+          vec4i(location.x(), location.y(), size.x(), size.y()));
+    }
+    texture_atlas_map_[filename] = atlas;
+    return atlas;
+  }
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
+  return nullptr;
+}
+
+void AssetManager::UnloadTextureAtlas(const char *filename) {
+  auto atlas = FindTextureAtlas(filename);
+  if (!atlas) return;
+  texture_atlas_map_.erase(filename);
+  delete atlas;
 }
 
 }  // namespace fplbase

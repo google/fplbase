@@ -225,6 +225,7 @@ set(fplbase_common_SRCS
   include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/texture.h
+  include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
   schemas
