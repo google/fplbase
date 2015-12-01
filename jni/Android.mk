@@ -55,6 +55,7 @@ FPLBASE_SCHEMA_FILES := \
   $(FPLBASE_SCHEMA_DIR)/common.fbs \
   $(FPLBASE_SCHEMA_DIR)/materials.fbs \
   $(FPLBASE_SCHEMA_DIR)/mesh.fbs \
+  $(FPLBASE_SCHEMA_DIR)/shader.fbs \
   $(FPLBASE_SCHEMA_DIR)/texture_atlas.fbs
 
 FPLBASE_COMMON_EXPORT_C_INCLUDES := \
