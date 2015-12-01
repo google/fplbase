@@ -23,6 +23,7 @@
 #include "fplbase/async_loader.h"
 #include "fplbase/fpl_common.h"
 #include "fplbase/renderer.h"
+#include "fplbase/texture_atlas.h"
 
 namespace fplbase {
 
@@ -63,7 +64,7 @@ class AssetManager {
   Texture *FindTexture(const char *filename);
   /// @brief Queue loading a texture if it hasn't been loaded already.
   ///
-  /// Queue's a texture for loading if it hasn't been loaded already.
+  /// Queues a texture for loading if it hasn't been loaded already.
   /// Currently only supports TGA/WebP format files.
   /// Returned texture isn't usable until TryFinalize() succeeds and the id
   /// is non-zero.
@@ -133,6 +134,27 @@ class AssetManager {
   /// @param filename The name of the mesh to unload.
   void UnloadMesh(const char *filename);
 
+  /// @brief Look up a previously loaded texture atlas.
+  ///
+  /// @param filename Name of the texture atlas file to look up.
+  ///
+  /// @return Pointer to the texture atlas if found, nullptr otherwise.
+  TextureAtlas *FindTextureAtlas(const char *filename);
+  /// @brief Loads a texture atlas.
+  ///
+  /// Loads a texture atlas, which is a compiled FlatBuffer file containing a
+  /// texture path and subtexture rectangles.
+  ///
+  /// @return If this returns nullptr, the error can be found in
+  /// Renderer::last_error().
+  TextureAtlas *LoadTextureAtlas(const char *filename);
+  /// @brief Delete a texture atlas and remove it from the material manager.
+  ///
+  /// This will cause any Texture objects this atlas has issued to no
+  /// longer refer to a valid texture.  Any subsequent requests for this texture
+  /// atlas through Load*() will cause it to be loaded anew.
+  void UnloadTextureAtlas(const char *filename);
+
   /// @brief Handy accessor for the renderer.
   ///
   /// @return Returns the renderer.
@@ -161,6 +183,7 @@ class AssetManager {
   Renderer &renderer_;
   std::map<std::string, Shader *> shader_map_;
   std::map<std::string, Texture *> texture_map_;
+  std::map<std::string, TextureAtlas *> texture_atlas_map_;
   std::map<std::string, Material *> material_map_;
   std::map<std::string, Mesh *> mesh_map_;
   AsyncLoader loader_;
