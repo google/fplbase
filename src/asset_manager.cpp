@@ -20,6 +20,7 @@
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
+#include "shader_generated.h"
 #include "texture_atlas_generated.h"
 
 using mathfu::mat4;
@@ -114,6 +115,44 @@ Shader *AssetManager::LoadShader(const char *basename) {
   }
   LogError(kError, "Can\'t load shader file: %s", failedfile.c_str());
   renderer_.set_last_error("Couldn\'t load: " + failedfile);
+  return nullptr;
+}
+
+Shader *AssetManager::LoadShaderDef(const char *filename) {
+  auto shader = FindShader(filename);
+  if (shader) return shader;
+
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(shaderdef::VerifyShaderBuffer(verifier));
+    auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
+
+    shader =
+        renderer_.CompileAndLinkShader(shaderdef->vertex_shader()->c_str(),
+                                       shaderdef->fragment_shader()->c_str());
+    if (shader) {
+      shader_map_[filename] = shader;
+    } else {
+      LogError(kError, "Shader Error: ");
+      if (shaderdef->original_sources()) {
+        for (int i = 0; i < shaderdef->original_sources()->size(); ++i) {
+          const auto& source = shaderdef->original_sources()->Get(i);
+          LogError(kError, "%s", source->c_str());
+        }
+      }
+      LogError(kError, "VS:  -----------------------------------");
+      LogError(kError, "%s", shaderdef->vertex_shader()->c_str());
+      LogError(kError, "PS:  -----------------------------------");
+      LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
+      LogError(kError, "----------------------------------------");
+      LogError(kError, "%s", renderer_.last_error().c_str());
+    }
+    return shader;
+  }
+  LogError(kError, "Can\'t load shader file: %s", filename);
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 

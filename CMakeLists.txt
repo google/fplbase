@@ -31,6 +31,9 @@ option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline
        "Build the mesh_pipeline binary (converts from FBX to FlatBuffers). ${fbx_sdk_msg}"
        OFF)
+option(fplbase_build_shader_pipeline
+       "Build the shader_pipeline binary (packages GLSL in FlatBuffers)."
+       OFF)
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
 
@@ -420,6 +423,17 @@ if(fplbase_build_mesh_pipeline)
 
   # Additional flags for the target.
   fplbase_common_config(mesh_pipeline)
+endif()
+
+if(fplbase_build_shader_pipeline)
+  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp)
+  include_directories(include)
+  include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
+  include_directories(${dependencies_flatbuffers_dir}/include)
+  include_directories(${dependencies_mathfu_dir}/include)
+  add_executable(shader_pipeline ${fplbase_shader_pipeline_SRCS})
+  target_link_libraries(shader_pipeline fplbase_stdlib)
+  fplbase_common_config(shader_pipeline)
 endif()
 
 if(fplbase_build_samples)
