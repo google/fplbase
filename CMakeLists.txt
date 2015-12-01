@@ -19,7 +19,7 @@ if(NOT WIN32)
 endif()
 
 set(fplbase_standalone_mode OFF)
-if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+if("${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
   set(fplbase_standalone_mode ON)
   message(STATUS "FPLBase standalone: building library and samples")
 else()
@@ -30,6 +30,9 @@ set(fbx_sdk_msg "The FBX SDK must be installed and the FBX_SDK environment varia
 option(fplbase_build_library "Build the fplbase runtime library." ON)
 option(fplbase_build_mesh_pipeline
        "Build the mesh_pipeline binary (converts from FBX to FlatBuffers). ${fbx_sdk_msg}"
+       OFF)
+option(fplbase_build_shader_pipeline
+       "Build the shader_pipeline binary (packages GLSL in FlatBuffers)."
        OFF)
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
@@ -44,8 +47,8 @@ option(fplbase_use_host_flatc "Use host machine flatc." OFF)
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
-# Look in our local cmake director for includes before checking other paths.
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+# Look in our local cmake directory for includes before checking other paths.
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Output executables in `bin`, and libraries (both static and module) in `obj`.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
@@ -55,14 +58,14 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 # Directory which contains the source for 3rd party libraries.
 if(NOT DEFINED third_party_root)
   get_filename_component(
-    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external"
+    third_party_root "${CMAKE_CURRENT_LIST_DIR}/../../../../external"
     REALPATH)
 endif()
 
 # Directory which contains source for FPL libraries.
 if(NOT DEFINED fpl_root)
   get_filename_component(
-      fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../libs" REALPATH)
+      fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs" REALPATH)
 endif()
 
 # If the dependencies directory exists, assume this is the root directory for
@@ -184,7 +187,7 @@ endif()
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
 file(GLOB_RECURSE FPLBASE_FLATBUFFERS_SCHEMAS
-                  ${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.fbs)
+                  ${CMAKE_CURRENT_LIST_DIR}/schemas/*.fbs)
 
 # Generate rules to build the set of output files from the set of input
 # schema files.
@@ -225,6 +228,7 @@ set(fplbase_common_SRCS
   include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/texture.h
+  include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
   schemas
@@ -254,7 +258,7 @@ set(fplbase_stdlib_SRCS
 include_directories(src)
 include_directories(include)
 if(WIN32)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/include)
+  include_directories(${CMAKE_CURRENT_LIST_DIR}/external/include)
 endif()
 include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
 include_directories(${dependencies_flatbuffers_dir}/include)
@@ -419,6 +423,17 @@ if(fplbase_build_mesh_pipeline)
 
   # Additional flags for the target.
   fplbase_common_config(mesh_pipeline)
+endif()
+
+if(fplbase_build_shader_pipeline)
+  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp)
+  include_directories(include)
+  include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
+  include_directories(${dependencies_flatbuffers_dir}/include)
+  include_directories(${dependencies_mathfu_dir}/include)
+  add_executable(shader_pipeline ${fplbase_shader_pipeline_SRCS})
+  target_link_libraries(shader_pipeline fplbase_stdlib)
+  fplbase_common_config(shader_pipeline)
 endif()
 
 if(fplbase_build_samples)

@@ -113,7 +113,6 @@ enum {
   K_PAD_B
 };
 
-
 /// @class InputPointer
 /// @brief Stores information about the current and recent state of a pointer.
 ///
@@ -121,7 +120,6 @@ enum {
 /// or a mouse-pointer.
 // Additional information stored for the pointer buttons.
 struct InputPointer {
-
   /// @brief The pointer's ID
   ///
   /// The mouse pointer always has a pointerID of 0.  For fingertouches, they
@@ -140,7 +138,7 @@ struct InputPointer {
   /// should be ignored.
   bool used;
 
-  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false) {};
+  InputPointer() : id(0), mousepos(-1), mousedelta(0), used(false){};
 };
 
 /// @class Joystick
@@ -234,7 +232,6 @@ class Joystick {
 /// This is only present if ANDROID_GAMEPAD is defined.
 class Gamepad {
  public:
-
   /// @brief Enum describing all possible button inputs on a gamepad.
   enum GamepadInputButton : int {
     kInvalid = -1,
@@ -245,6 +242,19 @@ class Gamepad {
     kButtonA,
     kButtonB,
     kButtonC,
+    kButtonX,
+    kButtonY,
+    kButtonZ,
+    kButtonL1,
+    kButtonR1,
+    kButtonL2,
+    kButtonR2,
+    kButtonThumbL,
+    kButtonThumbR,
+    kButtonBack,
+    kButtonStart,
+    kButtonSelect,
+    kButtonMode,
     kControlCount
   };
 
@@ -491,6 +501,9 @@ class InputSystem {
   /// @return Return the incremental time, in seconds.
   double DeltaTime() const;
 
+  /// @brief Make the application go to sleep a certain duration.
+  void Delay(double seconds) const;
+
   /// @brief Get a Button object describing the input state of the specified
   ///        button ID.
   ///
@@ -643,6 +656,8 @@ class InputSystem {
 
   /// @brief Gets if exit has been requested by the system.
   bool exit_requested() { return exit_requested_; }
+  /// @brief Sets if exit has been requested.
+  void set_exit_requested(bool b) { exit_requested_ = b; }
 
  private:
   // Reset pointer/gamepad input state to released state.

@@ -355,7 +355,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
       env->GetMethodID(editor_class, "putString",
                        "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/"
                        "SharedPreferences$Editor;");
-  env->CallObjectMethod(editor, put_string, key, blob);
+  jobject result = env->CallObjectMethod(editor, put_string, key, blob);
 
   // Commit a change.
   jmethodID commit = env->GetMethodID(editor_class, "commit", "()Z");
@@ -363,6 +363,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
   LogInfo("Saved %d bytes to the preference, %d", size, ret);
 
   // Release objects references.
+  env->DeleteLocalRef(result);
   env->DeleteLocalRef(blob);
   env->DeleteLocalRef(key);
   env->DeleteLocalRef(editor_class);
@@ -401,13 +402,14 @@ bool SavePreference(const char *key, int32_t value) {
   jmethodID put_int = env->GetMethodID(editor_class, "putInt",
                                        "(Ljava/lang/String;I)Landroid/content/"
                                        "SharedPreferences$Editor;");
-  env->CallObjectMethod(editor, put_int, pref_key, value);
+  jobject result = env->CallObjectMethod(editor, put_int, pref_key, value);
 
   // Commit a change.
   jmethodID commit = env->GetMethodID(editor_class, "commit", "()Z");
   jboolean ret = env->CallBooleanMethod(editor, commit);
 
   // Release objects references.
+  env->DeleteLocalRef(result);
   env->DeleteLocalRef(pref_key);
   env->DeleteLocalRef(editor_class);
   env->DeleteLocalRef(editor);
@@ -996,9 +998,5 @@ PerformanceMode GetPerformanceMode() { return performance_mode; }
 
 }  // namespace fplbase
 
-// We use SIMD types in dynamically allocated objects and arrays, so we'll
-// need this on Windows.
-#ifdef _WIN32
-#define noexcept
+// We use SIMD types in dynamically allocated objects and arrays.
 MATHFU_DEFINE_GLOBAL_SIMD_AWARE_NEW_DELETE
-#endif

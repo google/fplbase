@@ -46,12 +46,7 @@ class Renderer {
   Renderer();
   ~Renderer();
 
-  enum CullingMode {
-    kNoCulling,
-    kCullFront,
-    kCullBack,
-    kCullFrontAndBack
-  };
+  enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
 
   // OpenGL ES feature level we are able to obtain.
   enum FeatureLevel {
@@ -59,6 +54,7 @@ class Renderer {
     kFeatureLevel30,  // 3.0: We request this by default.
   };
 
+// clang-format off
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
   /// @brief Creates the window + OpenGL context.
   ///
@@ -69,8 +65,22 @@ class Renderer {
   /// @param window_size The default size to initialize the window to.
   /// @param window_title The title of the created window.
   /// @return Returns true on success, false if there was an error.
+#else
+  /// @brief Initializes internal state of the renderer.
+  ///
+  /// This assumes a window and OpenGL context have already been created by
+  /// the caller.
+  ///
+  /// @param window_size This is ignored and only present for compatibility
+  /// with the interface that uses SDL as a backend.
+  /// @param window_title This is ignored and only present for compatibility
+  /// with the interface that uses SDL as a backend.
+  /// @return Returns true on success, false if there was an error.
+#endif  // FPL_BASE_RENDERER_BACKEND_SDL
   bool Initialize(const mathfu::vec2i &window_size, const char *window_title);
+// clang-format on
 
+#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   /// @brief Swaps frames. Call this once per frame inside your main loop.
   ///
   /// The two arguments are typically the result of the InputManager's
@@ -90,7 +100,7 @@ class Renderer {
   ///
   /// @param window_size The size to set the window to.
   void SetWindowSize(const mathfu::vec2i &window_size);
-#endif
+#endif  // FPL_BASE_RENDERER_BACKEND_SDL
 
   /// @brief Clears the framebuffer.
   ///
@@ -283,13 +293,14 @@ class Renderer {
   /// @return Returns the max number of uniform components.
   int max_vertex_uniform_components() { return max_vertex_uniform_components_; }
 
-
   /// @brief Returns the version of the FPL Base Library.
-  const FplBaseVersion* GetFplBaseVersion() const { return version_; }
+  const FplBaseVersion *GetFplBaseVersion() const { return version_; }
 
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
+  // Retrieve uniform limits from the driver and cache for shader compilation.
+  void InitializeUniformLimits();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.
@@ -320,9 +331,8 @@ class Renderer {
 
   int max_vertex_uniform_components_;
 
-
   // Current version of the Corgi Entity Library.
-  const FplBaseVersion* version_;
+  const FplBaseVersion *version_;
 };
 
 }  // namespace fplbase

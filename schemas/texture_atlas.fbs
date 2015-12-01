@@ -1,0 +1,40 @@
+// Copyright 2015 Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Definitions for the texture atlas object.
+
+include "common.fbs";
+
+namespace atlasdef;
+
+table TextureAtlasEntry {
+  // Name of the atlas entry (subtexture).
+  name: string;
+  // Offset of the subtexture in the atlased texture.
+  location: fplbase.Vec2i;
+  // Size of the subtexture.
+  size: fplbase.Vec2i;
+}
+
+table TextureAtlas {
+  // Name of the texture file to load and reference from this atlas.
+  texture_filename: string;
+  // Expected size of the texture being loaded.
+  size: fplbase.Vec2i;
+  // List of atlas entries / subtextures which reference regions of the
+  // texture_filename.
+  entries: [TextureAtlasEntry];
+}
+
+root_type TextureAtlas;
