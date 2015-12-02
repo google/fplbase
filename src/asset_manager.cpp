@@ -137,8 +137,9 @@ Shader *AssetManager::LoadShaderDef(const char *filename) {
     } else {
       LogError(kError, "Shader Error: ");
       if (shaderdef->original_sources()) {
-        for (int i = 0; i < shaderdef->original_sources()->size(); ++i) {
-          const auto& source = shaderdef->original_sources()->Get(i);
+        for (int i = 0;
+             i < static_cast<int>(shaderdef->original_sources()->size()); ++i) {
+          const auto &source = shaderdef->original_sources()->Get(i);
           LogError(kError, "%s", source->c_str());
         }
       }
