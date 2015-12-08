@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 namespace fplbase {
 
@@ -36,7 +37,7 @@ class Texture;
 /// coordinates, and take the form (u, v, width, height).
 ///
 /// @warning This is will very likely be refactored.
-class TextureAtlas {
+class TextureAtlas : public Asset {
  public:
   TextureAtlas() : atlas_texture_(nullptr) {}
   ~TextureAtlas() { Delete(); }

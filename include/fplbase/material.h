@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 namespace fplbase {
 
@@ -37,7 +38,7 @@ enum BlendMode {
 
 /// @class Material
 /// @brief Collections of textures used for rendering multi-texture models.
-class Material {
+class Material : public Asset {
  public:
   Material() : blend_mode_(kBlendModeOff) {}
 

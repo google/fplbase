@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 #include "fplbase/material.h"
 #include "fplbase/shader.h"
@@ -43,7 +44,7 @@ enum Attribute {
 /// @brief Abstraction for a set of indices, used for rendering.
 ///
 /// A mesh instance contains a VBO and one or more IBO's.
-class Mesh {
+class Mesh : public Asset {
  public:
   enum Primitive {
     kTriangles,

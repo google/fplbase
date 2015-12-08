@@ -79,10 +79,12 @@ AssetManager::AssetManager(Renderer &renderer)
 }
 
 void AssetManager::ClearAllAssets() {
+  DestructAssetsInMap(material_map_);
+  DestructAssetsInMap(texture_atlas_map_);
+  DestructAssetsInMap(mesh_map_);
   DestructAssetsInMap(shader_map_);
   DestructAssetsInMap(texture_map_);
-  DestructAssetsInMap(material_map_);
-  DestructAssetsInMap(mesh_map_);
+  DestructAssetsInMap(file_map_);
 }
 
 Shader *AssetManager::FindShader(const char *basename) {
@@ -157,6 +159,13 @@ Shader *AssetManager::LoadShaderDef(const char *filename) {
   return nullptr;
 }
 
+void AssetManager::UnloadShader(const char *filename) {
+  auto shader = FindShader(filename);
+  if (!shader || shader->DecreaseRefCount()) return;
+  shader_map_.erase(filename);
+  delete shader;
+}
+
 Texture *AssetManager::FindTexture(const char *filename) {
   return FindInMap(texture_map_, filename);
 }
@@ -174,6 +183,13 @@ Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
 
 bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
+
+void AssetManager::UnloadTexture(const char *filename) {
+  auto tex = FindTexture(filename);
+  if (!tex || tex->DecreaseRefCount()) return;
+  texture_map_.erase(filename);
+  delete tex;
+}
 
 Material *AssetManager::FindMaterial(const char *filename) {
   return FindInMap(material_map_, filename);
@@ -217,7 +233,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
 
 void AssetManager::UnloadMaterial(const char *filename) {
   auto mat = FindMaterial(filename);
-  if (!mat) return;
+  if (!mat || mat->DecreaseRefCount()) return;
   mat->DeleteTextures();
   material_map_.erase(filename);
   for (auto it = mat->textures().begin(); it != mat->textures().end(); ++it) {
@@ -330,7 +346,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
 
 void AssetManager::UnloadMesh(const char *filename) {
   auto mesh = FindMesh(filename);
-  if (!mesh) return;
+  if (!mesh || mesh->DecreaseRefCount()) return;
   mesh_map_.erase(filename);
   delete mesh;
 }
@@ -369,9 +385,32 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
 
 void AssetManager::UnloadTextureAtlas(const char *filename) {
   auto atlas = FindTextureAtlas(filename);
-  if (!atlas) return;
+  if (!atlas || atlas->DecreaseRefCount()) return;
   texture_atlas_map_.erase(filename);
   delete atlas;
+}
+
+FileAsset *AssetManager::FindFileAsset(const char *filename) {
+  return FindInMap(file_map_, filename);
+}
+
+FileAsset *AssetManager::LoadFileAsset(const char *filename) {
+  auto file = FindFileAsset(filename);
+  if (file) return file;
+  file = new FileAsset();
+  if (LoadFile(filename, &file->contents)) {
+    file_map_[filename] = file;
+    return file;
+  }
+  delete file;
+  return nullptr;
+}
+
+void AssetManager::UnloadFileAsset(const char *filename) {
+  auto file = FindFileAsset(filename);
+  if (!file || file->DecreaseRefCount()) return;
+  file_map_.erase(filename);
+  delete file;
 }
 
 }  // namespace fplbase

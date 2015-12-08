@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 #ifdef FPL_BASE_BACKEND_STDLIB
 #include <mutex>
@@ -39,7 +40,7 @@ class AsyncLoader;
 /// @class AsyncResource
 /// @brief Any resource intended to be loaded asynchronously should inherit from
 ///        this.
-class AsyncResource {
+class AsyncResource : public Asset {
  public:
   AsyncResource() : data_(nullptr) {}
   explicit AsyncResource(const char *filename)

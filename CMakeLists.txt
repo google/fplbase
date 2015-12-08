@@ -215,6 +215,7 @@ endif()
 
 
 set(fplbase_common_SRCS
+  include/fplbase/asset.h
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
   include/fplbase/fpl_common.h

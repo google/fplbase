@@ -16,6 +16,7 @@
 #define FPLBASE_SHADER_H
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 #include "mathfu/glsl_mappings.h"
 
@@ -35,7 +36,7 @@ typedef int UniformHandle;
 ///
 /// Represents a shader consisting of a vertex and pixel shader. Also stores
 /// ids of standard uniforms. Use the Renderer class below to create these.
-class Shader {
+class Shader : public Asset {
  public:
   Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
       : program_(program),
