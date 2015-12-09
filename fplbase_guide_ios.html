@@ -189,7 +189,7 @@ $(document).ready(function(){initNavTree('fplbase_guide_ios.html','');});
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><h1>Version Requirements</h1>
-<p>Following are the minimum required versions of tools and libraries you need to build <a class="el" href="index.html#fplbase_overview">FPLBase</a> for [OS X]:</p>
+<p>Following are the minimum tested versions of tools and libraries you need to build <a class="el" href="index.html#fplbase_overview">FPLBase</a> for <a href="http://www.apple.com/osx/">OS X</a>:</p>
 <ul>
 <li><a href="http://www.apple.com/osx/">OS X</a>: Mavericks 10.9.1.</li>
 <li><a href="https://developer.apple.com/ios/">iOS SDK</a>: 8.3</li>
@@ -209,25 +209,25 @@ $(document).ready(function(){initNavTree('fplbase_guide_ios.html','');});
 </ul>
 <h1>Building with Xcode</h1>
 <ol type="1">
-<li>Build <code>flatc</code> for the host architecture and add it to your <code>PATH</code>: <div class="fragment"><div class="line">cd $FLATC_SOURCE_DIRECTORY</div>
+<li>Build <code>flatc</code> for the host architecture and add it to your <code>PATH</code>: <div class="fragment"><div class="line">cd fplbase/dependencies/flatbuffers</div>
 <div class="line">cmake -GXcode . &amp;&amp; xcodebuild</div>
 <div class="line">mkdir -p ~/bin &amp;&amp; cp flatc ~/bin</div>
 <div class="line">export PATH=$PATH:~/bin</div>
 </div><!-- fragment --></li>
-<li>Build <code>libSDL2</code> for the Simulator architecture using the upstream provided <code>xcodeproj</code> <div class="fragment"><div class="line">cd $SDL2_SOURCE_DIRECTORY</div>
+<li>Build <code>libSDL2</code> for the Simulator architecture using the upstream provided <code>xcodeproj</code> from the <code>fplbase/dependencies/sdl</code> directory: <div class="fragment"><div class="line">cd ../sdl</div>
 <div class="line">xcodebuild ARCHS=<span class="stringliteral">&quot;x86_64 i386&quot;</span> -project Xcode-iOS/SDL/SDL.xcodeproj -sdk iphonesimulator8.3 build</div>
 </div><!-- fragment --></li>
-<li>Generate the <a href="http://developer.apple.com/xcode/">Xcode</a> project needs to be generated using <a href="http://www.cmake.org">CMake</a>: <div class="fragment"><div class="line">cd fplbase</div>
-<div class="line">cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=$SDL2_SOURCE_DIRECTORY/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=$SDL2_SOURCE_DIRECTORY/include -Dfplbase_use_host_flatc=ON  -DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.xcode.cmake -GXcode .</div>
+<li>Generate the <a href="http://developer.apple.com/xcode/">Xcode</a> project needs to be generated using <a href="http://www.cmake.org">CMake</a> from the root <code>fplbase/</code> folder: <div class="fragment"><div class="line">cd ../..</div>
+<div class="line">cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=dependencies/sdl/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=dependencies/sdl/include -Dfplbase_use_host_flatc=ON -DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.xcode.cmake -GXcode .</div>
 </div><!-- fragment --></li>
 <li>Then the project can be opened in <a href="http://developer.apple.com/xcode/">Xcode</a> and built:<ul>
 <li>Double-click on <code>fplbase/fplbase.xcodeproj</code> to open the project in <a href="http://developer.apple.com/xcode/">Xcode</a>.</li>
 <li>Select "Product--&gt;Build" from the menu.</li>
 </ul>
 </li>
-<li>The demo can be run from within <a href="http://developer.apple.com/xcode/">Xcode</a>:<ul>
-<li>Select one of the sample <code>Scheme</code>, for example "fplbase-triangle--&gt;iPhone Simulator", from the combo box to the right of the "Run" button.</li>
-<li>Click the "Run" button.</li>
+<li>The demos can be run from within <a href="http://developer.apple.com/xcode/">Xcode</a>:<ul>
+<li>Select one of the sample <code>Scheme</code>, for example <code>fplbase-triangle--&gt;iPhone Simulator</code>, from the combo box to the right of the <code>Run</code> button.</li>
+<li>Click the <code>Run</code> button.</li>
 </ul>
 </li>
 </ol>
