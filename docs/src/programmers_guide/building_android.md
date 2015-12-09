@@ -69,11 +69,6 @@ Additionally, if you'd like to use the handy tools in [fplutil][],
 
 # Code Generation
 
-By default, code is generated for devices that support the `armeabi-v7a`,
-`x86`, or `armeabi` ABIs. Alternatively, you can generate a fat `.apk` that
-includes code for all ABIs. To do so, override APP\_ABI on ndk-build's command
-line.
-
 Using `ndk-build`:
 
 ~~~{.sh}
