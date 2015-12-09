@@ -985,7 +985,7 @@ void RelaunchApplication() {
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
 }
-#endif  // __ANDROID
+#endif  // __ANDROID__
 
 static PerformanceMode performance_mode = kNormalPerformance;
 
@@ -995,6 +995,23 @@ void SetPerformanceMode(PerformanceMode new_mode) {
 }
 
 PerformanceMode GetPerformanceMode() { return performance_mode; }
+
+#ifdef __ANDROID__
+std::string DeviceModel() {
+  JNIEnv *env = fplbase::AndroidGetJNIEnv();
+  jclass build_class = env->FindClass("android.os.Build");
+  jfieldID model_id =
+      env->GetStaticFieldID(build_class, "MODEL", "Ljava/lang/String;");
+  jstring model_object =
+      static_cast<jstring>(env->GetStaticObjectField(build_class, model_id));
+  const char *model_string = env->GetStringUTFChars(model_object, 0);
+  std::string result = model_string;
+  env->ReleaseStringUTFChars(model_object, model_string);
+  env->DeleteLocalRef(model_object);
+  env->DeleteLocalRef(build_class);
+  return result;
+}
+#endif  // __ANDROID__
 
 }  // namespace fplbase
 

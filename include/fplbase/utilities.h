@@ -229,6 +229,9 @@ void SetHighPerformanceParameters(const HighPerformanceParams &params);
 
 // Returns the current performance parameters, in the form of a struct.
 const HighPerformanceParams &GetHighPerformanceParameters();
+
+// Returns the model of the Android device the app is currently being run on.
+std::string DeviceModel();
 #endif
 }  // namespace fplbase
 
