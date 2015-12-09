@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -146,161 +225,195 @@ $(document).ready(function(){initNavTree('asset__manager_8h_source.html','');});
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="preprocessor">#include &quot;fplbase/async_loader.h&quot;</span></div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="preprocessor">#include &quot;fplbase/fpl_common.h&quot;</span></div>
 <div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="preprocessor">#include &quot;fplbase/renderer.h&quot;</span></div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="keyword">namespace </span>fplbase {</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="comment">/// @class AssetManager</span></div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="comment">/// @brief Central place to own game assets loaded from disk.</span></div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="comment">///</span></div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="comment">/// Loads of some assets, such as textures, can be batched in a bit asynchronous</span></div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="comment">/// load. This allows you to continue setting up your game as assets are loaded,</span></div>
-<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">/// in the background.</span></div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">///</span></div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="comment">/// Loading assets such as meshes will trigger the load of dependent assets</span></div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="comment">/// such as textures.</span></div>
-<div class="line"><a name="l00038"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html">   38</a></span>&#160;<span class="comment"></span><span class="keyword">class </span><a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a> {</div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160; <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;  <a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>(<a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>);</div>
-<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;  ~<a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>() { <a class="code" href="classfplbase_1_1_asset_manager.html#ace320048b6c3d64666b13158413cd27a">ClearAllAssets</a>(); }</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="comment">  /// @brief Returns a previously loaded shader object.</span></div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="comment">  /// @param basename The name of the shader.</span></div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="comment">  /// @return Returns the shader, or nullptr if not previously loaded.</span></div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_shader.html">Shader</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a6ba688065de01a8a8b857d6fcedee287">FindShader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *basename);</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="comment">  /// @brief Loads and returns a shader object.</span></div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="comment">  /// Loads a shader if it hasn&#39;t been loaded already, by appending .glslv</span></div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="comment">  /// and .glslf to the basename, compiling and linking them.</span></div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;<span class="comment">  /// @param basename The name of the shader.</span></div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="comment">  /// @return Returns the loaded shader, or nullptr if there was an error.</span></div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_shader.html">Shader</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">LoadShader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *basename);</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="comment">  /// @brief Returns a previously created texture.</span></div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="comment">  /// @param filename The name of the texture.</span></div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="comment">  /// @return Returns the texture, or nullptr if not previously loaded.</span></div>
-<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture.html">Texture</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">FindTexture</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="comment">  /// @brief Queue loading a texture if it hasn&#39;t been loaded already.</span></div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="comment">  /// Queue&#39;s a texture for loading if it hasn&#39;t been loaded already.</span></div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="comment">  /// Currently only supports TGA/WebP format files.</span></div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="comment">  /// Returned texture isn&#39;t usable until TryFinalize() succeeds and the id</span></div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="comment">  /// is non-zero.</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="preprocessor">#include &quot;fplbase/texture_atlas.h&quot;</span></div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="keyword">namespace </span>fplbase {</div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="comment">/// @class AssetManager</span></div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="comment">/// @brief Central place to own game assets loaded from disk.</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="comment">///</span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="comment">/// Loads of some assets, such as textures, can be batched in a bit asynchronous</span></div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">/// load. This allows you to continue setting up your game as assets are loaded,</span></div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">/// in the background.</span></div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="comment">///</span></div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="comment">/// Loading assets such as meshes will trigger the load of dependent assets</span></div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="comment">/// such as textures.</span></div>
+<div class="line"><a name="l00039"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html">   39</a></span>&#160;<span class="comment"></span><span class="keyword">class </span><a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a> {</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160; <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;  <a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>(<a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>);</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;  ~<a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>() { <a class="code" href="classfplbase_1_1_asset_manager.html#ace320048b6c3d64666b13158413cd27a">ClearAllAssets</a>(); }</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="comment">  /// @brief Returns a previously loaded shader object.</span></div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;<span class="comment">  /// @param basename The name of the shader.</span></div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="comment">  /// @return Returns the shader, or nullptr if not previously loaded.</span></div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_shader.html">Shader</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a6ba688065de01a8a8b857d6fcedee287">FindShader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *basename);</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="comment">  /// @brief Loads and returns a shader object.</span></div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="comment">  /// Loads a shader if it hasn&#39;t been loaded already, by appending .glslv</span></div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="comment">  /// and .glslf to the basename, compiling and linking them.</span></div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="comment">  /// @param basename The name of the shader.</span></div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="comment">  /// @return Returns the loaded shader, or nullptr if there was an error.</span></div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_shader.html">Shader</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">LoadShader</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *basename);</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="comment">  /// @brief Load a shader built by shader_pipeline.</span></div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="comment">  /// Loads a shader built by the shader_pipeline if it hasn&#39;t been loaded.</span></div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="comment">  /// already.  If this returns nullptr, the error can be found in</span></div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="comment">  /// Renderer::last_error().</span></div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="comment">  /// @param filename Name of the shader file to load.</span></div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="comment">  /// @return Returns the loaded shader, or nullptr if there was an error.</span></div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_shader.html">Shader</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa">LoadShaderDef</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="comment">  /// @brief Returns a previously created texture.</span></div>
 <div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="comment">  /// @param filename The name of the texture to load.</span></div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="comment">  /// @param format The texture format, defaults to kFormatAuto.</span></div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;<span class="comment">  /// @param mipmaps If mipmaps should be used, defaults to true.</span></div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="comment">  /// @return Returns an unloaded texture object.</span></div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture.html">Texture</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be">LoadTexture</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename, TextureFormat format = kFormatAuto,</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;                       <span class="keywordtype">bool</span> mipmaps = <span class="keyword">true</span>);<span class="comment"></span></div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;<span class="comment">  /// @brief Start loading all previously queued textures.</span></div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="comment">  /// LoadTextures doesn&#39;t actually load anything, this will start the async</span></div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="comment">  /// loading of all files, and decompression.</span></div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">StartLoadingTextures</a>();<span class="comment"></span></div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="comment">  /// @brief Check for the status of async loading textures.</span></div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;<span class="comment">  /// Call this repeatedly until it returns true, which signals all textures</span></div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;<span class="comment">  /// will have loaded, and turned into OpenGL textures.</span></div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;<span class="comment">  /// Textures with a 0 id will have failed to load.</span></div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;<span class="comment">  /// @return Returns true when all textures have been loaded.</span></div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<span class="comment"></span>  <span class="keywordtype">bool</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6">TryFinalize</a>();</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="comment">  /// @brief Returns a previously loaded material.</span></div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="comment">  /// @param filename The name of the material.</span></div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="comment">  /// @return Returns the material, or nullptr if not previously loaded.</span></div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_material.html">Material</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a32d1c2460155a0ae1fedf3efd4952921">FindMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="comment">  /// @brief Loads and returns a material object.</span></div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="comment">  /// @param filename The name of the texture.</span></div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="comment">  /// @return Returns the texture, or nullptr if not previously loaded.</span></div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture.html">Texture</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">FindTexture</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="comment">  /// @brief Queue loading a texture if it hasn&#39;t been loaded already.</span></div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;<span class="comment">  /// Queues a texture for loading if it hasn&#39;t been loaded already.</span></div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;<span class="comment">  /// Currently only supports TGA/WebP format files.</span></div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;<span class="comment">  /// Returned texture isn&#39;t usable until TryFinalize() succeeds and the id</span></div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="comment">  /// is non-zero.</span></div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="comment">  /// @param filename The name of the texture to load.</span></div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="comment">  /// @param format The texture format, defaults to kFormatAuto.</span></div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="comment">  /// @param mipmaps If mipmaps should be used, defaults to true.</span></div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;<span class="comment">  /// @return Returns an unloaded texture object.</span></div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture.html">Texture</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be">LoadTexture</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename, TextureFormat format = kFormatAuto,</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;                       <span class="keywordtype">bool</span> mipmaps = <span class="keyword">true</span>);<span class="comment"></span></div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;<span class="comment">  /// @brief Start loading all previously queued textures.</span></div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<span class="comment">  /// LoadTextures doesn&#39;t actually load anything, this will start the async</span></div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="comment">  /// loading of all files, and decompression.</span></div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">StartLoadingTextures</a>();<span class="comment"></span></div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="comment">  /// @brief Check for the status of async loading textures.</span></div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="comment">  /// Call this repeatedly until it returns true, which signals all textures</span></div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;<span class="comment">  /// will have loaded, and turned into OpenGL textures.</span></div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="comment">  /// Textures with a 0 id will have failed to load.</span></div>
 <div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="comment">  /// Loads a material, which is a compiled FlatBuffer file with</span></div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;<span class="comment">  /// root Material. This loads all resources contained there-in.</span></div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;<span class="comment">  /// @param filename The name of the material.</span></div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="comment">  /// @return Returns the loaded material, or nullptr if there was an error.</span></div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_material.html">Material</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a">LoadMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="comment">  /// @brief Deletes the previously loaded material.</span></div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="comment">  /// @return Returns true when all textures have been loaded.</span></div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;<span class="comment"></span>  <span class="keywordtype">bool</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6">TryFinalize</a>();</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="comment">  /// @brief Returns a previously loaded material.</span></div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="comment">  /// @param filename The name of the material.</span></div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="comment">  /// @return Returns the material, or nullptr if not previously loaded.</span></div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_material.html">Material</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a32d1c2460155a0ae1fedf3efd4952921">FindMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="comment">  /// @brief Loads and returns a material object.</span></div>
 <div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;<span class="comment">  /// Deletes all OpenGL textures contained in this material, and removes the</span></div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;<span class="comment">  /// textures and the material from material manager. Any subsequent requests</span></div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;<span class="comment">  /// for these textures through Load*() will cause them to be loaded anew.</span></div>
+<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;<span class="comment">  /// Loads a material, which is a compiled FlatBuffer file with</span></div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;<span class="comment">  /// root Material. This loads all resources contained there-in.</span></div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
 <div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;<span class="comment">  /// @param filename The name of the material to unload.</span></div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160">UnloadMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
-<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="comment">  /// @brief Returns a previously loaded mesh.</span></div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="comment">  /// @param filename The name of the mesh.</span></div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;<span class="comment">  /// @return Returns the mesh, or nullptr if not previously loaded.</span></div>
-<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a22997f76b3142bddd798a33c1afefcce">FindMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;<span class="comment">  /// @brief Loads and returns a mesh object.</span></div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;<span class="comment">  /// @param filename The name of the material.</span></div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;<span class="comment">  /// @return Returns the loaded material, or nullptr if there was an error.</span></div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_material.html">Material</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a">LoadMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;<span class="comment">  /// @brief Deletes the previously loaded material.</span></div>
+<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;<span class="comment">  /// Deletes all OpenGL textures contained in this material, and removes the</span></div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;<span class="comment">  /// textures and the material from material manager. Any subsequent requests</span></div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;<span class="comment">  /// for these textures through Load*() will cause them to be loaded anew.</span></div>
 <div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;<span class="comment">  /// Loads a mesh, which is a compiled FlatBuffer file with root Mesh.</span></div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;<span class="comment">  /// @param filename The name of the mesh.</span></div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;<span class="comment">  /// @return</span></div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4">LoadMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="comment">  /// @brief Deletes the previously loaded mesh.</span></div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;<span class="comment">  /// Deletes the mesh and removes it from the material manager. Any subsequent</span></div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;<span class="comment">  /// requests for this mesh through Load*() will cause them to be loaded anew.</span></div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;<span class="comment">  /// @param filename The name of the mesh to unload.</span></div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">UnloadMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;<span class="comment">  /// @brief Handy accessor for the renderer.</span></div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;<span class="comment">  /// @return Returns the renderer.</span></div>
-<div class="line"><a name="l00139"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">  139</a></span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>() { <span class="keywordflow">return</span> renderer_; }<span class="comment"></span></div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;<span class="comment">  /// @brief Handy accessor for the renderer.</span></div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;<span class="comment">  /// @return Returns the renderer.</span></div>
-<div class="line"><a name="l00143"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">  143</a></span>&#160;<span class="comment"></span>  <span class="keyword">const</span> <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">renderer</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> renderer_; }</div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;<span class="comment">  /// @brief Removes and destructs all assets held by the AssetManager.</span></div>
-<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="comment">  /// Will be called automatically by the destructor, but can also be called</span></div>
-<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;<span class="comment">  /// manually beforehand if necessary since destructing assets requires the</span></div>
-<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;<span class="comment">  /// OpenGL context to still be alive.</span></div>
-<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ace320048b6c3d64666b13158413cd27a">ClearAllAssets</a>();</div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;<span class="comment"></span></div>
-<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;<span class="comment">  /// @brief Set a scaling factor to apply when loading texture materials.</span></div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;<span class="comment">  /// @param filename The name of the material to unload.</span></div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160">UnloadMaterial</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
+<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;<span class="comment">  /// @brief Returns a previously loaded mesh.</span></div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;<span class="comment">  /// @param filename The name of the mesh.</span></div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="comment">  /// @return Returns the mesh, or nullptr if not previously loaded.</span></div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a22997f76b3142bddd798a33c1afefcce">FindMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;<span class="comment">  /// @brief Loads and returns a mesh object.</span></div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="comment">  /// Loads a mesh, which is a compiled FlatBuffer file with root Mesh.</span></div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;<span class="comment">  /// If this returns nullptr, the error can be found in Renderer::last_error().</span></div>
+<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;<span class="comment">  /// @param filename The name of the mesh.</span></div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;<span class="comment">  /// @return</span></div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4">LoadMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;<span class="comment">  /// @brief Deletes the previously loaded mesh.</span></div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;<span class="comment">  /// Deletes the mesh and removes it from the material manager. Any subsequent</span></div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;<span class="comment">  /// requests for this mesh through Load*() will cause them to be loaded anew.</span></div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;<span class="comment">  /// @param filename The name of the mesh to unload.</span></div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">UnloadMesh</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
+<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;<span class="comment">  /// @brief Look up a previously loaded texture atlas.</span></div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;<span class="comment">  /// @param filename Name of the texture atlas file to look up.</span></div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160;<span class="comment">  /// @return Pointer to the texture atlas if found, nullptr otherwise.</span></div>
+<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5">FindTextureAtlas</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;<span class="comment">  /// @brief Loads a texture atlas.</span></div>
 <div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;<span class="comment">  ///</span></div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;<span class="comment">  /// By setting the scaling factor, an application save a memory footprint</span></div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;<span class="comment">  /// on low RAM devices.</span></div>
-<div class="line"><a name="l00156"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">  156</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">SetTextureScale</a>(<span class="keyword">const</span> mathfu::vec2 &amp;scale) { texture_scale_ = scale; }</div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;</div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160; <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;  FPL_DISALLOW_COPY_AND_ASSIGN(<a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>);</div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;</div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;  <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;renderer_;</div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;  std::map&lt;std::string, Shader *&gt; shader_map_;</div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;  std::map&lt;std::string, Texture *&gt; texture_map_;</div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;  std::map&lt;std::string, Material *&gt; material_map_;</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;  std::map&lt;std::string, Mesh *&gt; mesh_map_;</div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;  <a class="code" href="classfplbase_1_1_async_loader.html">AsyncLoader</a> loader_;</div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;  mathfu::vec2 texture_scale_;</div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;};</div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;</div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;}  <span class="comment">// namespace fplbase</span></div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;</div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;<span class="preprocessor">#endif  // FPLBASE_ASSET_MANAGER_H</span></div>
+<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;<span class="comment">  /// Loads a texture atlas, which is a compiled FlatBuffer file containing a</span></div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;<span class="comment">  /// texture path and subtexture rectangles.</span></div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;<span class="comment">  /// @return If this returns nullptr, the error can be found in</span></div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;<span class="comment">  /// Renderer::last_error().</span></div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a> *<a class="code" href="classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb">LoadTextureAtlas</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);<span class="comment"></span></div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;<span class="comment">  /// @brief Delete a texture atlas and remove it from the material manager.</span></div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;<span class="comment">  /// This will cause any Texture objects this atlas has issued to no</span></div>
+<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;<span class="comment">  /// longer refer to a valid texture.  Any subsequent requests for this texture</span></div>
+<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;<span class="comment">  /// atlas through Load*() will cause it to be loaded anew.</span></div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb">UnloadTextureAtlas</a>(<span class="keyword">const</span> <span class="keywordtype">char</span> *filename);</div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;<span class="comment">  /// @brief Handy accessor for the renderer.</span></div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;<span class="comment">  /// @return Returns the renderer.</span></div>
+<div class="line"><a name="l00170"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">  170</a></span>&#160;<span class="comment"></span>  <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>() { <span class="keywordflow">return</span> renderer_; }<span class="comment"></span></div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;<span class="comment">  /// @brief Handy accessor for the renderer.</span></div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;<span class="comment">  /// @return Returns the renderer.</span></div>
+<div class="line"><a name="l00174"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">  174</a></span>&#160;<span class="comment"></span>  <span class="keyword">const</span> <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;<a class="code" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">renderer</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> renderer_; }</div>
+<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;<span class="comment">  /// @brief Removes and destructs all assets held by the AssetManager.</span></div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;<span class="comment">  /// Will be called automatically by the destructor, but can also be called</span></div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;<span class="comment">  /// manually beforehand if necessary since destructing assets requires the</span></div>
+<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;<span class="comment">  /// OpenGL context to still be alive.</span></div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#ace320048b6c3d64666b13158413cd27a">ClearAllAssets</a>();</div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;<span class="comment"></span></div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;<span class="comment">  /// @brief Set a scaling factor to apply when loading texture materials.</span></div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;<span class="comment">  ///</span></div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;<span class="comment">  /// By setting the scaling factor, an application save a memory footprint</span></div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;<span class="comment">  /// on low RAM devices.</span></div>
+<div class="line"><a name="l00187"></a><span class="lineno"><a class="line" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">  187</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span> <a class="code" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">SetTextureScale</a>(<span class="keyword">const</span> mathfu::vec2 &amp;scale) { texture_scale_ = scale; }</div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;</div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160; <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;  FPL_DISALLOW_COPY_AND_ASSIGN(<a class="code" href="classfplbase_1_1_asset_manager.html">AssetManager</a>);</div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;</div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;  <a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;renderer_;</div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;  std::map&lt;std::string, Shader *&gt; shader_map_;</div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;  std::map&lt;std::string, Texture *&gt; texture_map_;</div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;  std::map&lt;std::string, TextureAtlas *&gt; texture_atlas_map_;</div>
+<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;  std::map&lt;std::string, Material *&gt; material_map_;</div>
+<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;  std::map&lt;std::string, Mesh *&gt; mesh_map_;</div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;  <a class="code" href="classfplbase_1_1_async_loader.html">AsyncLoader</a> loader_;</div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;  mathfu::vec2 texture_scale_;</div>
+<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;};</div>
+<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;</div>
+<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;}  <span class="comment">// namespace fplbase</span></div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;<span class="preprocessor">#endif  // FPLBASE_ASSET_MANAGER_H</span></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a734c399e3160e73f6b2c3bcd22d63ebd"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">fplbase::AssetManager::UnloadMesh</a></div><div class="ttdeci">void UnloadMesh(const char *filename)</div><div class="ttdoc">Deletes the previously loaded mesh. </div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_a8e78ff2e874be1b8d9546cb57ec1f9fb"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb">fplbase::AssetManager::LoadTextureAtlas</a></div><div class="ttdeci">TextureAtlas * LoadTextureAtlas(const char *filename)</div><div class="ttdoc">Loads a texture atlas. </div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_a4f174427ec4bd48cc53af8a8c289f2aa"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa">fplbase::AssetManager::LoadShaderDef</a></div><div class="ttdeci">Shader * LoadShaderDef(const char *filename)</div><div class="ttdoc">Load a shader built by shader_pipeline. </div></div>
 <div class="ttc" id="classfplbase_1_1_mesh_html"><div class="ttname"><a href="classfplbase_1_1_mesh.html">fplbase::Mesh</a></div><div class="ttdoc">Abstraction for a set of indices, used for rendering. </div><div class="ttdef"><b>Definition:</b> mesh.h:46</div></div>
 <div class="ttc" id="classfplbase_1_1_shader_html"><div class="ttname"><a href="classfplbase_1_1_shader.html">fplbase::Shader</a></div><div class="ttdoc">Represents a shader consisting of a vertex and pixel shader. </div><div class="ttdef"><b>Definition:</b> shader.h:38</div></div>
-<div class="ttc" id="classfplbase_1_1_asset_manager_html_a8ff4bca45d52a44045decb3b38b6ed7f"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">fplbase::AssetManager::renderer</a></div><div class="ttdeci">const Renderer &amp; renderer() const </div><div class="ttdoc">Handy accessor for the renderer. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:143</div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_a8ff4bca45d52a44045decb3b38b6ed7f"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">fplbase::AssetManager::renderer</a></div><div class="ttdeci">const Renderer &amp; renderer() const </div><div class="ttdoc">Handy accessor for the renderer. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:174</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a86f1f7f56d270cf9f697fb949070bb9d"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">fplbase::AssetManager::StartLoadingTextures</a></div><div class="ttdeci">void StartLoadingTextures()</div><div class="ttdoc">Start loading all previously queued textures. </div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a72334fc7028250244718b0555f29a9be"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be">fplbase::AssetManager::LoadTexture</a></div><div class="ttdeci">Texture * LoadTexture(const char *filename, TextureFormat format=kFormatAuto, bool mipmaps=true)</div><div class="ttdoc">Queue loading a texture if it hasn&#39;t been loaded already. </div></div>
 <div class="ttc" id="classfplbase_1_1_texture_html"><div class="ttname"><a href="classfplbase_1_1_texture.html">fplbase::Texture</a></div><div class="ttdoc">Abstraction for a texture object loaded on the GPU. </div><div class="ttdef"><b>Definition:</b> texture.h:46</div></div>
-<div class="ttc" id="classfplbase_1_1_asset_manager_html"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></div><div class="ttdoc">Central place to own game assets loaded from disk. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:38</div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></div><div class="ttdoc">Central place to own game assets loaded from disk. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:39</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a6ba688065de01a8a8b857d6fcedee287"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a6ba688065de01a8a8b857d6fcedee287">fplbase::AssetManager::FindShader</a></div><div class="ttdeci">Shader * FindShader(const char *basename)</div><div class="ttdoc">Returns a previously loaded shader object. </div></div>
 <div class="ttc" id="classfplbase_1_1_material_html"><div class="ttname"><a href="classfplbase_1_1_material.html">fplbase::Material</a></div><div class="ttdoc">Collections of textures used for rendering multi-texture models. </div><div class="ttdef"><b>Definition:</b> material.h:40</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_ae29c7b975117946ee6c75dbb970909d6"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6">fplbase::AssetManager::TryFinalize</a></div><div class="ttdeci">bool TryFinalize()</div><div class="ttdoc">Check for the status of async loading textures. </div></div>
@@ -308,12 +421,15 @@ $(document).ready(function(){initNavTree('asset__manager_8h_source.html','');});
 <div class="ttc" id="classfplbase_1_1_async_loader_html"><div class="ttname"><a href="classfplbase_1_1_async_loader.html">fplbase::AsyncLoader</a></div><div class="ttdoc">Handles loading AsyncResource objects. </div><div class="ttdef"><b>Definition:</b> async_loader.h:86</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_ac8c11f9d452aa6c206a83c6da6b19ed4"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4">fplbase::AssetManager::LoadMesh</a></div><div class="ttdeci">Mesh * LoadMesh(const char *filename)</div><div class="ttdoc">Loads and returns a mesh object. </div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_ab346a315d0d202603a92cd3622428999"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">fplbase::AssetManager::LoadShader</a></div><div class="ttdeci">Shader * LoadShader(const char *basename)</div><div class="ttdoc">Loads and returns a shader object. </div></div>
-<div class="ttc" id="classfplbase_1_1_asset_manager_html_af9cc134e7699fb26452ea30ea34d73a6"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">fplbase::AssetManager::renderer</a></div><div class="ttdeci">Renderer &amp; renderer()</div><div class="ttdoc">Handy accessor for the renderer. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:139</div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_a08114d815e6f9a84e05fac37958291eb"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb">fplbase::AssetManager::UnloadTextureAtlas</a></div><div class="ttdeci">void UnloadTextureAtlas(const char *filename)</div><div class="ttdoc">Delete a texture atlas and remove it from the material manager. </div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_af9cc134e7699fb26452ea30ea34d73a6"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">fplbase::AssetManager::renderer</a></div><div class="ttdeci">Renderer &amp; renderer()</div><div class="ttdoc">Handy accessor for the renderer. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:170</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_ace320048b6c3d64666b13158413cd27a"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#ace320048b6c3d64666b13158413cd27a">fplbase::AssetManager::ClearAllAssets</a></div><div class="ttdeci">void ClearAllAssets()</div><div class="ttdoc">Removes and destructs all assets held by the AssetManager. </div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_ad35aaff069175c34f7098677cc488160"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160">fplbase::AssetManager::UnloadMaterial</a></div><div class="ttdeci">void UnloadMaterial(const char *filename)</div><div class="ttdoc">Deletes the previously loaded material. </div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a5fdabb2dc62c8426d526cad985f8bede"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">fplbase::AssetManager::FindTexture</a></div><div class="ttdeci">Texture * FindTexture(const char *filename)</div><div class="ttdoc">Returns a previously created texture. </div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a3eacd8eccf4b4d76167866c94019584a"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a">fplbase::AssetManager::LoadMaterial</a></div><div class="ttdeci">Material * LoadMaterial(const char *filename)</div><div class="ttdoc">Loads and returns a material object. </div></div>
-<div class="ttc" id="classfplbase_1_1_asset_manager_html_acf11c53b9f9d83ae18e003e5283e39ff"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">fplbase::AssetManager::SetTextureScale</a></div><div class="ttdeci">void SetTextureScale(const mathfu::vec2 &amp;scale)</div><div class="ttdoc">Set a scaling factor to apply when loading texture materials. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:156</div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_acf11c53b9f9d83ae18e003e5283e39ff"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">fplbase::AssetManager::SetTextureScale</a></div><div class="ttdeci">void SetTextureScale(const mathfu::vec2 &amp;scale)</div><div class="ttdoc">Set a scaling factor to apply when loading texture materials. </div><div class="ttdef"><b>Definition:</b> asset_manager.h:187</div></div>
+<div class="ttc" id="classfplbase_1_1_texture_atlas_html"><div class="ttname"><a href="classfplbase_1_1_texture_atlas.html">fplbase::TextureAtlas</a></div><div class="ttdoc">Texture coordinate dictionary. </div><div class="ttdef"><b>Definition:</b> texture_atlas.h:39</div></div>
+<div class="ttc" id="classfplbase_1_1_asset_manager_html_a6a4c1b9f851f0d68ed189b66d6ae97d5"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5">fplbase::AssetManager::FindTextureAtlas</a></div><div class="ttdeci">TextureAtlas * FindTextureAtlas(const char *filename)</div><div class="ttdoc">Look up a previously loaded texture atlas. </div></div>
 <div class="ttc" id="classfplbase_1_1_renderer_html"><div class="ttname"><a href="classfplbase_1_1_renderer.html">fplbase::Renderer</a></div><div class="ttdoc">Manages the rendering system, handling the window and resources. </div><div class="ttdef"><b>Definition:</b> renderer.h:44</div></div>
 <div class="ttc" id="classfplbase_1_1_asset_manager_html_a22997f76b3142bddd798a33c1afefcce"><div class="ttname"><a href="classfplbase_1_1_asset_manager.html#a22997f76b3142bddd798a33c1afefcce">fplbase::AssetManager::FindMesh</a></div><div class="ttdeci">Mesh * FindMesh(const char *filename)</div><div class="ttdoc">Returns a previously loaded mesh. </div></div>
 </div><!-- fragment --></div><!-- contents -->

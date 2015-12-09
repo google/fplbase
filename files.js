@@ -18,6 +18,7 @@ var files =
     [ "shader.h", "shader_8h_source.html", null ],
     [ "systrace.h", "systrace_8h.html", "systrace_8h" ],
     [ "texture.h", "texture_8h_source.html", null ],
+    [ "texture_atlas.h", "texture__atlas_8h_source.html", null ],
     [ "utilities.h", "utilities_8h_source.html", null ],
     [ "version.h", "version_8h_source.html", null ]
 ];

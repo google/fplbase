@@ -7,15 +7,19 @@ var classfplbase_1_1_asset_manager =
     [ "FindMesh", "classfplbase_1_1_asset_manager.html#a22997f76b3142bddd798a33c1afefcce", null ],
     [ "FindShader", "classfplbase_1_1_asset_manager.html#a6ba688065de01a8a8b857d6fcedee287", null ],
     [ "FindTexture", "classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede", null ],
+    [ "FindTextureAtlas", "classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5", null ],
     [ "LoadMaterial", "classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a", null ],
     [ "LoadMesh", "classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4", null ],
     [ "LoadShader", "classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999", null ],
+    [ "LoadShaderDef", "classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa", null ],
     [ "LoadTexture", "classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be", null ],
+    [ "LoadTextureAtlas", "classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb", null ],
     [ "renderer", "classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6", null ],
     [ "renderer", "classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f", null ],
     [ "SetTextureScale", "classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff", null ],
     [ "StartLoadingTextures", "classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d", null ],
     [ "TryFinalize", "classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6", null ],
     [ "UnloadMaterial", "classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160", null ],
-    [ "UnloadMesh", "classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd", null ]
+    [ "UnloadMesh", "classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd", null ],
+    [ "UnloadTextureAtlas", "classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb", null ]
 ];

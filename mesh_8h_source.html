@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -433,49 +512,51 @@ $(document).ready(function(){initNavTree('mesh_8h_source.html','');});
 <div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;<span class="comment">  /// @return Returns the number of bones used by the shader.</span></div>
 <div class="line"><a name="l00311"></a><span class="lineno"><a class="line" href="classfplbase_1_1_mesh.html#aa440c5b19f40c3719c73e7c1e86b7bdd">  311</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> <a class="code" href="classfplbase_1_1_mesh.html#aa440c5b19f40c3719c73e7c1e86b7bdd">num_shader_bones</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> shader_bone_indices_.size(); }</div>
 <div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;</div>
-<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160; <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;  <span class="comment">// Disallow copies because of pointers bone_transforms_ and</span></div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;  <span class="comment">// bone_global_transforms_. Feel free to implement copy or move operators</span></div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;  <span class="comment">// if required.</span></div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;  <a class="code" href="classfplbase_1_1_mesh.html#a7d39bd182fdecbca37c1f84a5d423a41">Mesh</a>(<span class="keyword">const</span> <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;);</div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;operator=(<span class="keyword">const</span> <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;);</div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;</div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;  <span class="comment">// This typedef is compatible with its OpenGL equivalent, but doesn&#39;t require</span></div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;  <span class="comment">// this header to depend on OpenGL.</span></div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;  <span class="keyword">typedef</span> <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> BufferHandle;</div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;</div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;  <span class="keyword">static</span> <span class="keyword">const</span> <span class="keywordtype">int</span> kMaxAttributes = 8;</div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE</div>
+<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;</div>
+<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160; <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;  <span class="comment">// Disallow copies because of pointers bone_transforms_ and</span></div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;  <span class="comment">// bone_global_transforms_. Feel free to implement copy or move operators</span></div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;  <span class="comment">// if required.</span></div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;  <a class="code" href="classfplbase_1_1_mesh.html#a7d39bd182fdecbca37c1f84a5d423a41">Mesh</a>(<span class="keyword">const</span> <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;);</div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;  <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;operator=(<span class="keyword">const</span> <a class="code" href="classfplbase_1_1_mesh.html">Mesh</a> &amp;);</div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;  <span class="comment">// This typedef is compatible with its OpenGL equivalent, but doesn&#39;t require</span></div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;  <span class="comment">// this header to depend on OpenGL.</span></div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;  <span class="keyword">typedef</span> <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> BufferHandle;</div>
 <div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;</div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;  <span class="keyword">static</span> <span class="keywordtype">void</span> SetAttributes(BufferHandle vbo, <span class="keyword">const</span> Attribute *attributes,</div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;                            <span class="keywordtype">int</span> vertex_size, <span class="keyword">const</span> <span class="keywordtype">char</span> *buffer);</div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;  <span class="keyword">static</span> <span class="keywordtype">void</span> UnSetAttributes(<span class="keyword">const</span> Attribute *attributes);</div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;  <span class="keywordtype">void</span> DrawElement(<a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;renderer, int32_t count, int32_t instances);</div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;</div>
-<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;  <span class="keyword">struct </span>Indices {</div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;    <span class="keywordtype">int</span> count;</div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;    BufferHandle ibo;</div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;    <a class="code" href="classfplbase_1_1_material.html">Material</a> *mat;</div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;  };</div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;  std::vector&lt;Indices&gt; indices_;</div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;  <span class="keywordtype">size_t</span> vertex_size_;</div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;  Attribute format_[kMaxAttributes];</div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;  BufferHandle vbo_;</div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;  mathfu::vec3 min_position_;</div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;  mathfu::vec3 max_position_;</div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;</div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;  <span class="comment">// Bone arrays are of length NumBones().</span></div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;  <span class="comment">// Note that vector&lt;mat4&gt; is not possible on Visual Studio 2010 because</span></div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;  <span class="comment">// it doesn&#39;t support vectors of aligned types.</span></div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;  mathfu::AffineTransform *bone_transforms_;</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;  mathfu::AffineTransform *bone_global_transforms_;</div>
-<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;  std::vector&lt;uint8_t&gt; bone_parents_;</div>
-<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;  std::vector&lt;std::string&gt; bone_names_;</div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;  std::vector&lt;uint8_t&gt; shader_bone_indices_;</div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;};</div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;</div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;}  <span class="comment">// namespace fplbase</span></div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;  <span class="keyword">static</span> <span class="keyword">const</span> <span class="keywordtype">int</span> kMaxAttributes = 8;</div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;</div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;  <span class="keyword">static</span> <span class="keywordtype">void</span> SetAttributes(BufferHandle vbo, <span class="keyword">const</span> Attribute *attributes,</div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;                            <span class="keywordtype">int</span> vertex_size, <span class="keyword">const</span> <span class="keywordtype">char</span> *buffer);</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;  <span class="keyword">static</span> <span class="keywordtype">void</span> UnSetAttributes(<span class="keyword">const</span> Attribute *attributes);</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;  <span class="keywordtype">void</span> DrawElement(<a class="code" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;renderer, int32_t count, int32_t instances);</div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;</div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;  <span class="keyword">struct </span>Indices {</div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;    <span class="keywordtype">int</span> count;</div>
+<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;    BufferHandle ibo;</div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;    <a class="code" href="classfplbase_1_1_material.html">Material</a> *mat;</div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;  };</div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;  std::vector&lt;Indices&gt; indices_;</div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;  <span class="keywordtype">size_t</span> vertex_size_;</div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;  Attribute format_[kMaxAttributes];</div>
+<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;  BufferHandle vbo_;</div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;  mathfu::vec3 min_position_;</div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;  mathfu::vec3 max_position_;</div>
+<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;</div>
+<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;  <span class="comment">// Bone arrays are of length NumBones().</span></div>
+<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;  <span class="comment">// Note that vector&lt;mat4&gt; is not possible on Visual Studio 2010 because</span></div>
+<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;  <span class="comment">// it doesn&#39;t support vectors of aligned types.</span></div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;  mathfu::AffineTransform *bone_transforms_;</div>
+<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;  mathfu::AffineTransform *bone_global_transforms_;</div>
+<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;  std::vector&lt;uint8_t&gt; bone_parents_;</div>
+<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;  std::vector&lt;std::string&gt; bone_names_;</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;  std::vector&lt;uint8_t&gt; shader_bone_indices_;</div>
+<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;};</div>
 <div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;<span class="preprocessor">#endif  // FPL_MESH_H</span></div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;}  <span class="comment">// namespace fplbase</span></div>
+<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;<span class="preprocessor">#endif  // FPL_MESH_H</span></div>
 <div class="ttc" id="classfplbase_1_1_mesh_html_add6031658ca8b8eb900bd5c63a215d29"><div class="ttname"><a href="classfplbase_1_1_mesh.html#add6031658ca8b8eb900bd5c63a215d29">fplbase::Mesh::min_position</a></div><div class="ttdeci">const mathfu::vec3 &amp; min_position() const </div><div class="ttdoc">Get the minimum position of an AABB about the mesh. </div><div class="ttdef"><b>Definition:</b> mesh.h:277</div></div>
 <div class="ttc" id="classfplbase_1_1_mesh_html_af892718f24e323cd1fdf6f52e945d0d2"><div class="ttname"><a href="classfplbase_1_1_mesh.html#af892718f24e323cd1fdf6f52e945d0d2">fplbase::Mesh::RenderAAQuadAlongX</a></div><div class="ttdeci">static void RenderAAQuadAlongX(const mathfu::vec3 &amp;bottom_left, const mathfu::vec3 &amp;top_right, const mathfu::vec2 &amp;tex_bottom_left=mathfu::vec2(0, 0), const mathfu::vec2 &amp;tex_top_right=mathfu::vec2(1, 1))</div><div class="ttdoc">Convenience method for rendering a Quad. </div></div>
 <div class="ttc" id="classfplbase_1_1_mesh_html_af9e5bcb4f1b14a51fab19dfa924b868a"><div class="ttname"><a href="classfplbase_1_1_mesh.html#af9e5bcb4f1b14a51fab19dfa924b868a">fplbase::Mesh::num_bones</a></div><div class="ttdeci">size_t num_bones() const </div><div class="ttdoc">The number of bones in the mesh. </div><div class="ttdef"><b>Definition:</b> mesh.h:301</div></div>

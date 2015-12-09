@@ -22,5 +22,6 @@ var hierarchy =
     [ "fplbase::Shader", "classfplbase_1_1_shader.html", null ],
     [ "fplbase::TextInputEvent", "structfplbase_1_1_text_input_event.html", null ],
     [ "fplbase::TextInputEventEdit", "structfplbase_1_1_text_input_event_edit.html", null ],
-    [ "fplbase::TextInputEventKey", "structfplbase_1_1_text_input_event_key.html", null ]
+    [ "fplbase::TextInputEventKey", "structfplbase_1_1_text_input_event_key.html", null ],
+    [ "fplbase::TextureAtlas", "classfplbase_1_1_texture_atlas.html", null ]
 ];

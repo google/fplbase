@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -162,6 +241,10 @@ $(document).ready(function(){initNavTree('functions.html','');});
 , <a class="el" href="classfplbase_1_1_gamepad.html#adc7adf5b6234777286510ebe3bc6a226">fplbase::Gamepad</a>
 , <a class="el" href="classfplbase_1_1_input_system.html#aab1f0fd047e40d84407ffb9de5c1e61e">fplbase::InputSystem</a>
 , <a class="el" href="classfplbase_1_1_joystick.html#a79a11b10b26a31bdeb8ed85bd314765e">fplbase::Joystick</a>
+, <a class="el" href="classfplbase_1_1_renderer.html#a7bc6a347820921ade3225091273b1fdb">fplbase::Renderer</a>
+</li>
+<li>atlas_texture()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#ad7e6fefefd8006147c7a1009a971920f">fplbase::TextureAtlas</a>
 </li>
 </ul>
 
@@ -215,8 +298,12 @@ $(document).ready(function(){initNavTree('functions.html','');});
 
 
 <h3><a class="anchor" id="index_d"></a>- d -</h3><ul>
+<li>Delay()
+: <a class="el" href="classfplbase_1_1_input_system.html#a71983220a8242a776b4aad135f884568">fplbase::InputSystem</a>
+</li>
 <li>Delete()
 : <a class="el" href="classfplbase_1_1_render_target.html#a4a41b6490dbf3bda2b11af73546c567b">fplbase::RenderTarget</a>
+, <a class="el" href="classfplbase_1_1_texture_atlas.html#a46d6fb1225056fa388d26ecbd734357e">fplbase::TextureAtlas</a>
 </li>
 <li>DeltaTime()
 : <a class="el" href="classfplbase_1_1_input_system.html#aa485def7320112deac960567b212544f">fplbase::InputSystem</a>
@@ -257,6 +344,9 @@ $(document).ready(function(){initNavTree('functions.html','');});
 <li>FindTexture()
 : <a class="el" href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">fplbase::AssetManager</a>
 </li>
+<li>FindTextureAtlas()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5">fplbase::AssetManager</a>
+</li>
 <li>FindUniform()
 : <a class="el" href="classfplbase_1_1_shader.html#aeb21b4812e14fbe032f4e9fd734d7ecf">fplbase::Shader</a>
 </li>
@@ -284,6 +374,9 @@ $(document).ready(function(){initNavTree('functions.html','');});
 </li>
 <li>GetAxis()
 : <a class="el" href="classfplbase_1_1_joystick.html#ac8d9cfd3a85ebd55afd919abf614a663">fplbase::Joystick</a>
+</li>
+<li>GetBounds()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a42f3ca1e5a5a6b34b2888848d1094fb7">fplbase::TextureAtlas</a>
 </li>
 <li>GetButton()
 : <a class="el" href="classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027">fplbase::InputSystem</a>
@@ -345,8 +438,12 @@ $(document).ready(function(){initNavTree('functions.html','');});
 <li>id
 : <a class="el" href="structfplbase_1_1_input_pointer.html#a3424eee591667603ed456a891b1f442c">fplbase::InputPointer</a>
 </li>
+<li>index_map()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a55ff7d31c1692a1efc5b529aaef0dfa0">fplbase::TextureAtlas</a>
+</li>
 <li>Initialize()
 : <a class="el" href="classfplbase_1_1_input_system.html#af02329093aed444e4c8f3f9b102db878">fplbase::InputSystem</a>
+, <a class="el" href="classfplbase_1_1_renderer.html#a667d900328ff87123bd9b885ca2e0394">fplbase::Renderer</a>
 , <a class="el" href="classfplbase_1_1_render_target.html#a468880a3f941fde158d33d1a78ed1aa5">fplbase::RenderTarget</a>
 </li>
 <li>initialized()
@@ -397,8 +494,14 @@ $(document).ready(function(){initNavTree('functions.html','');});
 <li>LoadShader()
 : <a class="el" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">fplbase::AssetManager</a>
 </li>
+<li>LoadShaderDef()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa">fplbase::AssetManager</a>
+</li>
 <li>LoadTexture()
 : <a class="el" href="classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be">fplbase::AssetManager</a>
+</li>
+<li>LoadTextureAtlas()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb">fplbase::AssetManager</a>
 </li>
 </ul>
 
@@ -499,11 +602,17 @@ $(document).ready(function(){initNavTree('functions.html','');});
 <li>Set()
 : <a class="el" href="classfplbase_1_1_shader.html#ae9a5653628db6b76465134ab15fb6410">fplbase::Shader</a>
 </li>
+<li>set_atlas_texture()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a8b19ebc4f68e623b1b290c0de0f4fe37">fplbase::TextureAtlas</a>
+</li>
 <li>set_camera_pos()
 : <a class="el" href="classfplbase_1_1_renderer.html#ab34e0000090c1398630ea16af7b1892e">fplbase::Renderer</a>
 </li>
 <li>set_color()
 : <a class="el" href="classfplbase_1_1_renderer.html#ad26edee6912c6c2314b12200a31fc3a1">fplbase::Renderer</a>
+</li>
+<li>set_exit_requested()
+: <a class="el" href="classfplbase_1_1_input_system.html#a2edc0ab8871f82f6c8c4692fb7204958">fplbase::InputSystem</a>
 </li>
 <li>set_filename()
 : <a class="el" href="classfplbase_1_1_async_resource.html#a092407a11cd9034337e5c28275035f20">fplbase::AsyncResource</a>
@@ -531,6 +640,9 @@ $(document).ready(function(){initNavTree('functions.html','');});
 </li>
 <li>set_override_pixel_shader()
 : <a class="el" href="classfplbase_1_1_renderer.html#a17a97ca62e42d9a350de2ca64132d090">fplbase::Renderer</a>
+</li>
+<li>set_size()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a989192e8149f6123039b0f164602c9da">fplbase::TextureAtlas</a>
 </li>
 <li>SetAnimation()
 : <a class="el" href="classfplbase_1_1_renderer.html#a35e53b1f5a783535a0282da0642ad836">fplbase::Renderer</a>
@@ -571,11 +683,14 @@ $(document).ready(function(){initNavTree('functions.html','');});
 <li>SetUniform()
 : <a class="el" href="classfplbase_1_1_shader.html#a14fc1a8b843cdc423cf12f2e39f37a05">fplbase::Shader</a>
 </li>
-<li>SetWindowSize()
-: <a class="el" href="classfplbase_1_1_renderer.html#a6cc2808aa0125aea6cf64d9e176349f3">fplbase::Renderer</a>
-</li>
 <li>shader_bone_indices()
 : <a class="el" href="classfplbase_1_1_mesh.html#a5aeaa120faafcf24302e1399f50eb4ca">fplbase::Mesh</a>
+</li>
+<li>ShutDown()
+: <a class="el" href="classfplbase_1_1_renderer.html#af69c6031baa7896de274665104110c05">fplbase::Renderer</a>
+</li>
+<li>size()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a98754336ff88bdbdc7c8b17ad43b42f9">fplbase::TextureAtlas</a>
 </li>
 <li>StartLoading()
 : <a class="el" href="classfplbase_1_1_async_loader.html#a2398939b31512d9f16d7b34df7df982a">fplbase::AsyncLoader</a>
@@ -591,6 +706,9 @@ $(document).ready(function(){initNavTree('functions.html','');});
 </li>
 <li>StopTextInput()
 : <a class="el" href="classfplbase_1_1_input_system.html#a3f6645a0fb53b1939e2514776437205b">fplbase::InputSystem</a>
+</li>
+<li>subtexture_bounds()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#abb0b4977b442c012b89367c96fc8e603">fplbase::TextureAtlas</a>
 </li>
 </ul>
 
@@ -615,6 +733,9 @@ $(document).ready(function(){initNavTree('functions.html','');});
 </li>
 <li>UnloadMesh()
 : <a class="el" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">fplbase::AssetManager</a>
+</li>
+<li>UnloadTextureAtlas()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb">fplbase::AssetManager</a>
 </li>
 <li>Update()
 : <a class="el" href="classfplbase_1_1_button.html#a914dbbac9da317020cca6d657aa8cd90">fplbase::Button</a>

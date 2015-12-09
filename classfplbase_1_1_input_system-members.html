@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -132,33 +211,35 @@ $(document).ready(function(){initNavTree('classfplbase_1_1_input_system.html',''
   <tr bgcolor="#f0f0f0"><td class="entry"><b>AppEventCallback</b> typedef (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a754239aad3560b5e0d611ab032b6049b">ClearTextInputEvents</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0"><td class="entry"><b>CloseOpenJoysticks</b>() (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa485def7320112deac960567b212544f">DeltaTime</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a80420f7cdc8be7fcc94544393ef7a541">exit_requested</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#af12975677c2325bfb780652ea907eff8">frames</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa039bdbf41a315a6e54eabf76a1b2c6a">GamepadMap</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ab6a74d0e14e77ea8187688b69d3f0ae7">get_pointers</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027">GetButton</a>(int button)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ad5213bb846b0c68b9727622c637feaa1">GetGamepad</a>(AndroidInputDeviceId gamepad_device_id)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#afe9bff67c1feed642cc5248cb945ae35">GetJoystick</a>(JoystickId joystick_id)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#adbd02b4cce3e9015f616f9c5ae078dd8">GetPointerButton</a>(FingerId pointer)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a0632b37b49ae4c9629fa5b1debe18a8f">GetTextInputEvents</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>HandleGamepadEvents</b>() (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0"><td class="entry"><b>HandleJoystickEvent</b>(Event event) (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a801a09cb5151e68a41d7ab060f133cd5">head_mounted_display_input</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0"><td class="entry"><b>head_mounted_display_input</b>() const  (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#af02329093aed444e4c8f3f9b102db878">Initialize</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a56f70f1ae00bb18cc01a32fcd66b7690">InputSystem</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a372eaefdc00a5876e773e7fded535230">IsRecordingTextInput</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aada3a67657246fe8f6098f57f0e69325">JoystickMap</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kMaxSimultanuousPointers</b> (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a7f33ce4bceba2393c99226d34ca44ec7">minimized</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a36efe6998a64f4ab88e4f7cdff6d322a">minimized_frame</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#acae844b9f496cac2cd67ede2afa01c51">mousewheel_delta</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>OpenConnectedJoysticks</b>() (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ad9db690c0838026b3191ec11fef16756">RealTime</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>ReceiveGamepadEvent</b>(int controller_id, int event_code, int control_code, float x, float y) (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a848fabc2a5ba1b4d4b4d7117e72efa50">RecordTextInput</a>(bool b)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a2382fee98e85909a92142d066dce39b2">RelativeMouseMode</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a71983220a8242a776b4aad135f884568">Delay</a>(double seconds) const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa485def7320112deac960567b212544f">DeltaTime</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a80420f7cdc8be7fcc94544393ef7a541">exit_requested</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#af12975677c2325bfb780652ea907eff8">frames</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa039bdbf41a315a6e54eabf76a1b2c6a">GamepadMap</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ab6a74d0e14e77ea8187688b69d3f0ae7">get_pointers</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027">GetButton</a>(int button)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ad5213bb846b0c68b9727622c637feaa1">GetGamepad</a>(AndroidInputDeviceId gamepad_device_id)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#afe9bff67c1feed642cc5248cb945ae35">GetJoystick</a>(JoystickId joystick_id)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#adbd02b4cce3e9015f616f9c5ae078dd8">GetPointerButton</a>(FingerId pointer)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a0632b37b49ae4c9629fa5b1debe18a8f">GetTextInputEvents</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>HandleGamepadEvents</b>() (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>HandleJoystickEvent</b>(Event event) (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a801a09cb5151e68a41d7ab060f133cd5">head_mounted_display_input</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>head_mounted_display_input</b>() const  (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#af02329093aed444e4c8f3f9b102db878">Initialize</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a56f70f1ae00bb18cc01a32fcd66b7690">InputSystem</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a372eaefdc00a5876e773e7fded535230">IsRecordingTextInput</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#aada3a67657246fe8f6098f57f0e69325">JoystickMap</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>kMaxSimultanuousPointers</b> (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a7f33ce4bceba2393c99226d34ca44ec7">minimized</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a36efe6998a64f4ab88e4f7cdff6d322a">minimized_frame</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#acae844b9f496cac2cd67ede2afa01c51">mousewheel_delta</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>OpenConnectedJoysticks</b>() (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#ad9db690c0838026b3191ec11fef16756">RealTime</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>ReceiveGamepadEvent</b>(int controller_id, int event_code, int control_code, float x, float y) (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a848fabc2a5ba1b4d4b4d7117e72efa50">RecordTextInput</a>(bool b)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a2382fee98e85909a92142d066dce39b2">RelativeMouseMode</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a2edc0ab8871f82f6c8c4692fb7204958">set_exit_requested</a>(bool b)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a9fc1174d92faf842fc2b838b3645cbe2">set_minimized</a>(bool b)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>set_minimized_frame</b>(int minimized_frame) (defined in <a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html#a0d733a8f13494dfe5e32b90716501f18">SetRelativeMouseMode</a>(bool enabled)</td><td class="entry"><a class="el" href="classfplbase_1_1_input_system.html">fplbase::InputSystem</a></td><td class="entry"></td></tr>

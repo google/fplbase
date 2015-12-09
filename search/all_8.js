@@ -2,7 +2,8 @@ var searchData=
 [
   ['introduction',['Introduction',['../fplbase_guide_introduction.html',1,'']]],
   ['id',['id',['../structfplbase_1_1_input_pointer.html#a3424eee591667603ed456a891b1f442c',1,'fplbase::InputPointer']]],
-  ['initialize',['Initialize',['../classfplbase_1_1_input_system.html#af02329093aed444e4c8f3f9b102db878',1,'fplbase::InputSystem::Initialize()'],['../classfplbase_1_1_render_target.html#a468880a3f941fde158d33d1a78ed1aa5',1,'fplbase::RenderTarget::Initialize(mathfu::vec2i dimensions)'],['../classfplbase_1_1_render_target.html#af063dd90d6caf2460a3cab0bd9046c01',1,'fplbase::RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format, bool useDepthBuffer)']]],
+  ['index_5fmap',['index_map',['../classfplbase_1_1_texture_atlas.html#a55ff7d31c1692a1efc5b529aaef0dfa0',1,'fplbase::TextureAtlas']]],
+  ['initialize',['Initialize',['../classfplbase_1_1_input_system.html#af02329093aed444e4c8f3f9b102db878',1,'fplbase::InputSystem::Initialize()'],['../classfplbase_1_1_render_target.html#a468880a3f941fde158d33d1a78ed1aa5',1,'fplbase::RenderTarget::Initialize(mathfu::vec2i dimensions)'],['../classfplbase_1_1_render_target.html#af063dd90d6caf2460a3cab0bd9046c01',1,'fplbase::RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format, bool useDepthBuffer)'],['../classfplbase_1_1_renderer.html#a667d900328ff87123bd9b885ca2e0394',1,'fplbase::Renderer::Initialize()']]],
   ['initialized',['initialized',['../classfplbase_1_1_render_target.html#a180f7f4e758ad71f71f335f12d0fdd88',1,'fplbase::RenderTarget']]],
   ['inputpointer',['InputPointer',['../structfplbase_1_1_input_pointer.html',1,'fplbase']]],
   ['inputsystem',['InputSystem',['../classfplbase_1_1_input_system.html',1,'fplbase']]],

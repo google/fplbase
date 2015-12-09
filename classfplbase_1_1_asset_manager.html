@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -147,6 +226,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab346a315d0d202603a92cd3622428999"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_shader.html">Shader</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">LoadShader</a> (const char *basename)</td></tr>
 <tr class="memdesc:ab346a315d0d202603a92cd3622428999"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads and returns a shader object.  <a href="#ab346a315d0d202603a92cd3622428999">More...</a><br/></td></tr>
 <tr class="separator:ab346a315d0d202603a92cd3622428999"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f174427ec4bd48cc53af8a8c289f2aa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_shader.html">Shader</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa">LoadShaderDef</a> (const char *filename)</td></tr>
+<tr class="memdesc:a4f174427ec4bd48cc53af8a8c289f2aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load a shader built by shader_pipeline.  <a href="#a4f174427ec4bd48cc53af8a8c289f2aa">More...</a><br/></td></tr>
+<tr class="separator:a4f174427ec4bd48cc53af8a8c289f2aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5fdabb2dc62c8426d526cad985f8bede"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_texture.html">Texture</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">FindTexture</a> (const char *filename)</td></tr>
 <tr class="memdesc:a5fdabb2dc62c8426d526cad985f8bede"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a previously created texture.  <a href="#a5fdabb2dc62c8426d526cad985f8bede">More...</a><br/></td></tr>
 <tr class="separator:a5fdabb2dc62c8426d526cad985f8bede"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -177,6 +259,15 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a734c399e3160e73f6b2c3bcd22d63ebd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">UnloadMesh</a> (const char *filename)</td></tr>
 <tr class="memdesc:a734c399e3160e73f6b2c3bcd22d63ebd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deletes the previously loaded mesh.  <a href="#a734c399e3160e73f6b2c3bcd22d63ebd">More...</a><br/></td></tr>
 <tr class="separator:a734c399e3160e73f6b2c3bcd22d63ebd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a4c1b9f851f0d68ed189b66d6ae97d5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5">FindTextureAtlas</a> (const char *filename)</td></tr>
+<tr class="memdesc:a6a4c1b9f851f0d68ed189b66d6ae97d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Look up a previously loaded texture atlas.  <a href="#a6a4c1b9f851f0d68ed189b66d6ae97d5">More...</a><br/></td></tr>
+<tr class="separator:a6a4c1b9f851f0d68ed189b66d6ae97d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8e78ff2e874be1b8d9546cb57ec1f9fb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb">LoadTextureAtlas</a> (const char *filename)</td></tr>
+<tr class="memdesc:a8e78ff2e874be1b8d9546cb57ec1f9fb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads a texture atlas.  <a href="#a8e78ff2e874be1b8d9546cb57ec1f9fb">More...</a><br/></td></tr>
+<tr class="separator:a8e78ff2e874be1b8d9546cb57ec1f9fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08114d815e6f9a84e05fac37958291eb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb">UnloadTextureAtlas</a> (const char *filename)</td></tr>
+<tr class="memdesc:a08114d815e6f9a84e05fac37958291eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Delete a texture atlas and remove it from the material manager.  <a href="#a08114d815e6f9a84e05fac37958291eb">More...</a><br/></td></tr>
+<tr class="separator:a08114d815e6f9a84e05fac37958291eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af9cc134e7699fb26452ea30ea34d73a6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classfplbase_1_1_renderer.html">Renderer</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a> ()</td></tr>
 <tr class="memdesc:af9cc134e7699fb26452ea30ea34d73a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handy accessor for the renderer.  <a href="#af9cc134e7699fb26452ea30ea34d73a6">More...</a><br/></td></tr>
 <tr class="separator:af9cc134e7699fb26452ea30ea34d73a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -309,6 +400,31 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a6a4c1b9f851f0d68ed189b66d6ae97d5"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a>* fplbase::AssetManager::FindTextureAtlas </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>filename</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Look up a previously loaded texture atlas. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">filename</td><td>Name of the texture atlas file to look up.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Pointer to the texture atlas if found, nullptr otherwise. </dd></dl>
+
+</div>
+</div>
 <a class="anchor" id="a3eacd8eccf4b4d76167866c94019584a"></a>
 <div class="memitem">
 <div class="memproto">
@@ -387,6 +503,32 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a4f174427ec4bd48cc53af8a8c289f2aa"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classfplbase_1_1_shader.html">Shader</a>* fplbase::AssetManager::LoadShaderDef </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>filename</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Load a shader built by shader_pipeline. </p>
+<p>Loads a shader built by the shader_pipeline if it hasn't been loaded. already. If this returns nullptr, the error can be found in <a class="el" href="classfplbase_1_1_renderer.html#a8270278372c6931667f22f0ced92d1aa" title="Contains the last error that occurred, if there is one. ">Renderer::last_error()</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">filename</td><td>Name of the shader file to load. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Returns the loaded shader, or nullptr if there was an error. </dd></dl>
+
+</div>
+</div>
 <a class="anchor" id="a72334fc7028250244718b0555f29a9be"></a>
 <div class="memitem">
 <div class="memproto">
@@ -418,7 +560,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Queue loading a texture if it hasn't been loaded already. </p>
-<p>Queue's a texture for loading if it hasn't been loaded already. Currently only supports TGA/WebP format files. Returned texture isn't usable until <a class="el" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6" title="Check for the status of async loading textures. ">TryFinalize()</a> succeeds and the id is non-zero.</p>
+<p>Queues a texture for loading if it hasn't been loaded already. Currently only supports TGA/WebP format files. Returned texture isn't usable until <a class="el" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6" title="Check for the status of async loading textures. ">TryFinalize()</a> succeeds and the id is non-zero.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">filename</td><td>The name of the texture to load. </td></tr>
@@ -428,6 +570,26 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Returns an unloaded texture object. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a8e78ff2e874be1b8d9546cb57ec1f9fb"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classfplbase_1_1_texture_atlas.html">TextureAtlas</a>* fplbase::AssetManager::LoadTextureAtlas </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>filename</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Loads a texture atlas. </p>
+<p>Loads a texture atlas, which is a compiled FlatBuffer file containing a texture path and subtexture rectangles.</p>
+<dl class="section return"><dt>Returns</dt><dd>If this returns nullptr, the error can be found in <a class="el" href="classfplbase_1_1_renderer.html#a8270278372c6931667f22f0ced92d1aa" title="Contains the last error that occurred, if there is one. ">Renderer::last_error()</a>. </dd></dl>
 
 </div>
 </div>
@@ -594,6 +756,25 @@ Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a class="anchor" id="a08114d815e6f9a84e05fac37958291eb"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void fplbase::AssetManager::UnloadTextureAtlas </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>filename</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Delete a texture atlas and remove it from the material manager. </p>
+<p>This will cause any <a class="el" href="classfplbase_1_1_texture.html" title="Abstraction for a texture object loaded on the GPU. ">Texture</a> objects this atlas has issued to no longer refer to a valid texture. Any subsequent requests for this texture atlas through Load*() will cause it to be loaded anew. </p>
 
 </div>
 </div>

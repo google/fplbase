@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -132,17 +211,21 @@ $(document).ready(function(){initNavTree('classfplbase_1_1_asset_manager.html','
   <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a22997f76b3142bddd798a33c1afefcce">FindMesh</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a6ba688065de01a8a8b857d6fcedee287">FindShader</a>(const char *basename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
   <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a5fdabb2dc62c8426d526cad985f8bede">FindTexture</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a">LoadMaterial</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4">LoadMesh</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">LoadShader</a>(const char *basename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a6a4c1b9f851f0d68ed189b66d6ae97d5">FindTextureAtlas</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a">LoadMaterial</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4">LoadMesh</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999">LoadShader</a>(const char *basename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa">LoadShaderDef</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
   <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be">LoadTexture</a>(const char *filename, TextureFormat format=kFormatAuto, bool mipmaps=true)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">renderer</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">SetTextureScale</a>(const mathfu::vec2 &amp;scale)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">StartLoadingTextures</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6">TryFinalize</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160">UnloadMaterial</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">UnloadMesh</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb">LoadTextureAtlas</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#af9cc134e7699fb26452ea30ea34d73a6">renderer</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a8ff4bca45d52a44045decb3b38b6ed7f">renderer</a>() const </td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">SetTextureScale</a>(const mathfu::vec2 &amp;scale)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">StartLoadingTextures</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6">TryFinalize</a>()</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160">UnloadMaterial</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd">UnloadMesh</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb">UnloadTextureAtlas</a>(const char *filename)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"></td></tr>
   <tr bgcolor="#f0f0f0"><td class="entry"><b>~AssetManager</b>() (defined in <a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a>)</td><td class="entry"><a class="el" href="classfplbase_1_1_asset_manager.html">fplbase::AssetManager</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
 </table></div><!-- contents -->
 </div><!-- doc-content -->

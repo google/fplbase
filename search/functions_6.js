@@ -4,6 +4,7 @@ var searchData=
   ['gathershadertransforms',['GatherShaderTransforms',['../classfplbase_1_1_mesh.html#a534ad4d50aec1afdbf649d7831d5ddd1',1,'fplbase::Mesh']]],
   ['get_5fpointers',['get_pointers',['../classfplbase_1_1_input_system.html#ab6a74d0e14e77ea8187688b69d3f0ae7',1,'fplbase::InputSystem']]],
   ['getaxis',['GetAxis',['../classfplbase_1_1_joystick.html#ac8d9cfd3a85ebd55afd919abf614a663',1,'fplbase::Joystick']]],
+  ['getbounds',['GetBounds',['../classfplbase_1_1_texture_atlas.html#a42f3ca1e5a5a6b34b2888848d1094fb7',1,'fplbase::TextureAtlas']]],
   ['getbutton',['GetButton',['../classfplbase_1_1_joystick.html#ab41fbf7c0c8ecc64efdffd3a5abd0fd8',1,'fplbase::Joystick::GetButton()'],['../classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027',1,'fplbase::InputSystem::GetButton()']]],
   ['getfplbaseversion',['GetFplBaseVersion',['../classfplbase_1_1_renderer.html#aec7e39589274c8c331c91e356d71f871',1,'fplbase::Renderer']]],
   ['getgamepad',['GetGamepad',['../classfplbase_1_1_input_system.html#ad5213bb846b0c68b9727622c637feaa1',1,'fplbase::InputSystem']]],

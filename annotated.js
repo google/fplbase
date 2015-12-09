@@ -21,6 +21,7 @@ var annotated =
       [ "HeadMountedDisplayViewSettings", "structfplbase_1_1_head_mounted_display_view_settings.html", "structfplbase_1_1_head_mounted_display_view_settings" ],
       [ "Shader", "classfplbase_1_1_shader.html", "classfplbase_1_1_shader" ],
       [ "Texture", "classfplbase_1_1_texture.html", "classfplbase_1_1_texture" ],
+      [ "TextureAtlas", "classfplbase_1_1_texture_atlas.html", "classfplbase_1_1_texture_atlas" ],
       [ "HighPerformanceParams", "structfplbase_1_1_high_performance_params.html", "structfplbase_1_1_high_performance_params" ],
       [ "FplBaseVersion", "structfplbase_1_1_fpl_base_version.html", "structfplbase_1_1_fpl_base_version" ]
     ] ]

@@ -6,5 +6,7 @@ var searchData=
   ['loadmaterial',['LoadMaterial',['../classfplbase_1_1_asset_manager.html#a3eacd8eccf4b4d76167866c94019584a',1,'fplbase::AssetManager']]],
   ['loadmesh',['LoadMesh',['../classfplbase_1_1_asset_manager.html#ac8c11f9d452aa6c206a83c6da6b19ed4',1,'fplbase::AssetManager']]],
   ['loadshader',['LoadShader',['../classfplbase_1_1_asset_manager.html#ab346a315d0d202603a92cd3622428999',1,'fplbase::AssetManager']]],
-  ['loadtexture',['LoadTexture',['../classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be',1,'fplbase::AssetManager']]]
+  ['loadshaderdef',['LoadShaderDef',['../classfplbase_1_1_asset_manager.html#a4f174427ec4bd48cc53af8a8c289f2aa',1,'fplbase::AssetManager']]],
+  ['loadtexture',['LoadTexture',['../classfplbase_1_1_asset_manager.html#a72334fc7028250244718b0555f29a9be',1,'fplbase::AssetManager']]],
+  ['loadtextureatlas',['LoadTextureAtlas',['../classfplbase_1_1_asset_manager.html#a8e78ff2e874be1b8d9546cb57ec1f9fb',1,'fplbase::AssetManager']]]
 ];
