@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"
-#include "fplbase/texture.h"
 #include "fplbase/renderer.h"
+#include "fplbase/texture.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
 #include "webp/decode.h"
@@ -46,7 +46,7 @@ void Texture::Finalize() {
 }
 
 void Texture::Set(size_t unit) {
-  GL_CALL(glActiveTexture(GL_TEXTURE0 + unit));
+  GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
   GL_CALL(glBindTexture(GL_TEXTURE_2D, id_));
 }
 
