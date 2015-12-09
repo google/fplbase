@@ -137,8 +137,9 @@ Shader *AssetManager::LoadShaderDef(const char *filename) {
     } else {
       LogError(kError, "Shader Error: ");
       if (shaderdef->original_sources()) {
-        for (int i = 0; i < shaderdef->original_sources()->size(); ++i) {
-          const auto& source = shaderdef->original_sources()->Get(i);
+        for (int i = 0;
+             i < static_cast<int>(shaderdef->original_sources()->size()); ++i) {
+          const auto &source = shaderdef->original_sources()->Get(i);
           LogError(kError, "%s", source->c_str());
         }
       }
@@ -190,17 +191,18 @@ Material *AssetManager::LoadMaterial(const char *filename) {
     mat = new Material();
     mat->set_blend_mode(static_cast<BlendMode>(matdef->blendmode()));
     for (size_t i = 0; i < matdef->texture_filenames()->size(); i++) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
       auto format =
           matdef->desired_format() && i < matdef->desired_format()->size()
-              ? static_cast<TextureFormat>(matdef->desired_format()->Get(i))
+              ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
               : kFormatAuto;
-      auto tex = LoadTexture(matdef->texture_filenames()->Get(i)->c_str(),
+      auto tex = LoadTexture(matdef->texture_filenames()->Get(index)->c_str(),
                              format, matdef->mipmaps() != 0);
       mat->textures().push_back(tex);
 
       auto original_size =
-          matdef->original_size() && i < matdef->original_size()->size()
-              ? LoadVec2i(matdef->original_size()->Get(i))
+          matdef->original_size() && index < matdef->original_size()->size()
+              ? LoadVec2i(matdef->original_size()->Get(index))
               : tex->size();
       tex->set_original_size(original_size);
 
@@ -265,22 +267,27 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     auto buf = new uint8_t[vert_size * meshdef->positions()->Length()];
     auto p = buf;
     for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
-      if (meshdef->positions()) CopyAttribute(meshdef->positions()->Get(i), p);
-      if (meshdef->normals()) CopyAttribute(meshdef->normals()->Get(i), p);
-      if (meshdef->tangents()) CopyAttribute(meshdef->tangents()->Get(i), p);
-      if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(i), p);
-      if (meshdef->texcoords()) CopyAttribute(meshdef->texcoords()->Get(i), p);
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      if (meshdef->positions())
+        CopyAttribute(meshdef->positions()->Get(index), p);
+      if (meshdef->normals()) CopyAttribute(meshdef->normals()->Get(index), p);
+      if (meshdef->tangents())
+        CopyAttribute(meshdef->tangents()->Get(index), p);
+      if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(index), p);
+      if (meshdef->texcoords())
+        CopyAttribute(meshdef->texcoords()->Get(index), p);
       if (skin) {
-        CopyAttribute(meshdef->skin_indices()->Get(i), p);
-        CopyAttribute(meshdef->skin_weights()->Get(i), p);
+        CopyAttribute(meshdef->skin_indices()->Get(index), p);
+        CopyAttribute(meshdef->skin_weights()->Get(index), p);
       }
     }
     vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
                                        : mathfu::kZeros3f;
     vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
                                        : mathfu::kZeros3f;
-    mesh = new Mesh(buf, meshdef->positions()->Length(), vert_size,
-                    attrs.data(), meshdef->max_position() ? &max : nullptr,
+    mesh = new Mesh(buf, static_cast<int>(meshdef->positions()->Length()),
+                    static_cast<int>(vert_size), attrs.data(),
+                    meshdef->max_position() ? &max : nullptr,
                     meshdef->min_position() ? &min : nullptr);
     delete[] buf;
     // Load the bone information.
@@ -291,8 +298,9 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
           new mathfu::AffineTransform[num_bones]);
       std::vector<const char *> bone_names(num_bones);
       for (size_t i = 0; i < num_bones; ++i) {
-        bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(i));
-        bone_names[i] = meshdef->bone_names()->Get(i)->c_str();
+        flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+        bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(index));
+        bone_names[i] = meshdef->bone_names()->Get(index)->c_str();
       }
       const uint8_t *bone_parents = meshdef->bone_parents()->data();
       mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0],
@@ -302,7 +310,8 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
 
     // Load indices an materials.
     for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
-      auto surface = meshdef->surfaces()->Get(i);
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      auto surface = meshdef->surfaces()->Get(index);
       auto mat = LoadMaterial(surface->material()->c_str());
       if (!mat) {
         delete mesh;
@@ -344,10 +353,11 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
     atlas->set_atlas_texture(atlas_texture);
     atlas->set_size(LoadVec2i(atlasdef->size()));
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
-      atlas->index_map().insert(
-          std::make_pair(atlasdef->entries()->Get(i)->name()->str(), i));
-      vec2i size = LoadVec2i(atlasdef->entries()->Get(i)->size());
-      vec2i location = LoadVec2i(atlasdef->entries()->Get(i)->location());
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      atlas->index_map().insert(std::make_pair(
+          atlasdef->entries()->Get(index)->name()->str(), index));
+      vec2i size = LoadVec2i(atlasdef->entries()->Get(index)->size());
+      vec2i location = LoadVec2i(atlasdef->entries()->Get(index)->location());
       atlas->subtexture_bounds().push_back(
           vec4i(location.x(), location.y(), size.x(), size.y()));
     }

@@ -78,14 +78,20 @@ Using `ndk-build`:
 
 ~~~{.sh}
     cd fplbase
-    ndk-build APP_ABI=all
+    ndk-build
 ~~~
 
 Using `fplutil`:
 ~~~{.sh}
     cd fplbase
-    ./dependencies/fplutil/bin/build_all_android.py -f APP_ABI=all
+    ./dependencies/fplutil/bin/build_all_android -E dependencies -T debug -i -r
 ~~~
+
+*Note: The `-T debug`, `-i`, and `-r` flags are optional. The `-T` flag sets up
+debug signing of the app, which allows it to be installed for testing purposes.
+The `-i` flag declares that the script should install the app to a connected
+device. The `-r` flag declares that the app should also be run, after it is
+installed.*
 
 <br>
 

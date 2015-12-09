@@ -533,11 +533,9 @@ public class FPLActivity extends SDLActivity implements
 
   public void relaunch() {
     Context context = getBaseContext();
-    Intent restartIntent = context.getPackageManager()
-      .getLaunchIntentForPackage(context.getPackageName() );
     PendingIntent intent = PendingIntent.getActivity(
       context, 0,
-      restartIntent, Intent.FLAG_ACTIVITY_CLEAR_TOP);
+      getIntent(), Intent.FLAG_ACTIVITY_CLEAR_TOP);
     AlarmManager manager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
     int delay = 1;
     manager.set(AlarmManager.RTC, System.currentTimeMillis() + delay, intent);

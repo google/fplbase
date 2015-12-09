@@ -252,11 +252,11 @@ void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
 }
 
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
-  SetAttributes(vbo_, format_, vertex_size_, nullptr);
+  SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
-    DrawElement(renderer, it->count, instances);
+    DrawElement(renderer, it->count, static_cast<int32_t>(instances));
   }
   UnSetAttributes(format_);
 }
@@ -265,7 +265,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
                         const vec4i *viewport, const mat4 *mvp,
                         const vec3 *camera_position, bool ignore_material,
                         size_t instances) {
-  SetAttributes(vbo_, format_, vertex_size_, nullptr);
+  SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
@@ -277,7 +277,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
 
       auto vp = viewport[i];
       glViewport(vp.x(), vp.y(), vp.z(), vp.w());
-      DrawElement(renderer, it->count, instances);
+      DrawElement(renderer, it->count, static_cast<int32_t>(instances));
     }
   }
   UnSetAttributes(format_);
