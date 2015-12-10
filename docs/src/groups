@@ -1,0 +1,46 @@
+/// @defgroup fplbase_asset_manager Asset Manager
+/// @brief AssetManager class and methods to handle game assets.
+
+/// @defgroup fplbase_async_loader Asynchronous Loader
+/// @brief AsyncLoader class and methods to handle asynchronous loading of
+/// AsyncAsset classes.
+
+/// @defgroup fplbase_flatbuffer_utils FlatBuffer Utils
+/// @brief Helper functions to load structs in `common.fbs` from
+/// FlatBuffer files.
+
+/// @defgroup fplbase_input Input
+/// @brief Functions, classes, etc. for Input with FPLBase.
+
+/// @defgroup fplbase_keyboardcodes Keyboard Codes
+/// @brief Keyboard key codes and scan codes, used by FPLBase.
+
+/// @defgroup fplbase_material Material
+/// @brief Material class and methods.
+
+/// @defgroup fplbase_mesh Mesh
+/// @brief Mesh class and methods.
+
+/// @defgroup fplbase_render_target Render Target
+/// @brief RenderTarget class and methods.
+
+/// @defgroup fplbase_renderer Renderer
+/// @brief Renderer class and methods, along with Android and Head Mounted
+/// Display rendering functions.
+
+/// @defgroup fplbase_shader Shader
+/// @brief Shader class and methods.
+
+/// @defgroup fplbase_texture Texture
+/// @brief Texture class and methods.
+
+/// @defgroup fplbase_texture_atlas Texture Atlas
+/// @brief TextureAtlas class and methods.
+
+/// @defgroup fplbase_systrace Systrace
+/// @brief Android Systrace functions.
+///
+/// To enable, `#define ANDROID_ENABLE_SYSTRACE 1`
+
+/// @defgroup fplbase_utilities Utilities
+/// @brief General utility functions, used by FPLBase.

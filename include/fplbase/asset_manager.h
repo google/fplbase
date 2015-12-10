@@ -27,6 +27,10 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_asset_manager
+/// @{
+
 /// @class FileAsset
 /// @brief A generic asset whose contents the AssetManager doesn't care about.
 class FileAsset : public AsyncAsset {
@@ -47,7 +51,12 @@ class FileAsset : public AsyncAsset {
 /// such as textures.
 class AssetManager {
  public:
+  /// @brief AssetManager constructor.
+  /// @param[in] renderer A reference to the Renderer to use with the
+  /// AssetManager.
   AssetManager(Renderer &renderer);
+
+  /// @brief AssetManager destructor that purges all assets.
   ~AssetManager() { ClearAllAssets(); }
 
   /// @brief Returns a previously loaded shader object.
@@ -281,6 +290,7 @@ class AssetManager {
   mathfu::vec2 texture_scale_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_ASSET_MANAGER_H

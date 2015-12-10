@@ -18,7 +18,9 @@
 /// @file fplbase/systrace.h
 /// @brief Functions for creating systrace log events, for Android.
 ///
-/// To enable, \#define FPLBASE_ENABLE_SYSTRACE 1
+/// To enable, `#define FPLBASE_ENABLE_SYSTRACE 1`.
+/// @addtogroup fplbase_systrace
+/// @{
 
 #if FPLBASE_ENABLE_SYSTRACE
 #ifndef __ANDROID__
@@ -117,4 +119,5 @@ inline void SystraceAsyncEnd(const char *name, const int32_t cookie) {
 #endif
 }
 
+/// @}
 #endif  // FPLBASE_SYSTRACE_H

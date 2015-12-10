@@ -27,6 +27,9 @@
 
 namespace fplbase {
 
+/// @addtogroup fplbase_flatbuffer_utils
+/// @{
+
 /// @brief Converts a Vec2.
 ///
 /// @param v The Flatbuffer Vec2 to convert.
@@ -89,7 +92,7 @@ inline const mathfu::vec3 LoadAxis(Axis axis) {
 
 /// @brief Converts a ColorRGBA to a vec4.
 ///
-/// @param v The Flatbuffer ColorRGBA to convert.
+/// @param c The Flatbuffer ColorRGBA to convert.
 /// @return Returns a converted mathfu vec4.
 inline const mathfu::vec4 LoadColorRGBA(const ColorRGBA* c) {
   return mathfu::vec4(c->r(), c->g(), c->b(), c->a());
@@ -111,6 +114,7 @@ inline mathfu::AffineTransform LoadAffine(const Mat3x4* m) {
       mathfu::mat4(c0, c1, c2, mathfu::kAxisW4f).Transpose());
 }
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_FLATBUFFER_UTILS_H

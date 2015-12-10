@@ -24,6 +24,9 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_texture_atlas
+/// @{
 using mathfu::vec4;
 
 class Texture;
@@ -33,7 +36,7 @@ class Texture;
 ///
 /// A TextureAtlas supports sprite sheets by containing one texture and a list
 /// of subtexture bounding boxes, which can also be indexed by name using the
-/// index_map.  Subtexture bounding boxes are returned in normalized texture
+/// index_map. Subtexture bounding boxes are returned in normalized texture
 /// coordinates, and take the form (u, v, width, height).
 ///
 /// @warning This is will very likely be refactored.
@@ -82,6 +85,14 @@ class TextureAtlas : public Asset {
   const std::vector<vec4> &subtexture_bounds() const {
     return subtexture_bounds_;
   }
+
+  /// @brief Get a vector of the bounds of each subtexture in this atlas.
+  ///
+  /// Each element of the vector consists of (offsetx, offsety, sizex, sizey)
+  /// where offsetx / offsety are coordinates relative to the underlying
+  /// atlased texture and sizex / sizey are the dimensions of the subtexture.
+  ///
+  /// @returns Vector of subtexture bounds.
   std::vector<vec4> &subtexture_bounds() { return subtexture_bounds_; }
 
   /// @brief Get a map of subtexture names to subtexture offsets.
@@ -92,6 +103,14 @@ class TextureAtlas : public Asset {
   /// @return A map of subtexture names to indices in vector returned by
   /// @ref subtexture_bounds().
   const std::map<std::string, size_t> &index_map() const { return index_map_; }
+
+  /// @brief Get a map of subtexture names to subtexture offsets.
+  ///
+  /// Each entry in the map can be used to lookup the subtexture bounds in
+  /// the vector returned by @ref subtexture_bounds().
+  ///
+  /// @return A map of subtexture names to indices in vector returned by
+  /// @ref subtexture_bounds().
   std::map<std::string, size_t> &index_map() { return index_map_; }
 
  private:
@@ -103,6 +122,7 @@ class TextureAtlas : public Asset {
   std::map<std::string, size_t> index_map_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_TEXTURE_ATLAS_H

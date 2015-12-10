@@ -15,6 +15,8 @@
 #ifndef FPLBASE_VERSION_H_
 #define FPLBASE_VERSION_H_
 
+/// @cond FPLBASE_INTERNAL
+
 namespace fplbase {
 
 struct FplBaseVersion {
@@ -34,5 +36,7 @@ struct FplBaseVersion {
 const FplBaseVersion& Version();
 
 }  // namespace fplbase
+
+/// @endcond
 
 #endif  // FPLBASE_VERSION_H_

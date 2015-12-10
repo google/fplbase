@@ -23,6 +23,10 @@
 namespace fplbase {
 class Renderer;
 
+/// @file
+/// @addtogroup fplbase_shader
+/// @{
+
 static const int kMaxTexturesPerShader = 8;
 static const int kNumVec4sInAffineTransform = 3;
 
@@ -149,6 +153,7 @@ class Shader : public Asset {
   UniformHandle uniform_bone_transforms_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_SHADER_H

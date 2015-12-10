@@ -33,13 +33,17 @@ namespace fplbase {
 typedef void *Window;
 typedef void *GLContext;
 
+/// @file
+/// @addtogroup fplbase_renderer
+/// @{
+
 class RenderTarget;
 
 /// @class Renderer
 /// @brief Manages the rendering system, handling the window and resources.
 ///
 /// The core of the rendering system. Deals with setting up and shutting down
-/// the window + OpenGL context (based on SDL), and creating/using resources
+/// the window + OpenGL context, and creating/using resources
 /// such as shaders, textures, and geometry.
 class Renderer {
  public:
@@ -334,6 +338,8 @@ class Renderer {
   // Current version of the Corgi Entity Library.
   const FplBaseVersion *version_;
 };
+
+/// @}
 
 }  // namespace fplbase
 

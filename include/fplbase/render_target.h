@@ -31,6 +31,10 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_render_target
+/// @{
+
 /// @class RenderTarget
 /// @brief Abstracts a surface that can be rendered to.
 ///
@@ -116,6 +120,7 @@ class RenderTarget {
   bool initialized_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_RENDER_TARGET_H

@@ -22,69 +22,85 @@
 namespace fplbase {
 
 /**
- *  \brief The SDL keyboard scancode representation.
+ *  \file
+ *  \defgroup fplbase_scancodes Scan Codes
+ *  \brief The keyboard scan codes used by FPLBase, which correspond to the
+ *  physical location of a certain key on the keyboard. This is ideal for
+ *  layout-specific controls, regardless of the operating system's mapping of
+ *  the keys.
  *
- *  Values of this type are used to represent keyboard keys, among other places
- *  in the \link SDL_Keysym::scancode key.keysym.scancode \endlink field of the
- *  SDL_Event structure.
+ *  For example, if a given key (`a`) is pressed, it will result in
+ *  `FPL_SCANCODE_A` being generated, even if the `a` key is mapped to a
+ *  different character -- perhaps the German A-umlaut (`ä`). This would be
+ *  perfect in the case of `WASD` (for secondary arrow-keys), where the location
+ *  of those four keys is important, regardless of the keystoke they generate.
  *
  *  The values in this enumeration are based on the USB usage page standard:
- *  http://www.usb.org/developers/devclass_docs/Hut1_12v2.pdf
+ *  <a href="http://www.usb.org/developers/hidpage/Hut1_12v2.pdf">
+ *  Universal Serial Bus HID Usage Tables
+ *  </a>
+ *
+ * \ingroup fplbase_keyboardcodes
+ * \{
  */
 typedef enum {
-  FPL_SCANCODE_UNKNOWN = 0,
+  FPL_SCANCODE_UNKNOWN = 0, /**< Sentinel value for unknown keypress. */
 
   /**
-   *  \name Usage page 0x07
+   *  \defgroup page07 Usage page 0x07
+   *  \ingroup fplbase_scancodes
    *
-   *  These values are from usage page 0x07 (USB keyboard page).
+   *  \brief These values are from usage page 0x07
+   *  (<a href="http://www.usb.org/developers/hidpage/Hut1_12v2.pdf">
+   *   USB keyboard page</a>).
+   *
+   *  @{
    */
-  /* @{ */
-  FPL_SCANCODE_A = 4,
-  FPL_SCANCODE_B = 5,
-  FPL_SCANCODE_C = 6,
-  FPL_SCANCODE_D = 7,
-  FPL_SCANCODE_E = 8,
-  FPL_SCANCODE_F = 9,
-  FPL_SCANCODE_G = 10,
-  FPL_SCANCODE_H = 11,
-  FPL_SCANCODE_I = 12,
-  FPL_SCANCODE_J = 13,
-  FPL_SCANCODE_K = 14,
-  FPL_SCANCODE_L = 15,
-  FPL_SCANCODE_M = 16,
-  FPL_SCANCODE_N = 17,
-  FPL_SCANCODE_O = 18,
-  FPL_SCANCODE_P = 19,
-  FPL_SCANCODE_Q = 20,
-  FPL_SCANCODE_R = 21,
-  FPL_SCANCODE_S = 22,
-  FPL_SCANCODE_T = 23,
-  FPL_SCANCODE_U = 24,
-  FPL_SCANCODE_V = 25,
-  FPL_SCANCODE_W = 26,
-  FPL_SCANCODE_X = 27,
-  FPL_SCANCODE_Y = 28,
-  FPL_SCANCODE_Z = 29,
-  FPL_SCANCODE_1 = 30,
-  FPL_SCANCODE_2 = 31,
-  FPL_SCANCODE_3 = 32,
-  FPL_SCANCODE_4 = 33,
-  FPL_SCANCODE_5 = 34,
-  FPL_SCANCODE_6 = 35,
-  FPL_SCANCODE_7 = 36,
-  FPL_SCANCODE_8 = 37,
-  FPL_SCANCODE_9 = 38,
-  FPL_SCANCODE_0 = 39,
-  FPL_SCANCODE_RETURN = 40,
-  FPL_SCANCODE_ESCAPE = 41,
-  FPL_SCANCODE_BACKSPACE = 42,
-  FPL_SCANCODE_TAB = 43,
-  FPL_SCANCODE_SPACE = 44,
-  FPL_SCANCODE_MINUS = 45,
-  FPL_SCANCODE_EQUALS = 46,
-  FPL_SCANCODE_LEFTBRACKET = 47,
-  FPL_SCANCODE_RIGHTBRACKET = 48,
+  FPL_SCANCODE_A = 4, /**< Keyboard `a` and `A`. */
+  FPL_SCANCODE_B = 5, /**< Keyboard `b` and `B`. */
+  FPL_SCANCODE_C = 6, /**< Keyboard `c` and `C`. */
+  FPL_SCANCODE_D = 7, /**< Keyboard `d` and `D`. */
+  FPL_SCANCODE_E = 8, /**< Keyboard `e` and `E`. */
+  FPL_SCANCODE_F = 9, /**< Keyboard `f` and `F`. */
+  FPL_SCANCODE_G = 10, /**< Keyboard `g` and `G`. */
+  FPL_SCANCODE_H = 11, /**< Keyboard `h` and `H`. */
+  FPL_SCANCODE_I = 12, /**< Keyboard `i` and `I`. */
+  FPL_SCANCODE_J = 13, /**< Keyboard `j` and `J`. */
+  FPL_SCANCODE_K = 14, /**< Keyboard `k` and `K`. */
+  FPL_SCANCODE_L = 15, /**< Keyboard `l` and `L`. */
+  FPL_SCANCODE_M = 16, /**< Keyboard `m` and `M`. */
+  FPL_SCANCODE_N = 17, /**< Keyboard `n` and `N`. */
+  FPL_SCANCODE_O = 18, /**< Keyboard `o` and `O`. */
+  FPL_SCANCODE_P = 19, /**< Keyboard `p` and `p`. */
+  FPL_SCANCODE_Q = 20, /**< Keyboard `q` and `Q`. */
+  FPL_SCANCODE_R = 21, /**< Keyboard `r` and `R`. */
+  FPL_SCANCODE_S = 22, /**< Keyboard `s` and `S`. */
+  FPL_SCANCODE_T = 23, /**< Keyboard `t` and `T`. */
+  FPL_SCANCODE_U = 24, /**< Keyboard `u` and `U`. */
+  FPL_SCANCODE_V = 25, /**< Keyboard `v` and `V`. */
+  FPL_SCANCODE_W = 26, /**< Keyboard `w` and `W`. */
+  FPL_SCANCODE_X = 27, /**< Keyboard `x` and `X`. */
+  FPL_SCANCODE_Y = 28, /**< Keyboard `y` and `Y`. */
+  FPL_SCANCODE_Z = 29, /**< Keyboard `z` and `Z`. */
+  FPL_SCANCODE_1 = 30, /**< Keyboard `1` and `!`. */
+  FPL_SCANCODE_2 = 31, /**< Keyboard `2` and `@`. */
+  FPL_SCANCODE_3 = 32, /**< Keyboard `3` and `#`. */
+  FPL_SCANCODE_4 = 33, /**< Keyboard `4` and `$`. */
+  FPL_SCANCODE_5 = 34, /**< Keyboard `5` and `%`. */
+  FPL_SCANCODE_6 = 35, /**< Keyboard `6` and `^`. */
+  FPL_SCANCODE_7 = 36, /**< Keyboard `7` and `&`. */
+  FPL_SCANCODE_8 = 37, /**< Keyboard `8` and `*`. */
+  FPL_SCANCODE_9 = 38, /**< Keyboard `9` and `(`. */
+  FPL_SCANCODE_0 = 39, /**< Keyboard `0` and `)`. */
+  FPL_SCANCODE_RETURN = 40, /**< Keyboard `Return`/`ENTER`. */
+  FPL_SCANCODE_ESCAPE = 41, /**< Keyboard `ESCAPE`. */
+  FPL_SCANCODE_BACKSPACE = 42, /**< Keyboard `DELETE`/`Backspace`. */
+  FPL_SCANCODE_TAB = 43, /**< Keyboard `Tab`. */
+  FPL_SCANCODE_SPACE = 44, /**< Keyboard `Spacebar`. */
+  FPL_SCANCODE_MINUS = 45, /**< Keyboard `-` and `_`. */
+  FPL_SCANCODE_EQUALS = 46, /**< Keyboard `=` and `+`. */
+  FPL_SCANCODE_LEFTBRACKET = 47, /**< Keyboard `[` and `{`. */
+  FPL_SCANCODE_RIGHTBRACKET = 48, /**< Keyboard `]` and `}`. */
   FPL_SCANCODE_BACKSLASH = 49, /**< Located at the lower left of the return
                                 *   key on ISO keyboards and at the right end
                                 *   of the QWERTY row on ANSI keyboards.
@@ -106,13 +122,10 @@ typedef enum {
                                 *   your keyboard generates both of those
                                 *   codes and your OS treats them differently,
                                 *   you should generate FPL_SCANCODE_BACKSLASH
-                                *   instead of this code. As a user, you
-                                *   should not rely on this code because SDL
-                                *   will never generate it with most (all?)
-                                *   keyboards.
+                                *   instead of this code.
                                 */
-  FPL_SCANCODE_SEMICOLON = 51,
-  FPL_SCANCODE_APOSTROPHE = 52,
+  FPL_SCANCODE_SEMICOLON = 51, /**< Keyboard `;` and `:`. */
+  FPL_SCANCODE_APOSTROPHE = 52, /**< Keyboard `'` and `"`. */
   FPL_SCANCODE_GRAVE = 53, /**< Located in the top left corner (on both ANSI
                             *   and ISO keyboards). Produces GRAVE ACCENT and
                             *   TILDE in a US Windows layout and in US and UK
@@ -130,54 +143,55 @@ typedef enum {
                             *   SIGN in a Swiss German, German, or French Mac
                             *   layout on ANSI keyboards.
                             */
-  FPL_SCANCODE_COMMA = 54,
-  FPL_SCANCODE_PERIOD = 55,
-  FPL_SCANCODE_SLASH = 56,
-  FPL_SCANCODE_CAPSLOCK = 57,
-  FPL_SCANCODE_F1 = 58,
-  FPL_SCANCODE_F2 = 59,
-  FPL_SCANCODE_F3 = 60,
-  FPL_SCANCODE_F4 = 61,
-  FPL_SCANCODE_F5 = 62,
-  FPL_SCANCODE_F6 = 63,
-  FPL_SCANCODE_F7 = 64,
-  FPL_SCANCODE_F8 = 65,
-  FPL_SCANCODE_F9 = 66,
-  FPL_SCANCODE_F10 = 67,
-  FPL_SCANCODE_F11 = 68,
-  FPL_SCANCODE_F12 = 69,
-  FPL_SCANCODE_PRINTSCREEN = 70,
-  FPL_SCANCODE_SCROLLLOCK = 71,
-  FPL_SCANCODE_PAUSE = 72,
+  FPL_SCANCODE_COMMA = 54, /**< Keyboard `,` and `<`. */
+  FPL_SCANCODE_PERIOD = 55, /**< Keyboard `.` and `>`. */
+  FPL_SCANCODE_SLASH = 56, /**< Keyboard `\` and `|`. */
+  FPL_SCANCODE_CAPSLOCK = 57, /**< Keyboard `Caps Lock`. */
+  FPL_SCANCODE_F1 = 58, /**< Keyboard `F1`. */
+  FPL_SCANCODE_F2 = 59, /**< Keyboard `F2`. */
+  FPL_SCANCODE_F3 = 60, /**< Keyboard `F3`. */
+  FPL_SCANCODE_F4 = 61, /**< Keyboard `F4`. */
+  FPL_SCANCODE_F5 = 62, /**< Keyboard `F5`. */
+  FPL_SCANCODE_F6 = 63, /**< Keyboard `F6`. */
+  FPL_SCANCODE_F7 = 64, /**< Keyboard `F7`. */
+  FPL_SCANCODE_F8 = 65, /**< Keyboard `F8`. */
+  FPL_SCANCODE_F9 = 66, /**< Keyboard `F9`. */
+  FPL_SCANCODE_F10 = 67, /**< Keyboard `F10`. */
+  FPL_SCANCODE_F11 = 68, /**< Keyboard `F11`. */
+  FPL_SCANCODE_F12 = 69, /**< Keyboard `F12`. */
+  FPL_SCANCODE_PRINTSCREEN = 70, /**< Keyboard `PrintScreen`. */
+  FPL_SCANCODE_SCROLLLOCK = 71, /**< Keyboard `Scroll Lock`. */
+  FPL_SCANCODE_PAUSE = 72, /**< Keyboard `Pause`. */
   FPL_SCANCODE_INSERT = 73, /**< insert on PC, help on some Mac keyboards (but
                                  does send code 73, not 117) */
-  FPL_SCANCODE_HOME = 74,
-  FPL_SCANCODE_PAGEUP = 75,
-  FPL_SCANCODE_DELETE = 76,
-  FPL_SCANCODE_END = 77,
-  FPL_SCANCODE_PAGEDOWN = 78,
-  FPL_SCANCODE_RIGHT = 79,
-  FPL_SCANCODE_LEFT = 80,
-  FPL_SCANCODE_DOWN = 81,
-  FPL_SCANCODE_UP = 82,
-  FPL_SCANCODE_NUMLOCKCLEAR = 83, /**< num lock on PC, clear on Mac keyboards
+  FPL_SCANCODE_HOME = 74, /**< Keyboard `Home`. */
+  FPL_SCANCODE_PAGEUP = 75, /**< Keyboard `PageUp`. */
+  FPL_SCANCODE_DELETE = 76, /**< Keyboard `Delete Forward`. */
+  FPL_SCANCODE_END = 77, /**< Keyboard `End`. */
+  FPL_SCANCODE_PAGEDOWN = 78, /**< Keyboard `PageDown`. */
+  FPL_SCANCODE_RIGHT = 79, /**< Keyboard `RightArrow`. */
+  FPL_SCANCODE_LEFT = 80, /**< Keyboard `LeftArrow`. */
+  FPL_SCANCODE_DOWN = 81, /**< Keyboard `DownArrow`. */
+  FPL_SCANCODE_UP = 82, /**< Keyboard `F1`. */
+  FPL_SCANCODE_NUMLOCKCLEAR = 83, /**< `num lock` on PC, `clear` on Mac
+                                   * keyboards
                                    */
-  FPL_SCANCODE_KP_DIVIDE = 84,
-  FPL_SCANCODE_KP_MULTIPLY = 85,
-  FPL_SCANCODE_KP_MINUS = 86,
-  FPL_SCANCODE_KP_PLUS = 87,
-  FPL_SCANCODE_KP_ENTER = 88,
-  FPL_SCANCODE_KP_1 = 89,
-  FPL_SCANCODE_KP_2 = 90,
-  FPL_SCANCODE_KP_3 = 91,
-  FPL_SCANCODE_KP_4 = 92,
-  FPL_SCANCODE_KP_5 = 93,
-  FPL_SCANCODE_KP_6 = 94,
-  FPL_SCANCODE_KP_7 = 95,
-  FPL_SCANCODE_KP_8 = 96,
-  FPL_SCANCODE_KP_9 = 97,
-  FPL_SCANCODE_KP_0 = 98,
-  FPL_SCANCODE_KP_PERIOD = 99,
+  FPL_SCANCODE_KP_DIVIDE = 84, /**< Keyboard `Keypad \`. */
+  FPL_SCANCODE_KP_MULTIPLY = 85, /**< Keyboard `Keypad *`. */
+  FPL_SCANCODE_KP_MINUS = 86, /**< Keyboard `Keypad -`. */
+  FPL_SCANCODE_KP_PLUS = 87, /**< Keyboard `Keypad +`. */
+  FPL_SCANCODE_KP_ENTER = 88, /**< Keyboard `Keypad ENTER`. */
+  FPL_SCANCODE_KP_1 = 89, /**< Keyboard `Keypad 1` and `Keypad End`. */
+  FPL_SCANCODE_KP_2 = 90, /**< Keyboard `Keypad 2` and `Keypad DownArrow`. */
+  FPL_SCANCODE_KP_3 = 91, /**< Keyboard `Keypad 3` and `Keypad PageDown`. */
+  FPL_SCANCODE_KP_4 = 92, /**< Keyboard `Keypad 4` and `Keypad LeftArrow`. */
+  FPL_SCANCODE_KP_5 = 93, /**< Keyboard `Keypad 5`. */
+  FPL_SCANCODE_KP_6 = 94, /**< Keyboard `Keypad 6` and `Keypad RightArrow`. */
+  FPL_SCANCODE_KP_7 = 95, /**< Keyboard `Keypad 7` and `Keypad Home`. */
+  FPL_SCANCODE_KP_8 = 96, /**< Keyboard `Keypad 8` and `Keypad UpArrow`. */
+  FPL_SCANCODE_KP_9 = 97, /**< Keyboard `Keypad 9` and `Keypad PageUp`. */
+  FPL_SCANCODE_KP_0 = 98, /**< Keyboard `Keypad 0` and `Keypad Insert`. */
+  FPL_SCANCODE_KP_PERIOD = 99, /**< Keyboard `Keypad .` and `Keypad Delete`. */
   FPL_SCANCODE_NONUSBACKSLASH = 100, /**< This is the additional key that ISO
                                       *   keyboards have over ANSI ones,
                                       *   located between left shift and Y.
@@ -192,39 +206,39 @@ typedef enum {
   FPL_SCANCODE_POWER = 102, /**< The USB document says this is a status flag,
                              *   not a physical key - but some Mac keyboards
                              *   do have a power key. */
-  FPL_SCANCODE_KP_EQUALS = 103,
-  FPL_SCANCODE_F13 = 104,
-  FPL_SCANCODE_F14 = 105,
-  FPL_SCANCODE_F15 = 106,
-  FPL_SCANCODE_F16 = 107,
-  FPL_SCANCODE_F17 = 108,
-  FPL_SCANCODE_F18 = 109,
-  FPL_SCANCODE_F19 = 110,
-  FPL_SCANCODE_F20 = 111,
-  FPL_SCANCODE_F21 = 112,
-  FPL_SCANCODE_F22 = 113,
-  FPL_SCANCODE_F23 = 114,
-  FPL_SCANCODE_F24 = 115,
-  FPL_SCANCODE_EXECUTE = 116,
-  FPL_SCANCODE_HELP = 117,
-  FPL_SCANCODE_MENU = 118,
-  FPL_SCANCODE_SELECT = 119,
-  FPL_SCANCODE_STOP = 120,
-  FPL_SCANCODE_AGAIN = 121, /**< redo */
-  FPL_SCANCODE_UNDO = 122,
-  FPL_SCANCODE_CUT = 123,
-  FPL_SCANCODE_COPY = 124,
-  FPL_SCANCODE_PASTE = 125,
-  FPL_SCANCODE_FIND = 126,
-  FPL_SCANCODE_MUTE = 127,
-  FPL_SCANCODE_VOLUMEUP = 128,
-  FPL_SCANCODE_VOLUMEDOWN = 129,
+  FPL_SCANCODE_KP_EQUALS = 103, /**< Keyboard `Keypad =`. */
+  FPL_SCANCODE_F13 = 104, /**< Keyboard `F13`. */
+  FPL_SCANCODE_F14 = 105, /**< Keyboard `F14`. */
+  FPL_SCANCODE_F15 = 106, /**< Keyboard `F15`. */
+  FPL_SCANCODE_F16 = 107, /**< Keyboard `F16`. */
+  FPL_SCANCODE_F17 = 108, /**< Keyboard `F17`. */
+  FPL_SCANCODE_F18 = 109, /**< Keyboard `F18`. */
+  FPL_SCANCODE_F19 = 110, /**< Keyboard `F19`. */
+  FPL_SCANCODE_F20 = 111, /**< Keyboard `F20`. */
+  FPL_SCANCODE_F21 = 112, /**< Keyboard `F21`. */
+  FPL_SCANCODE_F22 = 113, /**< Keyboard `F22`. */
+  FPL_SCANCODE_F23 = 114, /**< Keyboard `F23`. */
+  FPL_SCANCODE_F24 = 115, /**< Keyboard `F24`. */
+  FPL_SCANCODE_EXECUTE = 116, /**< Keyboard `Execute`. */
+  FPL_SCANCODE_HELP = 117, /**< Keyboard `Help`. */
+  FPL_SCANCODE_MENU = 118, /**< Keyboard `Menu`. */
+  FPL_SCANCODE_SELECT = 119, /**< Keyboard `Select`. */
+  FPL_SCANCODE_STOP = 120, /**< Keyboard `Stop`. */
+  FPL_SCANCODE_AGAIN = 121, /**< Keyboard `Again`. */
+  FPL_SCANCODE_UNDO = 122, /**< Keyboard `Undo`. */
+  FPL_SCANCODE_CUT = 123, /**< Keyboard `Cut`. */
+  FPL_SCANCODE_COPY = 124, /**< Keyboard `Copy`. */
+  FPL_SCANCODE_PASTE = 125, /**< Keyboard `Paste`. */
+  FPL_SCANCODE_FIND = 126, /**< Keyboard `Find`. */
+  FPL_SCANCODE_MUTE = 127, /**< Keyboard `Mute`. */
+  FPL_SCANCODE_VOLUMEUP = 128, /**< Keyboard `Volume Up`. */
+  FPL_SCANCODE_VOLUMEDOWN = 129, /**< Keyboard `Volume Down`. */
   /* not sure whether there's a reason to enable these */
   /*     FPL_SCANCODE_LOCKINGCAPSLOCK = 130,  */
   /*     FPL_SCANCODE_LOCKINGNUMLOCK = 131, */
   /*     FPL_SCANCODE_LOCKINGSCROLLLOCK = 132, */
-  FPL_SCANCODE_KP_COMMA = 133,
-  FPL_SCANCODE_KP_EQUALSAS400 = 134,
+  FPL_SCANCODE_KP_COMMA = 133, /**< Keyboard `,`. */
+  FPL_SCANCODE_KP_EQUALSAS400 = 134, /**< Keyboard `Equal Sign`. */
   FPL_SCANCODE_INTERNATIONAL1 = 135, /**< used on Asian keyboards, see
                                           footnotes in USB doc */
   FPL_SCANCODE_INTERNATIONAL2 = 136,
@@ -310,28 +324,19 @@ typedef enum {
   FPL_SCANCODE_RSHIFT = 229,
   FPL_SCANCODE_RALT = 230, /**< alt gr, option */
   FPL_SCANCODE_RGUI = 231, /**< windows, command (apple), meta */
-  FPL_SCANCODE_MODE = 257, /**< I'm not sure if this is really not covered
-                            *   by any of the above, but since there's a
-                            *   special KMOD_MODE for it I'm adding it here
-                            */
 
   /* @} */ /* Usage page 0x07 */
 
-  /**
-   *  \name Usage page 0x0C
-   *
-   *  These values are mapped from usage page 0x0C (USB consumer page).
-   */
-  /* @{ */
-  FPL_SCANCODE_AUDIONEXT = 258,
-  FPL_SCANCODE_AUDIOPREV = 259,
-  FPL_SCANCODE_AUDIOSTOP = 260,
-  FPL_SCANCODE_AUDIOPLAY = 261,
-  FPL_SCANCODE_AUDIOMUTE = 262,
+  FPL_SCANCODE_MODE = 257,
+  FPL_SCANCODE_AUDIONEXT = 258, /**< Keyboard `Next audio track` button. */
+  FPL_SCANCODE_AUDIOPREV = 259, /**< Keyboard `Previous audio track` button. */
+  FPL_SCANCODE_AUDIOSTOP = 260, /**< Keyboard `Stop audio` button. */
+  FPL_SCANCODE_AUDIOPLAY = 261, /**< Keyboard `Play audio` button. */
+  FPL_SCANCODE_AUDIOMUTE = 262, /**< Keyboard `Mute` button. */
   FPL_SCANCODE_MEDIASELECT = 263,
   FPL_SCANCODE_WWW = 264,
   FPL_SCANCODE_MAIL = 265,
-  FPL_SCANCODE_CALCULATOR = 266,
+  FPL_SCANCODE_CALCULATOR = 266, /**< Keyboard `Calculator` button. */
   FPL_SCANCODE_COMPUTER = 267,
   FPL_SCANCODE_AC_SEARCH = 268,
   FPL_SCANCODE_AC_HOME = 269,
@@ -340,34 +345,24 @@ typedef enum {
   FPL_SCANCODE_AC_STOP = 272,
   FPL_SCANCODE_AC_REFRESH = 273,
   FPL_SCANCODE_AC_BOOKMARKS = 274,
-
-  /* @} */ /* Usage page 0x0C */
-
-  /**
-   *  \name Walther keys
-   *
-   *  These are values that Christian Walther added (for mac keyboard?).
-   */
-  /* @{ */
-  FPL_SCANCODE_BRIGHTNESSDOWN = 275,
-  FPL_SCANCODE_BRIGHTNESSUP = 276,
+  FPL_SCANCODE_BRIGHTNESSDOWN = 275, /**< Keyboard `Brightness Down`. */
+  FPL_SCANCODE_BRIGHTNESSUP = 276, /**< Keyboard `Brightness Up`. */
   FPL_SCANCODE_DISPLAYSWITCH = 277, /**< display mirroring/dual display
                                          switch, video mode switch */
   FPL_SCANCODE_KBDILLUMTOGGLE = 278,
   FPL_SCANCODE_KBDILLUMDOWN = 279,
   FPL_SCANCODE_KBDILLUMUP = 280,
-  FPL_SCANCODE_EJECT = 281,
-  FPL_SCANCODE_SLEEP = 282,
+  FPL_SCANCODE_EJECT = 281, /**< Keyboard `Eject`. */
+  FPL_SCANCODE_SLEEP = 282, /**< Keyboard `Sleep`. */
   FPL_SCANCODE_APP1 = 283,
   FPL_SCANCODE_APP2 = 284,
 
-  /* @} */ /* Walther keys */
-
   /* Add any other keys here. */
-  SDL_NUM_SCANCODES = 512 /**< not a key, just marks the number of scancodes
+  FPL_NUM_SCANCODES = 512 /**< not a key, just marks the number of scancodes
                                for array bounds */
 } FPL_SCANCODE;
 
+/** @} */
 }  // namespace fplbase
 
 #endif  // FPLBASE_KEYBOARD_SCANCODES_H

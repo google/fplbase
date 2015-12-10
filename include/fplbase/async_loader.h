@@ -31,6 +31,10 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_async_loader
+/// @{
+
 typedef void *Thread;
 typedef void *Mutex;
 typedef void *Semaphore;
@@ -42,9 +46,16 @@ class AsyncLoader;
 ///        this.
 class AsyncAsset : public Asset {
  public:
+  /// @brief Default constructor for an empty AsyncAsset.
   AsyncAsset() : data_(nullptr) {}
+
+  /// @brief Construct an AsyncAsset with a given file name.
+  /// @param[in] filename A C-string corresponding to the name of the asset
+  /// file.
   explicit AsyncAsset(const char *filename)
       : filename_(filename), data_(nullptr) {}
+
+  /// @brief AsyncAsset destructor.
   virtual ~AsyncAsset() {}
 
   /// @brief Override with the actual loading behavior.
@@ -66,7 +77,7 @@ class AsyncAsset : public Asset {
   /// @brief Performs a synchronous load by calling Load & Finalize.
   ///
   /// Not used by the loader thread, should be called on the main thread.
-  /// Returns false on failure.
+  /// @return Returns false on failure.
   bool LoadNow() {
     Load();
     bool ok = data_ != nullptr;
@@ -89,7 +100,9 @@ class AsyncAsset : public Asset {
   const std::string &filename() const { return filename_; }
 
  protected:
+  /// @brief The resource file name.
   std::string filename_;
+  /// @brief The resource data.
   const uint8_t *data_;
 
   friend class AsyncLoader;
@@ -163,6 +176,7 @@ class AsyncLoader {
 #endif
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_ASYNC_LOADER_H
