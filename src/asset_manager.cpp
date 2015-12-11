@@ -351,15 +351,14 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
     Texture *atlas_texture = LoadTexture(atlasdef->texture_filename()->c_str());
     atlas = new TextureAtlas();
     atlas->set_atlas_texture(atlas_texture);
-    atlas->set_size(LoadVec2i(atlasdef->size()));
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
       flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
       atlas->index_map().insert(std::make_pair(
           atlasdef->entries()->Get(index)->name()->str(), index));
-      vec2i size = LoadVec2i(atlasdef->entries()->Get(index)->size());
-      vec2i location = LoadVec2i(atlasdef->entries()->Get(index)->location());
+      vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
+      vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
       atlas->subtexture_bounds().push_back(
-          vec4i(location.x(), location.y(), size.x(), size.y()));
+          vec4(location.x(), location.y(), size.x(), size.y()));
     }
     texture_atlas_map_[filename] = atlas;
     return atlas;

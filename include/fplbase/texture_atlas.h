@@ -23,8 +23,7 @@
 
 namespace fplbase {
 
-using mathfu::vec2i;
-using mathfu::vec4i;
+using mathfu::vec4;
 
 class Texture;
 
@@ -33,7 +32,8 @@ class Texture;
 ///
 /// A TextureAtlas supports sprite sheets by containing one texture and a list
 /// of subtexture bounding boxes, which can also be indexed by name using the
-/// index_map.
+/// index_map.  Subtexture bounding boxes are returned in normalized texture
+/// coordinates, and take the form (u, v, width, height).
 ///
 /// @warning This is will very likely be refactored.
 class TextureAtlas {
@@ -52,7 +52,7 @@ class TextureAtlas {
   /// @param name Name of the subtexture to lookup.
   /// @returns Bounds of the subtexture or nullptr if the specified name isn't
   /// found.
-  const vec4i *GetBounds(const std::string &name) {
+  const vec4 *GetBounds(const std::string &name) {
     auto index_iter = index_map_.find(name);
     if (index_iter != index_map_.end()) {
       return &subtexture_bounds_[index_iter->second];
@@ -69,16 +69,7 @@ class TextureAtlas {
   /// @brief Set the texture associated with this atlas.
   void set_atlas_texture(Texture *atlas_texture) {
     atlas_texture_ = atlas_texture;
-    if (atlas_texture && atlas_texture->id()) {
-      set_size(atlas_texture->size());
-    }
   }
-
-  /// @brief Get the size of the overall texture.
-  /// @return Size of the overall texture.
-  const vec2i &size() const { return size_; }
-  /// @brief Set the size of the overall texture.
-  void set_size(const vec2i &size) { size_ = size; }
 
   /// @brief Get a vector of the bounds of each subtexture in this atlas.
   ///
@@ -87,10 +78,10 @@ class TextureAtlas {
   /// atlased texture and sizex / sizey are the dimensions of the subtexture.
   ///
   /// @returns Vector of subtexture bounds.
-  const std::vector<vec4i> &subtexture_bounds() const {
+  const std::vector<vec4> &subtexture_bounds() const {
     return subtexture_bounds_;
   }
-  std::vector<vec4i> &subtexture_bounds() { return subtexture_bounds_; }
+  std::vector<vec4> &subtexture_bounds() { return subtexture_bounds_; }
 
   /// @brief Get a map of subtexture names to subtexture offsets.
   ///
@@ -105,10 +96,8 @@ class TextureAtlas {
  private:
   // Texture being used by this atlas.
   Texture *atlas_texture_;
-  // Size of the texture/
-  vec2i size_;
   // List of bounds (offsetx, offsety, sizex, sizey) of each subtexture.
-  std::vector<vec4i> subtexture_bounds_;
+  std::vector<vec4> subtexture_bounds_;
   // Map of subtexture names to indices into subtexture_bounds_.
   std::map<std::string, size_t> index_map_;
 };

@@ -21,17 +21,15 @@ namespace atlasdef;
 table TextureAtlasEntry {
   // Name of the atlas entry (subtexture).
   name: string;
-  // Offset of the subtexture in the atlased texture.
-  location: fplbase.Vec2i;
-  // Size of the subtexture.
-  size: fplbase.Vec2i;
+  // Offset of the subtexture in the atlased texture in normalized coordinates.
+  location: fplbase.Vec2;
+  // Size of the subtexture in normalized coordinates.
+  size: fplbase.Vec2;
 }
 
 table TextureAtlas {
   // Name of the texture file to load and reference from this atlas.
   texture_filename: string;
-  // Expected size of the texture being loaded.
-  size: fplbase.Vec2i;
   // List of atlas entries / subtextures which reference regions of the
   // texture_filename.
   entries: [TextureAtlasEntry];
