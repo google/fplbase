@@ -1,6 +1,11 @@
 Building for iOS    {#fplbase_guide_ios}
 ================
 
+<!-- Include the JavaScript to template in iOS SDK specific code snippets. -->
+\htmlonly
+<script src="iossdkversions.js"></script>
+\endhtmlonly
+
 # Version Requirements
 
 Following are the minimum tested versions of tools and libraries you
@@ -26,20 +31,22 @@ need to build [FPLBase][] for [OS X][]:
 
 # Building with Xcode
 
+<!-- Templated from JSON parsing in JS. -->
+<div id="ios-sdk-version-select"></div>
+
 1. Build `flatc` for the host architecture and add it to your `PATH`:
 ~~~{.sh}
     cd fplbase/dependencies/flatbuffers
     cmake -GXcode . && xcodebuild
-    mkdir -p ~/bin && cp flatc ~/bin
+    mkdir -p ~/bin && cp Debug/flatc ~/bin
     export PATH=$PATH:~/bin
 ~~~
 
 2. Build `libSDL2` for the Simulator architecture using the upstream
    provided `xcodeproj` from the `fplbase/dependencies/sdl` directory:
-~~~{.sh}
-    cd ../sdl
-    xcodebuild ARCHS="x86_64 i386" -project Xcode-iOS/SDL/SDL.xcodeproj -sdk iphonesimulator8.3 build
-~~~
+
+   <!--Templated from JSON in JS.-->
+   <div id="build-sdl-iphonesimulator-code"></div>
 
 3. Generate the [Xcode][] project needs to be generated using [CMake][] from the
    root `fplbase/` folder:
