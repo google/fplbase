@@ -38,14 +38,14 @@ typedef void *Semaphore;
 class AsyncLoader;
 
 /// @class AsyncResource
-/// @brief Any resource intended to be loaded asynchronously should inherit from
+/// @brief Any resource that can be loaded asynchronously should inherit from
 ///        this.
-class AsyncResource : public Asset {
+class AsyncAsset : public Asset {
  public:
-  AsyncResource() : data_(nullptr) {}
-  explicit AsyncResource(const char *filename)
+  AsyncAsset() : data_(nullptr) {}
+  explicit AsyncAsset(const char *filename)
       : filename_(filename), data_(nullptr) {}
-  virtual ~AsyncResource() {}
+  virtual ~AsyncAsset() {}
 
   /// @brief Override with the actual loading behavior.
   ///
@@ -60,7 +60,20 @@ class AsyncResource : public Asset {
   ///
   /// This should implement the behavior of turning data_ into the actual
   /// desired resource. Called on the main thread only.
+  /// Should check if data_ is null.
   virtual void Finalize() = 0;
+
+  /// @brief Performs a synchronous load by calling Load & Finalize.
+  ///
+  /// Not used by the loader thread, should be called on the main thread.
+  /// Returns false on failure.
+  bool LoadNow() {
+    Load();
+    bool ok = data_ != nullptr;
+    // Call this even if data_ is null, to enforce Finalize() checking for it.
+    Finalize();
+    return ok;
+  }
 
   /// @brief Sets the filename that should be loaded.
   ///
@@ -77,13 +90,13 @@ class AsyncResource : public Asset {
 
  protected:
   std::string filename_;
-  uint8_t *data_;
+  const uint8_t *data_;
 
   friend class AsyncLoader;
 };
 
 /// @class AsyncLoader
-/// @brief Handles loading AsyncResource objects.
+/// @brief Handles loading AsyncAsset objects.
 class AsyncLoader {
  public:
   AsyncLoader();
@@ -94,7 +107,7 @@ class AsyncLoader {
   /// Call this any number of times before StartLoading.
   ///
   /// @param res The resource to queue for loading.
-  void QueueJob(AsyncResource *res);
+  void QueueJob(AsyncAsset *res);
 
   /// @brief Launches the loading thread for the previously queued jobs.
   void StartLoading();
@@ -129,7 +142,7 @@ class AsyncLoader {
   void LoaderWorker();
   static int LoaderThread(void *user_data);
 
-  std::vector<AsyncResource *> queue_, done_;
+  std::vector<AsyncAsset *> queue_, done_;
 
 #ifdef FPL_BASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to

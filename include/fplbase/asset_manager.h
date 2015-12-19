@@ -29,7 +29,9 @@ namespace fplbase {
 
 /// @class FileAsset
 /// @brief A generic asset whose contents the AssetManager doesn't care about.
-class FileAsset : public Asset {
+class FileAsset : public AsyncAsset {
+  virtual void Load();
+  virtual void Finalize();
  public:
   std::string contents;
 };
@@ -91,17 +93,20 @@ class AssetManager {
 
   /// @brief Queue loading a texture if it hasn't been loaded already.
   ///
-  /// Queues a texture for loading if it hasn't been loaded already.
+  /// If async, queues a texture for loading if it hasn't been loaded already,
+  /// otherwise loads it directly.
   /// Currently only supports TGA/WebP format files.
-  /// Returned texture isn't usable until TryFinalize() succeeds and the id
-  /// is non-zero.
+  /// If async, the returned texture isn't usable until TryFinalize() succeeds
+  /// and the id is non-zero.
   ///
   /// @param filename The name of the texture to load.
   /// @param format The texture format, defaults to kFormatAuto.
   /// @param mipmaps If mipmaps should be used, defaults to true.
-  /// @return Returns an unloaded texture object.
+  /// @param async Whether to load the texture asynchronously.
+  /// @return Returns an unloaded texture object. If not async, may also
+  ///         return null to signal and error.
   Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
-                       bool mipmaps = true);
+                       bool mipmaps = true, bool async = true);
 
   /// @brief Start loading all previously queued textures.
   ///
@@ -244,6 +249,26 @@ class AssetManager {
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
+
+  // This implements the mechanism for each asset to be both loadable
+  // sync or async.
+  // It gets passed a blank asset that we take ownership of, and the map it
+  // should go into if all succeeds.
+  template<typename T> T *LoadOrQueue(T *asset,
+                                      std::map<std::string, T *> asset_map,
+                                      bool async) {
+    if (async) {
+      loader_.QueueJob(asset);
+    } else {
+      bool ok = asset->LoadNow();
+      if (!ok) {
+        delete asset;
+        return nullptr;
+      }
+    }
+    asset_map[asset->filename()] = asset;
+    return asset;
+  }
 
   Renderer &renderer_;
   std::map<std::string, Shader *> shader_map_;

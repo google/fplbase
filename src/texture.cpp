@@ -40,7 +40,7 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
 void Texture::Finalize() {
   if (data_) {
     id_ = CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
-    free(data_);
+    free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
 }
@@ -268,7 +268,7 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
 
   *dimensions = vec2i(config.output.width, config.output.height);
   *has_alpha = config.input.has_alpha != 0;
-  return config.output.private_memory;
+  return config.output.private_memory;  // Allocated with malloc by webp.
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,

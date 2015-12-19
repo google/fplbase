@@ -32,6 +32,18 @@ using mathfu::vec4i;
 
 namespace fplbase {
 
+void FileAsset::Load() {
+  if (LoadFile(filename_.c_str(), &contents)) {
+    // This is just to signal the load succeeded. data_ doesn't own the memory.
+    data_ = reinterpret_cast<const uint8_t *>(contents.c_str());
+  }
+}
+
+void FileAsset::Finalize() {
+  // Since the asset was already "created", this is all we have to do here.
+  data_ = nullptr;
+}
+
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
         kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
@@ -171,13 +183,11 @@ Texture *AssetManager::FindTexture(const char *filename) {
 }
 
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
-                                   bool mipmaps) {
+                                   bool mipmaps, bool async) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
   tex = new Texture(filename, format, mipmaps);
-  loader_.QueueJob(tex);
-  texture_map_[filename] = tex;
-  return tex;
+  return LoadOrQueue(tex, texture_map_, async);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
@@ -213,7 +223,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
               : kFormatAuto;
       auto tex = LoadTexture(matdef->texture_filenames()->Get(index)->c_str(),
-                             format, matdef->mipmaps() != 0);
+                             format, matdef->mipmaps() != 0, false);
       mat->textures().push_back(tex);
 
       auto original_size =

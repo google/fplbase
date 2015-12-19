@@ -23,15 +23,15 @@
 namespace fplbase {
 
 // Push this to signal the worker thread that it's time to quit.
-class BookendAsyncResource : public AsyncResource {
+class BookendAsyncResource : public AsyncAsset {
   static const char *kBookendFileName;
 
  public:
-  BookendAsyncResource() : AsyncResource(kBookendFileName) {}
+  BookendAsyncResource() : AsyncAsset(kBookendFileName) {}
   virtual ~BookendAsyncResource() {}
   virtual void Load() {}
   virtual void Finalize() {}
-  static bool IsBookend(const AsyncResource &res) {
+  static bool IsBookend(const AsyncAsset &res) {
     return res.filename() == kBookendFileName;
   }
 };
@@ -59,14 +59,14 @@ AsyncLoader::~AsyncLoader() {
   }
 }
 
-void AsyncLoader::QueueJob(AsyncResource *res) {
+void AsyncLoader::QueueJob(AsyncAsset *res) {
   Lock([this, res]() { queue_.push_back(res); });
   SDL_SemPost(static_cast<SDL_semaphore *>(job_semaphore_));
 }
 
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    auto res = LockReturn<AsyncResource *>(
+    auto res = LockReturn<AsyncAsset *>(
         [this]() { return queue_.empty() ? nullptr : queue_[0]; });
     if (!res) {
       SDL_SemWait(static_cast<SDL_semaphore *>(job_semaphore_));
@@ -103,7 +103,7 @@ void AsyncLoader::StopLoadingWhenComplete() {
 
 bool AsyncLoader::TryFinalize() {
   for (;;) {
-    auto res = LockReturn<AsyncResource *>(
+    auto res = LockReturn<AsyncAsset *>(
         [this]() { return done_.empty() ? nullptr : done_[0]; });
     if (!res) break;
     res->Finalize();

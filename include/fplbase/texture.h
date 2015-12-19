@@ -43,11 +43,11 @@ typedef unsigned int TextureHandle;
 /// @brief Abstraction for a texture object loaded on the GPU.
 ///
 /// Contains functions for loading, marshalling, and disposal of textures.
-class Texture : public AsyncResource {
+class Texture : public AsyncAsset {
  public:
   explicit Texture(const char *filename = nullptr,
                    TextureFormat format = kFormatAuto, bool mipmaps = true)
-      : AsyncResource(filename ? filename : ""),
+      : AsyncAsset(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),

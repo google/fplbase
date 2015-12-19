@@ -28,7 +28,7 @@ AsyncLoader::~AsyncLoader() {
   worker_thread_.join();
 }
 
-void AsyncLoader::QueueJob(AsyncResource* res) {
+void AsyncLoader::QueueJob(AsyncAsset *res) {
   {
     std::unique_lock<std::mutex> lock(mutex_);
     queue_.push_back(res);
@@ -44,7 +44,7 @@ void AsyncLoader::StopLoadingWhenComplete() { QueueJob(nullptr); }
 
 bool AsyncLoader::TryFinalize() {
   for (;;) {
-    AsyncResource* resource = nullptr;
+    AsyncAsset *resource = nullptr;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (done_.size() > 0) resource = done_[0];
@@ -68,7 +68,7 @@ bool AsyncLoader::TryFinalize() {
 
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    AsyncResource* resource = nullptr;
+    AsyncAsset *resource = nullptr;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       job_cv_.wait(lock, [this]() { return queue_.size() > 0; });
@@ -90,8 +90,8 @@ void AsyncLoader::LoaderWorker() {
 }
 
 // static
-int AsyncLoader::LoaderThread(void* user_data) {
-  reinterpret_cast<AsyncLoader*>(user_data)->LoaderWorker();
+int AsyncLoader::LoaderThread(void *user_data) {
+  reinterpret_cast<AsyncLoader *>(user_data)->LoaderWorker();
   return 0;
 }
 }  // namespace fplbase
