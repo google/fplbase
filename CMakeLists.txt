@@ -123,8 +123,9 @@ if(NOT fplbase_use_external_sdl2)
       set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
       set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
     elseif(MSVC)
-      set(CMAKE_CXX_FLAGS "/W4" PARENT_SCOPE)
-      set(CMAKE_C_FLAGS "" PARENT_SCOPE)
+      set(CMAKE_CXX_FLAGS "/W0 /MP" PARENT_SCOPE)
+      set(CMAKE_C_FLAGS "/W0 /MP" PARENT_SCOPE)
+      add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
     endif()
   endfunction()
 
@@ -165,7 +166,9 @@ endif()
 set(original_build_type ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release)
 if(NOT fplbase_only_flatc AND NOT TARGET webp)
+  set_compiler_flags_for_external_libraries()
   add_subdirectory("${dependencies_webp_cmake_dir}" ${tmp_dir}/webp)
+  restore_compiler_flags()
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
 
@@ -236,7 +239,6 @@ set(fplbase_common_SRCS
   src/asset_manager.cpp
   src/material.cpp
   src/mesh.cpp
-  src/precompiled.cpp
   src/precompiled.h
   src/renderer.cpp
   src/render_target.cpp
@@ -278,8 +280,10 @@ endif()
 set(C_FLAGS_WARNINGS "")
 if(MSVC)
   # C4127: conditional expression is constant
-  set(C_FLAGS_WARNINGS "/W4 /wd4127")
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  # C4577: 'noexcept' used with no exception handling mode specified.
+  set(C_FLAGS_WARNINGS "/W4 /wd4127 /wd4577")
+  set(CMAKE_CXX_FLAGS "/MP")
+  add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
        CMAKE_COMPILER_IS_CLANGXX)
   add_definitions(-g)

@@ -27,37 +27,42 @@
 #define PLATFORM_MOBILE
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
-#else
+#else  // !defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #include <OpenGL/gl.h>
 #define glDrawElementsInstanced glDrawElementsInstancedARB
-#endif
-#else
+#endif  // defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+
+#else  // !defined(__APPLE__)
 #ifdef __ANDROID__
 #define PLATFORM_MOBILE
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 18
 #include <GLES3/gl3.h>
-#else
+#else  // __ANDROID_API__ < 18
 #include <GLES2/gl2.h>
 #include "gl3stub.h"
-#endif
-#else  // WIN32 & Linux
+#endif  // __ANDROID_API__ < 18
+
+#else  // !defined(__ANDROID__), so WIN32 & Linux
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
+#endif  // !defined(WIN32_LEAN_AND_MEAN)
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif  // !defined(NOMINMAX)
 #include <windows.h>
-#endif
+#endif  // !defined(_WIN32)
+
 #include <GL/gl.h>
 #include <GL/glext.h>
 #if !defined(GL_GLEXT_PROTOTYPES)
 #ifdef _WIN32
 #define GLBASEEXTS GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)
-#else
+#else   // !defined(_WIN32)
 #define GLBASEEXTS
-#endif
+#endif  // !defined(_WIN32)
 #define GLEXTS                                                                \
   GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers)                          \
       GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer)                   \
@@ -115,9 +120,9 @@
 GLBASEEXTS
 GLEXTS
 #undef GLEXT
-#endif
 #endif  //  !defined(GL_GLEXT_PROTOTYPES)
-#endif
+#endif  //  !defined(__ANDROID__), so WIN32 & Linux
+#endif  //  !defined(__APPLE__)
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.
 // This logs GL error when LOG_GL_ERRORS below is defined.

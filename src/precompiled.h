@@ -33,7 +33,6 @@
 
 #if defined(_WIN32)
 #include <direct.h>  // for _chdir
-#define NOMINMAX
 #else                // !defined(_WIN32)
 #include <unistd.h>  // for chdir
 #endif               // !defined(_WIN32)
