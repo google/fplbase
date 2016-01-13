@@ -119,7 +119,7 @@ if(NOT fplbase_use_external_sdl2)
 
     # Suppress all warnings.
     if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
-       CMAKE_COMPILER_IS_CLANGXX)
+       CMAKE_COMPILER_IS_CLANGXX OR APPLE)
       set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
       set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
     elseif(MSVC)
@@ -156,6 +156,8 @@ if(NOT fplbase_use_external_sdl2)
 
   if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
     set_compiler_flags_for_external_libraries()
+    # SDL appends EXTRA_CFLAGS to its CMAKE_CFLAGS
+    list(APPEND EXTRA_CFLAGS ${CMAKE_C_FLAGS})
     add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
     restore_compiler_flags()
   endif()
