@@ -120,9 +120,9 @@
 GLBASEEXTS
 GLEXTS
 #undef GLEXT
-#endif  //  !defined(GL_GLEXT_PROTOTYPES)
-#endif  //  !defined(__ANDROID__), so WIN32 & Linux
-#endif  //  !defined(__APPLE__)
+#endif  // !defined(GL_GLEXT_PROTOTYPES)
+#endif  // !defined(__ANDROID__), so WIN32 & Linux
+#endif  // !defined(__APPLE__)
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.
 // This logs GL error when LOG_GL_ERRORS below is defined.
