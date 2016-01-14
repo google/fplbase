@@ -19,22 +19,28 @@
 #include <string>
 #endif  // defined(__ANDROID__)
 
-#ifdef FPL_BASE_BACKEND_STDLIB
+#if defined(FPL_BASE_BACKEND_STDLIB)
 #define _CRT_SECURE_NO_DEPRECATE
 #include <fcntl.h>
 #include <stdarg.h>
 #include <cstdio>
 
 #if defined(__ANDROID__)
-#ifdef FPL_BASE_BACKEND_SDL
+#if defined(FPL_BASE_BACKEND_SDL)
 #include "SDL_thread.h"
-#endif
+#endif // defined(FPL_BASE_BACKEND_SDL)
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
 }
-#endif
-#endif
+#endif // defined(__ANDROID__)
+
+#if defined(__APPLE__)
+#include "TargetConditionals.h"
+#include <CoreFoundation/CoreFoundation.h>
+#endif  // defined(__APPLE__)
+
+#endif  // defined(FPL_BASE_BACKEND_STDLIB)
 
 namespace fplbase {
 
@@ -443,9 +449,27 @@ inline int chdir(const char *dirname) { return _chdir(dirname); }
 // false otherwise.
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir) {
+  std::string target_dir_str(target_dir);
+
+#if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
+  // Get the target directory from the Bundle instead of using the directory
+  // specified by the client.
+  CFBundleRef main_bundle = CFBundleGetMainBundle();
+  CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
+  char path[PATH_MAX];
+  if (!CFURLGetFileSystemRepresentation(
+          resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+    LogError(kError, "Could not set the bundle directory");
+    return false;
+  }
+  CFRelease(resources_url);
+  target_dir_str = path;
+#endif
+
 #if !defined(__ANDROID__) && !(defined __IOS__)
   {
     std::string current_dir = binary_dir;
+    const std::string separator_str(1, flatbuffers::kPathSeparator);
 
     // Search up the tree from the directory containing the binary searching
     // for target_dir.
@@ -457,9 +481,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
       if (success) break;
       char real_path[256];
       current_dir = getcwd(real_path, sizeof(real_path));
-      std::string target = current_dir +
-                           std::string(1, flatbuffers::kPathSeparator) +
-                           std::string(target_dir);
+      std::string target = current_dir + separator_str + target_dir_str;
       success = chdir(target.c_str());
       if (success == 0) return true;
     }
