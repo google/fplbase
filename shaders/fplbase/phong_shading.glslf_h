@@ -1,0 +1,62 @@
+// Copyright 2016 Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Variables used in lighting:
+uniform vec4 ambient_material;
+uniform vec4 diffuse_material;
+uniform vec4 specular_material;
+uniform float shininess;
+
+// Shade vertex using Phong lighting model.
+//
+// Includes diffuse lighting and ambient lighting.
+//
+// Returns the ambient and diffuse colors to be applied to the texture color
+// being changed.
+lowp vec4 CalculatePhong(vec3 current_position, vec3 normal_vector,
+                         vec3 light_direction) {
+  // If facing doesn't matter, change this to abs(<dot product>) instead of max.
+  float diffuse = max(0.0, dot(normal_vector, light_direction));
+
+  return diffuse_material * diffuse + ambient_material;
+}
+
+// Apply specular shading to a point.
+//
+// Some GPUs might be too slow to able to handle this math, so it should be
+// called separately from the Phong shading function if specular light is
+// desired.
+//
+// Returns the specular highlight for a point, and should be used with the
+// texture color being changed as follows:
+//
+//      texture_color += texture_color * CalculateSpecular(...);
+//
+lowp vec4 CalculateSpecular(vec3 current_position, vec3 normal_vector,
+                            vec3 light_direction, vec3 camera_pos) {
+  vec3 camera_vector = normalize(camera_pos - current_position);
+  vec3 half_vector = normalize(light_direction + camera_vector);
+
+  // If facing doesn't matter, change this to abs(<dot product>) instead of max.
+  float specular = max(0.0, dot(normal_vector, half_vector));
+  specular = pow(specular, shininess);
+
+  return specular_material * specular;
+}
+
+// Find the normalized light vector according to a current position and a
+// light position.
+vec3 CalculateLightDirection(vec3 current_position, vec3 light_pos) {
+  return normalize(light_pos - current_position);
+}
