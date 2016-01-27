@@ -34,7 +34,7 @@ namespace fplbase {
 ///
 /// @param v The Flatbuffer Vec2 to convert.
 /// @return Returns a converted mathfu vec2.
-inline const mathfu::vec2 LoadVec2(const Vec2* v) {
+inline mathfu::vec2 LoadVec2(const Vec2* v) {
   // Note: eschew the constructor that loads contiguous floats. It's faster
   // than the x, y constructor we use here, but doesn't account for the
   // endian swap that might occur in Vec3::x().
@@ -45,7 +45,7 @@ inline const mathfu::vec2 LoadVec2(const Vec2* v) {
 ///
 /// @param v The Flatbuffer Vec3 to convert.
 /// @return Returns a converted mathfu vec3.
-inline const mathfu::vec3 LoadVec3(const Vec3* v) {
+inline mathfu::vec3 LoadVec3(const Vec3* v) {
   return mathfu::vec3(v->x(), v->y(), v->z());
 }
 
@@ -53,7 +53,7 @@ inline const mathfu::vec3 LoadVec3(const Vec3* v) {
 ///
 /// @param v The Flatbuffer Vec4 to convert.
 /// @return Returns a converted mathfu vec4.
-inline const mathfu::vec4 LoadVec4(const Vec4* v) {
+inline mathfu::vec4 LoadVec4(const Vec4* v) {
   return mathfu::vec4(v->x(), v->y(), v->z(), v->w());
 }
 
@@ -61,7 +61,7 @@ inline const mathfu::vec4 LoadVec4(const Vec4* v) {
 ///
 /// @param v The Flatbuffer Vec2i to convert.
 /// @return Returns a converted mathfu vec2i.
-inline const mathfu::vec2i LoadVec2i(const Vec2i* v) {
+inline mathfu::vec2i LoadVec2i(const Vec2i* v) {
   return mathfu::vec2i(v->x(), v->y());
 }
 
@@ -69,7 +69,7 @@ inline const mathfu::vec2i LoadVec2i(const Vec2i* v) {
 ///
 /// @param v The Flatbuffer Vec3i to convert.
 /// @return Returns a converted mathfu vec3i.
-inline const mathfu::vec3i LoadVec3i(const Vec3i* v) {
+inline mathfu::vec3i LoadVec3i(const Vec3i* v) {
   return mathfu::vec3i(v->x(), v->y(), v->z());
 }
 
@@ -77,7 +77,7 @@ inline const mathfu::vec3i LoadVec3i(const Vec3i* v) {
 ///
 /// @param v The Flatbuffer Vec4i to convert.
 /// @return Returns a converted mathfu vec4i.
-inline const mathfu::vec4i LoadVec4i(const Vec4i* v) {
+inline mathfu::vec4i LoadVec4i(const Vec4i* v) {
   return mathfu::vec4i(v->x(), v->y(), v->z(), v->w());
 }
 
@@ -85,7 +85,7 @@ inline const mathfu::vec4i LoadVec4i(const Vec4i* v) {
 ///
 /// @param axis The Flatbuffer Axis to convert.
 /// @return Returns the corresponding unit length mathfu vec3.
-inline const mathfu::vec3 LoadAxis(Axis axis) {
+inline mathfu::vec3 LoadAxis(Axis axis) {
   return axis == Axis_X ? mathfu::kAxisX3f : axis == Axis_Y ? mathfu::kAxisY3f
                                                             : mathfu::kAxisZ3f;
 }
@@ -94,8 +94,16 @@ inline const mathfu::vec3 LoadAxis(Axis axis) {
 ///
 /// @param c The Flatbuffer ColorRGBA to convert.
 /// @return Returns a converted mathfu vec4.
-inline const mathfu::vec4 LoadColorRGBA(const ColorRGBA* c) {
+inline mathfu::vec4 LoadColorRGBA(const ColorRGBA* c) {
   return mathfu::vec4(c->r(), c->g(), c->b(), c->a());
+}
+
+/// @brief Converts a vec4 to a ColorRGBA.
+///
+/// @param v The mathfu vec4 to convert.
+/// @return Returns a converted ColorRGBA.
+inline ColorRGBA Vec4ToColorRGBA(const mathfu::vec4& v) {
+  return ColorRGBA(v.x(), v.y(), v.z(), v.w());
 }
 
 /// @brief Converts a Mat3x4 to a mat4.
