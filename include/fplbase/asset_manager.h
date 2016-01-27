@@ -264,7 +264,7 @@ class AssetManager {
   // It gets passed a blank asset that we take ownership of, and the map it
   // should go into if all succeeds.
   template<typename T> T *LoadOrQueue(T *asset,
-                                      std::map<std::string, T *> asset_map,
+                                      std::map<std::string, T *> &asset_map,
                                       bool async) {
     if (async) {
       loader_.QueueJob(asset);
