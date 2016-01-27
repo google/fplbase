@@ -12,6 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Blinn-Phong shading model (aka modified Phong reflection model)
+//
+// Diffuse:
+// Uses a Lambertian diffuse term, which is calculated using a clamped cosine
+// factor calculated by taking max(0, n · l), where n is the normal vector and
+// l is the light vector.
+//
+// Ambient:
+// The ambient color is set as a uniform (ambient_material) and applied without
+// further calculation because it is a "cheat" to mimic the reflection of light
+// from other surfaces.
+//
+// Specular:
+// Uses a halfway vector between the light source and the viewer to avoid
+// calculating r · v too many times, where r is the reflection vector and
+// v is the viewer vector.
+// Similar to the diffuse term, the specular term uses a clamped cosine factor
+// by taking max(0, n · h), where n is the normal vector and h is the halfway
+// vector.
+// It also uses a specular exponent (shininess) to represent the surface
+// smoothness.
+//
+// For more information, please visit:
+//      https://en.wikipedia.org/wiki/Blinn–Phong_shading_model
+
 // Variables used in lighting:
 uniform vec4 ambient_material;
 uniform vec4 diffuse_material;
