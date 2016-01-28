@@ -83,7 +83,7 @@ upon so download the source using:
   [Android]: http://www.android.com
   [Build Configurations]: @ref fplbase_build_config
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
-  [FPLBase Google Group]: http://group.google.com/group/fplbaselib
+  [FPLBase Google Group]: http://groups.google.com/group/fplbaselib
   [FPLBase Issues Tracker]: http://github.com/google/fplbase/issues
   [FPLBase]: @ref fplbase_overview
   [Introduction]: @ref fplbase_introduction
