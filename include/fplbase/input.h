@@ -27,7 +27,12 @@
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
-#if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
+
+#if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__) && \
+    !defined(FPL_BASE_BACKEND_STDLIB)
 // Enable the android gamepad code.  It receives input events from java, via
 // JNI, and creates a local representation of the state of any connected
 // gamepads.  Also enables the gamepad_controller controller class.
@@ -35,7 +40,8 @@
 #include "pthread.h"
 #endif  // !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
 
-#if !defined(ANDROID_HMD) && defined(__ANDROID__)
+#if !defined(ANDROID_HMD) && defined(__ANDROID__) && \
+    !defined(FPL_BASE_BACKEND_STDLIB)
 // Enable the android head mounted display (cardboard) code.  It receives
 // events about Cardboard from java, via JNI, and creates a local
 // representation of the state to be used.
@@ -464,6 +470,11 @@ class HeadMountedDisplayInput {
   /// orientation.
   int device_orientation() { return device_orientation_; }
 
+#if ANDROID_HMD
+  void InitHMDJNIReference();
+  void ClearHMDJNIReference();
+#endif
+
  private:
   void UpdateTransforms();
 
@@ -777,6 +788,9 @@ class InputSystem {
   static const int kMillisecondsPerSecond = 1000;
 
   static int HandleAppEvents(void *userdata, void *event);
+
+  // The event specific part of AdvanceFrame().
+  void UpdateEvents(mathfu::vec2i *window_size);
 
   bool exit_requested_;
   bool minimized_;

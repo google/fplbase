@@ -238,6 +238,7 @@ set(fplbase_common_SRCS
   include/fplbase/utilities.h
   include/fplbase/version.h
   schemas
+  src/input.cpp
   src/asset_manager.cpp
   src/material.cpp
   src/mesh.cpp
@@ -252,12 +253,13 @@ set(fplbase_common_SRCS
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
   src/async_loader.cpp
-  src/input.cpp
+  src/input_sdl.cpp
   src/main.cpp)
 
 set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
-  src/async_loader_stdlib.cpp)
+  src/async_loader_stdlib.cpp
+  src/input_stdlib.cpp)
 
 # Includes for this project.
 include_directories(src)

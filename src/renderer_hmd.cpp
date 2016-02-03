@@ -86,6 +86,8 @@ void SetCardboardButtonEnabled(bool enabled) {
   env->DeleteLocalRef(activity);
 }
 
+#if ANDROID_HMD
+
 // Prepare to render to a Head Mounted Display.
 void HeadMountedDisplayRenderStart(
     const HeadMountedDisplayInput& head_mounted_display_input,
@@ -120,5 +122,7 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
     renderer->SetBlendMode(kBlendModeOff);
   }
 }
+
+#endif  // ANDROID_HMD
 
 }  // namespace fplbase
