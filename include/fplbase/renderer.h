@@ -148,11 +148,6 @@ class Renderer {
   /// @param on Should depth testing be enabled.
   void DepthTest(bool on);
 
-  /// @brief Set the current render target.
-  ///
-  /// @param render_target The target to use for rendering.
-  void SetRenderTarget(const RenderTarget &render_target);
-
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
   /// @param pos The lower left corner of the scissor box.
