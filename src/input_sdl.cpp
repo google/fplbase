@@ -509,8 +509,7 @@ int Gamepad::GetGamepadCodeFromJavaKeyCode(int java_keycode) {
       {AKEYCODE_BUTTON_SELECT, Gamepad::kButtonSelect},
       // Menu should be functionality equivalent to select on Android.
       // See Table 1
-      // http://developer.android.com/training/game-controllers/\
-      //   controller-input.html
+      // http://developer.android.com/training/game-controllers/controller-input.html
       {AKEYCODE_MENU, Gamepad::kButtonSelect},
       {AKEYCODE_BUTTON_MODE, Gamepad::kButtonMode}};
   for (int i = 0; i < Gamepad::kControlCount; i++) {

@@ -326,7 +326,7 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 #else
 bool SaveFile(const char *filename, const void *data, size_t size) {
   FILE *fd = fopen(filename, "wb");
-  if (fd < 0) {
+  if (fd == NULL) {
     LogError(kError, "SaveFile fail on %s", filename);
     return false;
   }
