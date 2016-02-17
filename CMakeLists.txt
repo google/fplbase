@@ -55,46 +55,20 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 
-# Directory which contains the source for 3rd party libraries.
-if(NOT DEFINED third_party_root)
-  get_filename_component(
-    third_party_root "${CMAKE_CURRENT_LIST_DIR}/../../../../external"
-    REALPATH)
-endif()
-
-# Directory which contains source for FPL libraries.
-if(NOT DEFINED fpl_root)
-  get_filename_component(
-      fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs" REALPATH)
-endif()
-
-# If the dependencies directory exists, assume this is the root directory for
-# all libraries required by this project.
-if(NOT DEFINED dependencies_root)
-  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-  if(EXISTS "${dependencies_root}")
-    set(third_party_root "${dependencies_root}")
-    set(fpl_root "${dependencies_root}")
-  endif()
-endif()
-
 # Configurable locations of dependencies of this project.
-set(dependencies_gtest_dir "${fpl_root}/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
-set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
-    CACHE PATH "Directory containing the Flatbuffers library.")
-set(dependencies_flatbuffers_cmake_dir "${fpl_root}/flatbuffers/CMake"
-    CACHE PATH "Directory containing the Flatbuffers library cmake helpers.")
-set(dependencies_fplutil_dir "${fpl_root}/fplutil"
-    CACHE PATH "Directory containing the fplutil library.")
-set(dependencies_mathfu_dir "${fpl_root}/mathfu"
-    CACHE PATH "Directory containing the MathFu library.")
-set(dependencies_sdl_dir "${third_party_root}/sdl"
-    CACHE PATH "Directory containing the SDL library.")
+if(NOT DEFINED fpl_root)
+  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs"
+       REALPATH)
+  if(NOT EXISTS "${fpl_root}")
+    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  endif ()
+endif()
+
+include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
+set_common_build_variables()
+
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
     CACHE PATH "Directory containing the Webp cmake project.")
-set(dependencies_webp_distr_dir "${third_party_root}/webp"
-    CACHE PATH "Directory containing the Webp distribution.")
 
 # Detect clang
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
@@ -108,34 +82,6 @@ set(mathfu_build_tests OFF CACHE BOOL "")
 add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
 if(NOT fplbase_use_external_sdl2)
-  # External code should be compiled with these compiler options.
-  # Call this function before add_subdirectory([external project]), and then
-  # call restore_comiler_flags() after.
-  function(set_compiler_flags_for_external_libraries)
-    # Save current compiler flags so that we can restore them in
-    # restore_compiler_flags()
-    set(FPLBASE_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-    set(FPLBASE_SAVED_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-
-    # Suppress all warnings.
-    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
-       CMAKE_COMPILER_IS_CLANGXX OR APPLE)
-      set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
-      set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
-    elseif(MSVC)
-      set(CMAKE_CXX_FLAGS "/W0 /MP" PARENT_SCOPE)
-      set(CMAKE_C_FLAGS "/W0 /MP" PARENT_SCOPE)
-      add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
-    endif()
-  endfunction()
-
-  # Restore the compiler flags to the values they had before
-  # set_compiler_flags_for_external_libraries() was called.
-  function(restore_compiler_flags)
-    set(CMAKE_CXX_FLAGS "${FPLBASE_SAVED_CXX_FLAGS}" PARENT_SCOPE)
-    set(CMAKE_C_FLAGS "${FPLBASE_SAVED_C_FLAGS}" PARENT_SCOPE)
-  endfunction()
-
   # Include SDL in this project while working around SDL requirement of out of
   # tree builds.
   set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
@@ -279,23 +225,6 @@ if (NOT fplbase_use_external_sdl2)
 else()
   include_directories(${external_sdl2_include_dir})
 endif()
-
-# Compiler flags.
-set(C_FLAGS_WARNINGS "")
-if(MSVC)
-  # C4127: conditional expression is constant
-  # C4577: 'noexcept' used with no exception handling mode specified.
-  set(C_FLAGS_WARNINGS "/W4 /wd4127 /wd4577")
-  set(CMAKE_CXX_FLAGS "/MP")
-  add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
-       CMAKE_COMPILER_IS_CLANGXX)
-  add_definitions(-g)
-  set(CMAKE_CXX_FLAGS "-std=c++0x -pedantic -Wno-unused-function")
-  # -Wno-unused-function is because of webp encode.h
-endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
 
 if (NOT fplbase_use_external_sdl2)
   set (SDL_LIBRARIES SDL2-static)
