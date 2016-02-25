@@ -20,7 +20,9 @@
 #endif  // defined(__ANDROID__)
 
 #if defined(FPL_BASE_BACKEND_STDLIB)
+#if !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE
+#endif
 #include <fcntl.h>
 #include <stdarg.h>
 #include <cstdio>
