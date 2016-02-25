@@ -17,6 +17,7 @@
 #include "fplbase/asset_manager.h"
 #include "fplbase/flatbuffer_utils.h"
 #include "fplbase/texture.h"
+#include "fplbase/preprocessor.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
@@ -108,10 +109,10 @@ Shader *AssetManager::LoadShader(const char *basename) {
   if (shader) return shader;
   std::string vs_file, ps_file;
   std::string filename = std::string(basename) + ".glslv";
-  std::string failedfile;
-  if (LoadFileWithIncludes(filename.c_str(), &vs_file, &failedfile)) {
+  std::string error_message;
+  if (LoadFileWithDirectives(filename.c_str(), &vs_file, &error_message)) {
     filename = std::string(basename) + ".glslf";
-    if (LoadFileWithIncludes(filename.c_str(), &ps_file, &failedfile)) {
+    if (LoadFileWithDirectives(filename.c_str(), &ps_file, &error_message)) {
       shader = renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
       if (shader) {
         shader_map_[basename] = shader;
@@ -127,8 +128,8 @@ Shader *AssetManager::LoadShader(const char *basename) {
       return shader;
     }
   }
-  LogError(kError, "Can\'t load shader file: %s", failedfile.c_str());
-  renderer_.set_last_error("Couldn\'t load: " + failedfile);
+  LogError(kError, "%s", error_message.c_str());
+  renderer_.set_last_error(error_message.c_str());
   return nullptr;
 }
 

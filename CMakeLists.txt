@@ -37,6 +37,9 @@ option(fplbase_build_shader_pipeline
 option(fplbase_build_samples "Build the fplbase sample executables."
        ${fplbase_standalone_mode})
 
+# Option to enable / disable the test build.
+option(fplbase_build_tests "Build tests for this project." ${fplbase_standalone_mode})
+
 # Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 option(fplbase_use_external_sdl2 "Use external SDL library." OFF)
@@ -175,6 +178,7 @@ set(fplbase_common_SRCS
   include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
   include/fplbase/mesh.h
+  include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
   include/fplbase/render_target.h
@@ -189,6 +193,7 @@ set(fplbase_common_SRCS
   src/material.cpp
   src/mesh.cpp
   src/precompiled.h
+  src/preprocessor.cpp
   src/renderer.cpp
   src/render_target.cpp
   src/shader.cpp
@@ -376,4 +381,8 @@ endif()
 
 if(fplbase_build_samples)
   add_subdirectory(samples)
+endif()
+
+if(fplbase_build_tests)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
 endif()

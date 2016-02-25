@@ -133,23 +133,6 @@ bool LoadFile(const char *filename, std::string *dest);
 /// @return Returns the function previously set by `LoadFileFunction()`.
 LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function);
 
-/// @brief Load a file like `LoadFile()`, but scan for `#include "filename"`
-/// statements at the top of the file (only), and replace them with the contents
-/// of those files.
-///
-/// Supports recursive includes, and only ever includes each file once.
-/// The first non-`#include` line will terminate `#include` scanning, though
-/// blank lines and `//` comments are correctly ignored.
-/// @param[in] filename A UTF-8 C-string representing the file to load.
-/// @param[out] dest A pointer to a `std::string` to capture the output of
-/// the file.
-/// @param[out] failedfilename A pointer to a `std::String` that captures the
-/// filename that failed (if the function returned `false`, indicating failure).
-/// @return If this function returns false, `failedfilename` indicates which
-/// file caused the problem.
-bool LoadFileWithIncludes(const char *filename, std::string *dest,
-                          std::string *failedfilename);
-
 /// @brief Save a string to a file, overwriting the existing contents.
 /// @param[in] filename A UTF-8 C-string representing the file to save to.
 /// @param[in] data A const reference to a `std::string` containing the data
