@@ -179,6 +179,22 @@ TEST_F(UtilitiesTests, ElseIgnored) {
   EXPECT_EQ(file_, "foo is defined.\n");
 }
 
+// Nested #else should not compile if the top-level #if is false.
+TEST_F(UtilitiesTests, NestedElse) {
+  std::string file = "#ifdef foo\n"
+                     "foo is defined.\n"
+                     "#ifdef bar\n"
+                     "bar is defined.\n"
+                     "#else\n"
+                     "bar is not defined.\n"
+                     "#endif\n"
+                     "#endif\n";
+  bool result =
+      fplbase::LoadFileWithDirectives(file.c_str(), &file_, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, "");
+}
+
 // Should fail if there aren't enough #endif
 TEST_F(UtilitiesTests, TooFewEndIf) {
   std::string file = "#ifdef foo\nfoo is defined.\n";

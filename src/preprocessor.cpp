@@ -194,7 +194,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
 
           if_stack.top().else_seen = true;
           // Else should be the opposite of the #if
-          compiling = !if_stack.top().was_true;
+          compiling = if_stack.top().compiled && !if_stack.top().was_true;
           break;
         case kEndIf:
           assert(!if_stack.empty());
