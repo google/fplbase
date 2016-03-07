@@ -75,6 +75,23 @@ class AssetManager {
   /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShader(const char *basename);
 
+  /// @brief Loads and returns a shader object with pre-defined identifiers.
+  ///
+  /// Works like LoadShader (above), but takes in a set of #define variables.
+  ///
+  /// @param basename The name of the shader.
+  /// @param defines A null-terminated array of variables to #define, or
+  /// nullptr if there are no initial #define variables.
+  /// @note An example of how to create such an array:
+  ///       static const char *kMyDefines[] = {
+  ///         USE_SHADOWS,
+  ///         USE_THE_FORCE,
+  ///         USE_SOMEBODY,
+  ///         nullptr
+  ///       };
+  /// @return Returns the loaded shader, or nullptr if there was an error.
+  Shader *LoadShader(const char *basename, const char **defines);
+
   /// @brief Load a shader built by shader_pipeline.
   ///
   /// Loads a shader built by the shader_pipeline if it hasn't been loaded.

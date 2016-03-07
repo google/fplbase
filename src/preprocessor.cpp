@@ -73,24 +73,26 @@ PreprocessorDirective FindDirective(const char *cursor,
 
 // Helper function to determine if an identifier has been defined.
 bool FindIdentifier(const std::string &term,
-                    const std::unordered_set<std::string> &all_define) {
-  auto it = all_define.find(term);
-  return it != all_define.end();
+                    const std::unordered_set<std::string> &all_defines) {
+  auto it = all_defines.find(term);
+  return it != all_defines.end();
 }
 
-void SkipNewline(const char **cursor) {
-  *cursor += strcspn(*cursor, "\n\r"); // Skip all except newline
-  *cursor += strspn(*cursor, "\n\r");  // Skip newline
+const char *SkipNewline(const char *cursor) {
+  cursor += strcspn(cursor, "\n\r"); // Skip all except newline
+  cursor += strspn(cursor, "\n\r");  // Skip newline
+  return cursor;
 }
 
-void SkipWhitespace(const char **cursor) {
-  *cursor += strspn(*cursor, " \t"); // Skip whitespace.
+const char *SkipWhitespace(const char *cursor) {
+  cursor += strspn(cursor, " \t"); // Skip whitespace.
+  return cursor;
 }
 
 bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
                                   std::string *error_message,
                                   std::set<std::string> *all_includes,
-                                  std::unordered_set<std::string> *all_define) {
+                                  std::unordered_set<std::string> *all_defines) {
   if (!LoadFile(filename, dest)) {
     *error_message = "Error loading file: ";
     *error_message += filename;
@@ -112,7 +114,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
       break;
     }
     auto start = cursor;
-    SkipWhitespace(&cursor);
+    cursor = SkipWhitespace(cursor);
     auto empty = strspn(cursor, "\n\r");
     if (empty) { // Skip empty lines.
       cursor += empty;
@@ -121,7 +123,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
     auto comment = strspn(cursor, "/");
     if (comment >= 2) { // Skip comments.
       cursor += comment;
-      SkipNewline(&cursor);
+      cursor = SkipNewline(cursor);
       continue;
     }
 
@@ -172,12 +174,12 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
         case kIfDef:
         case kIfNDef:
           item.compiled = true;
-          SkipWhitespace(&cursor);
+          cursor = SkipWhitespace(cursor);
           arg1_length = strcspn(cursor, " \n\r\t");
           arg1 = std::string(cursor, arg1_length);
           cursor += arg1_length;
 
-          found = FindIdentifier(arg1, *all_define);
+          found = FindIdentifier(arg1, *all_defines);
           if (found == enable_if_found) {
             compiling = true;
             item.was_true = true;
@@ -205,7 +207,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
           if_stack.pop();
           break;
         case kDefine:
-          SkipWhitespace(&cursor);
+          cursor = SkipWhitespace(cursor);
           arg1_length = strcspn(cursor, " \t\n\r");
 
           if (arg1_length == 0) {
@@ -222,10 +224,10 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
             return false;
           }
 
-          all_define->insert(arg1);
+          all_defines->insert(arg1);
           break;
         case kInclude:
-          SkipWhitespace(&cursor);
+          cursor = SkipWhitespace(cursor);
           if (*cursor == '\"') { // Must find quote.
             cursor++;
             auto len = strcspn(cursor, "\"\n\r"); // Filename part.
@@ -242,15 +244,15 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
         }
       }
       // Remove #directive line from final file
-      SkipNewline(&cursor);
+      cursor = SkipNewline(cursor);
       dest->erase(start - dest->c_str(), cursor - start);
       cursor = start;
     } else if (!compiling) {
-      SkipNewline(&cursor);
+      cursor = SkipNewline(cursor);
       dest->erase(start - dest->c_str(), cursor - start);
       cursor = start;
     } else { // Non-directive line that ends up in final file.
-      SkipNewline(&cursor);
+      cursor = SkipNewline(cursor);
     }
   }
 
@@ -270,7 +272,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
   for (auto it = includes.begin(); it != includes.end(); ++it) {
     if (all_includes->find(*it) == all_includes->end()) {
       if (!LoadFileWithDirectivesHelper(it->c_str(), &include, error_message,
-                                        all_includes, all_define)) {
+                                        all_includes, all_defines)) {
         return false;
       }
       dest->insert(insertion_point, include);
@@ -285,10 +287,16 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
 }
 
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            std::string *error_message) {
+                            const char **defines, std::string *error_message) {
   std::set<std::string> all_includes;
-  std::unordered_set<std::string> all_define;
+  std::unordered_set<std::string> all_defines;
+
+  if (defines != nullptr) {
+    for (const char **d = defines; *d != nullptr; ++d) {
+      all_defines.insert(std::string(*d));
+    }
+  }
   return LoadFileWithDirectivesHelper(filename, dest, error_message,
-                                      &all_includes, &all_define);
+                                      &all_includes, &all_defines);
 }
 } // namespace fplbase

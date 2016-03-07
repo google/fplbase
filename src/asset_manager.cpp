@@ -104,15 +104,17 @@ Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
 
-Shader *AssetManager::LoadShader(const char *basename) {
+Shader *AssetManager::LoadShader(const char *basename, const char **defines) {
   auto shader = FindShader(basename);
   if (shader) return shader;
   std::string vs_file, ps_file;
   std::string filename = std::string(basename) + ".glslv";
   std::string error_message;
-  if (LoadFileWithDirectives(filename.c_str(), &vs_file, &error_message)) {
+  if (LoadFileWithDirectives(filename.c_str(), &vs_file, defines,
+                             &error_message)) {
     filename = std::string(basename) + ".glslf";
-    if (LoadFileWithDirectives(filename.c_str(), &ps_file, &error_message)) {
+    if (LoadFileWithDirectives(filename.c_str(), &ps_file, defines,
+                               &error_message)) {
       shader = renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
       if (shader) {
         shader_map_[basename] = shader;
@@ -131,6 +133,11 @@ Shader *AssetManager::LoadShader(const char *basename) {
   LogError(kError, "%s", error_message.c_str());
   renderer_.set_last_error(error_message.c_str());
   return nullptr;
+}
+
+Shader *AssetManager::LoadShader(const char *basename) {
+  static const char **defines = {nullptr};
+  return LoadShader(basename, defines);
 }
 
 Shader *AssetManager::LoadShaderDef(const char *filename) {

@@ -112,14 +112,14 @@ int main(int argc, char** argv) {
   std::string fsh;
   std::string error_message;
   if (!fplbase::LoadFileWithDirectives(args.vertex_shader.c_str(), &vsh,
-                                       &error_message)) {
+                                       nullptr, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
     return 1;
   }
 
   if (!fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
-                                       &error_message)) {
+                                       nullptr, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
     return 1;
