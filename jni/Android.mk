@@ -29,6 +29,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/material.cpp \
   src/mesh.cpp \
   src/precompiled.cpp \
+  src/preprocessor.cpp \
   src/renderer.cpp \
   src/renderer_hmd.cpp \
   src/render_target.cpp \

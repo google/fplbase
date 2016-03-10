@@ -299,4 +299,9 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
   return LoadFileWithDirectivesHelper(filename, dest, error_message,
                                       &all_includes, &all_defines);
 }
+
+bool LoadFileWithDirectives(const char *filename, std::string *dest,
+                            std::string *error_message) {
+  return LoadFileWithDirectives(filename, dest, nullptr, error_message);
+}
 } // namespace fplbase
