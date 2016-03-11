@@ -106,7 +106,8 @@ Shader *AssetManager::FindShader(const char *basename) {
 
 Shader *AssetManager::LoadShader(const char *basename, const char **defines) {
   auto shader = FindShader(basename);
-  if (shader) return shader;
+  if (shader && defines == nullptr)
+    return shader;
   std::string vs_file, ps_file;
   std::string filename = std::string(basename) + ".glslv";
   std::string error_message;
