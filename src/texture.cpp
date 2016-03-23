@@ -25,21 +25,22 @@ using mathfu::vec2i;
 namespace fplbase {
 
 void Texture::Load() {
-  data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &has_alpha_);
+  data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, &size_,
+                               &texture_format_);
   SetOriginalSizeIfNotYetSet(size_);
 }
 
 void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
-                             bool has_alpha) {
+                             TextureFormat texture_format) {
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
-  has_alpha_ = has_alpha;
-  id_ = CreateTexture(data, size_, has_alpha_, mipmaps_, desired_);
+  texture_format_ = texture_format;
+  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
+    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
@@ -79,7 +80,7 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              bool has_alpha, bool mipmaps,
+                              TextureFormat texture_format, bool mipmaps,
                               TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
@@ -106,54 +107,75 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
   auto format = GL_RGBA;
   auto type = GL_UNSIGNED_BYTE;
-  if (desired == kFormatAuto) desired = has_alpha ? kFormat5551 : kFormat565;
+  if (desired == kFormatAuto)
+    desired = HasAlpha(texture_format) ? kFormat5551 : kFormat565;
   switch (desired) {
     case kFormat5551: {
-      assert(has_alpha);
-      if (use_16bpp) {
-        auto buffer16 = Convert8888To5551(buffer, size);
-        type = GL_UNSIGNED_SHORT_5_5_5_1;
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer16));
-        delete[] buffer16;
-      } else {
-        // Fallback to 8888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer));
+      switch (texture_format) {
+        case kFormat8888:
+          if (use_16bpp) {
+            auto buffer16 = Convert8888To5551(buffer, size);
+            type = GL_UNSIGNED_SHORT_5_5_5_1;
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer16));
+            delete[] buffer16;
+          } else {
+            // Fallback to 8888
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer));
+          }
+          break;
+        case kFormat5551:
+          // Nothing to do.
+          break;
+        default:
+          // This conversion not supported yet.
+          assert(false);
+          break;
       }
       break;
     }
     case kFormat565: {
-      assert(!has_alpha);
-      format = GL_RGB;
-      if (use_16bpp) {
-        auto buffer16 = Convert888To565(buffer, size);
-        type = GL_UNSIGNED_SHORT_5_6_5;
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer16));
-        delete[] buffer16;
-      } else {
-        // Fallback to 888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer));
+      switch (texture_format) {
+        case kFormat888:
+          format = GL_RGB;
+          if (use_16bpp) {
+            auto buffer16 = Convert888To565(buffer, size);
+            type = GL_UNSIGNED_SHORT_5_6_5;
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer16));
+            delete[] buffer16;
+          } else {
+            // Fallback to 888
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer));
+          }
+          break;
+        case kFormat565:
+          // Nothing to do.
+          break;
+        default:
+          // This conversion not supported yet.
+          assert(false);
+          break;
       }
       break;
     }
     case kFormat8888: {
-      assert(has_alpha);
+      assert(texture_format == kFormat8888);
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
       break;
     }
     case kFormat888: {
-      assert(!has_alpha);
+      assert(texture_format == kFormat888);
       format = GL_RGB;
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
       break;
     }
     case kFormatLuminance: {
-      assert(!has_alpha);
+      assert(texture_format == kFormatLuminance);
       format = GL_LUMINANCE;
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
@@ -197,7 +219,7 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
 }
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
-                            bool *has_alpha) {
+                            TextureFormat *texture_format) {
   struct TGA {
     uint8_t id_len, color_map_type, image_type, color_map_data[5];
     uint16_t x_origin, y_origin, width, height;
@@ -237,14 +259,14 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
       if (header->bpp == 32) p[3] = *pixels++;
     }
   }
-  *has_alpha = header->bpp == 32;
+  *texture_format = header->bpp == 32 ? kFormat8888 : kFormat888;
   *dimensions = vec2i(header->width, header->height);
   return dest;
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
                              const vec2 &scale, vec2i *dimensions,
-                             bool *has_alpha) {
+                             TextureFormat *texture_format) {
   WebPDecoderConfig config;
   memset(&config, 0, sizeof(WebPDecoderConfig));
   auto status = WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size,
@@ -267,12 +289,13 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   if (status != VP8_STATUS_OK) return nullptr;
 
   *dimensions = vec2i(config.output.width, config.output.height);
-  *has_alpha = config.input.has_alpha != 0;
+  *texture_format = config.input.has_alpha != 0 ? kFormat8888 : kFormat888;
   return config.output.private_memory;  // Allocated with malloc by webp.
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
-                                       vec2i *dimensions, bool *has_alpha) {
+                                       vec2i *dimensions,
+                                       TextureFormat *texture_format) {
   std::string file;
   if (!LoadFile(filename, &file)) {
     LogError(kApplication, "Couldn\'t load: %s", filename);
@@ -283,14 +306,15 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   size_t ext_pos = ext.find_last_of(".");
   if (ext_pos != std::string::npos) ext = ext.substr(ext_pos + 1);
   if (ext == "tga") {
-    auto buf = UnpackTGA(file.c_str(), dimensions, has_alpha);
+    auto buf = UnpackTGA(file.c_str(), dimensions, texture_format);
     if (!buf) {
       LogError(kApplication, "TGA format problem: %s", filename);
     }
     return buf;
   } else if (ext == "webp") {
     auto buf =
-        UnpackWebP(file.c_str(), file.length(), scale, dimensions, has_alpha);
+        UnpackWebP(file.c_str(), file.length(), scale, dimensions,
+                   texture_format);
     if (!buf) {
       LogError(kApplication, "WebP format problem: %s", filename);
     }

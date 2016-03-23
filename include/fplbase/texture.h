@@ -39,6 +39,17 @@ enum TextureFormat {
   kFormatCount  // Must be at end.
 };
 
+/// @brief determines if the format has an alpha component.
+inline bool HasAlpha(TextureFormat format) {
+  switch (format) {
+    case kFormat8888:
+    case kFormat5551:
+      return true;
+    default:
+      return false;
+  }
+}
+
 /// @brief This typedef is compatible with its OpenGL equivalent, but doesn't
 /// require this header to depend on OpenGL.
 typedef unsigned int TextureHandle;
@@ -57,7 +68,7 @@ class Texture : public AsyncAsset {
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),
         scale_(mathfu::kOnes2f),
-        has_alpha_(false),
+        texture_format_(kFormat888),
         mipmaps_(mipmaps),
         desired_(format) {}
 
@@ -73,10 +84,9 @@ class Texture : public AsyncAsset {
   /// @param[in] data The Texture data in memory to load from.
   /// @param[in] size A const `mathfu::vec2i` reference to the original
   /// Texture size `x` and `y` components.
-  /// @param[in] has_alpha A `bool` corresponding to if this Texture has an
-  /// alpha.
+  /// @param[in] texture_format The format of `data`.
   virtual void LoadFromMemory(const uint8_t *data, const mathfu::vec2i &size,
-                              bool has_alpha);
+                              TextureFormat texture_format);
 
   /// @brief Creates a Texture from `data_` and stores the handle in `id_`.
   virtual void Finalize();
@@ -99,15 +109,15 @@ class Texture : public AsyncAsset {
   /// @param[in] buffer The data to create the Texture from.
   /// @param[in] size A const `mathfu::vec2i` reference to the original
   /// Texture size `x` and `y` components.
-  /// @param[in] has_alpha A `bool` corresponding to if this Texture has an
-  /// alpha.
+  /// @param[in] texture_format The format of `buffer`.
   /// @param[in] mipmaps If `true`, use the work around for some Android devices
   /// to correctly generate miplevels. Defaults to `true`.
   /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
   /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
   /// power of two in size.
   static TextureHandle CreateTexture(const uint8_t *buffer,
-                                     const mathfu::vec2i &size, bool has_alpha,
+                                     const mathfu::vec2i &size,
+                                     TextureFormat texture_format,
                                      bool mipmaps = true,
                                      TextureFormat desired = kFormatAuto);
 
@@ -121,13 +131,13 @@ class Texture : public AsyncAsset {
   /// @param[in] tga_buf The TGA image data.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the TGA
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the TGA
-  /// image has an alpha.
+  /// @param[out] texture_format The format of the returned buffer, always
+  /// either 888 or 8888.
   /// @return Returns RGBA array of returned dimensions or `nullptr` if the
   /// format is not understood.
   /// @note You must `free()` the returned pointer when done.
   static uint8_t *UnpackTGA(const void *tga_buf, mathfu::vec2i *dimensions,
-                            bool *has_alpha);
+                            TextureFormat *texture_format);
 
   /// @brief Unpacks a memory buffer containing a Webp format file.
   /// @param[in] webp_buf The WebP image data.
@@ -136,14 +146,15 @@ class Texture : public AsyncAsset {
   /// Texture sizes.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the WebP
-  /// image has an alpha.
+  /// @param[out] texture_format The format of the returned buffer, always
+  /// either 888 or 8888.
   /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
                              const mathfu::vec2 &scale,
-                             mathfu::vec2i *dimensions, bool *has_alpha);
+                             mathfu::vec2i *dimensions,
+                             TextureFormat *texture_format);
 
   /// @brief Loads the file in filename, and then unpacks the file format
   /// (supports TGA and WebP).
@@ -155,15 +166,15 @@ class Texture : public AsyncAsset {
   /// Texture sizes.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the Texture
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the Texture
-  /// image has an alpha.
+  /// @param[out] texture_format The format of the returned buffer, always
+  /// either 888 or 8888.
   /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *LoadAndUnpackTexture(const char *filename,
                                        const mathfu::vec2 &scale,
                                        mathfu::vec2i *dimensions,
-                                       bool *has_alpha);
+                                       TextureFormat *texture_format);
 
   /// @brief Utility function to convert 32bit RGBA (8-bits each) to 16bit RGB
   /// in hex 5551 format.
@@ -221,7 +232,7 @@ class Texture : public AsyncAsset {
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;
   mathfu::vec2 scale_;
-  bool has_alpha_;
+  TextureFormat texture_format_;
   bool mipmaps_;
   TextureFormat desired_;
 };
