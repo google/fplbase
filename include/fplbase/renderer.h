@@ -127,6 +127,17 @@ class Renderer {
   /// @param ps_source The source code of the fragment shader.
   Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source);
 
+  /// @brief Like CompileAndLinkShader, but pass in an old shader to replace.
+  ///
+  /// Use `placement new` to use the same memory for the new shader.
+  /// @note Only call this at the start of the frame.
+  ///
+  /// @param shader The old shader to replace with the recompiled shader.
+  /// @param vs_source The source code of the vertex shader.
+  /// @param ps_source The source code of the fragment shader.
+  void RecompileShader(const char *vs_source, const char *ps_source,
+                       Shader *shader);
+
   /// @brief Sets the blend mode used by the renderer.
   ///
   /// Set alpha test (cull pixels with alpha below amount) vs alpha blend
@@ -298,6 +309,8 @@ class Renderer {
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
+  Shader *CompileAndLinkShaderHelper(const char *vs_source,
+                                     const char *ps_source, Shader *shader);
   // Retrieve uniform limits from the driver and cache for shader compilation.
   void InitializeUniformLimits();
 

@@ -280,8 +280,9 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
   }
 }
 
-Shader *Renderer::CompileAndLinkShader(const char *vs_source,
-                                       const char *ps_source) {
+Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
+                                             const char *ps_source,
+                                             Shader *shader) {
   auto program = glCreateProgram();
   auto vs = CompileShader(true, program, vs_source);
   if (vs) {
@@ -303,7 +304,14 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
       GLint status;
       GL_CALL(glGetProgramiv(program, GL_LINK_STATUS, &status));
       if (status == GL_TRUE) {
-        auto shader = new Shader(program, vs, ps);
+        if (shader == nullptr) {
+          // Load a new shader.
+          shader = new Shader(program, vs, ps);
+        } else {
+          // Destruct old shader and create recompiled shader in its place.
+          shader->~Shader();
+          shader = new (shader) Shader(program, vs, ps);
+        }
         GL_CALL(glUseProgram(program));
         shader->InitializeUniforms();
         return shader;
@@ -318,6 +326,16 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
   }
   GL_CALL(glDeleteProgram(program));
   return nullptr;
+}
+
+Shader *Renderer::CompileAndLinkShader(const char *vs_source,
+                                       const char *ps_source) {
+  return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
+}
+
+void Renderer::RecompileShader(const char *vs_source, const char *ps_source,
+                               Shader *shader) {
+  shader = CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
 void Renderer::DepthTest(bool on) {

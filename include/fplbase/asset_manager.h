@@ -92,6 +92,20 @@ class AssetManager {
   /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShader(const char *basename, const char **defines);
 
+  /// @brief Force a shader to reload.
+  ///
+  /// Regardless of whether the shader has been loaded previously, the shader
+  /// will recompile.
+  /// Otherwise works like LoadShader (above).
+  ///
+  /// @param basename The name of the shader.
+  /// @param defines A null-terminated array of variables to #define, or
+  /// nullptr if there are no initial #define variables.
+  /// @return Returns the loaded shader, or nullptr if there was an error.
+  /// @note If this function doesn't return nullptr, the pointer will be equal
+  /// to any previous (Re)LoadShader calls.
+  Shader *ReloadShader(const char *basename, const char **defines);
+
   /// @brief Load a shader built by shader_pipeline.
   ///
   /// Loads a shader built by the shader_pipeline if it hasn't been loaded.
@@ -274,6 +288,8 @@ class AssetManager {
   void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
  private:
+   Shader *LoadShaderHelper(const char *basename, const char **defines,
+                            bool should_reload);
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 
   // This implements the mechanism for each asset to be both loadable
