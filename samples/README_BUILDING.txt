@@ -1,6 +1,7 @@
-To build these samples, 
+To build these samples,
   for Android:
-    fplutil/bin/build_all_android -f "APP_ABI=armeabi-v7a" -S -i -r
+    from the root project directory,
+    ../fplutil/bin/build_all_android -f "APP_ABI=armeabi-v7a" -S -i -r
     results are in apks dir
 
   for others:

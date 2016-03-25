@@ -66,9 +66,11 @@ static_assert(
             static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
         kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
         kFormatLuminance ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8),
+            static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+        kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
+        kFormatETC2 == static_cast<TextureFormat>(matdef::TextureFormat_ETC2),
     "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatLuminance + 1,
+static_assert(kFormatCount == kFormatETC2 + 1,
               "Please update static_assert above with new enum values.");
 
 template <typename T>

@@ -42,7 +42,9 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   auto shader = asset_manager.LoadShader("tex");
   assert(shader);
 
-  auto tex = asset_manager.LoadTexture("tex.webp");
+  // This will load a .webp instead if file not available or no hardware
+  // support for this texture compression format.
+  auto tex = asset_manager.LoadTexture("tex.pkm");  // ETC2
   assert(tex);
 
   asset_manager.StartLoadingTextures();

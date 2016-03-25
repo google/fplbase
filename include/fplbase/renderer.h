@@ -50,6 +50,9 @@ class Renderer {
   Renderer();
   ~Renderer();
 
+  // Get current singleton instance.
+  static Renderer *Get() { return the_renderer_; }
+
   enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
 
   // OpenGL ES feature level we are able to obtain.
@@ -306,6 +309,9 @@ class Renderer {
   /// @brief Returns the version of the FPL Base Library.
   const FplBaseVersion *GetFplBaseVersion() const { return version_; }
 
+  /// @brief Returns if a texture format is supported by the hardware.
+  bool SupportsTextureFormat(TextureFormat texture_format) const;
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
@@ -336,6 +342,7 @@ class Renderer {
   BlendMode blend_mode_;
 
   FeatureLevel feature_level_;
+  int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;
@@ -345,6 +352,9 @@ class Renderer {
 
   // Current version of the Corgi Entity Library.
   const FplBaseVersion *version_;
+
+  // Singleton instance.
+  static Renderer *the_renderer_;
 };
 
 /// @}
