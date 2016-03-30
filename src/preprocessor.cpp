@@ -115,17 +115,6 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
     }
     auto start = cursor;
     cursor = SkipWhitespace(cursor);
-    auto empty = strspn(cursor, "\n\r");
-    if (empty) { // Skip empty lines.
-      cursor += empty;
-      continue;
-    }
-    auto comment = strspn(cursor, "/");
-    if (comment >= 2) { // Skip comments.
-      cursor += comment;
-      cursor = SkipNewline(cursor);
-      continue;
-    }
 
     if (cursor[0] == '#') {
       bool skip_line = false;

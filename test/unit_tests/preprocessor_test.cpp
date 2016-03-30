@@ -131,15 +131,15 @@ TEST_F(PreprocessorTests, IfDefNestedTrueFalse) {
                      "foo is defined.\n"
                      "#ifdef bar\n"
                      "bar is defined.\n"
-                     "#endif\n"
-                     "#endif";
+                     "#endif // bar\n"
+                     "#endif // foo";
   bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
                                                 empty_defines, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, "foo is defined.\n");
 }
 
-// #ifdef should handle nested statmeents that are both true.
+// #ifdef should handle nested statements that are both true.
 TEST_F(PreprocessorTests, IfDefNestedBothTrue) {
   std::string file = "#define foo\n"
                      "#define bar\n"
@@ -147,8 +147,8 @@ TEST_F(PreprocessorTests, IfDefNestedBothTrue) {
                      "foo is defined.\n"
                      "#ifdef bar\n"
                      "bar is defined.\n"
-                     "#endif\n"
-                     "#endif";
+                     "#endif // bar\n"
+                     "#endif // foo";
   bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
                                                 empty_defines, &error_message_);
   EXPECT_TRUE(result);
@@ -163,8 +163,8 @@ TEST_F(PreprocessorTests, IfDefNestedFalseTrue) {
                      "foo is defined.\n"
                      "#ifdef bar\n"
                      "bar is defined.\n"
-                     "#endif\n"
-                     "#endif";
+                     "#endif // bar\n"
+                     "#endif // foo";
   bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
                                                 empty_defines, &error_message_);
   EXPECT_TRUE(result);
@@ -269,6 +269,22 @@ TEST_F(PreprocessorTests, ManualDefineTest) {
                                                 my_defines, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, "foo is defined.\n");
+}
+
+// Comments inside a #ifdef that evaluates to false should be skipped.
+TEST_F(PreprocessorTests, NotCompilingComments) {
+  static const char *my_defines[] = {"foo", nullptr};
+  std::string file = "#ifdef foo\n"
+                     "// first comment\n"
+                     "foo is defined.\n"
+                     "#ifdef bar\n"
+                     "// second comment\n"
+                     "#endif // bar\n"
+                     "#endif // foo\n";
+  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
+                                                my_defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, "// first comment\nfoo is defined.\n");
 }
 
 extern "C" int FPL_main(int argc, char *argv[]) {
