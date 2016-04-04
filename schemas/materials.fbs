@@ -34,6 +34,8 @@ enum TextureFormat:ubyte {
   F_5551,
   F_565,
   F_8,
+  ASTC,
+  ETC2,
 }
 
 table Material {

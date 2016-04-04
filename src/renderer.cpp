@@ -15,6 +15,7 @@
 #include "precompiled.h"  // NOLINT
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
+#include "fplbase/texture.h"
 #include "fplbase/utilities.h"
 
 using mathfu::mat4;
@@ -24,6 +25,8 @@ using mathfu::vec3;
 using mathfu::vec4;
 
 namespace fplbase {
+
+Renderer *Renderer::the_renderer_ = nullptr;
 
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
@@ -39,14 +42,19 @@ Renderer::Renderer()
 #endif  // FPL_BASE_RENDERER_BACKEND_SDL
       blend_mode_(kBlendModeOff),
       feature_level_(kFeatureLevel20),
+      supports_texture_format_(-1),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
       version_(&Version()) {
+  assert(!the_renderer_);
+  the_renderer_ = this;
 }
 
 #ifndef FPL_BASE_RENDERER_BACKEND_SDL
 
-Renderer::~Renderer() {}
+Renderer::~Renderer() {
+  the_renderer_ = nullptr;
+}
 
 // When building without SDL we assume the window and rendering context have
 // already been created prior to calling initialize.
@@ -62,7 +70,10 @@ void Renderer::SetWindowSize(const vec2i &window_size) {
 
 #else  // !FPL_BASE_RENDERER_BACKEND_SDL
 
-Renderer::~Renderer() { ShutDown(); }
+Renderer::~Renderer() {
+  the_renderer_ = nullptr;
+  ShutDown();
+}
 
 bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   // Basic SDL initialization, does not actually initialize a Window or OpenGL,
@@ -160,17 +171,35 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   SDL_GL_SetSwapInterval(1);
 #endif
 
-#ifndef PLATFORM_MOBILE
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
-  if (!strstr(exts, "GL_ARB_vertex_buffer_object") ||
-      !strstr(exts, "GL_ARB_multitexture") ||
-      !strstr(exts, "GL_ARB_vertex_program") ||
-      !strstr(exts, "GL_ARB_fragment_program")) {
+  auto HasGLExt = [&exts](const char *ext) -> bool {
+    auto pos = strstr(exts, ext);
+    return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
+  };
+
+  // Check for ASTC: Available in devices supporting AEP.
+  if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
+    supports_texture_format_ &= ~(1 << kFormatASTC);
+  }
+
+  // Check for ETC2:
+#ifdef PLATFORM_MOBILE
+  if (feature_level_ < kFeatureLevel30) {
+#else
+  if (!HasGLExt("GL_ARB_ES3_compatibility")) {
+#endif
+    supports_texture_format_ &= ~(1 << kFormatETC2);
+  }
+
+#ifndef PLATFORM_MOBILE
+  if (!HasGLExt("GL_ARB_vertex_buffer_object") ||
+      !HasGLExt("GL_ARB_multitexture") ||
+      !HasGLExt("GL_ARB_vertex_program") ||
+      !HasGLExt("GL_ARB_fragment_program")) {
     last_error_ = "missing GL extensions";
     return false;
   }
-
 #endif
 
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
@@ -192,6 +221,10 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   InitializeUniformLimits();
 
   return true;
+}
+
+bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
+  return (supports_texture_format_ & (1 << texture_format)) != 0;
 }
 
 void Renderer::AdvanceFrame(bool minimized, double time) {

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "precompiled.h"
-#include "fplbase/renderer.h"
 #include "fplbase/texture.h"
+#include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
+#include "precompiled.h"
 #include "webp/decode.h"
 
 using mathfu::vec2;
@@ -24,9 +24,30 @@ using mathfu::vec2i;
 
 namespace fplbase {
 
+struct ASTCHeader {
+  uint8_t magic[4];  // 13 ab a1 5c
+  uint8_t blockdim_x;
+  uint8_t blockdim_y;
+  uint8_t blockdim_z;
+  uint8_t xsize[3];
+  uint8_t ysize[3];
+  uint8_t zsize[3];
+};
+
+struct ETCHeader {
+  char magic[4];          // "PKM "
+  char version[2];        // "10"
+  uint8_t data_type[2];   // 0 (ETC1_RGB_NO_MIPMAPS)
+  uint8_t ext_width[2];   // rounded up to 4 size, big endian.
+  uint8_t ext_height[2];  // rounded up to 4 size, big endian.
+  uint8_t width[2];       // original, big endian.
+  uint8_t height[2];      // original, big endian.
+  // Data follows header, size = (ext_width / 4) * (ext_height / 4) * 8
+};
+
 void Texture::Load() {
-  data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, &size_,
-                               &texture_format_);
+  data_ =
+      LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &texture_format_);
   SetOriginalSizeIfNotYetSet(size_);
 }
 
@@ -107,8 +128,11 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
   auto format = GL_RGBA;
   auto type = GL_UNSIGNED_BYTE;
-  if (desired == kFormatAuto)
-    desired = HasAlpha(texture_format) ? kFormat5551 : kFormat565;
+  if (desired == kFormatAuto) {
+    desired = IsCompressed(texture_format)
+                  ? texture_format
+                  : HasAlpha(texture_format) ? kFormat5551 : kFormat565;
+  }
   switch (desired) {
     case kFormat5551: {
       switch (texture_format) {
@@ -181,6 +205,85 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                            format, type, buffer));
       break;
     }
+    case kFormatASTC: {
+      assert(texture_format == kFormatASTC);
+      auto &header = *reinterpret_cast<const ASTCHeader *>(buffer);
+      auto xblocks = (size.x() + header.blockdim_x - 1) / header.blockdim_x;
+      auto yblocks = (size.y() + header.blockdim_y - 1) / header.blockdim_y;
+      auto zblocks = (1 + header.blockdim_z - 1) / header.blockdim_z;
+      auto data_size = xblocks * yblocks * zblocks << 4;
+      // Convert the block dimensions into the correct GL constant.
+      switch (header.blockdim_x) {
+        case 4:
+          assert(header.blockdim_y == 4);
+          format = GL_COMPRESSED_RGBA_ASTC_4x4_KHR;
+          break;
+        case 5:
+          if (header.blockdim_y == 4) {
+            format = GL_COMPRESSED_RGBA_ASTC_5x4_KHR;
+          } else {
+            assert(header.blockdim_y == 5);
+            format = GL_COMPRESSED_RGBA_ASTC_5x5_KHR;
+          }
+          break;
+        case 6:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_6x5_KHR;
+          } else {
+            assert(header.blockdim_y == 6);
+            format = GL_COMPRESSED_RGBA_ASTC_6x6_KHR;
+          }
+          break;
+        case 8:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_8x5_KHR;
+          } else if (header.blockdim_y == 6) {
+            format = GL_COMPRESSED_RGBA_ASTC_8x6_KHR;
+          } else {
+            assert(header.blockdim_y == 8);
+            format = GL_COMPRESSED_RGBA_ASTC_8x8_KHR;
+          }
+          break;
+        case 10:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x5_KHR;
+          } else if (header.blockdim_y == 6) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x6_KHR;
+          } else if (header.blockdim_y == 8) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x8_KHR;
+          } else {
+            assert(header.blockdim_y == 10);
+            format = GL_COMPRESSED_RGBA_ASTC_10x10_KHR;
+          }
+          break;
+        case 12:
+          if (header.blockdim_y == 10) {
+            format = GL_COMPRESSED_RGBA_ASTC_12x10_KHR;
+          } else {
+            assert(header.blockdim_y == 12);
+            format = GL_COMPRESSED_RGBA_ASTC_12x12_KHR;
+          }
+          break;
+        default:
+          assert(false);
+      }
+      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
+                                     size.y(), 0, data_size,
+                                     buffer + sizeof(ASTCHeader)));
+      break;
+    }
+    case kFormatETC2: {
+      assert(texture_format == kFormatETC2);
+      auto &header = *reinterpret_cast<const ETCHeader *>(buffer);
+      auto ext_xsize = (header.ext_width[0] << 8) | header.ext_width[1];
+      auto ext_ysize = (header.ext_height[0] << 8) | header.ext_height[1];
+      auto data_size = (ext_xsize / 4) * (ext_ysize / 4) * 8;
+      format = GL_COMPRESSED_RGB8_ETC2;
+      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
+                                     size.y(), 0, data_size,
+                                     buffer + sizeof(ETCHeader)));
+      break;
+    }
     default:
       assert(false);
   }
@@ -239,6 +342,8 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   auto pixels = reinterpret_cast<const unsigned char *>(header + 1);
   pixels += header->id_len;
   int size = header->width * header->height;
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
   auto dest = reinterpret_cast<uint8_t *>(malloc(size * header->bpp / 8));
   int start_y, end_y, y_direction;
   if (header->image_descriptor & 0x20) {  // y is not flipped.
@@ -293,31 +398,109 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   return config.output.private_memory;  // Allocated with malloc by webp.
 }
 
+uint8_t *Texture::UnpackASTC(const void *astc_buf, size_t size,
+                             vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const ASTCHeader *>(astc_buf);
+  static const uint8_t magic[] = {0x13, 0xab, 0xa1, 0x5c};
+  if (memcmp(header.magic, magic, sizeof(magic))) return nullptr;
+
+  auto xsize =
+      header.xsize[0] | (header.xsize[1] << 8) | (header.xsize[2] << 16);
+  auto ysize =
+      header.ysize[0] | (header.ysize[1] << 8) | (header.ysize[2] << 16);
+  auto zsize =
+      header.zsize[0] | (header.zsize[1] << 8) | (header.zsize[2] << 16);
+
+  // TODO(wvo): Our pipeline currently doesn't support 3D textures.
+  if (zsize != 1) return nullptr;
+
+  *dimensions = vec2i(xsize, ysize);
+  *texture_format = kFormatASTC;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, astc_buf, size);
+  return buf;
+}
+
+uint8_t *Texture::UnpackETC2(const void *etc2_buf, size_t size,
+                             vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const ETCHeader *>(etc2_buf);
+  if (strncmp(header.magic, "PKM ", 4) && strncmp(header.version, "10", 2))
+    return nullptr;
+
+  auto xsize = (header.width[0] << 8) | header.width[1];  // Big endian!
+  auto ysize = (header.height[0] << 8) | header.height[1];
+  *dimensions = vec2i(xsize, ysize);
+  *texture_format = kFormatETC2;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, etc2_buf, size);
+  return buf;
+}
+
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
                                        vec2i *dimensions,
                                        TextureFormat *texture_format) {
+  std::string ext;
+  std::string basename = filename;
+  size_t ext_pos = basename.find_last_of(".");
+  if (ext_pos != std::string::npos) {
+    ext = basename.substr(ext_pos + 1);
+    basename = basename.substr(0, ext_pos);
+  }
+
   std::string file;
-  if (!LoadFile(filename, &file)) {
+
+  // Try to load ASTC, but default to WebP if not available or not supported.
+  if (ext == "astc") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatASTC) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackASTC(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "ASTC format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  // Try to load ETC2, but default to WebP if not available or not supported.
+  if (ext == "pkm") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatETC2) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackETC2(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "ETC2 format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  std::string altfilename = basename;
+  if (ext.length()) altfilename += "." + ext;
+
+  if (!LoadFile(altfilename.c_str(), &file)) {
     LogError(kApplication, "Couldn\'t load: %s", filename);
     return nullptr;
   }
 
-  std::string ext = filename;
-  size_t ext_pos = ext.find_last_of(".");
-  if (ext_pos != std::string::npos) ext = ext.substr(ext_pos + 1);
   if (ext == "tga") {
     auto buf = UnpackTGA(file.c_str(), dimensions, texture_format);
-    if (!buf) {
-      LogError(kApplication, "TGA format problem: %s", filename);
-    }
+    if (!buf) LogError(kApplication, "TGA format problem: %s", filename);
     return buf;
   } else if (ext == "webp") {
-    auto buf =
-        UnpackWebP(file.c_str(), file.length(), scale, dimensions,
-                   texture_format);
-    if (!buf) {
-      LogError(kApplication, "WebP format problem: %s", filename);
-    }
+    auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
+                          texture_format);
+    if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
     return buf;
   } else {
     LogError(kApplication, "Can\'t figure out file type from extension: %s",
