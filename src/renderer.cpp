@@ -28,6 +28,18 @@ namespace fplbase {
 
 Renderer *Renderer::the_renderer_ = nullptr;
 
+#define LOOKUP_GL_FUNCTION(type, name, lookup_fn)                  \
+  union {                                                          \
+    void *data;                                                    \
+    type function;                                                 \
+  } data_function_union_##name;                                    \
+  data_function_union_##name.data = lookup_fn(#name);              \
+  if (!data_function_union_##name.data) {                          \
+    last_error_ = "could not retrieve GL function pointer " #name; \
+    return false;                                                  \
+  }                                                                \
+  name = data_function_union_##name.function;
+
 Renderer::Renderer()
     : model_view_projection_(mat4::Identity()),
       model_(mat4::Identity()),
@@ -60,6 +72,12 @@ Renderer::~Renderer() {
 // already been created prior to calling initialize.
 bool Renderer::Initialize(const vec2i & /*window_size*/,
                           const char * /*window_size*/) {
+#if defined(_WIN32)
+#define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, wglGetProcAddress)
+  GLBASEEXTS GLEXTS
+#undef GLEXT
+#endif
+
   InitializeUniformLimits();
   return true;
 }
@@ -203,17 +221,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #endif
 
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#define GLEXT(type, name)                                          \
-  union {                                                          \
-    void *data;                                                    \
-    type function;                                                 \
-  } data_function_union_##name;                                    \
-  data_function_union_##name.data = SDL_GL_GetProcAddress(#name);  \
-  if (!data_function_union_##name.data) {                          \
-    last_error_ = "could not retrieve GL function pointer " #name; \
-    return false;                                                  \
-  }                                                                \
-  name = data_function_union_##name.function;
+#define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, SDL_GL_GetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
