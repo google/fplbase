@@ -207,7 +207,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #else
   if (!HasGLExt("GL_ARB_ES3_compatibility")) {
 #endif
-    supports_texture_format_ &= ~(1 << kFormatETC2);
+    supports_texture_format_ &= ~((1 << kFormatPKM) | (1 << kFormatKTX));
   }
 
 #ifndef PLATFORM_MOBILE

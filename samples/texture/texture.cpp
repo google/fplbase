@@ -44,7 +44,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
 
   // This will load a .webp instead if file not available or no hardware
   // support for this texture compression format.
-  auto tex = asset_manager.LoadTexture("tex.pkm");  // ETC2
+  auto tex = asset_manager.LoadTexture("tex.ktx");  // ETC2
   assert(tex);
 
   asset_manager.StartLoadingTextures();

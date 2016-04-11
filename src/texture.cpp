@@ -34,7 +34,7 @@ struct ASTCHeader {
   uint8_t zsize[3];
 };
 
-struct ETCHeader {
+struct PKMHeader {
   char magic[4];          // "PKM "
   char version[2];        // "10"
   uint8_t data_type[2];   // 0 (ETC1_RGB_NO_MIPMAPS)
@@ -43,6 +43,23 @@ struct ETCHeader {
   uint8_t width[2];       // original, big endian.
   uint8_t height[2];      // original, big endian.
   // Data follows header, size = (ext_width / 4) * (ext_height / 4) * 8
+};
+
+struct KTXHeader {
+  char id[12];  // "«KTX 11»\r\n\x1A\n"
+  uint32_t endian;
+  uint32_t type;
+  uint32_t type_size;
+  uint32_t format;
+  uint32_t internal_format;
+  uint32_t base_internal_format;
+  uint32_t width;
+  uint32_t height;
+  uint32_t depth;
+  uint32_t array_elements;
+  uint32_t faces;
+  uint32_t mip_levels;
+  uint32_t keyvalue_data;
 };
 
 void Texture::Load() {
@@ -272,16 +289,34 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                      buffer + sizeof(ASTCHeader)));
       break;
     }
-    case kFormatETC2: {
-      assert(texture_format == kFormatETC2);
-      auto &header = *reinterpret_cast<const ETCHeader *>(buffer);
+    case kFormatPKM: {
+      assert(texture_format == kFormatPKM);
+      auto &header = *reinterpret_cast<const PKMHeader *>(buffer);
       auto ext_xsize = (header.ext_width[0] << 8) | header.ext_width[1];
       auto ext_ysize = (header.ext_height[0] << 8) | header.ext_height[1];
       auto data_size = (ext_xsize / 4) * (ext_ysize / 4) * 8;
       format = GL_COMPRESSED_RGB8_ETC2;
       GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
                                      size.y(), 0, data_size,
-                                     buffer + sizeof(ETCHeader)));
+                                     buffer + sizeof(PKMHeader)));
+      break;
+    }
+    case kFormatKTX: {
+      assert(texture_format == kFormatKTX);
+      auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
+      format = header.internal_format;
+      auto data = buffer + sizeof(KTXHeader);
+      auto cur_size = size;
+      auto offset = 0;
+      for (uint32_t i = 0; i < header.mip_levels; i++) {
+        auto data_size = *(reinterpret_cast<const int32_t *>(data + offset));
+        offset += sizeof(int32_t);
+        GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, i, format, cur_size.x(),
+                                       cur_size.y(), 0, data_size,
+                                       data + offset));
+        cur_size /= 2;
+        offset += data_size;
+      }
       break;
     }
     default:
@@ -426,23 +461,47 @@ uint8_t *Texture::UnpackASTC(const void *astc_buf, size_t size,
   return buf;
 }
 
-uint8_t *Texture::UnpackETC2(const void *etc2_buf, size_t size,
-                             vec2i *dimensions, TextureFormat *texture_format) {
-  auto &header = *reinterpret_cast<const ETCHeader *>(etc2_buf);
+uint8_t *Texture::UnpackPKM(const void *file_buf, size_t size,
+                            vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const PKMHeader *>(file_buf);
   if (strncmp(header.magic, "PKM ", 4) && strncmp(header.version, "10", 2))
     return nullptr;
 
   auto xsize = (header.width[0] << 8) | header.width[1];  // Big endian!
   auto ysize = (header.height[0] << 8) | header.height[1];
   *dimensions = vec2i(xsize, ysize);
-  *texture_format = kFormatETC2;
+  *texture_format = kFormatPKM;
 
   // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
   // uniform, and should not affect load times.
   // We use malloc to ensure that all unpacked texture formats can be freed
   // in the same way (see also other Unpack* functions).
   auto buf = reinterpret_cast<uint8_t *>(malloc(size));
-  memcpy(buf, etc2_buf, size);
+  memcpy(buf, file_buf, size);
+  return buf;
+}
+
+uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
+                            vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
+  auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
+  auto v = memcmp(header.id, magic, sizeof(header.id));
+  if (v != 0 ||
+      header.endian != 0x04030201 ||
+      header.depth != 0 ||
+      header.faces != 1 ||
+      header.keyvalue_data != 0)
+    return nullptr;
+
+  *dimensions = vec2i(header.width, header.height);
+  *texture_format = kFormatKTX;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, file_buf, size);
   return buf;
 }
 
@@ -472,13 +531,26 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
     }
   }
 
-  // Try to load ETC2, but default to WebP if not available or not supported.
+  // Try to load PKM, but default to WebP if not available or not supported.
   if (ext == "pkm") {
-    if (Renderer::Get()->SupportsTextureFormat(kFormatETC2) &&
+    if (Renderer::Get()->SupportsTextureFormat(kFormatPKM) &&
         LoadFile(filename, &file)) {
       auto buf =
-          UnpackETC2(file.c_str(), file.length(), dimensions, texture_format);
-      if (!buf) LogError(kApplication, "ETC2 format problem: %s", filename);
+          UnpackPKM(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "PKM format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  // Try to load KTX, but default to WebP if not available or not supported.
+  if (ext == "ktx") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatKTX) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackKTX(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "KTX format problem: %s", filename);
       return buf;
     } else {
       ext = "webp";

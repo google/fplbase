@@ -148,6 +148,9 @@ GLEXTS
 extern void LogGLError(const char *file, int line, const char *call);
 
 // These are missing in older NDKs.
+#ifndef GL_ETC1_RGB8_OES
+#define GL_ETC1_RGB8_OES 0x8D64
+#endif
 
 #ifndef GL_COMPRESSED_RGB8_ETC2
 #define GL_COMPRESSED_RGB8_ETC2 0x9274

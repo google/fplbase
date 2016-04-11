@@ -37,7 +37,8 @@ enum TextureFormat {
   kFormat565,
   kFormatLuminance,
   kFormatASTC,
-  kFormatETC2,
+  kFormatPKM,
+  kFormatKTX,
   kFormatCount  // Must be at end.
 };
 
@@ -47,7 +48,7 @@ inline bool HasAlpha(TextureFormat format) {
     case kFormat8888:
     case kFormat5551:
     case kFormatASTC:
-    case kFormatETC2:
+    case kFormatKTX:  // TODO(wvo): depends on the internal format.
       return true;
     default:
       return false;
@@ -61,7 +62,8 @@ inline bool IsCompressed(TextureFormat format) {
     case kFormat5551:
     case kFormat565:
     case kFormatASTC:
-    case kFormatETC2:
+    case kFormatPKM:
+    case kFormatKTX:
       return true;
     default:
       return false;
@@ -188,9 +190,9 @@ class Texture : public AsyncAsset {
                              mathfu::vec2i *dimensions,
                              TextureFormat *texture_format);
 
-  /// @brief Reads a memory buffer containing an ETC2 format (.ktx) file.
-  /// @param[in] etc2_buf The ETC2 image data.
-  /// @param[in] size The size of the memory block pointed to by `etc2_buf`.
+  /// @brief Reads a memory buffer containing an ETC2 format (.pkm) file.
+  /// @param[in] file_buf the loaded file.
+  /// @param[in] size The size of the memory block pointed to by `file_buf`.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -198,13 +200,27 @@ class Texture : public AsyncAsset {
   /// @return Returns a buffer ready to be uploaded to GPU memory or `nullptr`,
   /// if the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
-  static uint8_t *UnpackETC2(const void *etc2_buf, size_t size,
-                             mathfu::vec2i *dimensions,
-                             TextureFormat *texture_format);
+  static uint8_t *UnpackPKM(const void *file_buf, size_t size,
+                            mathfu::vec2i *dimensions,
+                            TextureFormat *texture_format);
+
+  /// @brief Reads a memory buffer containing an KTX format (.ktx) file.
+  /// @param[in] file_buf the loaded file.
+  /// @param[in] size The size of the memory block pointed to by `file_buf`.
+  /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
+  /// width and height.
+  /// @param[out] texture_format The format of the returned buffer, always
+  /// kFormatETC2.
+  /// @return Returns a buffer ready to be uploaded to GPU memory or `nullptr`,
+  /// if the format is not understood.
+  /// @note You must `free()` on the returned pointer when done.
+  static uint8_t *UnpackKTX(const void *file_buf, size_t size,
+                            mathfu::vec2i *dimensions,
+                            TextureFormat *texture_format);
 
   /// @brief Loads the file in filename, and then unpacks the file format
-  /// (supports TGA, WebP, ASTC and ETC2).
-  /// @note ASTC/ETC2 will automatically fall-back on WebP if the file is not
+  /// (supports TGA, WebP, KTX, PKM, ASTC).
+  /// @note KTX/PKM/ASTC will automatically fall-back on WebP if the file is not
   /// present or not supported by the GPU.
   /// @note `last_error()` contains more information if `nullptr` is returned.
   ///  You must `free()` the returned pointer when done.
