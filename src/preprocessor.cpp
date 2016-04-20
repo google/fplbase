@@ -110,7 +110,7 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
   std::vector<std::string> includes;
 
   for (;;) {
-    if (cursor[0] == EOF || strcspn(cursor, "\n\r") == 0) {
+    if (!cursor[0] || strcspn(cursor, "\n\r") == 0) {
       break;
     }
     auto start = cursor;
@@ -139,9 +139,12 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
         case kIfNDef:
           // Can't activate compilation, but should be added to stack.
           if_stack.push(item);
+          skip_line = true;
+          break;
         default:
           // Not compiling, so skip the line.
           skip_line = true;
+          break;
         }
       }
 
