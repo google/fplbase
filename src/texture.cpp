@@ -18,6 +18,9 @@
 #include "mathfu/glsl_mappings.h"
 #include "precompiled.h"
 #include "webp/decode.h"
+#ifdef FPL_BASE_SUPPORT_PNG
+#include "lodepng/lodepng.h"
+#endif
 
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -505,6 +508,32 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   return buf;
 }
 
+uint8_t *Texture::UnpackPng(const void *png_buf, size_t size,
+                            const vec2 &scale, vec2i *dimensions,
+                            TextureFormat *texture_format) {
+#ifdef FPL_BASE_SUPPORT_PNG
+  uint8_t* image = nullptr;
+  unsigned int width = 0;
+  unsigned int height = 0;
+  unsigned int error = lodepng_decode32(&image, &width, &height,
+      reinterpret_cast<const unsigned char*>(png_buf), size);
+  if (error) {
+    return nullptr;
+  }
+  *dimensions = vec2i(width, height);
+  *texture_format = kFormat8888;
+  return image;
+#else
+  (void)png_buf;
+  (void)size;
+  (void)scale;
+  (void)dimensions;
+  (void)texture_format;
+  LogError(kApplication, "Png decoding not supported.");
+  return nullptr;
+#endif
+}
+
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
                                        vec2i *dimensions,
                                        TextureFormat *texture_format) {
@@ -573,6 +602,14 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
     auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
                           texture_format);
     if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
+    return buf;
+  } else if (ext == "png") {
+    auto buf =
+        UnpackPng(file.c_str(), file.length(), scale, dimensions,
+                  texture_format);
+    if (!buf) {
+      LogError(kApplication, "Png format problem: %s", filename);
+    }
     return buf;
   } else {
     LogError(kApplication, "Can\'t figure out file type from extension: %s",
