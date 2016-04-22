@@ -232,7 +232,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 }
 
 bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
-  return (supports_texture_format_ & (1 << texture_format)) != 0;
+  return (supports_texture_format_ & (1LL << texture_format)) != 0;
 }
 
 void Renderer::AdvanceFrame(bool minimized, double time) {
