@@ -256,9 +256,12 @@ endfunction()
 
 # The stdlib backend requires <mutex> and <thread> headers that were only
 # added in C++11, and are not supported by Visual Studio 2010.
+# Additionally, newer versions require exceptions to be enabled with
+# _HAS_EXCEPTIONS, which we do not want to force on users since it can cause
+# code bloat and slowdown.
 # Unforunately, there's no easy way to get this compiler capability from
 # cmake, at the moment, it seems.
-if(NOT MSVC OR MSVC_VERSION GREATER 1600)
+if(NOT MSVC)
   set(compiler_supports_threading 1)
 endif()
 
