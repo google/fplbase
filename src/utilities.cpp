@@ -961,5 +961,7 @@ std::string DeviceModel() {
 
 }  // namespace fplbase
 
+#if !defined(FPL_BASE_BACKEND_STDLIB)
 // We use SIMD types in dynamically allocated objects and arrays.
 MATHFU_DEFINE_GLOBAL_SIMD_AWARE_NEW_DELETE
+#endif

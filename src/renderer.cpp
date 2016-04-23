@@ -231,10 +231,6 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   return true;
 }
 
-bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
-  return (supports_texture_format_ & (1LL << texture_format)) != 0;
-}
-
 void Renderer::AdvanceFrame(bool minimized, double time) {
   time_ = time;
   if (minimized) {
@@ -265,6 +261,10 @@ void Renderer::ShutDown() {
 }
 
 #endif  // !FPL_BASE_RENDERER_BACKEND_SDL
+
+bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
+  return (supports_texture_format_ & (1LL << texture_format)) != 0;
+}
 
 void Renderer::InitializeUniformLimits() {
   GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
