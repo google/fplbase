@@ -78,8 +78,7 @@ bool Renderer::Initialize(const vec2i & /*window_size*/,
 #undef GLEXT
 #endif
 
-  InitializeUniformLimits();
-  return true;
+  return InitializeRenderingState();
 }
 
 void Renderer::SetWindowSize(const vec2i &window_size) {
@@ -189,46 +188,14 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   SDL_GL_SetSwapInterval(1);
 #endif
 
-  auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
-
-  auto HasGLExt = [&exts](const char *ext) -> bool {
-    auto pos = strstr(exts, ext);
-    return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
-  };
-
-  // Check for ASTC: Available in devices supporting AEP.
-  if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
-    supports_texture_format_ &= ~(1 << kFormatASTC);
-  }
-
-  // Check for ETC2:
-#ifdef PLATFORM_MOBILE
-  if (feature_level_ < kFeatureLevel30) {
-#else
-  if (!HasGLExt("GL_ARB_ES3_compatibility")) {
-#endif
-    supports_texture_format_ &= ~((1 << kFormatPKM) | (1 << kFormatKTX));
-  }
-
-#ifndef PLATFORM_MOBILE
-  if (!HasGLExt("GL_ARB_vertex_buffer_object") ||
-      !HasGLExt("GL_ARB_multitexture") ||
-      !HasGLExt("GL_ARB_vertex_program") ||
-      !HasGLExt("GL_ARB_fragment_program")) {
-    last_error_ = "missing GL extensions";
-    return false;
-  }
-#endif
-
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
 #define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, SDL_GL_GetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 
-  InitializeUniformLimits();
-
-  return true;
+  // Non-SDL-specific initialization continues here:
+  return InitializeRenderingState();
 }
 
 void Renderer::AdvanceFrame(bool minimized, double time) {
@@ -266,7 +233,38 @@ bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;
 }
 
-void Renderer::InitializeUniformLimits() {
+bool Renderer::InitializeRenderingState() {
+  auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
+
+  auto HasGLExt = [&exts](const char *ext) -> bool {
+    auto pos = strstr(exts, ext);
+    return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
+  };
+
+  // Check for ASTC: Available in devices supporting AEP.
+  if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
+    supports_texture_format_ &= ~(1 << kFormatASTC);
+  }
+
+  // Check for ETC2:
+#ifdef PLATFORM_MOBILE
+  if (feature_level_ < kFeatureLevel30) {
+#else
+  if (!HasGLExt("GL_ARB_ES3_compatibility")) {
+#endif
+    supports_texture_format_ &= ~((1 << kFormatPKM) | (1 << kFormatKTX));
+  }
+
+#ifndef PLATFORM_MOBILE
+  if (!HasGLExt("GL_ARB_vertex_buffer_object") ||
+      !HasGLExt("GL_ARB_multitexture") ||
+      !HasGLExt("GL_ARB_vertex_program") ||
+      !HasGLExt("GL_ARB_fragment_program")) {
+    last_error_ = "missing GL extensions";
+    return false;
+  }
+#endif
+
   GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
                         &max_vertex_uniform_components_));
 #if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
@@ -277,6 +275,8 @@ void Renderer::InitializeUniformLimits() {
     max_vertex_uniform_components_ *= 4;
   }
 #endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+
+  return true;
 }
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {

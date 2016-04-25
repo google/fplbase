@@ -317,8 +317,10 @@ class Renderer {
                              const char *source);
   Shader *CompileAndLinkShaderHelper(const char *vs_source,
                                      const char *ps_source, Shader *shader);
-  // Retrieve uniform limits from the driver and cache for shader compilation.
-  void InitializeUniformLimits();
+
+  // Initialize OpenGL parameters like uniform limits, supported texture formats
+  // etc.
+  bool InitializeRenderingState();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.
