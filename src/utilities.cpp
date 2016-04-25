@@ -201,6 +201,7 @@ bool LoadPreferences(const char *filename, std::string *dest) {
 }
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 int32_t LoadPreference(const char *key, int32_t initial_value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -226,6 +227,7 @@ int32_t LoadPreference(const char *key, int32_t initial_value) {
   return initial_value;
 #endif
 }
+#endif
 
 #if defined(FPL_BASE_BACKEND_SDL)
 bool SaveFile(const char *filename, const void *data, size_t size) {
@@ -313,6 +315,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
 }
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 bool SavePreference(const char *key, int32_t value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -354,6 +357,7 @@ bool SavePreference(const char *key, int32_t value) {
   return false;
 #endif
 }
+#endif
 
 bool SaveFile(const char *filename, const std::string &src) {
   return SaveFile(filename, static_cast<const void *>(src.c_str()),
@@ -786,6 +790,7 @@ int GetVsyncFrameId() {
 
 #endif  // __ANDROID__
 
+#if defined(FPL_BASE_BACKEND_SDL)
 // Checks whether Head Mounted Displays are supported by the system.
 bool SupportsHeadMountedDisplay() {
 #ifdef __ANDROID__
@@ -802,7 +807,9 @@ bool SupportsHeadMountedDisplay() {
   return false;
 #endif  // __ANDROID
 }
+#endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 // Checks whether or not the activity is running on a Android-TV device.
 bool IsTvDevice() {
 #ifdef __ANDROID__
@@ -818,6 +825,7 @@ bool IsTvDevice() {
   return false;
 #endif  // __ANDROID
 }
+#endif
 
 #if defined(__ANDROID__)
 // Get the name of the current activity class.
