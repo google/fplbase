@@ -116,8 +116,12 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
     auto start = cursor;
     cursor = SkipWhitespace(cursor);
 
+    bool remove_line = false;  // Should line be removed from output?
+
     if (cursor[0] == '#') {
-      bool skip_line = false;
+      remove_line = true;
+
+      bool skip_line = false;  // Should like be evaluated?
 
       size_t directive_length = strcspn(cursor, " \t\n\r");
       PreprocessorDirective directive = FindDirective(cursor, directive_length);
@@ -210,13 +214,14 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
           // Term to define
           arg1 = std::string(cursor, arg1_length);
           cursor += arg1_length;
+          cursor += strspn(cursor, " \t");
 
           if (strcspn(cursor, "\n\r") > 0) {
-            *error_message = "#define can only support a single identifier.";
-            return false;
+            // A #define with arguments, pass thru to the underlying compiler.
+            remove_line = false;
+          } else {
+            all_defines->insert(arg1);
           }
-
-          all_defines->insert(arg1);
           break;
         case kInclude:
           cursor = SkipWhitespace(cursor);
@@ -235,16 +240,16 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
           assert(false);
         }
       }
-      // Remove #directive line from final file
-      cursor = SkipNewline(cursor);
-      dest->erase(start - dest->c_str(), cursor - start);
-      cursor = start;
     } else if (!compiling) {
-      cursor = SkipNewline(cursor);
+      remove_line = true;
+    } else {
+      // Non-directive line that ends up in final file.
+    }
+    cursor = SkipNewline(cursor);
+    if (remove_line) {
+      // Remove #directive line from final file.
       dest->erase(start - dest->c_str(), cursor - start);
       cursor = start;
-    } else { // Non-directive line that ends up in final file.
-      cursor = SkipNewline(cursor);
     }
   }
 

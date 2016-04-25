@@ -34,8 +34,6 @@ protected:
 
 static const std::string kDefineMissingIdError =
     "#define must be followed by an identifier.";
-static const std::string kDefineExtraArgsError =
-    "#define can only support a single identifier.";
 static const std::string kMissingEndIfError = "All #if (#ifdef, #ifndef) "
                                               "statements must have a "
                                               "corresponding #endif statement.";
@@ -81,13 +79,13 @@ TEST_F(PreprocessorTests, DefineWithoutIdentifier) {
   EXPECT_EQ(error_message_, kDefineMissingIdError);
 }
 
-// #define should not be able to handle more than one argument
-TEST_F(PreprocessorTests, DefineWithIdAndOneDefinition) {
-  const char *file = "#define foo bar";
+// #define should skip cases where arguments are supplied.
+TEST_F(PreprocessorTests, DefineWithArguments) {
+  const char *file = "#define foo(x) x";
   bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
                                                 &error_message_);
-  EXPECT_FALSE(result);
-  EXPECT_EQ(error_message_, kDefineExtraArgsError);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, file);
 }
 
 // #define the same identifier twice should be ok
