@@ -827,7 +827,7 @@ bool IsTvDevice() {
 }
 #endif
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 // Get the name of the current activity class.
 std::string AndroidGetActivityName() {
   JNIEnv *env = AndroidGetJNIEnv();
@@ -854,9 +854,9 @@ std::string AndroidGetActivityName() {
   env->DeleteLocalRef(activity);
   return activity_name;
 }
-#endif  // defined(__ANDROID__)
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string AndroidGetViewIntentData() {
   std::string view_data;
   JNIEnv *env = AndroidGetJNIEnv();
@@ -900,9 +900,7 @@ std::string AndroidGetViewIntentData() {
   env->DeleteLocalRef(activity);
   return view_data;
 }
-#endif  // defined(__ANDROID__)
 
-#ifdef __ANDROID__
 // Sends a keypress event to the android system.  This will show up in android
 // indistinguishable from a normal user key press
 void SendKeypressEventToAndroid(int android_key_code) {
@@ -916,18 +914,6 @@ void SendKeypressEventToAndroid(int android_key_code) {
   env->DeleteLocalRef(activity);
 }
 
-HighPerformanceParams high_performance_params;
-
-// Sets the specific parameters for high performance mode on Android
-void SetHighPerformanceParameters(const HighPerformanceParams &params) {
-  high_performance_params = params;
-}
-
-// Returns the high performance mode parameters in a struct.
-const HighPerformanceParams &GetHighPerformanceParameters() {
-  return high_performance_params;
-}
-
 void RelaunchApplication() {
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = fplbase::AndroidGetActivity();
@@ -938,6 +924,20 @@ void RelaunchApplication() {
 
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
+}
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+
+#ifdef __ANDROID__
+HighPerformanceParams high_performance_params;
+
+// Sets the specific parameters for high performance mode on Android
+void SetHighPerformanceParameters(const HighPerformanceParams &params) {
+  high_performance_params = params;
+}
+
+// Returns the high performance mode parameters in a struct.
+const HighPerformanceParams &GetHighPerformanceParameters() {
+  return high_performance_params;
 }
 #endif  // __ANDROID__
 
@@ -950,7 +950,7 @@ void SetPerformanceMode(PerformanceMode new_mode) {
 
 PerformanceMode GetPerformanceMode() { return performance_mode; }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string DeviceModel() {
   JNIEnv *env = fplbase::AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android.os.Build");
@@ -965,7 +965,7 @@ std::string DeviceModel() {
   env->DeleteLocalRef(build_class);
   return result;
 }
-#endif  // __ANDROID__
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
 }  // namespace fplbase
 
