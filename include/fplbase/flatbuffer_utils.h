@@ -25,6 +25,7 @@
 /// @brief Contains helper functions for loading the structs in common.fbs from
 ///        Flatbuffer files.
 
+/// @brief Namespace for FPLBase library.
 namespace fplbase {
 
 /// @addtogroup fplbase_flatbuffer_utils
