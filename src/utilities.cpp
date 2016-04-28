@@ -901,19 +901,6 @@ std::string AndroidGetViewIntentData() {
   return view_data;
 }
 
-// Sends a keypress event to the android system.  This will show up in android
-// indistinguishable from a normal user key press
-void SendKeypressEventToAndroid(int android_key_code) {
-  JNIEnv *env = AndroidGetJNIEnv();
-  jobject activity = AndroidGetActivity();
-  jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID method_id =
-      env->GetMethodID(fpl_class, "SendKeypressEventToAndroid", "(I)V");
-  env->CallVoidMethod(activity, method_id, android_key_code);
-  env->DeleteLocalRef(fpl_class);
-  env->DeleteLocalRef(activity);
-}
-
 void RelaunchApplication() {
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = fplbase::AndroidGetActivity();
@@ -928,6 +915,23 @@ void RelaunchApplication() {
 #endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
 #ifdef __ANDROID__
+// Sends a keypress event to the android system.  This will show up in android
+// indistinguishable from a normal user key press
+void SendKeypressEventToAndroid(int android_key_code) {
+#if defined(FPL_BASE_BACKEND_SDL)
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+  jmethodID method_id =
+      env->GetMethodID(fpl_class, "SendKeypressEventToAndroid", "(I)V");
+  env->CallVoidMethod(activity, method_id, android_key_code);
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+#else
+  (void)android_key_code;
+#endif
+}
+
 HighPerformanceParams high_performance_params;
 
 // Sets the specific parameters for high performance mode on Android
