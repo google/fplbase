@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "precompiled.h"
 #include "fplbase/preprocessor.h"
-#include "fplbase/fpl_common.h"
 #include <stack>
 #include <unordered_set>
+#include "fplbase/fpl_common.h"
+#include "precompiled.h"
 
 namespace fplbase {
 
@@ -29,17 +29,17 @@ enum PreprocessorDirective {
   kElse,
   kEndIf,
   kNumPreprocessorDirectives,
-  kUnknownDirective // Invalid directive
+  kUnknownDirective  // Invalid directive
 };
 
 // Strings corresponding to each directive.
 static const char *kDirectiveText[] = {
-    "#include", // kInclude
-    "#define",  // kDefine
-    "#ifdef",   // kIfDef
-    "#ifndef",  // kIfNDef
-    "#else",    // kElse
-    "#endif"    // kEndIf
+    "#include",  // kInclude
+    "#define",   // kDefine
+    "#ifdef",    // kIfDef
+    "#ifndef",   // kIfNDef
+    "#else",     // kElse
+    "#endif"     // kEndIf
 };
 
 static_assert(
@@ -79,20 +79,20 @@ bool FindIdentifier(const std::string &term,
 }
 
 const char *SkipNewline(const char *cursor) {
-  cursor += strcspn(cursor, "\n\r"); // Skip all except newline
-  cursor += strspn(cursor, "\n\r");  // Skip newline
+  cursor += strcspn(cursor, "\n\r");  // Skip all except newline
+  cursor += strspn(cursor, "\n\r");   // Skip newline
   return cursor;
 }
 
 const char *SkipWhitespace(const char *cursor) {
-  cursor += strspn(cursor, " \t"); // Skip whitespace.
+  cursor += strspn(cursor, " \t");  // Skip whitespace.
   return cursor;
 }
 
-bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
-                                  std::string *error_message,
-                                  std::set<std::string> *all_includes,
-                                  std::unordered_set<std::string> *all_defines) {
+bool LoadFileWithDirectivesHelper(
+    const char *filename, std::string *dest, std::string *error_message,
+    std::set<std::string> *all_includes,
+    std::unordered_set<std::string> *all_defines) {
   if (!LoadFile(filename, dest)) {
     *error_message = "Error loading file: ";
     *error_message += filename;
@@ -132,32 +132,28 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
         return false;
       }
 
-      if (!compiling) { // Within an #if statement that evaluated to false.
+      if (!compiling) {  // Within an #if statement that evaluated to false.
         IfStackItem item;
         switch (directive) {
-        case kElse:
-        case kEndIf:
-          // Could activate compilation, so evaluate these statements.
-          break;
-        case kIfDef:
-        case kIfNDef:
-          // Can't activate compilation, but should be added to stack.
-          if_stack.push(item);
-          skip_line = true;
-          break;
-        default:
-          // Not compiling, so skip the line.
-          skip_line = true;
-          break;
+          case kElse:
+          case kEndIf:
+            // Could activate compilation, so evaluate these statements.
+            break;
+          case kIfDef:
+          case kIfNDef:
+            // Can't activate compilation, but should be added to stack.
+            if_stack.push(item);
+            skip_line = true;
+            break;
+          default:
+            // Not compiling, so skip the line.
+            skip_line = true;
+            break;
         }
       }
 
       if (!skip_line) {
         IfStackItem item;
-
-        // Argument that may follow the directive
-        std::string arg1;
-        int arg1_length;
 
         // Used to determine if an identifier has been defined
         bool found = false;
@@ -167,77 +163,79 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
         cursor += directive_length;
 
         switch (directive) {
-        case kIfDef:
-        case kIfNDef:
-          item.compiled = true;
-          cursor = SkipWhitespace(cursor);
-          arg1_length = strcspn(cursor, " \n\r\t");
-          arg1 = std::string(cursor, arg1_length);
-          cursor += arg1_length;
+          case kIfDef:
+          case kIfNDef: {
+            item.compiled = true;
+            cursor = SkipWhitespace(cursor);
+            auto arg1_length = strcspn(cursor, " \n\r\t");
+            auto arg1 = std::string(cursor, arg1_length);
+            cursor += arg1_length;
 
-          found = FindIdentifier(arg1, *all_defines);
-          if (found == enable_if_found) {
-            compiling = true;
-            item.was_true = true;
-          } else {
-            compiling = false;
-          }
-          if_stack.push(item);
-          break;
-        case kElse:
-          // There should be a corresponding #if for this #else.
-          assert(!if_stack.empty());
-          // There shouldn't already be an #else.
-          assert(!if_stack.top().else_seen);
-
-          if_stack.top().else_seen = true;
-          // Else should be the opposite of the #if
-          compiling = if_stack.top().compiled && !if_stack.top().was_true;
-          break;
-        case kEndIf:
-          assert(!if_stack.empty());
-          if (!compiling && if_stack.top().compiled) {
-            // The #if statement evaluated to false and is at bottom of stack
-            compiling = true;
-          }
-          if_stack.pop();
-          break;
-        case kDefine:
-          cursor = SkipWhitespace(cursor);
-          arg1_length = strcspn(cursor, " \t\n\r");
-
-          if (arg1_length == 0) {
-            *error_message = "#define must be followed by an identifier.";
-            return false;
-          }
-
-          // Term to define
-          arg1 = std::string(cursor, arg1_length);
-          cursor += arg1_length;
-          cursor += strspn(cursor, " \t");
-
-          if (strcspn(cursor, "\n\r") > 0) {
-            // A #define with arguments, pass thru to the underlying compiler.
-            remove_line = false;
-          } else {
-            all_defines->insert(arg1);
-          }
-          break;
-        case kInclude:
-          cursor = SkipWhitespace(cursor);
-          if (*cursor == '\"') { // Must find quote.
-            cursor++;
-            auto len = strcspn(cursor, "\"\n\r"); // Filename part.
-            if (cursor[len] == '\"') {            // Ending quote.
-              includes.push_back(std::string(cursor, len));
-              cursor += len + 1;
+            found = FindIdentifier(arg1, *all_defines);
+            if (found == enable_if_found) {
+              compiling = true;
+              item.was_true = true;
+            } else {
+              compiling = false;
             }
+            if_stack.push(item);
+            break;
           }
-          break;
-        default:
-          // kNumPreprocessorDirectives, which FindIdentifier should never
-          // return.
-          assert(false);
+          case kElse:
+            // There should be a corresponding #if for this #else.
+            assert(!if_stack.empty());
+            // There shouldn't already be an #else.
+            assert(!if_stack.top().else_seen);
+
+            if_stack.top().else_seen = true;
+            // Else should be the opposite of the #if
+            compiling = if_stack.top().compiled && !if_stack.top().was_true;
+            break;
+          case kEndIf:
+            assert(!if_stack.empty());
+            if (!compiling && if_stack.top().compiled) {
+              // The #if statement evaluated to false and is at bottom of stack
+              compiling = true;
+            }
+            if_stack.pop();
+            break;
+          case kDefine: {
+            cursor = SkipWhitespace(cursor);
+            auto arg1_length = strcspn(cursor, " \t\n\r");
+
+            if (arg1_length == 0) {
+              *error_message = "#define must be followed by an identifier.";
+              return false;
+            }
+
+            // Term to define
+            auto arg1 = std::string(cursor, arg1_length);
+            cursor += arg1_length;
+            cursor += strspn(cursor, " \t");
+
+            if (strcspn(cursor, "\n\r") > 0) {
+              // A #define with arguments, pass thru to the underlying compiler.
+              remove_line = false;
+            } else {
+              all_defines->insert(arg1);
+            }
+            break;
+          }
+          case kInclude:
+            cursor = SkipWhitespace(cursor);
+            if (*cursor == '\"') {  // Must find quote.
+              cursor++;
+              auto len = strcspn(cursor, "\"\n\r");  // Filename part.
+              if (cursor[len] == '\"') {             // Ending quote.
+                includes.push_back(std::string(cursor, len));
+                cursor += len + 1;
+              }
+            }
+            break;
+          default:
+            // kNumPreprocessorDirectives, which FindIdentifier should never
+            // return.
+            assert(false);
         }
       }
     } else if (!compiling) {
@@ -254,14 +252,14 @@ bool LoadFileWithDirectivesHelper(const char *filename, std::string *dest,
   }
 
   if (!if_stack.empty()) {
-    *error_message = "All #if (#ifdef, #ifndef) statements must have a "
-                     "corresponding #endif statement.";
+    *error_message =
+        "All #if (#ifdef, #ifndef) statements must have a "
+        "corresponding #endif statement.";
     return false;
   }
 
   // Early out for files with no includes.
-  if (!includes.size())
-    return true;
+  if (!includes.size()) return true;
 
   // Now insert the includes.
   std::string include;
@@ -301,4 +299,4 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
                             std::string *error_message) {
   return LoadFileWithDirectives(filename, dest, nullptr, error_message);
 }
-} // namespace fplbase
+}  // namespace fplbase
