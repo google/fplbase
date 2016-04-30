@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['introduction',['Introduction',['../fplbase_guide_introduction.html',1,'']]]
+  ['fplbase',['FPLBase',['../index.html',1,'']]]
 ];

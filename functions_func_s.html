@@ -1,0 +1,400 @@
+<!-- HTML header for doxygen 1.8.6-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.11"/>
+<title>FPLBase: Class Members - Functions</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
+<script type="text/javascript">
+  $(document).ready(initResizable);
+  $(window).load(resizeHeight);
+</script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<script type="text/javascript">
+  $(document).ready(function() { init_search(); });
+</script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="commonprojectlogo">
+    <img alt="Logo" src="fpl_logo_small.png"/>
+  </td>
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">FPLBase
+   </div>
+   <div style="font-size:12px;">
+	 An open source project by
+     <a href="https://developers.google.com/games/#Tools">FPL</a>.
+  </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Generated by Doxygen 1.8.11 -->
+<script type="text/javascript">
+var searchBox = new SearchBox("searchBox", "search",false,'Search');
+</script>
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="usergroup0.html"><span>Programmer's&#160;Guide</span></a></li>
+      <li class="current"><a href="fplbase_api_reference.html"><span>API&#160;reference</span></a></li>
+      <li><a href="contributing.html"><span>Contributing</span></a></li>
+      <li>
+        <div id="MSearchBox" class="MSearchBoxInactive">
+        <span class="left">
+          <img id="MSearchSelect" src="search/mag_sel.png"
+               onmouseover="return searchBox.OnSearchSelectShow()"
+               onmouseout="return searchBox.OnSearchSelectHide()"
+               alt=""/>
+          <input type="text" id="MSearchField" value="Search" accesskey="S"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
+               onkeyup="searchBox.OnSearchFieldChange(event)"/>
+          </span><span class="right">
+            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
+          </span>
+        </div>
+      </li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="modules.html"><span>Modules</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Class&#160;List</span></a></li>
+      <li><a href="files.html"><span>File&#160;List</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
+      <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
+      <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
+      <li class="current"><a href="functions.html"><span>Class&#160;Members</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow3" class="tabs2">
+    <ul class="tablist">
+      <li><a href="functions.html"><span>All</span></a></li>
+      <li class="current"><a href="functions_func.html"><span>Functions</span></a></li>
+      <li><a href="functions_vars.html"><span>Variables</span></a></li>
+      <li><a href="functions_type.html"><span>Typedefs</span></a></li>
+      <li><a href="functions_enum.html"><span>Enumerations</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow4" class="tabs3">
+    <ul class="tablist">
+      <li><a href="functions_func.html#index_a"><span>a</span></a></li>
+      <li><a href="functions_func_b.html#index_b"><span>b</span></a></li>
+      <li><a href="functions_func_c.html#index_c"><span>c</span></a></li>
+      <li><a href="functions_func_d.html#index_d"><span>d</span></a></li>
+      <li><a href="functions_func_e.html#index_e"><span>e</span></a></li>
+      <li><a href="functions_func_f.html#index_f"><span>f</span></a></li>
+      <li><a href="functions_func_g.html#index_g"><span>g</span></a></li>
+      <li><a href="functions_func_h.html#index_h"><span>h</span></a></li>
+      <li><a href="functions_func_i.html#index_i"><span>i</span></a></li>
+      <li><a href="functions_func_j.html#index_j"><span>j</span></a></li>
+      <li><a href="functions_func_l.html#index_l"><span>l</span></a></li>
+      <li><a href="functions_func_m.html#index_m"><span>m</span></a></li>
+      <li><a href="functions_func_n.html#index_n"><span>n</span></a></li>
+      <li><a href="functions_func_o.html#index_o"><span>o</span></a></li>
+      <li><a href="functions_func_q.html#index_q"><span>q</span></a></li>
+      <li><a href="functions_func_r.html#index_r"><span>r</span></a></li>
+      <li class="current"><a href="functions_func_s.html#index_s"><span>s</span></a></li>
+      <li><a href="functions_func_t.html#index_t"><span>t</span></a></li>
+      <li><a href="functions_func_u.html#index_u"><span>u</span></a></li>
+      <li><a href="functions_func_v.html#index_v"><span>v</span></a></li>
+      <li><a href="functions_func_w.html#index_w"><span>w</span></a></li>
+      <li><a href="functions_func_0x7e.html#index_0x7e"><span>~</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+$(document).ready(function(){initNavTree('functions_func_s.html','');});
+</script>
+<div id="doc-content">
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div class="contents">
+&#160;
+
+<h3><a class="anchor" id="index_s"></a>- s -</h3><ul>
+<li>scale()
+: <a class="el" href="classfplbase_1_1_texture.html#a27c2926d282e24e8257b5625a4a54833">fplbase::Texture</a>
+</li>
+<li>ScissorOff()
+: <a class="el" href="classfplbase_1_1_renderer.html#a677140b7a7a8df7b5432bd66e3172e34">fplbase::Renderer</a>
+</li>
+<li>ScissorOn()
+: <a class="el" href="classfplbase_1_1_renderer.html#a26d7173e21996afb7381d16c96905cd5">fplbase::Renderer</a>
+</li>
+<li>ScreenRenderTarget()
+: <a class="el" href="classfplbase_1_1_render_target.html#a6ff76d4d154cc3a5180e0f9b7d446a9c">fplbase::RenderTarget</a>
+</li>
+<li>Set()
+: <a class="el" href="classfplbase_1_1_material.html#a7119953f4d62309f8e911a6ad2db9925">fplbase::Material</a>
+, <a class="el" href="classfplbase_1_1_shader.html#ae9a5653628db6b76465134ab15fb6410">fplbase::Shader</a>
+, <a class="el" href="classfplbase_1_1_texture.html#a4bff77e77297a63f0682571edce07c39">fplbase::Texture</a>
+</li>
+<li>set_atlas_texture()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#a8b19ebc4f68e623b1b290c0de0f4fe37">fplbase::TextureAtlas</a>
+</li>
+<li>set_blend_mode()
+: <a class="el" href="classfplbase_1_1_material.html#a8637c953e04bc52385ed0cf348767ba3">fplbase::Material</a>
+</li>
+<li>set_camera_pos()
+: <a class="el" href="classfplbase_1_1_renderer.html#ab34e0000090c1398630ea16af7b1892e">fplbase::Renderer</a>
+</li>
+<li>set_color()
+: <a class="el" href="classfplbase_1_1_renderer.html#ad26edee6912c6c2314b12200a31fc3a1">fplbase::Renderer</a>
+</li>
+<li>set_controller_id()
+: <a class="el" href="classfplbase_1_1_gamepad.html#ad3ad8fdf5c0ee2be03cd899bc9681252">fplbase::Gamepad</a>
+</li>
+<li>set_device_orientation()
+: <a class="el" href="classfplbase_1_1_head_mounted_display_input.html#a6f207857c265bcf81e1a056f3631907a">fplbase::HeadMountedDisplayInput</a>
+</li>
+<li>set_exit_requested()
+: <a class="el" href="classfplbase_1_1_input_system.html#a2edc0ab8871f82f6c8c4692fb7204958">fplbase::InputSystem</a>
+</li>
+<li>set_filename()
+: <a class="el" href="classfplbase_1_1_async_asset.html#abac5c1b286def45d4777a02a8df6d18c">fplbase::AsyncAsset</a>
+</li>
+<li>set_force_blend_mode()
+: <a class="el" href="classfplbase_1_1_renderer.html#a580f37a5379d3a8874c2c8b4f78a1394">fplbase::Renderer</a>
+</li>
+<li>set_format()
+: <a class="el" href="classfplbase_1_1_mesh.html#a99db7c679fa5afbdc4e17cdeb30eaa7e">fplbase::Mesh</a>
+</li>
+<li>set_is_in_head_mounted_display()
+: <a class="el" href="classfplbase_1_1_head_mounted_display_input.html#af0ecca030b2bb006c14429555ac2a34c">fplbase::HeadMountedDisplayInput</a>
+</li>
+<li>set_joystick_data()
+: <a class="el" href="classfplbase_1_1_joystick.html#ab21253d8f4b5bf7261983ce9f08aa5e4">fplbase::Joystick</a>
+</li>
+<li>set_light_pos()
+: <a class="el" href="classfplbase_1_1_renderer.html#a70c40cb782c17d42f175932de5e6f489">fplbase::Renderer</a>
+</li>
+<li>set_minimized()
+: <a class="el" href="classfplbase_1_1_input_system.html#a9fc1174d92faf842fc2b838b3645cbe2">fplbase::InputSystem</a>
+</li>
+<li>set_minimized_frame()
+: <a class="el" href="classfplbase_1_1_input_system.html#a92299484fc686846261e69e3cf4ab7ec">fplbase::InputSystem</a>
+</li>
+<li>set_model()
+: <a class="el" href="classfplbase_1_1_renderer.html#a2786804c71f08b7a8f7a5969b1a9b17e">fplbase::Renderer</a>
+</li>
+<li>set_model_view_projection()
+: <a class="el" href="classfplbase_1_1_renderer.html#a94758737ad258b1477519e35336e6c58">fplbase::Renderer</a>
+</li>
+<li>set_original_size()
+: <a class="el" href="classfplbase_1_1_texture.html#a980eb822513f05de6f4c6be72fcc7f75">fplbase::Texture</a>
+</li>
+<li>set_override_pixel_shader()
+: <a class="el" href="classfplbase_1_1_renderer.html#a17a97ca62e42d9a350de2ca64132d090">fplbase::Renderer</a>
+</li>
+<li>set_scale()
+: <a class="el" href="classfplbase_1_1_texture.html#a3d72a7122a7b22877e3b76d156b29948">fplbase::Texture</a>
+</li>
+<li>SetAnimation()
+: <a class="el" href="classfplbase_1_1_renderer.html#a35e53b1f5a783535a0282da0642ad836">fplbase::Renderer</a>
+</li>
+<li>SetAsRenderTarget()
+: <a class="el" href="classfplbase_1_1_render_target.html#a0644b9623d016ce75dd8ee64ec2a3c55">fplbase::RenderTarget</a>
+</li>
+<li>SetAxis()
+: <a class="el" href="classfplbase_1_1_joystick.html#a49f2fa862f621e3c6c4a9a52666f71b3">fplbase::Joystick</a>
+</li>
+<li>SetBlendMode()
+: <a class="el" href="classfplbase_1_1_renderer.html#a8f5b946e6acd9ce1002c289e581cacad">fplbase::Renderer</a>
+</li>
+<li>SetBones()
+: <a class="el" href="classfplbase_1_1_mesh.html#ad1f787785d01d9dd731624d3bcef6362">fplbase::Mesh</a>
+</li>
+<li>SetBoneTransforms()
+: <a class="el" href="classfplbase_1_1_renderer.html#ae5f4ad98081ebd42c412bffbc684f569">fplbase::Renderer</a>
+</li>
+<li>SetCulling()
+: <a class="el" href="classfplbase_1_1_renderer.html#a1f1ed30e68eb9c48ba7bf13847c138a5">fplbase::Renderer</a>
+</li>
+<li>SetHat()
+: <a class="el" href="classfplbase_1_1_joystick.html#ade669dc3077814433bf62e4a0270e28b">fplbase::Joystick</a>
+</li>
+<li>SetOriginalSizeIfNotYetSet()
+: <a class="el" href="classfplbase_1_1_texture.html#a0153248d848434afff7b2763db09d6ae">fplbase::Texture</a>
+</li>
+<li>SetRelativeMouseMode()
+: <a class="el" href="classfplbase_1_1_input_system.html#a0d733a8f13494dfe5e32b90716501f18">fplbase::InputSystem</a>
+</li>
+<li>SetTextInputRect()
+: <a class="el" href="classfplbase_1_1_input_system.html#a64c87b749cc4aa916884574d41639916">fplbase::InputSystem</a>
+</li>
+<li>SetTextureScale()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#acf11c53b9f9d83ae18e003e5283e39ff">fplbase::AssetManager</a>
+</li>
+<li>SetUniform()
+: <a class="el" href="classfplbase_1_1_shader.html#a502dbbcbb2881f76c2e2df7dc21697c6">fplbase::Shader</a>
+</li>
+<li>shader_bone_indices()
+: <a class="el" href="classfplbase_1_1_mesh.html#a5aeaa120faafcf24302e1399f50eb4ca">fplbase::Mesh</a>
+</li>
+<li>ShutDown()
+: <a class="el" href="classfplbase_1_1_renderer.html#af69c6031baa7896de274665104110c05">fplbase::Renderer</a>
+</li>
+<li>size()
+: <a class="el" href="classfplbase_1_1_texture.html#a10d9ce9a1eb8af52ae78d94add5633e1">fplbase::Texture</a>
+</li>
+<li>StartLoading()
+: <a class="el" href="classfplbase_1_1_async_loader.html#a2398939b31512d9f16d7b34df7df982a">fplbase::AsyncLoader</a>
+</li>
+<li>StartLoadingTextures()
+: <a class="el" href="classfplbase_1_1_asset_manager.html#a86f1f7f56d270cf9f697fb949070bb9d">fplbase::AssetManager</a>
+</li>
+<li>StartTextInput()
+: <a class="el" href="classfplbase_1_1_input_system.html#a05ab6dee8596934711aed5180288a85d">fplbase::InputSystem</a>
+</li>
+<li>StopLoadingWhenComplete()
+: <a class="el" href="classfplbase_1_1_async_loader.html#ae909cd24a5847c6c4b9194d0ceef96ac">fplbase::AsyncLoader</a>
+</li>
+<li>StopTextInput()
+: <a class="el" href="classfplbase_1_1_input_system.html#a3f6645a0fb53b1939e2514776437205b">fplbase::InputSystem</a>
+</li>
+<li>subtexture_bounds()
+: <a class="el" href="classfplbase_1_1_texture_atlas.html#ae9cecc6c10a0c072b383f75dfab9d608">fplbase::TextureAtlas</a>
+</li>
+<li>SupportsTextureFormat()
+: <a class="el" href="classfplbase_1_1_renderer.html#a351fb5bc9ccebae8b33ea390d862f6ea">fplbase::Renderer</a>
+</li>
+</ul>
+</div><!-- contents -->
+</div><!-- doc-content -->
+<!-- Google Analytics -->
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-49880327-7', 'google.github.io');
+ga('send', 'pageview');
+</script>
+</body>
+</html>

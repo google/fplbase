@@ -1,23 +1,29 @@
 var searchData=
 [
+  ['gamepad',['Gamepad',['../classfplbase_1_1_gamepad.html#ac4b782bf8df55768c9e6dc5172786a9f',1,'fplbase::Gamepad']]],
   ['gamepadmap',['GamepadMap',['../classfplbase_1_1_input_system.html#aa039bdbf41a315a6e54eabf76a1b2c6a',1,'fplbase::InputSystem']]],
   ['gathershadertransforms',['GatherShaderTransforms',['../classfplbase_1_1_mesh.html#a534ad4d50aec1afdbf649d7831d5ddd1',1,'fplbase::Mesh']]],
   ['get_5fpointers',['get_pointers',['../classfplbase_1_1_input_system.html#ab6a74d0e14e77ea8187688b69d3f0ae7',1,'fplbase::InputSystem']]],
   ['getaxis',['GetAxis',['../classfplbase_1_1_joystick.html#ac8d9cfd3a85ebd55afd919abf614a663',1,'fplbase::Joystick']]],
-  ['getbounds',['GetBounds',['../classfplbase_1_1_texture_atlas.html#a42f3ca1e5a5a6b34b2888848d1094fb7',1,'fplbase::TextureAtlas']]],
-  ['getbutton',['GetButton',['../classfplbase_1_1_joystick.html#ab41fbf7c0c8ecc64efdffd3a5abd0fd8',1,'fplbase::Joystick::GetButton()'],['../classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027',1,'fplbase::InputSystem::GetButton()']]],
+  ['getbounds',['GetBounds',['../classfplbase_1_1_texture_atlas.html#ab38a4c837518b2f90c59675e6fa2c4fe',1,'fplbase::TextureAtlas']]],
+  ['getbutton',['GetButton',['../classfplbase_1_1_joystick.html#ab41fbf7c0c8ecc64efdffd3a5abd0fd8',1,'fplbase::Joystick::GetButton()'],['../classfplbase_1_1_gamepad.html#a187c91006611523de1d45db2eeacd9f3',1,'fplbase::Gamepad::GetButton(GamepadInputButton i)'],['../classfplbase_1_1_gamepad.html#ad93f38e3659a4a969813e9f8b4af67bd',1,'fplbase::Gamepad::GetButton(GamepadInputButton i) const '],['../classfplbase_1_1_input_system.html#aa05bed77f1c54c5350754e5f93279027',1,'fplbase::InputSystem::GetButton()']]],
   ['getfplbaseversion',['GetFplBaseVersion',['../classfplbase_1_1_renderer.html#aec7e39589274c8c331c91e356d71f871',1,'fplbase::Renderer']]],
   ['getgamepad',['GetGamepad',['../classfplbase_1_1_input_system.html#ad5213bb846b0c68b9727622c637feaa1',1,'fplbase::InputSystem']]],
   ['getgamepadcodefromjavakeycode',['GetGamepadCodeFromJavaKeyCode',['../classfplbase_1_1_gamepad.html#a4da5319f754f59ca8796ad1fccaa4889',1,'fplbase::Gamepad']]],
   ['gethat',['GetHat',['../classfplbase_1_1_joystick.html#a1b40b4ef074bbf66d74685147e5ea1bd',1,'fplbase::Joystick']]],
+  ['gethighperformanceparameters',['GetHighPerformanceParameters',['../group__fplbase__utilities.html#gab4a53b5581d2085120a4d9dd28d7d5ea',1,'fplbase']]],
   ['getjoystick',['GetJoystick',['../classfplbase_1_1_input_system.html#afe9bff67c1feed642cc5248cb945ae35',1,'fplbase::InputSystem']]],
   ['getjoystickid',['GetJoystickId',['../classfplbase_1_1_joystick.html#a86af492fb21b9e871046b7dbd8f4409d',1,'fplbase::Joystick']]],
   ['getmaterial',['GetMaterial',['../classfplbase_1_1_mesh.html#ac7d9c1b83bbd142547c749775c2f6287',1,'fplbase::Mesh']]],
   ['getnumaxes',['GetNumAxes',['../classfplbase_1_1_joystick.html#a65e4a78fa7b16329a4cc6d1939a1a235',1,'fplbase::Joystick']]],
   ['getnumbuttons',['GetNumButtons',['../classfplbase_1_1_joystick.html#a927f589d41701ffd07e888516148c425',1,'fplbase::Joystick']]],
   ['getnumhats',['GetNumHats',['../classfplbase_1_1_joystick.html#a890d7640e244b83871a044a57dec237c',1,'fplbase::Joystick']]],
+  ['getperformancemode',['GetPerformanceMode',['../group__fplbase__utilities.html#ga32333f5a6524b2039411a9887d52aa25',1,'fplbase']]],
   ['getpointerbutton',['GetPointerButton',['../classfplbase_1_1_input_system.html#adbd02b4cce3e9015f616f9c5ae078dd8',1,'fplbase::InputSystem']]],
+  ['getstoragepath',['GetStoragePath',['../group__fplbase__utilities.html#gaaf18735bbaa0d7002268d04c908cbd6b',1,'fplbase']]],
+  ['getsystemramsize',['GetSystemRamSize',['../group__fplbase__utilities.html#gaed10cf6c1b2128479590b7b0f8f51979',1,'fplbase']]],
   ['gettextinputevents',['GetTextInputEvents',['../classfplbase_1_1_input_system.html#a0632b37b49ae4c9629fa5b1debe18a8f',1,'fplbase::InputSystem']]],
   ['gettextureid',['GetTextureId',['../classfplbase_1_1_render_target.html#a0453370caab23655457b48e8c589ea08',1,'fplbase::RenderTarget']]],
-  ['getviewportsize',['GetViewportSize',['../classfplbase_1_1_renderer.html#a0cb453dc3b97145cd3aac5fbbaa0bc24',1,'fplbase::Renderer']]]
+  ['getviewportsize',['GetViewportSize',['../classfplbase_1_1_renderer.html#a0cb453dc3b97145cd3aac5fbbaa0bc24',1,'fplbase::Renderer']]],
+  ['getvsyncframeid',['GetVsyncFrameId',['../group__fplbase__utilities.html#ga6b08ea368828391f0e7a9a5019f20125',1,'fplbase']]]
 ];

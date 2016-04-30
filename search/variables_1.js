@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['mousedelta',['mousedelta',['../structfplbase_1_1_input_pointer.html#a2e75a91f4f98c74bc177880017edf566',1,'fplbase::InputPointer']]],
-  ['mousepos',['mousepos',['../structfplbase_1_1_input_pointer.html#abca94c4d2b5d62536b462bb4e942df62',1,'fplbase::InputPointer']]]
+  ['control_5fcode',['control_code',['../structfplbase_1_1_android_input_event.html#aaaf4a3bb096198f38742d077af632265',1,'fplbase::AndroidInputEvent']]]
 ];
