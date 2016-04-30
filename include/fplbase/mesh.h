@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 #include "fplbase/material.h"
 #include "fplbase/shader.h"
@@ -25,11 +26,15 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_mesh
+/// @{
+
 class Renderer;
 
-// An array of these enums defines the format of vertex data.
+/// @brief An array of these enums defines the format of vertex data.
 enum Attribute {
-  kEND = 0,  // The array must always be terminated by one of these.
+  kEND = 0,  ///< @brief The array must always be terminated by one of these.
   kPosition3f,
   kNormal3f,
   kTangent4f,
@@ -43,7 +48,7 @@ enum Attribute {
 /// @brief Abstraction for a set of indices, used for rendering.
 ///
 /// A mesh instance contains a VBO and one or more IBO's.
-class Mesh {
+class Mesh : public Asset {
  public:
   enum Primitive {
     kTriangles,
@@ -109,9 +114,17 @@ class Mesh {
   void Render(Renderer &renderer, bool ignore_material = false,
               size_t instances = 1);
 
-  // Render itself into stereoscopic viewports.
-  // viewport, mvp, camera_position arugments need to be a pointer to an array
-  // with 2 entries for left and right parameters.
+  /// @brief Render the mesh, itself, into stereoscopic viewports.
+  /// @param renderer The renderer object to be used.
+  /// @param shader The shader object to be used.
+  /// @param viewport An array with two elements (left and right parameters) for
+  /// the viewport.
+  /// @param mvp An array with two elements (left and right parameters) for the
+  /// Model View Projection (MVP) matrix.
+  /// @param camera_position An array with two elements (left and right
+  /// parameters) for camera position.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
   void RenderStereo(Renderer &renderer, const Shader *shader,
                     const mathfu::vec4i *viewport, const mathfu::mat4 *mvp,
                     const mathfu::vec3 *camera_position,
@@ -352,6 +365,7 @@ class Mesh {
   std::vector<uint8_t> shader_bone_indices_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPL_MESH_H

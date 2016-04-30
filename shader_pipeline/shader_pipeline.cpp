@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "common_generated.h"
+#include "fplbase/preprocessor.h"
 #include "fplbase/utilities.h"
 #include "shader_generated.h"
 
@@ -109,16 +110,18 @@ int main(int argc, char** argv) {
   // Read
   std::string vsh;
   std::string fsh;
-  std::string failed;
-  if (!fplbase::LoadFileWithIncludes(args.vertex_shader.c_str(), &vsh,
-                                     &failed)) {
-    printf("Unable to load file: %s \n", args.vertex_shader.c_str());
+  std::string error_message;
+  if (!fplbase::LoadFileWithDirectives(args.vertex_shader.c_str(), &vsh,
+                                       nullptr, &error_message)) {
+    printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
+           error_message.c_str());
     return 1;
   }
 
-  if (!fplbase::LoadFileWithIncludes(args.fragment_shader.c_str(), &fsh,
-                                     &failed)) {
-    printf("Unable to load file: %s \n", args.fragment_shader.c_str());
+  if (!fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
+                                       nullptr, &error_message)) {
+    printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
+           error_message.c_str());
     return 1;
   }
 

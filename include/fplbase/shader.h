@@ -16,11 +16,16 @@
 #define FPLBASE_SHADER_H
 
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/asset.h"
 
 #include "mathfu/glsl_mappings.h"
 
 namespace fplbase {
 class Renderer;
+
+/// @file
+/// @addtogroup fplbase_shader
+/// @{
 
 static const int kMaxTexturesPerShader = 8;
 static const int kNumVec4sInAffineTransform = 3;
@@ -35,7 +40,7 @@ typedef int UniformHandle;
 ///
 /// Represents a shader consisting of a vertex and pixel shader. Also stores
 /// ids of standard uniforms. Use the Renderer class below to create these.
-class Shader {
+class Shader : public Asset {
  public:
   Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
       : program_(program),
@@ -148,6 +153,7 @@ class Shader {
   UniformHandle uniform_bone_transforms_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_SHADER_H

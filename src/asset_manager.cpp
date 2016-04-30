@@ -17,6 +17,7 @@
 #include "fplbase/asset_manager.h"
 #include "fplbase/flatbuffer_utils.h"
 #include "fplbase/texture.h"
+#include "fplbase/preprocessor.h"
 #include "fplbase/utilities.h"
 #include "materials_generated.h"
 #include "mesh_generated.h"
@@ -31,6 +32,18 @@ using mathfu::vec4;
 using mathfu::vec4i;
 
 namespace fplbase {
+
+void FileAsset::Load() {
+  if (LoadFile(filename_.c_str(), &contents)) {
+    // This is just to signal the load succeeded. data_ doesn't own the memory.
+    data_ = reinterpret_cast<const uint8_t *>(contents.c_str());
+  }
+}
+
+void FileAsset::Finalize() {
+  // Since the asset was already "created", this is all we have to do here.
+  data_ = nullptr;
+}
 
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
@@ -53,9 +66,12 @@ static_assert(
             static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
         kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
         kFormatLuminance ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8),
+            static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+        kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
+        kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
+        kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX),
     "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatLuminance + 1,
+static_assert(kFormatCount == kFormatKTX + 1,
               "Please update static_assert above with new enum values.");
 
 template <typename T>
@@ -79,26 +95,38 @@ AssetManager::AssetManager(Renderer &renderer)
 }
 
 void AssetManager::ClearAllAssets() {
+  DestructAssetsInMap(material_map_);
+  DestructAssetsInMap(texture_atlas_map_);
+  DestructAssetsInMap(mesh_map_);
   DestructAssetsInMap(shader_map_);
   DestructAssetsInMap(texture_map_);
-  DestructAssetsInMap(material_map_);
-  DestructAssetsInMap(mesh_map_);
+  DestructAssetsInMap(file_map_);
 }
 
 Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
 
-Shader *AssetManager::LoadShader(const char *basename) {
+Shader *AssetManager::LoadShaderHelper(const char *basename,
+                                       const char **defines,
+                                       bool should_reload) {
   auto shader = FindShader(basename);
-  if (shader) return shader;
+  if (!should_reload && shader)
+    return shader;
   std::string vs_file, ps_file;
   std::string filename = std::string(basename) + ".glslv";
-  std::string failedfile;
-  if (LoadFileWithIncludes(filename.c_str(), &vs_file, &failedfile)) {
+  std::string error_message;
+  if (LoadFileWithDirectives(filename.c_str(), &vs_file, defines,
+                             &error_message)) {
     filename = std::string(basename) + ".glslf";
-    if (LoadFileWithIncludes(filename.c_str(), &ps_file, &failedfile)) {
-      shader = renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
+    if (LoadFileWithDirectives(filename.c_str(), &ps_file, defines,
+                               &error_message)) {
+      if (should_reload) {
+        renderer_.RecompileShader(vs_file.c_str(), ps_file.c_str(), shader);
+      } else {
+        shader =
+            renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
+      }
       if (shader) {
         shader_map_[basename] = shader;
       } else {
@@ -113,9 +141,22 @@ Shader *AssetManager::LoadShader(const char *basename) {
       return shader;
     }
   }
-  LogError(kError, "Can\'t load shader file: %s", failedfile.c_str());
-  renderer_.set_last_error("Couldn\'t load: " + failedfile);
+  LogError(kError, "%s", error_message.c_str());
+  renderer_.set_last_error(error_message.c_str());
   return nullptr;
+}
+
+Shader *AssetManager::LoadShader(const char *basename, const char **defines) {
+  return LoadShaderHelper(basename, defines, false);
+}
+
+Shader *AssetManager::LoadShader(const char *basename) {
+  static const char **defines = {nullptr};
+  return LoadShader(basename, defines);
+}
+
+Shader *AssetManager::ReloadShader(const char *basename, const char **defines) {
+  return LoadShaderHelper(basename, defines, true);
 }
 
 Shader *AssetManager::LoadShaderDef(const char *filename) {
@@ -157,23 +198,35 @@ Shader *AssetManager::LoadShaderDef(const char *filename) {
   return nullptr;
 }
 
+void AssetManager::UnloadShader(const char *filename) {
+  auto shader = FindShader(filename);
+  if (!shader || shader->DecreaseRefCount()) return;
+  shader_map_.erase(filename);
+  delete shader;
+}
+
 Texture *AssetManager::FindTexture(const char *filename) {
   return FindInMap(texture_map_, filename);
 }
 
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
-                                   bool mipmaps) {
+                                   bool mipmaps, bool async) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
   tex = new Texture(filename, format, mipmaps);
-  loader_.QueueJob(tex);
-  texture_map_[filename] = tex;
-  return tex;
+  return LoadOrQueue(tex, texture_map_, async);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
 
 bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
+
+void AssetManager::UnloadTexture(const char *filename) {
+  auto tex = FindTexture(filename);
+  if (!tex || tex->DecreaseRefCount()) return;
+  texture_map_.erase(filename);
+  delete tex;
+}
 
 Material *AssetManager::FindMaterial(const char *filename) {
   return FindInMap(material_map_, filename);
@@ -197,7 +250,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
               : kFormatAuto;
       auto tex = LoadTexture(matdef->texture_filenames()->Get(index)->c_str(),
-                             format, matdef->mipmaps() != 0);
+                             format, matdef->mipmaps() != 0, false);
       mat->textures().push_back(tex);
 
       auto original_size =
@@ -217,7 +270,7 @@ Material *AssetManager::LoadMaterial(const char *filename) {
 
 void AssetManager::UnloadMaterial(const char *filename) {
   auto mat = FindMaterial(filename);
-  if (!mat) return;
+  if (!mat || mat->DecreaseRefCount()) return;
   mat->DeleteTextures();
   material_map_.erase(filename);
   for (auto it = mat->textures().begin(); it != mat->textures().end(); ++it) {
@@ -330,7 +383,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
 
 void AssetManager::UnloadMesh(const char *filename) {
   auto mesh = FindMesh(filename);
-  if (!mesh) return;
+  if (!mesh || mesh->DecreaseRefCount()) return;
   mesh_map_.erase(filename);
   delete mesh;
 }
@@ -351,15 +404,14 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
     Texture *atlas_texture = LoadTexture(atlasdef->texture_filename()->c_str());
     atlas = new TextureAtlas();
     atlas->set_atlas_texture(atlas_texture);
-    atlas->set_size(LoadVec2i(atlasdef->size()));
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
       flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
       atlas->index_map().insert(std::make_pair(
           atlasdef->entries()->Get(index)->name()->str(), index));
-      vec2i size = LoadVec2i(atlasdef->entries()->Get(index)->size());
-      vec2i location = LoadVec2i(atlasdef->entries()->Get(index)->location());
+      vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
+      vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
       atlas->subtexture_bounds().push_back(
-          vec4i(location.x(), location.y(), size.x(), size.y()));
+          vec4(location.x(), location.y(), size.x(), size.y()));
     }
     texture_atlas_map_[filename] = atlas;
     return atlas;
@@ -370,9 +422,32 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
 
 void AssetManager::UnloadTextureAtlas(const char *filename) {
   auto atlas = FindTextureAtlas(filename);
-  if (!atlas) return;
+  if (!atlas || atlas->DecreaseRefCount()) return;
   texture_atlas_map_.erase(filename);
   delete atlas;
+}
+
+FileAsset *AssetManager::FindFileAsset(const char *filename) {
+  return FindInMap(file_map_, filename);
+}
+
+FileAsset *AssetManager::LoadFileAsset(const char *filename) {
+  auto file = FindFileAsset(filename);
+  if (file) return file;
+  file = new FileAsset();
+  if (LoadFile(filename, &file->contents)) {
+    file_map_[filename] = file;
+    return file;
+  }
+  delete file;
+  return nullptr;
+}
+
+void AssetManager::UnloadFileAsset(const char *filename) {
+  auto file = FindFileAsset(filename);
+  if (!file || file->DecreaseRefCount()) return;
+  file_map_.erase(filename);
+  delete file;
 }
 
 }  // namespace fplbase

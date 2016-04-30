@@ -42,7 +42,9 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   auto shader = asset_manager.LoadShader("tex");
   assert(shader);
 
-  auto tex = asset_manager.LoadTexture("tex.webp");
+  // This will load a .webp instead if file not available or no hardware
+  // support for this texture compression format.
+  auto tex = asset_manager.LoadTexture("tex.ktx");  // ETC2
   assert(tex);
 
   asset_manager.StartLoadingTextures();
@@ -57,9 +59,6 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
 
     renderer.ClearFrameBuffer(mathfu::vec4(0.0, 0.0f, 0.0, 1.0f));
 
-    shader->Set(renderer);
-    tex->Set(0);
-
     auto time = static_cast<float>(input.Time());
     auto c = cos(time);
     auto s = sin(time);
@@ -71,6 +70,10 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
         mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
         mathfu::mat4::FromRotationMatrix(rotz) *
         mathfu::mat4::FromScaleVector(zoom));
+
+    shader->Set(renderer);
+    tex->Set(0);
+
     fplbase::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
                                       mathfu::vec3(1, 1, 0), mathfu::vec2(0, 0),
                                       mathfu::vec2(10, 10));

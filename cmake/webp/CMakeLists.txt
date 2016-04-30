@@ -47,14 +47,6 @@ if(webp_build_cwebp OR webp_build_dwebp)
     ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)
 endif()
 
-# Suppress warnings on Visual Studio
-if(MSVC)
-  set(C_FLAGS_WARNINGS "/wd4820 /wd4244 /wd4242 /wd4711 /wd4668 /wd4255 /wd4057 /wd4127 /wd4738 /wd4204 /wd4221")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-endif()
-
 # Webp source files.
 set(webp_SRCS
     ${webp_dir}/src/demux/demux.c
@@ -162,7 +154,6 @@ if(webp_build_cwebp OR webp_build_dwebp)
 endif()
 
 # Executable target.
-add_definitions(-Wall)
 if(webp_build_cwebp OR webp_build_dwebp)
   add_definitions(-DHAVE_CONFIG_H)
 endif()

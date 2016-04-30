@@ -27,37 +27,44 @@
 #define PLATFORM_MOBILE
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
-#else
+#else  // !defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #include <OpenGL/gl.h>
 #define glDrawElementsInstanced glDrawElementsInstancedARB
-#endif
-#else
+#endif  // defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+
+#else  // !defined(__APPLE__)
 #ifdef __ANDROID__
 #define PLATFORM_MOBILE
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 18
 #include <GLES3/gl3.h>
-#else
+#else  // __ANDROID_API__ < 18
 #include <GLES2/gl2.h>
 #include "gl3stub.h"
-#endif
-#else  // WIN32 & Linux
+#endif  // __ANDROID_API__ < 18
+
+#else  // !defined(__ANDROID__), so WIN32 & Linux
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
+#endif  // !defined(WIN32_LEAN_AND_MEAN)
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif  // !defined(NOMINMAX)
 #include <windows.h>
-#endif
+#endif  // !defined(_WIN32)
+
 #include <GL/gl.h>
 #include <GL/glext.h>
 #if !defined(GL_GLEXT_PROTOTYPES)
 #ifdef _WIN32
-#define GLBASEEXTS GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)
-#else
+#define GLBASEEXTS                                             \
+  GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)            \
+  GLEXT(PFNGLCOMPRESSEDTEXIMAGE2DPROC, glCompressedTexImage2D)
+#else   // !defined(_WIN32)
 #define GLBASEEXTS
-#endif
+#endif  // !defined(_WIN32)
 #define GLEXTS                                                                \
   GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers)                          \
       GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer)                   \
@@ -115,9 +122,9 @@
 GLBASEEXTS
 GLEXTS
 #undef GLEXT
-#endif
-#endif  //  !defined(GL_GLEXT_PROTOTYPES)
-#endif
+#endif  // !defined(GL_GLEXT_PROTOTYPES)
+#endif  // !defined(__ANDROID__), so WIN32 & Linux
+#endif  // !defined(__APPLE__)
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.
 // This logs GL error when LOG_GL_ERRORS below is defined.
@@ -141,5 +148,57 @@ GLEXTS
 // The error checking function used by the GL_CALL macro above,
 // uses glGetError() to check for errors.
 extern void LogGLError(const char *file, int line, const char *call);
+
+// These are missing in older NDKs.
+#ifndef GL_ETC1_RGB8_OES
+#define GL_ETC1_RGB8_OES 0x8D64
+#endif
+
+#ifndef GL_COMPRESSED_RGB8_ETC2
+#define GL_COMPRESSED_RGB8_ETC2 0x9274
+#endif
+
+#ifndef GL_COMPRESSED_RGBA_ASTC_4x4_KHR
+#define GL_COMPRESSED_RGBA_ASTC_4x4_KHR 0x93B0
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_5x4_KHR
+#define GL_COMPRESSED_RGBA_ASTC_5x4_KHR 0x93B1
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_5x5_KHR
+#define GL_COMPRESSED_RGBA_ASTC_5x5_KHR 0x93B2
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_6x5_KHR
+#define GL_COMPRESSED_RGBA_ASTC_6x5_KHR 0x93B3
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_6x6_KHR
+#define GL_COMPRESSED_RGBA_ASTC_6x6_KHR 0x93B4
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_8x5_KHR
+#define GL_COMPRESSED_RGBA_ASTC_8x5_KHR 0x93B5
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_8x6_KHR
+#define GL_COMPRESSED_RGBA_ASTC_8x6_KHR 0x93B6
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_8x8_KHR
+#define GL_COMPRESSED_RGBA_ASTC_8x8_KHR 0x93B7
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_10x5_KHR
+#define GL_COMPRESSED_RGBA_ASTC_10x5_KHR 0x93B8
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_10x6_KHR
+#define GL_COMPRESSED_RGBA_ASTC_10x6_KHR 0x93B9
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_10x8_KHR
+#define GL_COMPRESSED_RGBA_ASTC_10x8_KHR 0x93BA
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_10x10_KHR
+#define GL_COMPRESSED_RGBA_ASTC_10x10_KHR 0x93BB
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_12x10_KHR
+#define GL_COMPRESSED_RGBA_ASTC_12x10_KHR 0x93BC
+#endif
+#ifndef GL_COMPRESSED_RGBA_ASTC_12x12_KHR
+#define GL_COMPRESSED_RGBA_ASTC_12x12_KHR 0x93BD
+#endif
 
 #endif  // FPLBASE_GLPLATFORM_H

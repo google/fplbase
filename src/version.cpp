@@ -18,7 +18,7 @@ namespace fplbase {
 
 #define FPLBASE_VERSION_MAJOR 0
 #define FPLBASE_VERSION_MINOR 9
-#define FPLBASE_VERSION_REVISION 0
+#define FPLBASE_VERSION_REVISION 1
 
 // Turn X into a string literal.
 #define FPLBASE_STRING_EXPAND(X) #X

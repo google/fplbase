@@ -22,6 +22,26 @@
 
 namespace fplbase {
 
+/// @file
+/// @defgroup fplbase_key_codes Key Codes
+/// @brief Keyboard key codes used by FPLBase, which correspond to a key press's
+/// value, as mapped by the current operating system. This is ideal for
+/// character-dependent controls.
+///
+/// For example, let's imagine a game that requires the `a` key to be pressed to
+/// trigger `a` for <b>a</b>ttack. If a player mapped a given key (`a`),
+/// on the physical keyboard, to produce the German a-umlaut (`ä`), then this
+/// key would no longer produce the `FPLK_a` keycode (but it <b>would</b> still
+/// produce the `FPL_SCANCODE_A`, which may not be what the user expects).
+///
+/// Let's pretend they now have mapped `F1` to generate the actual `a`
+/// keystroke. They would expect to press `F1` to generate the `a` keystroke for
+/// <b>a</b>ttack, which would correctly correspond to the `FPLK_a`
+/// keycode, but would generate the incorrect scancode `FPL_SCANCODE_F1`.
+///
+/// @ingroup fplbase_keyboardcodes
+/// @{
+
 // Keycodes used by FPL:
 
 typedef int32_t FPL_Keycode;
@@ -298,6 +318,7 @@ typedef enum {
 #define FPL_KMOD_ALT (::fplbase::FPL_KMOD_LALT | ::fplbase::FPL_KMOD_RALT)
 #define FPL_KMOD_GUI (::fplbase::FPL_KMOD_LGUI | ::fplbase::FPL_KMOD_RGUI)
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_KEYBOARD_KEYCODES_H

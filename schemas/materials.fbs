@@ -34,6 +34,9 @@ enum TextureFormat:ubyte {
   F_5551,
   F_565,
   F_8,
+  ASTC,  // https://en.wikipedia.org/wiki/Adaptive_Scalable_Texture_Compression
+  PKM,   // https://en.wikipedia.org/wiki/Ericsson_Texture_Compression
+  KTX    // https://www.khronos.org/opengles/sdk/tools/KTX/
 }
 
 table Material {

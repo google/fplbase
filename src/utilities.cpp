@@ -19,22 +19,30 @@
 #include <string>
 #endif  // defined(__ANDROID__)
 
-#ifdef FPL_BASE_BACKEND_STDLIB
+#if defined(FPL_BASE_BACKEND_STDLIB)
+#if !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE
+#endif
 #include <fcntl.h>
 #include <stdarg.h>
 #include <cstdio>
 
 #if defined(__ANDROID__)
-#ifdef FPL_BASE_BACKEND_SDL
+#if defined(FPL_BASE_BACKEND_SDL)
 #include "SDL_thread.h"
-#endif
+#endif // defined(FPL_BASE_BACKEND_SDL)
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
 }
-#endif
-#endif
+#endif // defined(__ANDROID__)
+
+#if defined(__APPLE__)
+#include "TargetConditionals.h"
+#include <CoreFoundation/CoreFoundation.h>
+#endif  // defined(__APPLE__)
+
+#endif  // defined(FPL_BASE_BACKEND_STDLIB)
 
 namespace fplbase {
 
@@ -193,6 +201,7 @@ bool LoadPreferences(const char *filename, std::string *dest) {
 }
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 int32_t LoadPreference(const char *key, int32_t initial_value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -218,84 +227,7 @@ int32_t LoadPreference(const char *key, int32_t initial_value) {
   return initial_value;
 #endif
 }
-
-bool LoadFileWithIncludesHelper(const char *filename, std::string *dest,
-                                std::string *failedfilename,
-                                std::set<std::string> *all_includes) {
-  if (!LoadFile(filename, dest)) {
-    *failedfilename = filename;
-    return false;
-  }
-  all_includes->insert(filename);
-  std::vector<std::string> includes;
-  auto cursor = dest->c_str();
-  static auto kIncludeStatement = "#include";
-  auto include_len = strlen(kIncludeStatement);
-  // Parse only lines that are include statements, terminating at the first
-  // one that's not.
-  for (;;) {
-    auto start = cursor;
-    cursor += strspn(cursor, " \t");  // Skip whitespace.
-    auto empty = strspn(cursor, "\n\r");
-    if (empty) {  // Skip empty lines.
-      cursor += empty;
-      continue;
-    }
-    auto comment = strspn(cursor, "/");
-    if (comment >= 2) {  // Skip comments.
-      cursor += comment;
-      cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
-      cursor += strspn(cursor, "\n\r");   // Skip newline;
-      continue;
-    }
-    if (strncmp(cursor, kIncludeStatement, include_len) == 0) {
-      cursor += include_len;
-      cursor += strspn(cursor, " \t");  // Skip whitespace.
-      if (*cursor == '\"') {            // Must find quote.
-        cursor++;
-        auto len = strcspn(cursor, "\"\n\r");  // Filename part.
-        if (cursor[len] == '\"') {             // Ending quote.
-          includes.push_back(std::string(cursor, len));
-          cursor += len + 1;
-          cursor += strspn(cursor, "\n\r \t");  // Skip whitespace and newline.
-          continue;
-        }
-      }
-    }
-    // This include statement didn't parse correctly, leave it untouched.
-    cursor = start;
-    break;
-  }
-  // Early out for files with no includes.
-  if (!includes.size()) return true;
-  // Remove the #includes from the final file.
-  dest->erase(0, cursor - dest->c_str());
-  // Now insert the includes.
-  std::string include;
-  size_t insertion_point = 0;
-  for (auto it = includes.begin(); it != includes.end(); ++it) {
-    if (all_includes->find(*it) == all_includes->end()) {
-      if (!LoadFileWithIncludesHelper(it->c_str(), &include, failedfilename,
-                                      all_includes)) {
-        return false;
-      }
-      dest->insert(insertion_point, include);
-      insertion_point += include.length();
-      // Ensure there's a linefeed at eof.
-      if (include.size() && include.back() != '\n') {
-        dest->insert(insertion_point++, "\n");
-      }
-    }
-  }
-  return true;
-}
-
-bool LoadFileWithIncludes(const char *filename, std::string *dest,
-                          std::string *failedfilename) {
-  std::set<std::string> all_includes;
-  return LoadFileWithIncludesHelper(filename, dest, failedfilename,
-                                    &all_includes);
-}
+#endif
 
 #if defined(FPL_BASE_BACKEND_SDL)
 bool SaveFile(const char *filename, const void *data, size_t size) {
@@ -320,7 +252,7 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 #else
 bool SaveFile(const char *filename, const void *data, size_t size) {
   FILE *fd = fopen(filename, "wb");
-  if (fd < 0) {
+  if (fd == NULL) {
     LogError(kError, "SaveFile fail on %s", filename);
     return false;
   }
@@ -383,6 +315,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
 }
 #endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 bool SavePreference(const char *key, int32_t value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -424,6 +357,7 @@ bool SavePreference(const char *key, int32_t value) {
   return false;
 #endif
 }
+#endif
 
 bool SaveFile(const char *filename, const std::string &src) {
   return SaveFile(filename, static_cast<const void *>(src.c_str()),
@@ -443,9 +377,27 @@ inline int chdir(const char *dirname) { return _chdir(dirname); }
 // false otherwise.
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir) {
+  std::string target_dir_str(target_dir);
+
+#if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
+  // Get the target directory from the Bundle instead of using the directory
+  // specified by the client.
+  CFBundleRef main_bundle = CFBundleGetMainBundle();
+  CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
+  char path[PATH_MAX];
+  if (!CFURLGetFileSystemRepresentation(
+          resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+    LogError(kError, "Could not set the bundle directory");
+    return false;
+  }
+  CFRelease(resources_url);
+  target_dir_str = path;
+#endif
+
 #if !defined(__ANDROID__) && !(defined __IOS__)
   {
     std::string current_dir = binary_dir;
+    const std::string separator_str(1, flatbuffers::kPathSeparator);
 
     // Search up the tree from the directory containing the binary searching
     // for target_dir.
@@ -457,9 +409,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
       if (success) break;
       char real_path[256];
       current_dir = getcwd(real_path, sizeof(real_path));
-      std::string target = current_dir +
-                           std::string(1, flatbuffers::kPathSeparator) +
-                           std::string(target_dir);
+      std::string target = current_dir + separator_str + target_dir_str;
       success = chdir(target.c_str());
       if (success == 0) return true;
     }
@@ -840,6 +790,7 @@ int GetVsyncFrameId() {
 
 #endif  // __ANDROID__
 
+#if defined(FPL_BASE_BACKEND_SDL)
 // Checks whether Head Mounted Displays are supported by the system.
 bool SupportsHeadMountedDisplay() {
 #ifdef __ANDROID__
@@ -856,7 +807,9 @@ bool SupportsHeadMountedDisplay() {
   return false;
 #endif  // __ANDROID
 }
+#endif
 
+#if defined(FPL_BASE_BACKEND_SDL)
 // Checks whether or not the activity is running on a Android-TV device.
 bool IsTvDevice() {
 #ifdef __ANDROID__
@@ -872,8 +825,9 @@ bool IsTvDevice() {
   return false;
 #endif  // __ANDROID
 }
+#endif
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 // Get the name of the current activity class.
 std::string AndroidGetActivityName() {
   JNIEnv *env = AndroidGetJNIEnv();
@@ -900,9 +854,9 @@ std::string AndroidGetActivityName() {
   env->DeleteLocalRef(activity);
   return activity_name;
 }
-#endif  // defined(__ANDROID__)
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string AndroidGetViewIntentData() {
   std::string view_data;
   JNIEnv *env = AndroidGetJNIEnv();
@@ -946,12 +900,25 @@ std::string AndroidGetViewIntentData() {
   env->DeleteLocalRef(activity);
   return view_data;
 }
-#endif  // defined(__ANDROID__)
+
+void RelaunchApplication() {
+  JNIEnv *env = AndroidGetJNIEnv();
+  jobject activity = fplbase::AndroidGetActivity();
+  jclass fpl_class = env->GetObjectClass(activity);
+
+  jmethodID mid_relaunch = env->GetMethodID(fpl_class, "relaunch", "()V");
+  env->CallVoidMethod(activity, mid_relaunch);
+
+  env->DeleteLocalRef(fpl_class);
+  env->DeleteLocalRef(activity);
+}
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
 #ifdef __ANDROID__
 // Sends a keypress event to the android system.  This will show up in android
 // indistinguishable from a normal user key press
 void SendKeypressEventToAndroid(int android_key_code) {
+#if defined(FPL_BASE_BACKEND_SDL)
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
@@ -960,6 +927,9 @@ void SendKeypressEventToAndroid(int android_key_code) {
   env->CallVoidMethod(activity, method_id, android_key_code);
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
+#else
+  (void)android_key_code;
+#endif
 }
 
 HighPerformanceParams high_performance_params;
@@ -973,18 +943,6 @@ void SetHighPerformanceParameters(const HighPerformanceParams &params) {
 const HighPerformanceParams &GetHighPerformanceParameters() {
   return high_performance_params;
 }
-
-void RelaunchApplication() {
-  JNIEnv *env = AndroidGetJNIEnv();
-  jobject activity = fplbase::AndroidGetActivity();
-  jclass fpl_class = env->GetObjectClass(activity);
-
-  jmethodID mid_relaunch = env->GetMethodID(fpl_class, "relaunch", "()V");
-  env->CallVoidMethod(activity, mid_relaunch);
-
-  env->DeleteLocalRef(fpl_class);
-  env->DeleteLocalRef(activity);
-}
 #endif  // __ANDROID__
 
 static PerformanceMode performance_mode = kNormalPerformance;
@@ -996,7 +954,7 @@ void SetPerformanceMode(PerformanceMode new_mode) {
 
 PerformanceMode GetPerformanceMode() { return performance_mode; }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string DeviceModel() {
   JNIEnv *env = fplbase::AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android.os.Build");
@@ -1011,9 +969,11 @@ std::string DeviceModel() {
   env->DeleteLocalRef(build_class);
   return result;
 }
-#endif  // __ANDROID__
+#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 
 }  // namespace fplbase
 
+#if !defined(FPLBASE_DISABLE_NEW_DELETE_OPERATORS)
 // We use SIMD types in dynamically allocated objects and arrays.
 MATHFU_DEFINE_GLOBAL_SIMD_AWARE_NEW_DELETE
+#endif

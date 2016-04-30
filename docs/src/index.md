@@ -60,6 +60,7 @@ following libraries (included in the download / submodules):
    * [FlatBuffers][] for serialization.
    * [WebP][] for image loading.
    * [FPLUtil][] (optional, can be used to build).
+   * [googletest][] (only in unit tests).
 
 # Download
 
@@ -83,7 +84,7 @@ upon so download the source using:
   [Android]: http://www.android.com
   [Build Configurations]: @ref fplbase_build_config
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
-  [FPLBase Google Group]: http://group.google.com/group/fplbaselib
+  [FPLBase Google Group]: http://groups.google.com/group/fplbaselib
   [FPLBase Issues Tracker]: http://github.com/google/fplbase/issues
   [FPLBase]: @ref fplbase_overview
   [Introduction]: @ref fplbase_introduction
@@ -96,6 +97,7 @@ upon so download the source using:
   [MathFu]: https://google.github.io/mathfu/
   [FlatBuffers]: https://google.github.io/flatbuffers/
   [FPLUtil]: https://google.github.io/fplutil/
+  [googletest]: https://code.google.com/p/googletest/
   [FlatUI]: https://google.github.io/flatui/
   [FPL]: https://developers.google.com/games/#Tools
   [SDL]: https://www.libsdl.org/

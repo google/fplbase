@@ -27,6 +27,19 @@
 
 namespace fplbase {
 
+/// @file
+/// @addtogroup fplbase_asset_manager
+/// @{
+
+/// @class FileAsset
+/// @brief A generic asset whose contents the AssetManager doesn't care about.
+class FileAsset : public AsyncAsset {
+  virtual void Load();
+  virtual void Finalize();
+ public:
+  std::string contents;
+};
+
 /// @class AssetManager
 /// @brief Central place to own game assets loaded from disk.
 ///
@@ -38,7 +51,12 @@ namespace fplbase {
 /// such as textures.
 class AssetManager {
  public:
+  /// @brief AssetManager constructor.
+  /// @param[in] renderer A reference to the Renderer to use with the
+  /// AssetManager.
   AssetManager(Renderer &renderer);
+
+  /// @brief AssetManager destructor that purges all assets.
   ~AssetManager() { ClearAllAssets(); }
 
   /// @brief Returns a previously loaded shader object.
@@ -57,6 +75,37 @@ class AssetManager {
   /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShader(const char *basename);
 
+  /// @brief Loads and returns a shader object with pre-defined identifiers.
+  ///
+  /// Works like LoadShader (above), but takes in a set of #define variables.
+  ///
+  /// @param basename The name of the shader.
+  /// @param defines A null-terminated array of variables to #define, or
+  /// nullptr if there are no initial #define variables.
+  /// @note An example of how to create such an array:
+  ///       static const char *kMyDefines[] = {
+  ///         USE_SHADOWS,
+  ///         USE_THE_FORCE,
+  ///         USE_SOMEBODY,
+  ///         nullptr
+  ///       };
+  /// @return Returns the loaded shader, or nullptr if there was an error.
+  Shader *LoadShader(const char *basename, const char **defines);
+
+  /// @brief Force a shader to reload.
+  ///
+  /// Regardless of whether the shader has been loaded previously, the shader
+  /// will recompile.
+  /// Otherwise works like LoadShader (above).
+  ///
+  /// @param basename The name of the shader.
+  /// @param defines A null-terminated array of variables to #define, or
+  /// nullptr if there are no initial #define variables.
+  /// @return Returns the loaded shader, or nullptr if there was an error.
+  /// @note If this function doesn't return nullptr, the pointer will be equal
+  /// to any previous (Re)LoadShader calls.
+  Shader *ReloadShader(const char *basename, const char **defines);
+
   /// @brief Load a shader built by shader_pipeline.
   ///
   /// Loads a shader built by the shader_pipeline if it hasn't been loaded.
@@ -66,29 +115,45 @@ class AssetManager {
   /// @return Returns the loaded shader, or nullptr if there was an error.
   Shader *LoadShaderDef(const char *filename);
 
+  /// @brief Deletes the previously loaded shader.
+  ///
+  /// Deletes the shader and removes it from the material manager. Any
+  /// subsequent requests for this shader through Load*() will cause them to be
+  /// loaded anew.
+  /// If its reference count was >1, it will be decreased instead of unloaded.
+  ///
+  /// @param filename The name of the shader to unload.
+  void UnloadShader(const char *filename);
+
   /// @brief Returns a previously created texture.
   ///
   /// @param filename The name of the texture.
   /// @return Returns the texture, or nullptr if not previously loaded.
   Texture *FindTexture(const char *filename);
+
   /// @brief Queue loading a texture if it hasn't been loaded already.
   ///
-  /// Queues a texture for loading if it hasn't been loaded already.
+  /// If async, queues a texture for loading if it hasn't been loaded already,
+  /// otherwise loads it directly.
   /// Currently only supports TGA/WebP format files.
-  /// Returned texture isn't usable until TryFinalize() succeeds and the id
-  /// is non-zero.
+  /// If async, the returned texture isn't usable until TryFinalize() succeeds
+  /// and the id is non-zero.
   ///
   /// @param filename The name of the texture to load.
   /// @param format The texture format, defaults to kFormatAuto.
   /// @param mipmaps If mipmaps should be used, defaults to true.
-  /// @return Returns an unloaded texture object.
+  /// @param async Whether to load the texture asynchronously.
+  /// @return Returns an unloaded texture object. If not async, may also
+  ///         return null to signal and error.
   Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
-                       bool mipmaps = true);
+                       bool mipmaps = true, bool async = true);
+
   /// @brief Start loading all previously queued textures.
   ///
   /// LoadTextures doesn't actually load anything, this will start the async
   /// loading of all files, and decompression.
   void StartLoadingTextures();
+
   /// @brief Check for the status of async loading textures.
   ///
   /// Call this repeatedly until it returns true, which signals all textures
@@ -98,11 +163,22 @@ class AssetManager {
   /// @return Returns true when all textures have been loaded.
   bool TryFinalize();
 
+  /// @brief Deletes the previously loaded texture.
+  ///
+  /// Deletes the texture and removes it from the material manager. Any
+  /// subsequent requests for this mesh through Load*() will cause them to be
+  /// loaded anew.
+  /// If its reference count was >1, it will be decreased instead of unloaded.
+  ///
+  /// @param filename The name of the texture to unload.
+  void UnloadTexture(const char *filename);
+
   /// @brief Returns a previously loaded material.
   ///
   /// @param filename The name of the material.
   /// @return Returns the material, or nullptr if not previously loaded.
   Material *FindMaterial(const char *filename);
+
   /// @brief Loads and returns a material object.
   ///
   /// Loads a material, which is a compiled FlatBuffer file with
@@ -118,6 +194,7 @@ class AssetManager {
   /// Deletes all OpenGL textures contained in this material, and removes the
   /// textures and the material from material manager. Any subsequent requests
   /// for these textures through Load*() will cause them to be loaded anew.
+  /// If its reference count was >1, it will be decreased instead of unloaded.
   ///
   /// @param filename The name of the material to unload.
   void UnloadMaterial(const char *filename);
@@ -127,6 +204,7 @@ class AssetManager {
   /// @param filename The name of the mesh.
   /// @return Returns the mesh, or nullptr if not previously loaded.
   Mesh *FindMesh(const char *filename);
+
   /// @brief Loads and returns a mesh object.
   ///
   /// Loads a mesh, which is a compiled FlatBuffer file with root Mesh.
@@ -135,10 +213,12 @@ class AssetManager {
   /// @param filename The name of the mesh.
   /// @return
   Mesh *LoadMesh(const char *filename);
+
   /// @brief Deletes the previously loaded mesh.
   ///
   /// Deletes the mesh and removes it from the material manager. Any subsequent
   /// requests for this mesh through Load*() will cause them to be loaded anew.
+  /// If its reference count was >1, it will be decreased instead of unloaded.
   ///
   /// @param filename The name of the mesh to unload.
   void UnloadMesh(const char *filename);
@@ -149,6 +229,7 @@ class AssetManager {
   ///
   /// @return Pointer to the texture atlas if found, nullptr otherwise.
   TextureAtlas *FindTextureAtlas(const char *filename);
+
   /// @brief Loads a texture atlas.
   ///
   /// Loads a texture atlas, which is a compiled FlatBuffer file containing a
@@ -157,17 +238,37 @@ class AssetManager {
   /// @return If this returns nullptr, the error can be found in
   /// Renderer::last_error().
   TextureAtlas *LoadTextureAtlas(const char *filename);
-  /// @brief Delete a texture atlas and remove it from the material manager.
+
+  /// @brief Delete a texture atlas and remove it from the asset manager.
   ///
   /// This will cause any Texture objects this atlas has issued to no
   /// longer refer to a valid texture.  Any subsequent requests for this texture
   /// atlas through Load*() will cause it to be loaded anew.
+  /// If its reference count was >1, it will be decreased instead of unloaded.
   void UnloadTextureAtlas(const char *filename);
+
+  /// @brief Look up a previously loaded file asset.
+  ///
+  /// @param filename Name of the file asset file to look up.
+  ///
+  /// @return Pointer to the file asset if found, nullptr otherwise.
+  FileAsset *FindFileAsset(const char *filename);
+
+  /// @brief Loads a file asset.
+  ///
+  /// @return nullptr on error.
+  FileAsset *LoadFileAsset(const char *filename);
+
+  /// @brief Delete a file asset and remove it from the asset manager.
+  ///
+  /// If its reference count was >1, it will be decreased instead of unloaded.
+  void UnloadFileAsset(const char *filename);
 
   /// @brief Handy accessor for the renderer.
   ///
   /// @return Returns the renderer.
   Renderer &renderer() { return renderer_; }
+
   /// @brief Handy accessor for the renderer.
   ///
   /// @return Returns the renderer.
@@ -187,7 +288,29 @@ class AssetManager {
   void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
  private:
+   Shader *LoadShaderHelper(const char *basename, const char **defines,
+                            bool should_reload);
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
+
+  // This implements the mechanism for each asset to be both loadable
+  // sync or async.
+  // It gets passed a blank asset that we take ownership of, and the map it
+  // should go into if all succeeds.
+  template<typename T> T *LoadOrQueue(T *asset,
+                                      std::map<std::string, T *> &asset_map,
+                                      bool async) {
+    if (async) {
+      loader_.QueueJob(asset);
+    } else {
+      bool ok = asset->LoadNow();
+      if (!ok) {
+        delete asset;
+        return nullptr;
+      }
+    }
+    asset_map[asset->filename()] = asset;
+    return asset;
+  }
 
   Renderer &renderer_;
   std::map<std::string, Shader *> shader_map_;
@@ -195,10 +318,12 @@ class AssetManager {
   std::map<std::string, TextureAtlas *> texture_atlas_map_;
   std::map<std::string, Material *> material_map_;
   std::map<std::string, Mesh *> mesh_map_;
+  std::map<std::string, FileAsset *> file_map_;
   AsyncLoader loader_;
   mathfu::vec2 texture_scale_;
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_ASSET_MANAGER_H

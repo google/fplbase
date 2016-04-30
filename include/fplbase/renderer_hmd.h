@@ -27,6 +27,9 @@
 
 namespace fplbase {
 
+/// @addtogroup fplbase_renderer
+/// @{
+
 /// @brief Initializes the framebuffer needed for Head Mounted Display
 ///        undistortion.
 /// @param width The width of the framebuffer.
@@ -50,6 +53,8 @@ struct HeadMountedDisplayViewSettings {
   /// Transformation matrix for each viewport.
   mathfu::mat4 viewport_transforms[2];
 };
+
+#if ANDROID_HMD
 
 /// @brief Prepare to render to a Head Mounted Display (HMD).
 /// @param head_mounted_display_input The input object managing the HMD state.
@@ -97,6 +102,19 @@ void HeadMountedDisplayRender(const InputSystem* input_system,
   HeadMountedDisplayRenderEnd(renderer, use_undistortion);
 }
 
+/// @brief Helper function that wraps the HMD calls, rendering using the given
+///        callback.
+///
+/// Call render_callback between HeadMountedDisplayRenderStart() and
+/// HeadMountedDisplayRenderEnd() passing
+/// HeadMountedDisplayViewSettings.viewport_extents and
+/// HeadMountedDisplayViewSettings.viewport_transforms as arguments to
+/// render_callback.
+///
+/// @param input_system The input system managing the game's input.
+/// @param renderer The renderer that will being used to render the scene.
+/// @param clear_color The color to clear the framebuffer to before rendering.
+/// @param render_callback The function to call after setting up each viewport.
 template <typename RenderCallback>
 void HeadMountedDisplayRender(const InputSystem* input_system,
                               Renderer* renderer,
@@ -106,6 +124,9 @@ void HeadMountedDisplayRender(const InputSystem* input_system,
                            true);
 }
 
+#endif  // ANDROID_HMD
+
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_RENDERER_CARDBOARD_H

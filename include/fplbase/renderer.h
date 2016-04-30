@@ -33,18 +33,25 @@ namespace fplbase {
 typedef void *Window;
 typedef void *GLContext;
 
+/// @file
+/// @addtogroup fplbase_renderer
+/// @{
+
 class RenderTarget;
 
 /// @class Renderer
 /// @brief Manages the rendering system, handling the window and resources.
 ///
 /// The core of the rendering system. Deals with setting up and shutting down
-/// the window + OpenGL context (based on SDL), and creating/using resources
+/// the window + OpenGL context, and creating/using resources
 /// such as shaders, textures, and geometry.
 class Renderer {
  public:
   Renderer();
   ~Renderer();
+
+  // Get current singleton instance.
+  static Renderer *Get() { return the_renderer_; }
 
   enum CullingMode { kNoCulling, kCullFront, kCullBack, kCullFrontAndBack };
 
@@ -123,6 +130,17 @@ class Renderer {
   /// @param ps_source The source code of the fragment shader.
   Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source);
 
+  /// @brief Like CompileAndLinkShader, but pass in an old shader to replace.
+  ///
+  /// Use `placement new` to use the same memory for the new shader.
+  /// @note Only call this at the start of the frame.
+  ///
+  /// @param shader The old shader to replace with the recompiled shader.
+  /// @param vs_source The source code of the vertex shader.
+  /// @param ps_source The source code of the fragment shader.
+  void RecompileShader(const char *vs_source, const char *ps_source,
+                       Shader *shader);
+
   /// @brief Sets the blend mode used by the renderer.
   ///
   /// Set alpha test (cull pixels with alpha below amount) vs alpha blend
@@ -143,11 +161,6 @@ class Renderer {
   ///
   /// @param on Should depth testing be enabled.
   void DepthTest(bool on);
-
-  /// @brief Set the current render target.
-  ///
-  /// @param render_target The target to use for rendering.
-  void SetRenderTarget(const RenderTarget &render_target);
 
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
@@ -296,11 +309,18 @@ class Renderer {
   /// @brief Returns the version of the FPL Base Library.
   const FplBaseVersion *GetFplBaseVersion() const { return version_; }
 
+  /// @brief Returns if a texture format is supported by the hardware.
+  bool SupportsTextureFormat(TextureFormat texture_format) const;
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
-  // Retrieve uniform limits from the driver and cache for shader compilation.
-  void InitializeUniformLimits();
+  Shader *CompileAndLinkShaderHelper(const char *vs_source,
+                                     const char *ps_source, Shader *shader);
+
+  // Initialize OpenGL parameters like uniform limits, supported texture formats
+  // etc.
+  bool InitializeRenderingState();
 
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
   // to conveniently change the camera.
@@ -324,6 +344,7 @@ class Renderer {
   BlendMode blend_mode_;
 
   FeatureLevel feature_level_;
+  int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;
@@ -333,7 +354,12 @@ class Renderer {
 
   // Current version of the Corgi Entity Library.
   const FplBaseVersion *version_;
+
+  // Singleton instance.
+  static Renderer *the_renderer_;
 };
+
+/// @}
 
 }  // namespace fplbase
 

@@ -222,7 +222,18 @@ while (!asset_manager.TryFinalize()) {
 }
 ~~~
 
-What is that while loop needed for? Well:
+What was that while loop needed for?
+See [Asynchronous Loader][fplbase_async_loader].
+
+Note: for fast loading and efficient GPU usage, use of compressed ETC2 format
+textures in a .ktx file is recommended. Loading will automatically fall-back
+to .webp if the hardware does not support it, i.e systems that don't support
+OpenGL 3.0. Alternatively, use ETC1 which is always supported.
+Generate these with e.g:
+~~~
+etcpack mytexture.png mytexture.ktx -c etc2 -f RGBA -mipmaps -ktx
+~~~
+
 
 # Asynchronous Loader {#fplbase_async_loader}
 
@@ -255,7 +266,7 @@ We already saw how to load shaders directly from memory without using the
 asset manager, we can do that with other resources too, if you prefer to
 do your own asset management:
 
-`LoadAndUnpackTexture` will take a file (currently TGA or WebP formats)
+`LoadAndUnpackTexture` will take a file (currently WebP/TGA/KTX formats)
 and turn it into a raw buffer which `CreateTexture` turns into an OpenGL
 texture.
 

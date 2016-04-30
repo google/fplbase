@@ -12,35 +12,77 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "precompiled.h"
-#include "fplbase/renderer.h"
 #include "fplbase/texture.h"
+#include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
+#include "precompiled.h"
 #include "webp/decode.h"
+#ifdef FPL_BASE_SUPPORT_PNG
+#include "lodepng/lodepng.h"
+#endif
 
 using mathfu::vec2;
 using mathfu::vec2i;
 
 namespace fplbase {
 
+struct ASTCHeader {
+  uint8_t magic[4];  // 13 ab a1 5c
+  uint8_t blockdim_x;
+  uint8_t blockdim_y;
+  uint8_t blockdim_z;
+  uint8_t xsize[3];
+  uint8_t ysize[3];
+  uint8_t zsize[3];
+};
+
+struct PKMHeader {
+  char magic[4];          // "PKM "
+  char version[2];        // "10"
+  uint8_t data_type[2];   // 0 (ETC1_RGB_NO_MIPMAPS)
+  uint8_t ext_width[2];   // rounded up to 4 size, big endian.
+  uint8_t ext_height[2];  // rounded up to 4 size, big endian.
+  uint8_t width[2];       // original, big endian.
+  uint8_t height[2];      // original, big endian.
+  // Data follows header, size = (ext_width / 4) * (ext_height / 4) * 8
+};
+
+struct KTXHeader {
+  char id[12];  // "«KTX 11»\r\n\x1A\n"
+  uint32_t endian;
+  uint32_t type;
+  uint32_t type_size;
+  uint32_t format;
+  uint32_t internal_format;
+  uint32_t base_internal_format;
+  uint32_t width;
+  uint32_t height;
+  uint32_t depth;
+  uint32_t array_elements;
+  uint32_t faces;
+  uint32_t mip_levels;
+  uint32_t keyvalue_data;
+};
+
 void Texture::Load() {
-  data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &has_alpha_);
+  data_ =
+      LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &texture_format_);
   SetOriginalSizeIfNotYetSet(size_);
 }
 
 void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
-                             bool has_alpha) {
+                             TextureFormat texture_format) {
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
-  has_alpha_ = has_alpha;
-  id_ = CreateTexture(data, size_, has_alpha_, mipmaps_, desired_);
+  texture_format_ = texture_format;
+  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, has_alpha_, mipmaps_, desired_);
-    free(data_);
+    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_);
+    free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
 }
@@ -79,7 +121,7 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              bool has_alpha, bool mipmaps,
+                              TextureFormat texture_format, bool mipmaps,
                               TextureFormat desired) {
   int area = size.x() * size.y();
   if (area & (area - 1)) {
@@ -106,57 +148,178 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
   auto format = GL_RGBA;
   auto type = GL_UNSIGNED_BYTE;
-  if (desired == kFormatAuto) desired = has_alpha ? kFormat5551 : kFormat565;
+  if (desired == kFormatAuto) {
+    desired = IsCompressed(texture_format)
+                  ? texture_format
+                  : HasAlpha(texture_format) ? kFormat5551 : kFormat565;
+  }
   switch (desired) {
     case kFormat5551: {
-      assert(has_alpha);
-      if (use_16bpp) {
-        auto buffer16 = Convert8888To5551(buffer, size);
-        type = GL_UNSIGNED_SHORT_5_5_5_1;
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer16));
-        delete[] buffer16;
-      } else {
-        // Fallback to 8888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer));
+      switch (texture_format) {
+        case kFormat8888:
+          if (use_16bpp) {
+            auto buffer16 = Convert8888To5551(buffer, size);
+            type = GL_UNSIGNED_SHORT_5_5_5_1;
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer16));
+            delete[] buffer16;
+          } else {
+            // Fallback to 8888
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer));
+          }
+          break;
+        case kFormat5551:
+          // Nothing to do.
+          break;
+        default:
+          // This conversion not supported yet.
+          assert(false);
+          break;
       }
       break;
     }
     case kFormat565: {
-      assert(!has_alpha);
-      format = GL_RGB;
-      if (use_16bpp) {
-        auto buffer16 = Convert888To565(buffer, size);
-        type = GL_UNSIGNED_SHORT_5_6_5;
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer16));
-        delete[] buffer16;
-      } else {
-        // Fallback to 888
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                             format, type, buffer));
+      switch (texture_format) {
+        case kFormat888:
+          format = GL_RGB;
+          if (use_16bpp) {
+            auto buffer16 = Convert888To565(buffer, size);
+            type = GL_UNSIGNED_SHORT_5_6_5;
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer16));
+            delete[] buffer16;
+          } else {
+            // Fallback to 888
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
+                                 0, format, type, buffer));
+          }
+          break;
+        case kFormat565:
+          // Nothing to do.
+          break;
+        default:
+          // This conversion not supported yet.
+          assert(false);
+          break;
       }
       break;
     }
     case kFormat8888: {
-      assert(has_alpha);
+      assert(texture_format == kFormat8888);
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
       break;
     }
     case kFormat888: {
-      assert(!has_alpha);
+      assert(texture_format == kFormat888);
       format = GL_RGB;
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
       break;
     }
     case kFormatLuminance: {
-      assert(!has_alpha);
+      assert(texture_format == kFormatLuminance);
       format = GL_LUMINANCE;
       GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
                            format, type, buffer));
+      break;
+    }
+    case kFormatASTC: {
+      assert(texture_format == kFormatASTC);
+      auto &header = *reinterpret_cast<const ASTCHeader *>(buffer);
+      auto xblocks = (size.x() + header.blockdim_x - 1) / header.blockdim_x;
+      auto yblocks = (size.y() + header.blockdim_y - 1) / header.blockdim_y;
+      auto zblocks = (1 + header.blockdim_z - 1) / header.blockdim_z;
+      auto data_size = xblocks * yblocks * zblocks << 4;
+      // Convert the block dimensions into the correct GL constant.
+      switch (header.blockdim_x) {
+        case 4:
+          assert(header.blockdim_y == 4);
+          format = GL_COMPRESSED_RGBA_ASTC_4x4_KHR;
+          break;
+        case 5:
+          if (header.blockdim_y == 4) {
+            format = GL_COMPRESSED_RGBA_ASTC_5x4_KHR;
+          } else {
+            assert(header.blockdim_y == 5);
+            format = GL_COMPRESSED_RGBA_ASTC_5x5_KHR;
+          }
+          break;
+        case 6:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_6x5_KHR;
+          } else {
+            assert(header.blockdim_y == 6);
+            format = GL_COMPRESSED_RGBA_ASTC_6x6_KHR;
+          }
+          break;
+        case 8:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_8x5_KHR;
+          } else if (header.blockdim_y == 6) {
+            format = GL_COMPRESSED_RGBA_ASTC_8x6_KHR;
+          } else {
+            assert(header.blockdim_y == 8);
+            format = GL_COMPRESSED_RGBA_ASTC_8x8_KHR;
+          }
+          break;
+        case 10:
+          if (header.blockdim_y == 5) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x5_KHR;
+          } else if (header.blockdim_y == 6) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x6_KHR;
+          } else if (header.blockdim_y == 8) {
+            format = GL_COMPRESSED_RGBA_ASTC_10x8_KHR;
+          } else {
+            assert(header.blockdim_y == 10);
+            format = GL_COMPRESSED_RGBA_ASTC_10x10_KHR;
+          }
+          break;
+        case 12:
+          if (header.blockdim_y == 10) {
+            format = GL_COMPRESSED_RGBA_ASTC_12x10_KHR;
+          } else {
+            assert(header.blockdim_y == 12);
+            format = GL_COMPRESSED_RGBA_ASTC_12x12_KHR;
+          }
+          break;
+        default:
+          assert(false);
+      }
+      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
+                                     size.y(), 0, data_size,
+                                     buffer + sizeof(ASTCHeader)));
+      break;
+    }
+    case kFormatPKM: {
+      assert(texture_format == kFormatPKM);
+      auto &header = *reinterpret_cast<const PKMHeader *>(buffer);
+      auto ext_xsize = (header.ext_width[0] << 8) | header.ext_width[1];
+      auto ext_ysize = (header.ext_height[0] << 8) | header.ext_height[1];
+      auto data_size = (ext_xsize / 4) * (ext_ysize / 4) * 8;
+      format = GL_COMPRESSED_RGB8_ETC2;
+      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
+                                     size.y(), 0, data_size,
+                                     buffer + sizeof(PKMHeader)));
+      break;
+    }
+    case kFormatKTX: {
+      assert(texture_format == kFormatKTX);
+      auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
+      format = header.internal_format;
+      auto data = buffer + sizeof(KTXHeader);
+      auto cur_size = size;
+      auto offset = 0;
+      for (uint32_t i = 0; i < header.mip_levels; i++) {
+        auto data_size = *(reinterpret_cast<const int32_t *>(data + offset));
+        offset += sizeof(int32_t);
+        GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, i, format, cur_size.x(),
+                                       cur_size.y(), 0, data_size,
+                                       data + offset));
+        cur_size /= 2;
+        offset += data_size;
+      }
       break;
     }
     default:
@@ -197,7 +360,7 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
 }
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
-                            bool *has_alpha) {
+                            TextureFormat *texture_format) {
   struct TGA {
     uint8_t id_len, color_map_type, image_type, color_map_data[5];
     uint16_t x_origin, y_origin, width, height;
@@ -217,6 +380,8 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   auto pixels = reinterpret_cast<const unsigned char *>(header + 1);
   pixels += header->id_len;
   int size = header->width * header->height;
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
   auto dest = reinterpret_cast<uint8_t *>(malloc(size * header->bpp / 8));
   int start_y, end_y, y_direction;
   if (header->image_descriptor & 0x20) {  // y is not flipped.
@@ -237,14 +402,14 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
       if (header->bpp == 32) p[3] = *pixels++;
     }
   }
-  *has_alpha = header->bpp == 32;
+  *texture_format = header->bpp == 32 ? kFormat8888 : kFormat888;
   *dimensions = vec2i(header->width, header->height);
   return dest;
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
                              const vec2 &scale, vec2i *dimensions,
-                             bool *has_alpha) {
+                             TextureFormat *texture_format) {
   WebPDecoderConfig config;
   memset(&config, 0, sizeof(WebPDecoderConfig));
   auto status = WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size,
@@ -267,32 +432,183 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   if (status != VP8_STATUS_OK) return nullptr;
 
   *dimensions = vec2i(config.output.width, config.output.height);
-  *has_alpha = config.input.has_alpha != 0;
-  return config.output.private_memory;
+  *texture_format = config.input.has_alpha != 0 ? kFormat8888 : kFormat888;
+  return config.output.private_memory;  // Allocated with malloc by webp.
+}
+
+uint8_t *Texture::UnpackASTC(const void *astc_buf, size_t size,
+                             vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const ASTCHeader *>(astc_buf);
+  static const uint8_t magic[] = {0x13, 0xab, 0xa1, 0x5c};
+  if (memcmp(header.magic, magic, sizeof(magic))) return nullptr;
+
+  auto xsize =
+      header.xsize[0] | (header.xsize[1] << 8) | (header.xsize[2] << 16);
+  auto ysize =
+      header.ysize[0] | (header.ysize[1] << 8) | (header.ysize[2] << 16);
+  auto zsize =
+      header.zsize[0] | (header.zsize[1] << 8) | (header.zsize[2] << 16);
+
+  // TODO(wvo): Our pipeline currently doesn't support 3D textures.
+  if (zsize != 1) return nullptr;
+
+  *dimensions = vec2i(xsize, ysize);
+  *texture_format = kFormatASTC;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, astc_buf, size);
+  return buf;
+}
+
+uint8_t *Texture::UnpackPKM(const void *file_buf, size_t size,
+                            vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const PKMHeader *>(file_buf);
+  if (strncmp(header.magic, "PKM ", 4) && strncmp(header.version, "10", 2))
+    return nullptr;
+
+  auto xsize = (header.width[0] << 8) | header.width[1];  // Big endian!
+  auto ysize = (header.height[0] << 8) | header.height[1];
+  *dimensions = vec2i(xsize, ysize);
+  *texture_format = kFormatPKM;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, file_buf, size);
+  return buf;
+}
+
+uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
+                            vec2i *dimensions, TextureFormat *texture_format) {
+  auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
+  auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
+  auto v = memcmp(header.id, magic, sizeof(header.id));
+  if (v != 0 ||
+      header.endian != 0x04030201 ||
+      header.depth != 0 ||
+      header.faces != 1 ||
+      header.keyvalue_data != 0)
+    return nullptr;
+
+  *dimensions = vec2i(header.width, header.height);
+  *texture_format = kFormatKTX;
+
+  // TODO(wvo): This in theory doesn't need to be copied, but it keeps the API
+  // uniform, and should not affect load times.
+  // We use malloc to ensure that all unpacked texture formats can be freed
+  // in the same way (see also other Unpack* functions).
+  auto buf = reinterpret_cast<uint8_t *>(malloc(size));
+  memcpy(buf, file_buf, size);
+  return buf;
+}
+
+uint8_t *Texture::UnpackPng(const void *png_buf, size_t size,
+                            const vec2 &scale, vec2i *dimensions,
+                            TextureFormat *texture_format) {
+#ifdef FPL_BASE_SUPPORT_PNG
+  uint8_t* image = nullptr;
+  unsigned int width = 0;
+  unsigned int height = 0;
+  unsigned int error = lodepng_decode32(&image, &width, &height,
+      reinterpret_cast<const unsigned char*>(png_buf), size);
+  if (error) {
+    return nullptr;
+  }
+  *dimensions = vec2i(width, height);
+  *texture_format = kFormat8888;
+  return image;
+#else
+  (void)png_buf;
+  (void)size;
+  (void)scale;
+  (void)dimensions;
+  (void)texture_format;
+  LogError(kApplication, "Png decoding not supported.");
+  return nullptr;
+#endif
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
-                                       vec2i *dimensions, bool *has_alpha) {
+                                       vec2i *dimensions,
+                                       TextureFormat *texture_format) {
+  std::string ext;
+  std::string basename = filename;
+  size_t ext_pos = basename.find_last_of(".");
+  if (ext_pos != std::string::npos) {
+    ext = basename.substr(ext_pos + 1);
+    basename = basename.substr(0, ext_pos);
+  }
+
   std::string file;
-  if (!LoadFile(filename, &file)) {
+
+  // Try to load ASTC, but default to WebP if not available or not supported.
+  if (ext == "astc") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatASTC) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackASTC(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "ASTC format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  // Try to load PKM, but default to WebP if not available or not supported.
+  if (ext == "pkm") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatPKM) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackPKM(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "PKM format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  // Try to load KTX, but default to WebP if not available or not supported.
+  if (ext == "ktx") {
+    if (Renderer::Get()->SupportsTextureFormat(kFormatKTX) &&
+        LoadFile(filename, &file)) {
+      auto buf =
+          UnpackKTX(file.c_str(), file.length(), dimensions, texture_format);
+      if (!buf) LogError(kApplication, "KTX format problem: %s", filename);
+      return buf;
+    } else {
+      ext = "webp";
+    }
+  }
+
+  std::string altfilename = basename;
+  if (ext.length()) altfilename += "." + ext;
+
+  if (!LoadFile(altfilename.c_str(), &file)) {
     LogError(kApplication, "Couldn\'t load: %s", filename);
     return nullptr;
   }
 
-  std::string ext = filename;
-  size_t ext_pos = ext.find_last_of(".");
-  if (ext_pos != std::string::npos) ext = ext.substr(ext_pos + 1);
   if (ext == "tga") {
-    auto buf = UnpackTGA(file.c_str(), dimensions, has_alpha);
-    if (!buf) {
-      LogError(kApplication, "TGA format problem: %s", filename);
-    }
+    auto buf = UnpackTGA(file.c_str(), dimensions, texture_format);
+    if (!buf) LogError(kApplication, "TGA format problem: %s", filename);
     return buf;
   } else if (ext == "webp") {
+    auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
+                          texture_format);
+    if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
+    return buf;
+  } else if (ext == "png") {
     auto buf =
-        UnpackWebP(file.c_str(), file.length(), scale, dimensions, has_alpha);
+        UnpackPng(file.c_str(), file.length(), scale, dimensions,
+                  texture_format);
     if (!buf) {
-      LogError(kApplication, "WebP format problem: %s", filename);
+      LogError(kApplication, "Png format problem: %s", filename);
     }
     return buf;
   } else {

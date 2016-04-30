@@ -27,7 +27,12 @@
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
-#if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
+
+#if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__) && \
+    !defined(FPL_BASE_BACKEND_STDLIB)
 // Enable the android gamepad code.  It receives input events from java, via
 // JNI, and creates a local representation of the state of any connected
 // gamepads.  Also enables the gamepad_controller controller class.
@@ -35,7 +40,8 @@
 #include "pthread.h"
 #endif  // !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
 
-#if !defined(ANDROID_HMD) && defined(__ANDROID__)
+#if !defined(ANDROID_HMD) && defined(__ANDROID__) && \
+    !defined(FPL_BASE_BACKEND_STDLIB)
 // Enable the android head mounted display (cardboard) code.  It receives
 // events about Cardboard from java, via JNI, and creates a local
 // representation of the state to be used.
@@ -43,6 +49,10 @@
 #endif  //  !defined(ANDROID_HMD) && defined(__ANDROID__)
 
 namespace fplbase {
+
+/// @file
+/// @addtogroup fplbase_input
+/// @{
 
 typedef uint64_t FingerId;
 typedef void *JoystickData;
@@ -142,7 +152,7 @@ struct InputPointer {
 };
 
 /// @class Joystick
-/// @brief Represents the state of an SDL Joystick.
+/// @brief Represents the state of a Joystick.
 class Joystick {
  public:
   /// @brief Get the current state of a button.
@@ -258,6 +268,7 @@ class Gamepad {
     kControlCount
   };
 
+  /// @brief Default constructor for a Gamepad.
   Gamepad() { button_list_.resize(Gamepad::kControlCount); }
 
   /// @brief Advances the internal state by one frame.
@@ -266,7 +277,15 @@ class Gamepad {
   /// buttons have their change-bits set correctly.  Normally called
   /// automatically by InputSystem::AdvanceFrame().
   void AdvanceFrame();
+
+  /// @brief Get the Button from a given enum of all possible input buttons.
+  /// @param[in] i A GamepadInputButton enum describing all of the possible
+  /// button inputs on a gamepad.
   Button &GetButton(GamepadInputButton i);
+
+  /// @brief Get the Button from a given enum of all possible input buttons.
+  /// @param[in] i A GamepadInputButton enum describing all of the possible
+  /// button inputs on a gamepad.
   const Button &GetButton(GamepadInputButton i) const {
     return const_cast<Gamepad *>(this)->GetButton(i);
   }
@@ -276,6 +295,10 @@ class Gamepad {
   /// The controller_id is the android-specific identifier for a given
   /// gamepad.
   AndroidInputDeviceId controller_id() { return controller_id_; }
+
+  /// @brief Set the controller ID.
+  /// @param[in] controller_id An AndroidInputDeviceId to set as the controller
+  /// ID.
   void set_controller_id(AndroidInputDeviceId controller_id) {
     controller_id_ = controller_id;
   }
@@ -291,10 +314,17 @@ class Gamepad {
 // Threshold for when we register a hat direction.  (The range is [0, 1]
 const float kGamepadHatThreshold = 0.5f;
 
-// Structure used for storing gamepad events when we get them from jni
-// until we can deal with them.
+/// @brief Structure used for storing gamepad events when we get them from jni
+/// until we can handle them.
 struct AndroidInputEvent {
+  /// @brief AndroidInputEvent default constructor.
   AndroidInputEvent() {}
+  /// @brief Constructor for an AndroidInputeEvent.
+  /// @param[in] device_id_ The device ID of the Android device.
+  /// @param[in] event_code_ The event code for the gamepad event.
+  /// @param[in] control_code_ The control code for the gamepad event.
+  /// @param[in] x_ The x position of the event.
+  /// @param[in] y_ The y position for the event.
   AndroidInputEvent(AndroidInputDeviceId device_id_, int event_code_,
                     int control_code_, float x_, float y_)
       : device_id(device_id_),
@@ -302,10 +332,16 @@ struct AndroidInputEvent {
         control_code(control_code_),
         x(x_),
         y(y_) {}
+  /// @brief The device ID of the Android device.
   AndroidInputDeviceId device_id;
+  /// @brief The event code.
   int event_code;
+  /// @brief The control code.
   int control_code;
-  float x, y;
+  /// @brief The `x` coordinate for the event.
+  float x;
+  /// @brief The `y` coordinate for the event.
+  float y;
 };
 #endif  // ANDROID_GAMEPAD
 
@@ -319,6 +355,7 @@ struct AndroidInputEvent {
 /// defined.
 class HeadMountedDisplayInput {
  public:
+  /// @brief Default constructor for HeadMountedDisplayInput.
   HeadMountedDisplayInput()
       : head_transform_(),
         left_eye_transform_(),
@@ -329,62 +366,114 @@ class HeadMountedDisplayInput {
         use_device_orientation_correction_(false),
         device_orientation_(0) {}
 
+  /// @brief Check if the device is in head mounted display mode.
+  /// @return Returns `true` if `set_is_in_head_mounted_display()` was set
+  /// to `true`.
   bool is_in_head_mounted_display() const {
     return is_in_head_mounted_display_;
   }
+
+  /// @brief Set whether or not hte device is in head mounted display mode.
+  /// @param[in] is_in_head_mounted_display A `bool` determining if the
+  /// device is set to be in head mounted display mode.
   void set_is_in_head_mounted_display(bool is_in_head_mounted_display) {
     is_in_head_mounted_display_ = is_in_head_mounted_display;
   }
+
+  /// @brief Check if triggered.
+  /// @return Returns `true` if the a pending trigger was handled in
+  /// `AdvanceFrame`.
   bool triggered() const { return triggered_; }
 
+  /// @brief Get the head transform.
+  /// @return Returns the head transform as a const `mathfu::mat4` reference.
   const mathfu::mat4 &head_transform() const { return head_transform_; }
+
+  /// @brief Get the left eye transform.
+  /// @return Returns the left eye transform as a const `mathfu::mat4`
+  /// reference.
   const mathfu::mat4 &left_eye_transform() const { return left_eye_transform_; }
+
+  /// @brief Get the right eye transform.
+  /// @return Returns the right eye transform as a const `mathfu::mat4`
+  /// reference.
   const mathfu::mat4 &right_eye_transform() const {
     return right_eye_transform_;
   }
 
-  // The rightwards direction of the head.
+  /// @brief The rightwards direction of the head.
+  /// @return Returns the rightwards direction of the head as a `mathfu::vec3`.
   mathfu::vec3 right() const {
     return (mathfu::kAxisX4f * head_transform_).xyz();
   }
-  // The upwards direction of the head.
+  /// @brief The upwards direction of the head.
+  /// @return Returns the upwards direction of the head as a `mathfu::vec3`.
   mathfu::vec3 up() const { return (mathfu::kAxisY4f * head_transform_).xyz(); }
-  // The forward direction of the head.  Note that it points into -Z.
+
+  /// @brief The forward direction of the head.
+  /// @note It points into -Z.
+  /// @return Returns the forward direction of the head as a `mathfu::vec3`.
   mathfu::vec3 forward() const {
     return (-mathfu::kAxisZ4f * head_transform_).xyz();
   }
-  // The translation of the left eye
+
+  /// @brief The translation of the left eye.
+  /// @return Returns the left eye translation as a `mathfu::vec`.
   mathfu::vec3 left_eye_translation() const {
     return (left_eye_transform_ * mathfu::kAxisW4f).xyz();
   }
-  // The translation of the right eye
+
+  /// @brief The translation of the right eye.
+  /// @return Returns the right eye translation as a `mathfu::vec`.
   mathfu::vec3 right_eye_translation() const {
     return (right_eye_transform_ * mathfu::kAxisW4f).xyz();
   }
-  // The translation of the left eye, factoring in the Cardboard rotation
+
+  /// @brief The translation of the left eye, factoring in the Cardboard
+  /// rotation.
+  /// @return Returns the left eye translation, factoring in the Cardboard
+  /// rotation.
   mathfu::vec3 left_eye_rotated_translation() const {
     return (mathfu::vec4(left_eye_translation(), 0) * left_eye_transform_)
         .xyz();
   }
-  // The translation of the right eye, factoring in the Cardboard rotation
+
+  /// @brief The translation of the right eye, factoring in the Cardboard
+  /// rotation.
+  /// @return Returns the right eye translation, factoring in the Cardboard
+  /// rotation.
   mathfu::vec3 right_eye_rotated_translation() const {
     return (mathfu::vec4(right_eye_translation(), 0) * right_eye_transform_)
         .xyz();
   }
 
+  /// @brief Called once per frame to handle the input.
   void AdvanceFrame();
+
+  /// @brief Sets `pending_trigger_` to `true` when called.
   void OnTrigger() { pending_trigger_ = true; }
 
-  // Realign the head tracking with the current phone heading
+  /// @brief Realign the head tracking with the current phone heading
   void ResetHeadTracker();
 
-  // Version 0.5.6 of the Cardboard SDK has a bug concerning not handling a
-  // device's default orientation. Calling this enables correction of that in
-  // the Cardboard Input.
+  /// @brief Enable correction for version 0.5.6 of the Cardboard SDK, which
+  /// has a bug concerning not handling a device's default orientation. Calling
+  /// this enables correction of that in the Cardboard Input.
   void EnableDeviceOrientationCorrection();
 
+  /// @brief Set the device orientation.
+  /// @param[in] rotation The rotation to set for the orientation.
   void set_device_orientation(int rotation) { device_orientation_ = rotation; }
+
+  /// @brief Get the device orientation.
+  /// @return Returns an `int` corresponding to the rotation of the device's
+  /// orientation.
   int device_orientation() { return device_orientation_; }
+
+#if ANDROID_HMD
+  void InitHMDJNIReference();
+  void ClearHMDJNIReference();
+#endif
 
  private:
   void UpdateTransforms();
@@ -414,41 +503,48 @@ enum TextInputEventType {
   kTextInputEventTypeKey = 2,   // An event for a key event.
 };
 
-// An event parameters for a text edit in IME (Input Method Editor).
-// The information passed in the event is an intermediate state and only used
-// for UI represents. Once IME finalizes an edit, the user recieves an
-// TextInputEventText event for the finalized strings.
+/// @brief An event parameter for a text edit in IME (Input Method Editor).
+/// The information passed in the event is an intermediate state and only used
+/// for UI represents. Once IME finalizes an edit, the user recieves an
+/// TextInputEventText event for the finalized strings.
 struct TextInputEventEdit {
-  int32_t start;   // A start index of a focus region in the text.
-  int32_t length;  // A length of a focus region in the text.
+  int32_t start;   ///< @brief A start index of a focus region in the text.
+  int32_t length;  ///< @brief A length of a focus region in the text.
 };
 
-// An event parameters for a keyboard input.
-// The user recieves all input strings through kTextInputEventTypeText type of
-// an event, these paremeters should be used for an input control such as moving
-// caret.
+/// @brief An event parameter for a keyboard input.
+///
+/// The user recieves all input strings through `kTextInputEventTypeText` type
+/// of an event, these paremeters should be used for an input control such as
+/// moving caret.
 struct TextInputEventKey {
-  bool state;           // key state, true:pressed, false:released.
-  bool repeat;          // A flag indicates if the key is repeated input.
-  FPL_Keycode symbol;   // Key symbol, refer keyboard_keycodes.h for a
-                        // detail.
-  FPL_Keymod modifier;  // Modifier key state, refer keyboard_keycodes.h for
-                        // a detail.
+  bool state;           ///< @brief key state, true:pressed, false:released.
+  bool repeat;          ///< @brief A flag indicates if the key is repeated
+                        /// input.
+  FPL_Keycode symbol;   ///< @brief Key symbol, refer `keyboard_keycodes.h` for
+                        /// details.
+  FPL_Keymod modifier;  ///< @brief Modifier key state, refer
+                        /// `keyboard_keycodes.h` for details.
 };
 
-// Union of Text input event.
+/// @brief Holds text input events.
 struct TextInputEvent {
-  TextInputEventType type;  // Type of the event.
-  std::string text;         // Input string.
+  TextInputEventType type;  ///< @brief Type of the event.
+  std::string text;         ///< @brief Input string.
+  /// @brief Union of Text input events.
   union {
-    TextInputEventKey key;
-    TextInputEventEdit edit;
+    TextInputEventKey key; ///< @brief An event parameter for a keyboard input.
+    TextInputEventEdit edit; ///< @brief An event parameter for a text edit in
+                             /// IME (Input Method Editor).
   };
-  // Constructors to emblace_back() them.
+  /// @brief Constructor for TextInputEvent.
   TextInputEvent(TextInputEventType t);
+  /// @brief Constructor for TextInputEvent.
   TextInputEvent(TextInputEventType t, int32_t state, bool repeat,
                  int32_t symbol, int32_t modifier);
+  /// @brief Constructor for TextInputEvent.
   TextInputEvent(TextInputEventType t, const char *str);
+  /// @brief Constructor for TextInputEvent.
   TextInputEvent(TextInputEventType t, const char *str, int32_t start,
                  int32_t length);
 };
@@ -466,7 +562,7 @@ class InputSystem {
 
   /// @brief Initialize the input system.
   ///
-  /// Call this after SDL is initialized by the renderer.
+  /// Call this after the Renderer is initialized.
   void Initialize();
 
   /// @brief Call once a frame to update the input state.
@@ -507,7 +603,7 @@ class InputSystem {
   /// @brief Get a Button object describing the input state of the specified
   ///        button ID.
   ///
-  /// @param button The ID of the button, see the SDLK_ enum.
+  /// @param button The ID of the button.
   /// @return Returns the corresponding button.
   Button &GetButton(int button);
 
@@ -553,11 +649,12 @@ class InputSystem {
     return gamepad_map_;
   }
 
-  // Receives events from java, and stuffs them into a vector until we're ready.
+  /// @brief Receives events from java, and stuffs them into a vector until
+  /// we're ready.
   static void ReceiveGamepadEvent(int controller_id, int event_code,
                                   int control_code, float x, float y);
 
-  // Runs through all the received events and processes them.
+  /// @brief Runs through all the received events and processes them.
   void HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
 
@@ -569,6 +666,9 @@ class InputSystem {
     return head_mounted_display_input_;
   }
 
+  /// @brief Get the current input state of the Head Mounted Display device.
+  ///
+  /// @return Returns the current input state.
   const HeadMountedDisplayInput &head_mounted_display_input() const {
     return head_mounted_display_input_;
   }
@@ -582,19 +682,41 @@ class InputSystem {
     return GetButton(static_cast<int>(pointer + K_POINTER1));
   }
 
+  /// @brief Open all connected joysticks.
   void OpenConnectedJoysticks();
+
+  /// @brief Close all opened joysticks.
   void CloseOpenJoysticks();
+
+  /// @brief Close any open joysticks, and then refresh the list by opening any
+  /// joysticks that are still connected.
   void UpdateConnectedJoystickList();
+
+  /// @brief Handle a joystick event.
+  /// @param[in] event The joystick event that should be handled.
   void HandleJoystickEvent(Event event);
 
+  /// @brief A function pointer to an app event callback function.
   typedef std::function<void(Event)> AppEventCallback;
+
+  /// @brief Get the vector of all app event callbacks.
+  /// @return Returns a `std::vector<AppEventCallback>` with all app event
+  /// callbacks.
   std::vector<AppEventCallback> &app_event_callbacks() {
     return app_event_callbacks_;
   }
+
+  /// @brief Add an app event callback function.
   void AddAppEventCallback(AppEventCallback callback);
 
-  /// @brief Most recent frame at which we were minimized or maximized.
+  /// @brief Get the most recent frame at which we were minimized or maximized.
+  /// @return Returns the most recent frame at which we were minimized or
+  /// maximized.
   int minimized_frame() const { return minimized_frame_; }
+
+  /// @brief Set the most recent frame at which we were minimized or maximized.
+  /// @param[in] minimized_frame The most recent frame at which we were
+  /// minimized or maximized.
   void set_minimized_frame(int minimized_frame) {
     minimized_frame_ = minimized_frame;
   }
@@ -667,6 +789,9 @@ class InputSystem {
 
   static int HandleAppEvents(void *userdata, void *event);
 
+  // The event specific part of AdvanceFrame().
+  void UpdateEvents(mathfu::vec2i *window_size);
+
   bool exit_requested_;
   bool minimized_;
   std::vector<InputPointer> pointers_;
@@ -732,6 +857,7 @@ class InputSystem {
 #endif  // __ANDROID__
 };
 
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_INPUT_SYSTEM_H

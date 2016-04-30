@@ -30,9 +30,13 @@
 
 namespace fplbase {
 
-// General utility functions, used by FPLBase, and that might be of use to
-// people using the library:
-// Constants for use with LogInfo, LogError, etc.
+/// @file
+/// @brief General utility functions, used by FPLBase, and that might be of use
+/// to people using the library:
+/// @addtogroup fplbase_utilities
+/// @{
+
+/// @brief Constants for use with LogInfo, LogError, etc.
 #ifdef FPL_BASE_BACKEND_SDL
 enum LogCategory {
   kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
@@ -57,10 +61,10 @@ enum LogCategory {
 };
 #endif
 
-// Called by LoadFile().
+/// @brief Called by `LoadFile()`.
 typedef bool (*LoadFileFunction)(const char *filename, std::string *dest);
 
-// Enums for use with the Set/GetPerformanceMode() functions.
+/// @brief Enum for use with the `Set/GetPerformanceMode()` functions.
 enum PerformanceMode {
   // Normal mode.  No special actions taken.
   kNormalPerformance = 0,
@@ -70,11 +74,25 @@ enum PerformanceMode {
 };
 
 #ifdef __ANDROID__
+/// @brief Used for Android to represent a Vsync callback function.
 typedef void (*VsyncCallback)(void);
 
-const int kDefaultAndroidKeycode = 115;  // F24, unavailable on most keyboards.
-const double kDefaultTimeBetweenPresses = 1.0;  // Time in seconds
+/// @brief Used for Android to simulate a keypress. Corresponds to `F24`, which
+/// is unavailable on most keyboards.
+const int kDefaultAndroidKeycode = 115;
 
+/// @brief Used for Android. Corresponds to the time, in seconds, between
+/// simulated keypresses.
+const double kDefaultTimeBetweenPresses = 1.0;
+
+/// @brief HighPerformanceParams are used on Android to configure simulated key
+/// presses, in order to stop the CPU governor (see
+/// https://www.kernel.org/doc/Documentation/cpu-freq/governors.txt) from
+/// reducing the CPU frequency when a user is not providing tactile input.
+///
+/// For example, if a user is providing data to the device via a gyroscope, it
+/// is possible for the CPU governor to reduce the CPU (and potentially the
+/// GPU) frequency, reducing application performance.
 struct HighPerformanceParams {
   HighPerformanceParams()
       : android_key_code(kDefaultAndroidKeycode),
@@ -82,157 +100,260 @@ struct HighPerformanceParams {
   HighPerformanceParams(int keycode, int presses)
       : android_key_code(keycode), time_between_presses(presses) {}
 
+  /// @brief The key to press repeatedly, to keep the CPU active.
   int android_key_code;
+  // @brief The time (in seconds) between keypress events.
   double time_between_presses;
 };
 #endif
 
-// Loads a file and returns its contents via string pointer.
-// Returns false if the file couldn't be loaded (usually means it's not
-// present, but can also mean there was a read error).
+/// @brief Loads a file and returns its contents via string pointer.
+/// @param[in] filename A UTF-8 C-string representing the file to load.
+/// @param[out] dest A pointer to a `std::string` to capture the output of
+/// the file.
+/// @return Returns `false` if the file couldn't be loaded (usually means it's
+/// not present, but can also mean there was a read error).
 bool LoadFileRaw(const char *filename, std::string *dest);
 
-// Loads a file and returns its contents via string pointer.
-// In contrast to LoadFileRaw(), this method simply calls function set by
-// SetLoadFileFunction() to read the specified file.
-// Returns false if the file couldn't be loaded (usually means it's not
-// present, but can also mean there was a read error).
+/// @brief Loads a file and returns its contents via string pointer.
+/// @details In contrast to `LoadFileRaw()`, this method simply calls the
+/// function set by `SetLoadFileFunction()` to read the specified file.
+/// @param[in] filename A UTF-8 C-string representing the file to load.
+/// @param[out] dest A pointer to a `std::string` to capture the output of
+/// the file.
+/// @return Returns `false` if the file couldn't be loaded (usually means it's
+/// not present, but can also mean there was a read error).
 bool LoadFile(const char *filename, std::string *dest);
 
-// Set the function called by LoadFile().  If the specified function is nullptr,
-// LoadFileRaw is set as the function.
-// Returns the previously set LoadFileFunction.
+/// @brief Set the function called by `LoadFile()`.
+/// @param[in] load_file_function The function to be used by `LoadFile()` to
+/// read files.
+/// @note If the specified function is nullptr, `LoadFileRaw()` is set as the
+/// default function.
+/// @return Returns the function previously set by `LoadFileFunction()`.
 LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function);
 
-// Load a file like LoadFile(), but scan for #include "filename" statements
-// at the top of the file (only), and replace them with the contents of
-// those files.
-// Supports recursive includes, and only ever includes each file once.
-// The first non-#include line will terminate #include scanning, though
-// blank lines and // comments are correctly ignored.
-// If this function returns false, failedfilename indicates which file
-// caused the problem.
-bool LoadFileWithIncludes(const char *filename, std::string *dest,
-                          std::string *failedfilename);
-
-// Save a string to a file, overwriting the existing contents.
-// Returns false if the file could not be written.
+/// @brief Save a string to a file, overwriting the existing contents.
+/// @param[in] filename A UTF-8 C-string representing the file to save to.
+/// @param[in] data A const reference to a `std::string` containing the data
+/// that should be written to the file specified by `filename`.
+/// @return Returns `false` if the file could not be written.
 bool SaveFile(const char *filename, const std::string &data);
 
-// Save binary data to a file, overwriting the existing contents.
+/// @brief Save a string to a file, overwriting the existing contents.
+/// @param[in] filename A UTF-8 C-string representing the file to save to.
+/// @param[in] data A const void pointer to the data that should be written to
+/// the file specified by `filename`.
+/// @param[in] size The size of the `data` array to write to the file specified
+/// by `filename`.
+/// @return Returns `false` if the file could not be written.
 bool SaveFile(const char *filename, const void *data, size_t size);
 
-// Load/Save a preference settings.
-// The API uses a dedicated API when an optimal API is avaialable instead of
-// regular file IO APIs.
-// Returns false if the file couldn't be loaded (usually means it's not
-// present, but can also mean there was a read error).
+/// @brief Load preference settings.
+///
+/// The API uses a dedicated API when an optimal API is available instead of
+/// regular file IO APIs.
+/// @param[in] filename A UTF-8 C-string representing the file to load
+/// preferences from.
+/// @param[out] dest A pointer to a `std::string` to capture the preferences
+/// output.
+/// @return Returns `false` if the file couldn't be loaded (usually means it's
+/// not present, but can also mean there was a read error).
 bool LoadPreferences(const char *filename, std::string *dest);
+
+/// @brief Save preference settings.
+///
+/// The API uses a dedicated API when an optimal API is available instead of
+/// regular file IO APIs.
+/// @param[in] filename A UTF-8 C-string representing the file to save
+/// preferences to.
+/// @param[in] data A const void pointer to the data that should be written to
+/// the file specified by `filename`.
+/// @param[in] size The size of the `data` array to write to the file specified
+/// by `filename`.
+/// @return Returns `false` if the file couldn't be loaded (usually means it's
+/// not present, but can also mean there was a read error).
 bool SavePreferences(const char *filename, const void *data, size_t size);
 
-// Load/Save single integer value to a preference.
+/// @brief Load a single integer value to a preference.
+/// @param[in] key The UTF-8 key for the preference.
+/// @param[in] initial_value The default value to use if the preference is not
+/// found.
+/// @return Returns the preference value.
 int32_t LoadPreference(const char *key, int32_t initial_value);
+
+/// @brief Save a single integer value to a preference.
+/// @param[in] key The UTF-8 key for the preference.
+/// @param[in] value The value to save for the preference.
 bool SavePreference(const char *key, int32_t value);
 
-// Search up the directory tree from binary_dir for target_dir, changing the
-// working directory to the target_dir and returning true if it's found,
-// false otherwise.
+/// @brief Search and change to a given directory.
+/// @param binary_dir A C-string corresponding to the current directory
+/// to start searching from.
+/// @param target_dir A C-string corresponding to the desired directory
+/// that should be changed to, if found.
+/// @return Returns `true` if it's found, `false` otherwise.
 bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir);
 
-// Return true if 16bpp MipMap generation is supported.
-// (Basically always true, except on certain android devices.)
+/// @brief check if 16bpp MipMap is supported.
+/// @return Return `true` if 16bpp MipMap generation is supported.
+/// @note Basically always true, except on certain android devices.
 bool MipmapGeneration16bppSupported();
 
-// Return the system RAM size in MB.
+/// @brief Get the system's RAM size.
+/// @return Returns the system RAM size in MB.
 int32_t GetSystemRamSize();
 
-// Basic logging functions.  They will output to the console.
+/// @brief Log a format string with `Info` priority to the console.
+/// @param[in] fmt A C-string format string.
+/// @param[in] args A variable length argument list for the format
+/// string `fmt`.
 void LogInfo(const char *fmt, va_list args);
+
+/// @brief Log a format string with `Error` priority to the console.
+/// @param[in] fmt A C-string format string.
+/// @param[in] args A variable length argument list for the format
+/// string `fmt`.
 void LogError(const char *fmt, va_list args);
+
+/// @brief Log a format string with `Info` priority to the console.
+/// @param[in] category The LogCategory for the message.
+/// @param[in] fmt A C-string format string.
+/// @param[in] args A variable length argument list for the format
+/// string `fmt`.
 void LogInfo(LogCategory category, const char *fmt, va_list args);
+
+/// @brief Log a format string with `Error` priority to the console.
+/// @param[in] category The LogCategory for the message.
+/// @param[in] fmt A C-string format string.
+/// @param[in] args A variable length argument list for the format
+/// string `fmt`.
 void LogError(LogCategory category, const char *fmt, va_list args);
+
+/// @brief Log a format string with `Info` priority to the console.
+/// @param[in] fmt A C-string format string.
 void LogInfo(const char *fmt, ...);
+
+/// @brief Log a format string with `Error` priority to the console.
+/// @param[in] fmt A C-string format string.
 void LogError(const char *fmt, ...);
+
+/// @brief Log a format string with `Info` priority to the console.
+/// @param[in] category The LogCategory for the message.
+/// @param[in] fmt A C-string format string.
 void LogInfo(LogCategory category, const char *fmt, ...);
+
+/// @brief Log a format string with `Error` priority to the console.
+/// @param[in] category The LogCategory for the message.
+/// @param[in] fmt A C-string format string.
 void LogError(LogCategory category, const char *fmt, ...);
 
 #if defined(__ANDROID__)
-// Returns a pointer to the Java instance of the activity class
-// in an Android application.
+/// @brief Get the Android activity class.
+/// @return Returns a pointer to the Java instance of the activity class
+/// in an Android application.
 jobject AndroidGetActivity();
 
-// Returns a pointer to the Java native interface object (JNIEnv) of the
-// current thread on an Android application.
+/// @brief Get the Java native interface object (JNIEnv).
+/// @return Returns a pointer to the Java native interface object (JNIEnv) of
+/// the current thread on an Android application.
 JNIEnv *AndroidGetJNIEnv();
 
-// Register for handling vsync callbacks on android.  As with most callbacks,
-// this will normally be called on a separate thread, so you'll need to be
-// careful about thread-safety with anything you do during the callback.
-// Return value is whatever callback was previously registered.  (Or nullptr
-// if none.)
+/// @brief Register for handling vsync callbacks on android.
+/// @note As with most callbacks, this will normally be called on a separate
+/// thread, so you'll need to be  careful about thread-safety with anything you
+/// do during the callback.
+/// @param callback The VSync callback function to register.
+/// @return Return value is whatever callback was previously registered. (Or
+/// `nullptr` if there was none.)
 VsyncCallback RegisterVsyncCallback(VsyncCallback callback);
 
-// Blocks until the next time a VSync happens.
+/// @brief Blocks until the next time a VSync happens.
 void WaitForVsync();
 
-// Returns a unique ID representing the frame.  Guaranteed to change
-// every time the frame increments.  (May eventually wrap.)
+/// @brief Get Vsync frame id.
+/// @return Returns a unique ID representing the frame. Guaranteed to change
+/// every time the frame increments.
+/// @warning May eventually wrap.
 int GetVsyncFrameId();
 
-// Triggers a keypress event on an Android device.
+/// @brief Triggers a keypress event on an Android device.
+/// @param[in] android_keycode The key code corresponding to the
+/// keypress that should be triggered.
 void SendKeypressEventToAndroid(int android_keycode);
 
-// Get the name of the current activity class.  This can be used by C++ code
-// to determine how the application was started.
+/// @brief Get the name of the current activity class.
+/// @note This can be used by C++ code to determine how the application was
+/// started.
+/// @return Returns a `std::string` containing the Android activity name.
 std::string AndroidGetActivityName();
 
-// Determine whether the activity was started with Intent.ACTION_VIEW and if
-// so return the data the user wants to "view" in the application.
+/// @brief Determine whether the activity was started with `Intent.ACTION_VIEW`
+/// and, if so, return the data the user wants to "view" in the application.
+/// @return Returns a `std::string` contianing the View intent data.
 std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
-// Provide a pointer to an already-created instance of AAssetManager. Must call
-// this function once before loading any assets.
+/// @breif Set an Android asset manager.
+/// @param[in] manager A pointer to an already-created instance of
+/// `AAssetManager`.
+/// @note Must call this function once before loading any assets.
 void SetAAssetManager(AAssetManager *manager);
 #endif
 
-// Retrieve a path where an app can store data files.
+/// @brief Retrieve a path where an app can store data files.
+/// @param[in] app_name A C-string corresponding to the name of the
+/// application.
+/// @param[out] path A `std::string` to capture the storage path. Contains
+/// `nullptr` if the function returns `false`.
+/// @return Returns `true` if a storage path was found. Otherwise it
+/// returns `false`.
 bool GetStoragePath(const char *app_name, std::string *path);
 
-// Checks whether Head Mounted Displays, such as Cardboard, are supported by
-// the system being run on.
+/// @brief Checks whether Head Mounted Displays, such as Cardboard, are
+/// supported by the system being run on.
+/// @return Returns `true` if Head Mounted Displays are supported.
 bool SupportsHeadMountedDisplay();
 
-// Checks if the device has a touchscreen.
+/// @brief Checks if the device has a touchscreen.
+/// @return Returns `true` if the device has a touchscreen.
 bool TouchScreenDevice();
 
-// Checks whether the device we are running on is an Android TV device.
-// Always returns false when not running on Android.
+/// @brief Checks whether the device we are running on is an Android TV device.
+/// @return Returns `true` if the device is an Android TV device.
+/// @note Always returns `false` when not running on Android.
 bool IsTvDevice();
 
-// Sets the performance mode.
+/// @brief Sets the performance mode.
+/// @param[in] new_mode The `PerformanceMode` to set.
 void SetPerformanceMode(PerformanceMode new_mode);
 
-// Returns the current performance mode.
+/// @brief Get the current performance mode.
+/// @return Returns the current `PerformanceMode`.
 PerformanceMode GetPerformanceMode();
 
-// Relaunch the application.
+/// @brief Relaunch the application.
 void RelaunchApplication();
 
 #ifdef __ANDROID__
-// Sets the specific parameters used by high-performance mode on Android.
-// android_key_code is the key to press repeatedly, to keep the CPU active.
-// time_between_presses is the time (in seconds) between keypress events.
+/// @brief Sets the specific parameters used by high-performance mode on
+/// Android.
+/// @param[in] params A const reference to a `HighPerformanceParams` struct
+/// to set for use with high-performance mode.
 void SetHighPerformanceParameters(const HighPerformanceParams &params);
 
-// Returns the current performance parameters, in the form of a struct.
+/// @brief Get the high performance parameters.
+/// @return Returns the current performance parameters, in the form of a struct.
 const HighPerformanceParams &GetHighPerformanceParameters();
 
-// Returns the model of the Android device the app is currently being run on.
+/// @brief Get the Android device's model.
+/// @return Returns the model of the Android device the app is currently being
+/// run on.
 std::string DeviceModel();
 #endif
+/// @}
 }  // namespace fplbase
 
 #endif  // FPLBASE_UTILITIES_H
