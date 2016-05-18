@@ -42,13 +42,22 @@ static const char *kDirectiveText[] = {
     "#endif"     // kEndIf
 };
 
+// Identifiers we want to pass thru.
+static const char *kWhiteListed[] = {
+    "__LINE__",
+    "__FILE__",
+    "__VERSION__",
+    "GL_ES"
+};
+
 static_assert(
     FPL_ARRAYSIZE(kDirectiveText) == kNumPreprocessorDirectives,
     "all PreprocessorDirectives should have kDirectiveText equivalent.");
 
 // Struct to keep track of nested #ifdef/#ifndef/#else statements.
 struct IfStackItem {
-  IfStackItem() : compiled(false), was_true(false), else_seen(false) {}
+  IfStackItem() : compiled(false), was_true(false), else_seen(false),
+                  pass_thru(false) {}
 
   // Was this #if evaluated while the file was compiling?
   bool compiled;
@@ -58,6 +67,9 @@ struct IfStackItem {
 
   // Has an #else corresponding to this #if been seen?
   bool else_seen;
+
+  // This #ifdef should be passed thru to the underlying compiler.
+  bool pass_thru;
 };
 
 // Returns a constant identifying which directive has been called.
@@ -69,6 +81,13 @@ PreprocessorDirective FindDirective(const char *cursor,
     }
   }
   return kUnknownDirective;
+}
+
+bool FindWhiteListed(const std::string &def) {
+  for (size_t i = 0; i < sizeof(kWhiteListed) / sizeof(const char *); ++i) {
+    if (def == kWhiteListed[i]) return true;
+  }
+  return false;
 }
 
 // Helper function to determine if an identifier has been defined.
@@ -171,12 +190,17 @@ bool LoadFileWithDirectivesHelper(
             auto arg1 = std::string(cursor, arg1_length);
             cursor += arg1_length;
 
-            found = FindIdentifier(arg1, *all_defines);
-            if (found == enable_if_found) {
-              compiling = true;
-              item.was_true = true;
+            if (FindWhiteListed(arg1)) {
+              item.pass_thru = true;
+              remove_line = false;
             } else {
-              compiling = false;
+              found = FindIdentifier(arg1, *all_defines);
+              if (found == enable_if_found) {
+                compiling = true;
+                item.was_true = true;
+              } else {
+                compiling = false;
+              }
             }
             if_stack.push(item);
             break;
@@ -188,14 +212,24 @@ bool LoadFileWithDirectivesHelper(
             assert(!if_stack.top().else_seen);
 
             if_stack.top().else_seen = true;
-            // Else should be the opposite of the #if
-            compiling = if_stack.top().compiled && !if_stack.top().was_true;
+
+            if (if_stack.top().pass_thru) {
+              remove_line = false;
+            } else {
+              // Else should be the opposite of the #if
+              compiling = if_stack.top().compiled && !if_stack.top().was_true;
+            }
             break;
           case kEndIf:
             assert(!if_stack.empty());
-            if (!compiling && if_stack.top().compiled) {
-              // The #if statement evaluated to false and is at bottom of stack
-              compiling = true;
+
+            if (if_stack.top().pass_thru) {
+              remove_line = false;
+            } else {
+              if (!compiling && if_stack.top().compiled) {
+                // The #if statement evaluated to false and is at bottom of stack
+                compiling = true;
+              }
             }
             if_stack.pop();
             break;

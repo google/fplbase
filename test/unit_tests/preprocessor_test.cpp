@@ -88,6 +88,15 @@ TEST_F(PreprocessorTests, DefineWithArguments) {
   EXPECT_EQ(file_, file);
 }
 
+// #if[n]def should skip certain whitelisted arguments.
+TEST_F(PreprocessorTests, WhiteListIfDef) {
+  const char *file = "#ifdef __LINE__\nFOO\n#else\nBAR\n#endif";
+  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
+                                                &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, file);
+}
+
 // #define the same identifier twice should be ok
 TEST_F(PreprocessorTests, DefineSameIdTwice) {
   const char *file = "#define foo\n"
