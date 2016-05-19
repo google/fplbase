@@ -39,7 +39,6 @@ static const std::string kMissingEndIfError = "All #if (#ifdef, #ifndef) "
                                               "corresponding #endif statement.";
 static const std::string kIfStackEmptyRegex =
     "[Assertion failed: (!if_stack.empty())].*";
-static const std::string kUnkownDirectiveError = "Unknown directive: #unknown";
 
 static const char *empty_defines[] = {nullptr};
 
@@ -257,13 +256,53 @@ TEST_F(PreprocessorTests, TooManyEndif) {
                kIfStackEmptyRegex);
 }
 
-// Unknown directives should fail.
+// Unknown directives should be passed through.
+TEST_F(PreprocessorTests, UnknownDirective) {
+  std::string file = "#unknown";
+  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
+                                                empty_defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, file);
+}
+
+// Unknown directives should be passed through when in a block that's compiled.
+TEST_F(PreprocessorTests, UnknownDirectiveInCompiledBlock) {
+  std::string file = "#ifndef foo\n"
+                     "#unknown\n"
+                     "#endif\n";
+  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
+                                                empty_defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, "#unknown\n");
+}
+
+// Unknown directives should be removed when in a block that's not-compiled.
+TEST_F(PreprocessorTests, UnknownDirectiveInUncompiledBlock) {
+  std::string file = "#ifdef foo\n"
+                     "#unknown\n"
+                     "#endif\n";
+  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
+                                                empty_defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, "");
+}
+
+// Unknown directives should be passed through.
 TEST_F(PreprocessorTests, UnknownDirectiveTest) {
   std::string file = "#unknown";
   bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
                                                 empty_defines, &error_message_);
-  EXPECT_FALSE(result);
-  EXPECT_EQ(error_message_, kUnkownDirectiveError);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, file);
+}
+
+// Unknown directives (such as OpenGL #extension) should be passed through.
+TEST_F(PreprocessorTests, ExtensionDirectiveTest) {
+  std::string file = "#extension GL_OES_EGL_image_external : require";
+  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
+                                                empty_defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, file);
 }
 
 // Passing in #define variables manually should make #ifdef true.

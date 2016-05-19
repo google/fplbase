@@ -140,15 +140,13 @@ bool LoadFileWithDirectivesHelper(
     if (cursor[0] == '#') {
       remove_line = true;
 
-      bool skip_line = false;  // Should like be evaluated?
+      bool skip_line = false;  // Should line be evaluated?
 
       size_t directive_length = strcspn(cursor, " \t\n\r");
       PreprocessorDirective directive = FindDirective(cursor, directive_length);
 
-      if (directive == kUnknownDirective) {
-        *error_message =
-            "Unknown directive: " + std::string(start, directive_length);
-        return false;
+      if (directive == kUnknownDirective && compiling) {
+        remove_line = false;
       }
 
       if (!compiling) {  // Within an #if statement that evaluated to false.
@@ -265,6 +263,9 @@ bool LoadFileWithDirectivesHelper(
                 cursor += len + 1;
               }
             }
+            break;
+          case kUnknownDirective:
+            // Do nothing with unknown directives.
             break;
           default:
             // kNumPreprocessorDirectives, which FindIdentifier should never
