@@ -55,6 +55,7 @@ Renderer::Renderer()
       blend_mode_(kBlendModeOff),
       feature_level_(kFeatureLevel20),
       supports_texture_format_(-1),
+      supports_texture_npot_(false),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
       version_(&Version()) {
@@ -233,6 +234,10 @@ bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;
 }
 
+bool Renderer::SupportsTextureNpot() const {
+  return supports_texture_npot_;
+}
+
 bool Renderer::InitializeRenderingState() {
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
@@ -244,6 +249,11 @@ bool Renderer::InitializeRenderingState() {
   // Check for ASTC: Available in devices supporting AEP.
   if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
     supports_texture_format_ &= ~(1 << kFormatASTC);
+  }
+  // Check for Non Power of 2 (NPOT) extension.
+  if (HasGLExt("GL_ARB_texture_non_power_of_two") ||
+      HasGLExt("GL_OES_texture_npot")) {
+    supports_texture_npot_ = true;
   }
 
   // Check for ETC2:
