@@ -242,6 +242,10 @@ bool Renderer::InitializeRenderingState() {
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
   auto HasGLExt = [&exts](const char *ext) -> bool {
+    // TODO(b/28761934): Consider supporting GL3.0 version.
+    if (exts == nullptr) {
+       return false;
+    }
     auto pos = strstr(exts, ext);
     return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
   };
