@@ -297,6 +297,10 @@ class Texture : public AsyncAsset {
   /// `x` and `y` sizes.
   void set_original_size(const mathfu::vec2i &size) { original_size_ = size; }
 
+  /// @brief Get the Texture format.
+  /// @return Returns the texture format.
+  TextureFormat format() const { return texture_format_; }
+
   /// @brief If the original size has not yet been set, then set it.
   /// @param[in] size A `mathfu::vec2i` containing the original Texture
   /// `x` and `y` sizes.

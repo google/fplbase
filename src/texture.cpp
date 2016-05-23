@@ -349,14 +349,28 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
   // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
   // that we are updating entire row at once.
   // TODO(wvo): Optimize glTexSubImage2D call in ES3.0 capable platform.
+  auto texture_format = GL_RGBA;
+  auto pixel_format = GL_UNSIGNED_BYTE;
   switch (format) {
     case kFormatLuminance:
-      GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
-                              GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
+      texture_format = GL_LUMINANCE;
+      break;
+    case kFormat888:
+      texture_format = GL_RGB;
+      break;
+    case kFormat5551:
+      pixel_format = GL_UNSIGNED_SHORT_5_5_5_1;
+      break;
+    case kFormat565:
+      pixel_format = GL_UNSIGNED_SHORT_5_6_5;
+      break;
+    case kFormat8888:
       break;
     default:
       assert(false);  // TODO(wvo): not implemented.
   }
+  GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
+                          texture_format, pixel_format, data));
 }
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
