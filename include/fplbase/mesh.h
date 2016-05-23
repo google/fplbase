@@ -323,6 +323,16 @@ class Mesh : public Asset {
   /// @return Returns the number of bones used by the shader.
   size_t num_shader_bones() const { return shader_bone_indices_.size(); }
 
+  /// @brief The number of vertices in the VBO.
+  ///
+  /// @return Returns the number of vertices in the VBO.
+  size_t num_vertices() const { return num_vertices_; }
+
+  /// @brief The total number of indices in all IBOs.
+  ///
+  /// @return Returns the total number of indices across all IBOs.
+  size_t CalculateTotalNumberOfIndices() const;
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
@@ -350,6 +360,7 @@ class Mesh : public Asset {
   };
   std::vector<Indices> indices_;
   size_t vertex_size_;
+  size_t num_vertices_;
   Attribute format_[kMaxAttributes];
   BufferHandle vbo_;
   mathfu::vec3 min_position_;

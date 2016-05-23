@@ -136,6 +136,7 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
 Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
     : vertex_size_(vertex_size),
+      num_vertices_(static_cast<size_t>(count)),
       bone_transforms_(nullptr),
       bone_global_transforms_(nullptr) {
   set_format(format);
@@ -373,6 +374,14 @@ void Mesh::GatherShaderTransforms(
   for (size_t i = 0; i < shader_bone_indices_.size(); ++i) {
     shader_transforms[i] = bone_transforms[shader_bone_indices_[i]];
   }
+}
+
+size_t Mesh::CalculateTotalNumberOfIndices() const {
+  int total = 0;
+  for (size_t i = 0; i < indices_.size(); ++i) {
+    total += indices_[i].count;
+  }
+  return static_cast<size_t>(total);
 }
 
 }  // namespace fplbase
