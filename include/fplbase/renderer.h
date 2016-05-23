@@ -312,6 +312,10 @@ class Renderer {
   /// @brief Returns if a texture format is supported by the hardware.
   bool SupportsTextureFormat(TextureFormat texture_format) const;
 
+  /// @brief Returns if a NPOT textures are supported by the hardware.
+  /// see: https://www.opengl.org/wiki/NPOT_Texture
+  bool SupportsTextureNpot() const;
+
  private:
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
@@ -345,6 +349,8 @@ class Renderer {
 
   FeatureLevel feature_level_;
   int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
+
+  bool supports_texture_npot_;
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;

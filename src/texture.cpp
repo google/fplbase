@@ -123,11 +123,13 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                               TextureFormat texture_format, bool mipmaps,
                               TextureFormat desired) {
-  int area = size.x() * size.y();
-  if (area & (area - 1)) {
-    LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
-             size.x(), size.y());
-    return 0;
+  if (!Renderer::Get()->SupportsTextureNpot()) {
+    int area = size.x() * size.y();
+    if (area & (area - 1)) {
+      LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
+               size.x(), size.y());
+      return 0;
+    }
   }
 
   // In some Android devices (particulary Galaxy Nexus), there is an issue
