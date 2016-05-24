@@ -35,7 +35,7 @@ FPLBASE_GENERATED_OUTPUT_DIR := $(FPLBASE_DIR)/gen/include
 # Location of the Flatbuffers library.
 DEPENDENCIES_FLATBUFFERS_DIR?=$(FPL_ROOT)/flatbuffers
 # Location of the googletest library.
-DEPENDENCIES_GTEST_DIR?=$(FPL_ROOT)/googletest
+DEPENDENCIES_GTEST_DIR?=$(FPL_ROOT)/fplutil/libfplutil/jni/libs/googletest
 # Location of the MathFu library.
 DEPENDENCIES_MATHFU_DIR?=$(FPL_ROOT)/mathfu
 # Location of the webp library.
