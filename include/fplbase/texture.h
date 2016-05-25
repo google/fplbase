@@ -42,6 +42,11 @@ enum TextureFormat {
   kFormatCount  // Must be at end.
 };
 
+enum TextureWrapping {
+  kRepeat,
+  kClampToEdge,
+};
+
 /// @brief determines if the format has an alpha component.
 inline bool HasAlpha(TextureFormat format) {
   switch (format) {
@@ -82,7 +87,8 @@ class Texture : public AsyncAsset {
  public:
   /// @brief Constructor for a Texture.
   explicit Texture(const char *filename = nullptr,
-                   TextureFormat format = kFormatAuto, bool mipmaps = true)
+                   TextureFormat format = kFormatAuto, bool mipmaps = true,
+                   TextureWrapping wrapping = kRepeat)
       : AsyncAsset(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),
@@ -90,7 +96,8 @@ class Texture : public AsyncAsset {
         scale_(mathfu::kOnes2f),
         texture_format_(kFormat888),
         mipmaps_(mipmaps),
-        desired_(format) {}
+        desired_(format),
+        wrapping_(wrapping) {}
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
@@ -133,13 +140,15 @@ class Texture : public AsyncAsset {
   /// @param[in] mipmaps If `true`, use the work around for some Android devices
   /// to correctly generate miplevels. Defaults to `true`.
   /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
+  /// @param[in] wrapping The desired TextureWrapping. Defaults to 'kRepeat'.
   /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
   /// power of two in size.
   static TextureHandle CreateTexture(const uint8_t *buffer,
                                      const mathfu::vec2i &size,
                                      TextureFormat texture_format,
                                      bool mipmaps = true,
-                                     TextureFormat desired = kFormatAuto);
+                                     TextureFormat desired = kFormatAuto,
+                                     TextureWrapping wrapping = kRepeat);
 
   /// @brief Update (part of) the current texture with new pixel data.
   /// For now, must always update at least entire rows.
@@ -320,6 +329,7 @@ class Texture : public AsyncAsset {
   TextureFormat texture_format_;
   bool mipmaps_;
   TextureFormat desired_;
+  TextureWrapping wrapping_;
 };
 
 /// @}

@@ -76,12 +76,14 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
-  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_);
+  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_,
+                      wrapping_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_);
+    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_,
+                        wrapping_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
@@ -122,13 +124,18 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                               TextureFormat texture_format, bool mipmaps,
-                              TextureFormat desired) {
+                              TextureFormat desired, TextureWrapping wrapping) {
   if (!Renderer::Get()->SupportsTextureNpot()) {
-    int area = size.x() * size.y();
-    if (area & (area - 1)) {
-      LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
-               size.x(), size.y());
-      return 0;
+    // Npot textures are supported in ES 2.0 if you use GL_CLAMP_TO_EDGE and no
+    // mipmaps. See Section 3.8.2 of ES2.0 spec:
+    // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
+    if (mipmaps || wrapping != kClampToEdge) {
+      int area = size.x() * size.y();
+      if (area & (area - 1)) {
+        LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
+                 size.x(), size.y());
+        return 0;
+      }
     }
   }
 
@@ -136,14 +143,16 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   // of glGenerateMipmap() with 16BPP texture format.
   // In that case, we are going to fallback to 888/8888 textures
   const bool use_16bpp = MipmapGeneration16bppSupported();
+  const GLint wrap_mode =
+      (wrapping == kClampToEdge) ? GL_CLAMP_TO_EDGE : GL_REPEAT;
 
   // TODO(wvo): support default args for mipmap/wrap/trilinear
   GLuint texture_id;
   GL_CALL(glGenTextures(1, &texture_id));
   GL_CALL(glActiveTexture(GL_TEXTURE0));
   GL_CALL(glBindTexture(GL_TEXTURE_2D, texture_id));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode));
+  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                           mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
