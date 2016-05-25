@@ -296,6 +296,10 @@ class Texture : public AsyncAsset {
   /// `x` and `y` scale components to set for the Texture.
   void set_scale(const mathfu::vec2 &scale) { scale_ = scale; }
 
+  /// @brief Queries whether the texture has mips.
+  /// @return Returns whether the texture has mips.
+  bool mipmaps() const { return mipmaps_; }
+
   /// @brief Get the original size of the Texture.
   /// @return Returns a const `mathfu::vec2` reference to the scale of the
   /// Texture.
