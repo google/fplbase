@@ -392,7 +392,8 @@ TextureAtlas *AssetManager::FindTextureAtlas(const char *filename) {
   return FindInMap(texture_atlas_map_, filename);
 }
 
-TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
+TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
+    TextureFormat format, bool mipmaps, bool async) {
   auto atlas = FindTextureAtlas(filename);
   if (atlas) return atlas;
   std::string flatbuf;
@@ -401,7 +402,8 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
     auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
-    Texture *atlas_texture = LoadTexture(atlasdef->texture_filename()->c_str());
+    Texture *atlas_texture = LoadTexture(
+        atlasdef->texture_filename()->c_str(), format, mipmaps, async);
     atlas = new TextureAtlas();
     atlas->set_atlas_texture(atlas_texture);
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {

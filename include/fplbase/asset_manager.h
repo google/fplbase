@@ -235,9 +235,16 @@ class AssetManager {
   /// Loads a texture atlas, which is a compiled FlatBuffer file containing a
   /// texture path and subtexture rectangles.
   ///
+  /// @param filename Name of the texture atlas file to load.
+  /// @param format The texture format, defaults to kFormatAuto.
+  /// @param mipmaps If mipmaps should be used, defaults to true.
+  /// @param async Whether to load the texture asynchronously.
+  ///
   /// @return If this returns nullptr, the error can be found in
   /// Renderer::last_error().
-  TextureAtlas *LoadTextureAtlas(const char *filename);
+  TextureAtlas *LoadTextureAtlas(const char *filename,
+                                 TextureFormat format = kFormatAuto,
+                                 bool mipmaps = true, bool async = true);
 
   /// @brief Delete a texture atlas and remove it from the asset manager.
   ///
