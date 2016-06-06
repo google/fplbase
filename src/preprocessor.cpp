@@ -317,12 +317,13 @@ bool LoadFileWithDirectivesHelper(
 }
 
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            const char **defines, std::string *error_message) {
+                            const char * const *defines,
+                            std::string *error_message) {
   std::set<std::string> all_includes;
   std::unordered_set<std::string> all_defines;
 
   if (defines != nullptr) {
-    for (const char **d = defines; *d != nullptr; ++d) {
+    for (const char * const *d = defines; *d != nullptr; ++d) {
       all_defines.insert(std::string(*d));
     }
   }

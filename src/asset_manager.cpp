@@ -108,7 +108,7 @@ Shader *AssetManager::FindShader(const char *basename) {
 }
 
 Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const char **defines,
+                                       const char * const *defines,
                                        bool should_reload) {
   auto shader = FindShader(basename);
   if (!should_reload && shader)
@@ -146,16 +146,18 @@ Shader *AssetManager::LoadShaderHelper(const char *basename,
   return nullptr;
 }
 
-Shader *AssetManager::LoadShader(const char *basename, const char **defines) {
+Shader *AssetManager::LoadShader(const char *basename,
+                                 const char * const *defines) {
   return LoadShaderHelper(basename, defines, false);
 }
 
 Shader *AssetManager::LoadShader(const char *basename) {
-  static const char **defines = {nullptr};
+  static const char * const *defines = {nullptr};
   return LoadShader(basename, defines);
 }
 
-Shader *AssetManager::ReloadShader(const char *basename, const char **defines) {
+Shader *AssetManager::ReloadShader(const char *basename,
+                                   const char * const *defines) {
   return LoadShaderHelper(basename, defines, true);
 }
 

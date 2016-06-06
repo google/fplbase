@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 
 #include "common_generated.h"
 #include "fplbase/preprocessor.h"
@@ -24,6 +25,7 @@ struct ShaderPipelineArgs {
   std::string vertex_shader;    /// The vertex shader source file.
   std::string fragment_shader;  /// The fragment shader source file.
   std::string output_file;      /// The output fplshader file.
+  std::vector<char*> defines;   /// Definitions to include into the shaders.
 };
 
 static bool ParseShaderPipelineArgs(int argc, char** argv,
@@ -59,6 +61,15 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         valid_args = false;
       }
 
+      // -d switch
+    } else if (arg == "-d" || arg == "--defines") {
+      if (i < argc - 2) {
+        ++i;
+        args->defines.insert(args->defines.end(), argv[i]);
+      } else {
+        valid_args = false;
+      }
+
       // all other (non-empty) arguments
     } else if (arg != "") {
       printf("Unknown parameter: %s\n", arg.c_str());
@@ -67,6 +78,8 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
 
     if (!valid_args) break;
   }
+  // Null-terminate the vector so the resulting array is null-termintated.
+  args->defines.insert(args->defines.end(), nullptr);
 
   if (args->vertex_shader.empty() || args->fragment_shader.empty()) {
     valid_args = false;
@@ -83,7 +96,8 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         "\n"
         "Options:\n"
         "  -vs, --vertex-shader VERTEX_SHADER\n"
-        "  -fs, --fragment-shader FRAGMENT_SHADER\n");
+        "  -fs, --fragment-shader FRAGMENT_SHADER\n"
+        "  -d,  --defines DEFINITION\n");
   }
 
   return valid_args;
@@ -111,15 +125,16 @@ int main(int argc, char** argv) {
   std::string vsh;
   std::string fsh;
   std::string error_message;
+  const char* const *defines = args.defines.data();
   if (!fplbase::LoadFileWithDirectives(args.vertex_shader.c_str(), &vsh,
-                                       nullptr, &error_message)) {
+                                       defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
     return 1;
   }
 
   if (!fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
-                                       nullptr, &error_message)) {
+                                       defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
     return 1;

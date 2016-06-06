@@ -45,7 +45,8 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 /// @return If this function returns false, `error_message` indicates which
 /// directive caused the problem and why.
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            const char **defines, std::string *error_message);
+                            const char * const *defines,
+                            std::string *error_message);
 }
 
-#endif // FPLBASE_PREPROCESSOR_H
+#endif  // FPLBASE_PREPROCESSOR_H
