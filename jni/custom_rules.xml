@@ -45,6 +45,7 @@ limitations under the License.
     <exec executable="${ndkbuild_exe}" outputproperty="fplbase_path">
       <arg value="print_dependency"/>
       <arg value="DEP_DIR=FPLBASE"/>
+      <arg value="NDK_NO_INFO=1"/>
     </exec>
   </target>
 
@@ -61,6 +62,7 @@ limitations under the License.
     <exec executable="${ndkbuild_exe}" outputproperty="cardboardpath">
       <arg value="print_dependency"/>
       <arg value="DEP_DIR=CARDBOARD"/>
+      <arg value="NDK_NO_INFO=1"/>
     </exec>
   </target>
 
