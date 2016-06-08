@@ -52,7 +52,9 @@ class Mesh : public Asset {
  public:
   enum Primitive {
     kTriangles,
-    kLines
+    kTriangleStrip,
+    kLines,
+    kPoints,
   };
 
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
@@ -160,6 +162,22 @@ class Mesh : public Asset {
   static void RenderArray(Primitive primitive, int index_count,
                           const Attribute *format, int vertex_size,
                           const void *vertices, const unsigned short *indices);
+
+  /// @brief Renders the given vertex data directly.
+  ///
+  /// Renders primitives using vertex data directly in local memory. This is a
+  /// convenient alternative to creating a Mesh instance for small amounts of
+  /// data, or dynamic data.
+  ///
+  /// @param primitive The type of primitive to render the data as.
+  /// @param vertex_count The total number of vertices.
+  /// @param format The vertex buffer format, following the same rules as
+  ///        described in set_format().
+  /// @param vertex_size The size of an individual vertex.
+  /// @param vertices The array of vertices.
+  static void RenderArray(Primitive primitive, int vertex_count,
+                          const Attribute *format, int vertex_size,
+                          const void *vertices);
 
   /// @brief Convenience method for rendering a Quad.
   ///

@@ -24,6 +24,22 @@ using mathfu::vec4;
 using mathfu::vec4i;
 
 namespace fplbase {
+namespace {
+
+GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
+  switch (primitive) {
+    case Mesh::kLines:
+      return GL_LINES;
+    case Mesh::kPoints:
+      return GL_POINTS;
+    case Mesh::kTriangleStrip:
+      return GL_TRIANGLE_STRIP;
+    default:
+      return GL_TRIANGLES;
+  }
+}
+
+}  // namespace
 
 void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                          const char *buffer) {
@@ -290,9 +306,20 @@ void Mesh::RenderArray(Primitive primitive, int index_count,
   SetAttributes(0, format, vertex_size,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-  auto gl_primitive = primitive == kLines ? GL_LINES : GL_TRIANGLES;
+  auto gl_primitive = GetGlPrimitiveType(primitive);
   GL_CALL(
       glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT, indices));
+  UnSetAttributes(format);
+}
+
+void Mesh::RenderArray(Primitive primitive, int vertex_count,
+                       const Attribute *format, int vertex_size,
+                       const void *vertices) {
+  SetAttributes(0, format, vertex_size,
+                reinterpret_cast<const char *>(vertices));
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+  auto gl_primitive = GetGlPrimitiveType(primitive);
+  GL_CALL(glDrawArrays(gl_primitive, 0, vertex_count));
   UnSetAttributes(format);
 }
 
