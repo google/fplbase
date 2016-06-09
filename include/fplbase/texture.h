@@ -242,7 +242,28 @@ class Texture : public AsyncAsset {
   static uint8_t *UnpackPng(const void *png_buf, size_t size,
                             const mathfu::vec2 &scale,
                             mathfu::vec2i *dimensions,
-                            TextureFormat *texture_format);
+                            TextureFormat *texture_format) {
+    return UnpackImage(png_buf, size, scale, dimensions, texture_format);
+  }
+
+  /// @brief Unpacks a memory buffer containing a Jpeg format file.
+  /// @param[in] jpg_buf The Jpeg image data.
+  /// @param[in] size The size of the memory block pointed to by `data`.
+  /// @param[in] scale A scale value must be a power of two to have correct
+  /// Texture sizes.
+  /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
+  /// width and height.
+  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
+  /// image has an alpha.
+  /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
+  /// the format is not understood.
+  /// @note You must `free()` on the returned pointer when done.
+  static uint8_t *UnpackJpg(const void *jpg_buf, size_t size,
+                            const mathfu::vec2 &scale,
+                            mathfu::vec2i *dimensions,
+                            TextureFormat *texture_format) {
+    return UnpackImage(jpg_buf, size, scale, dimensions, texture_format);
+  }
 
   /// @brief Loads the file in filename, and then unpacks the file format
   /// (supports TGA, WebP, KTX, PKM, ASTC).
@@ -326,6 +347,23 @@ class Texture : public AsyncAsset {
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
+  /// @brief Unpacks a memory buffer containing a PNG/JPEG/TGA format file.
+  /// @param[in] img_buf The PNG/JPEG/TGA image data including an image header.
+  /// @param[in] size The size of the memory block pointed to by `data`.
+  /// @param[in] scale A scale value must be a power of two to have correct
+  /// Texture sizes.
+  /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
+  /// width and height.
+  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
+  /// image has an alpha.
+  /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
+  /// the format is not understood.
+  /// @note You must `free()` on the returned pointer when done.
+  static uint8_t *UnpackImage(const void *img_buf, size_t size,
+                              const mathfu::vec2 &scale,
+                              mathfu::vec2i *dimensions,
+                              TextureFormat *texture_format);
+
   TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;

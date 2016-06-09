@@ -12,14 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Definitions to instantiate STB functions here.
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+
 #include "fplbase/texture.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
 #include "precompiled.h"
 #include "webp/decode.h"
-#ifdef FPL_BASE_SUPPORT_PNG
-#include "lodepng/lodepng.h"
+
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_ONLY_TGA
+#include "stb_image.h"
+
+// STB_image to resize PNG/JPG images.
+// Disable warnings in STB_image_resize.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4100)  // Disable 'unused reference' warning.
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif /* _MSC_VER */
+#include "stb_image_resize.h"
+// Pop warning status.
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
 #endif
 
 using mathfu::vec2;
@@ -393,43 +417,10 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   };
   static_assert(sizeof(TGA) == 18,
                 "Members of struct TGA need to be packed with no padding.");
-  int little_endian = 1;
-  if (!*reinterpret_cast<char *>(&little_endian)) {
-    return nullptr;  // TODO(wvo): Endian swap the shorts instead.
-  }
   auto header = reinterpret_cast<const TGA *>(tga_buf);
-  if (header->color_map_type != 0  // No color map.
-      || header->image_type != 2   // RGB or RGBA only.
-      || (header->bpp != 32 && header->bpp != 24))
-    return nullptr;
-  auto pixels = reinterpret_cast<const unsigned char *>(header + 1);
-  pixels += header->id_len;
-  int size = header->width * header->height;
-  // We use malloc to ensure that all unpacked texture formats can be freed
-  // in the same way (see also other Unpack* functions).
-  auto dest = reinterpret_cast<uint8_t *>(malloc(size * header->bpp / 8));
-  int start_y, end_y, y_direction;
-  if (header->image_descriptor & 0x20) {  // y is not flipped.
-    start_y = 0;
-    end_y = header->height;
-    y_direction = 1;
-  } else {  // y is flipped.
-    start_y = header->height - 1;
-    end_y = -1;
-    y_direction = -1;
-  }
-  for (int y = start_y; y != end_y; y += y_direction) {
-    for (int x = 0; x < header->width; x++) {
-      auto p = dest + (y * header->width + x) * header->bpp / 8;
-      p[2] = *pixels++;  // BGR -> RGB
-      p[1] = *pixels++;
-      p[0] = *pixels++;
-      if (header->bpp == 32) p[3] = *pixels++;
-    }
-  }
-  *texture_format = header->bpp == 32 ? kFormat8888 : kFormat888;
-  *dimensions = vec2i(header->width, header->height);
-  return dest;
+  int size =  header->id_len + header->width * header->height * header->bpp / 8;
+  return UnpackImage(tga_buf, size, mathfu::kOnes2f, dimensions,
+                     texture_format);
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
@@ -533,30 +524,44 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   return buf;
 }
 
-uint8_t *Texture::UnpackPng(const void *png_buf, size_t size,
-                            const vec2 &scale, vec2i *dimensions,
-                            TextureFormat *texture_format) {
-#ifdef FPL_BASE_SUPPORT_PNG
+uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
+                              const vec2 &scale, vec2i *dimensions,
+                              TextureFormat *texture_format) {
   uint8_t* image = nullptr;
-  unsigned int width = 0;
-  unsigned int height = 0;
-  unsigned int error = lodepng_decode32(&image, &width, &height,
-      reinterpret_cast<const unsigned char*>(png_buf), size);
-  if (error) {
-    return nullptr;
+  int width = 0;
+  int height = 0;
+
+  int32_t channels;
+  // STB has it's own format detection code inside stbi_load_from_memory.
+  image = stbi_load_from_memory(static_cast<stbi_uc const *>(img_buf), size,
+                                &width, &height, &channels, 0);
+
+
+  if (image && (scale.x() != 1.0f || scale.y() != 1.0f)) {
+    // Scale the image.
+    int32_t new_width = width * scale.x();
+    int32_t new_height = height * scale.y();
+    uint8_t *new_image = static_cast<uint8_t *>(malloc(new_width * new_height *
+                                                       channels));
+    stbir_resize_uint8(image, width, height, 0, new_image, new_width,
+                       new_height, 0, channels);
+    stbi_image_free(image);
+    image = new_image;
+    width = new_width;
+    height = new_height;
   }
+
   *dimensions = vec2i(width, height);
-  *texture_format = kFormat8888;
+  if (channels == 4) {
+    *texture_format = kFormat8888;
+  } else if (channels == 3) {
+    *texture_format = kFormat888;
+  } else if (channels == 1) {
+  *texture_format = kFormatLuminance;
+  } else {
+    assert(0);
+  }
   return image;
-#else
-  (void)png_buf;
-  (void)size;
-  (void)scale;
-  (void)dimensions;
-  (void)texture_format;
-  LogError(kApplication, "Png decoding not supported.");
-  return nullptr;
-#endif
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
@@ -619,22 +624,15 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
     return nullptr;
   }
 
-  if (ext == "tga") {
-    auto buf = UnpackTGA(file.c_str(), dimensions, texture_format);
-    if (!buf) LogError(kApplication, "TGA format problem: %s", filename);
+  if (ext == "tga" || ext == "png" || ext == "jpg") {
+    auto buf = UnpackImage(file.c_str(), file.length(), scale, dimensions,
+              texture_format);
+    if (!buf) LogError(kApplication, "Image format problem: %s", filename);
     return buf;
   } else if (ext == "webp") {
     auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
                           texture_format);
     if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
-    return buf;
-  } else if (ext == "png") {
-    auto buf =
-        UnpackPng(file.c_str(), file.length(), scale, dimensions,
-                  texture_format);
-    if (!buf) {
-      LogError(kApplication, "Png format problem: %s", filename);
-    }
     return buf;
   } else {
     LogError(kApplication, "Can\'t figure out file type from extension: %s",

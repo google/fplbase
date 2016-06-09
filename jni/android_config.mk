@@ -42,6 +42,8 @@ DEPENDENCIES_MATHFU_DIR?=$(FPL_ROOT)/mathfu
 DEPENDENCIES_WEBP_DIR?=$(THIRD_PARTY_ROOT)/webp
 # Location of SDL
 DEPENDENCIES_SDL_DIR?=$(THIRD_PARTY_ROOT)/sdl
+# Location of the STB library.
+DEPENDENCIES_STB_DIR?=$(THIRD_PARTY_ROOT)/stb
 # Location of the Cardboard java library.
 DEPENDENCIES_CARDBOARD_DIR?=$(PREBUILTS_ROOT)/cardboard-java/CardboardSample
 # Location of FPL base, this is only required to expose fplbase's location to

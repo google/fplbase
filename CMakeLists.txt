@@ -243,6 +243,9 @@ else()
   set(SDL_LIBRARIES ${external_sdl2_libraries})
 endif()
 
+# STB includes.
+include_directories(${dependencies_stb_dir})
+
 # Configure the specified target with the common dependencies and flags to
 # build fplbase.
 function(fplbase_common_config target)
