@@ -39,6 +39,7 @@ enum TextureFormat {
   kFormatASTC,
   kFormatPKM,
   kFormatKTX,
+  kFormatNative,  ///< @brief Uses the same format as the source file.
   kFormatCount  // Must be at end.
 };
 

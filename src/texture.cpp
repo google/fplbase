@@ -188,6 +188,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     desired = IsCompressed(texture_format)
                   ? texture_format
                   : HasAlpha(texture_format) ? kFormat5551 : kFormat565;
+  } else if (desired == kFormatNative) {
+    desired = texture_format;
   }
   switch (desired) {
     case kFormat5551: {

@@ -60,19 +60,17 @@ static_assert(kBlendModeCount == kBlendModeMultiply + 1,
               "Please update static_assert above with new enum values.");
 static_assert(
     kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
-        kFormat8888 ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
-        kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
-        kFormat5551 ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
-        kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
-        kFormatLuminance ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
-        kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
-        kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
-        kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX),
-    "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatKTX + 1,
+    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
+    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
+    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
+    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
+    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+    kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
+    kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
+    kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX) &&
+    kFormatNative == static_cast<TextureFormat>(matdef::TextureFormat_NATIVE),
+      "TextureFormat enums in material.h and material.fbs must match.");
+static_assert(kFormatCount == kFormatNative + 1,
               "Please update static_assert above with new enum values.");
 
 template <typename T>
