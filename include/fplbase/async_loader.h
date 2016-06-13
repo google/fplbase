@@ -46,6 +46,9 @@ class AsyncLoader;
 ///        this.
 class AsyncAsset : public Asset {
  public:
+  /// @brief A function pointer to an asset loaded callback function.
+  typedef std::function<void()> AssetFinalizedCallback;
+
   /// @brief Default constructor for an empty AsyncAsset.
   AsyncAsset() : data_(nullptr) {}
 
@@ -53,7 +56,7 @@ class AsyncAsset : public Asset {
   /// @param[in] filename A C-string corresponding to the name of the asset
   /// file.
   explicit AsyncAsset(const char *filename)
-      : filename_(filename), data_(nullptr) {}
+      : filename_(filename), data_(nullptr), finalize_callbacks_(0) {}
 
   /// @brief AsyncAsset destructor.
   virtual ~AsyncAsset() {}
@@ -99,11 +102,33 @@ class AsyncAsset : public Asset {
   /// @return Returns the filename.
   const std::string &filename() const { return filename_; }
 
+
+  /// @brief Adds a callback to be called when the asset is finalized.
+  ///
+  /// Add a callback so logic can be executed when an asset is done loading.
+  ///
+  /// @param The function to be called.
+  void AddFinalizeCallback(AssetFinalizedCallback callback) {
+    finalize_callbacks_.push_back(callback);
+  }
+
  protected:
+  /// @brief Calls app callbacks when an asset is ready to be used.
+  ///
+  /// This should be called by descendants as soon as they are finalized.
+  void CallFinalizeCallback() {
+    for (auto& callback : finalize_callbacks_) {
+      callback();
+    }
+    finalize_callbacks_.clear();
+  }
+
   /// @brief The resource file name.
   std::string filename_;
   /// @brief The resource data.
   const uint8_t *data_;
+
+  std::vector<AssetFinalizedCallback> finalize_callbacks_;
 
   friend class AsyncLoader;
 };

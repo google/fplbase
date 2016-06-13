@@ -110,6 +110,7 @@ void Texture::Finalize() {
                         wrapping_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
+    CallFinalizeCallback();
   }
 }
 

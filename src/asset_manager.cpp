@@ -43,6 +43,7 @@ void FileAsset::Load() {
 void FileAsset::Finalize() {
   // Since the asset was already "created", this is all we have to do here.
   data_ = nullptr;
+  CallFinalizeCallback();
 }
 
 static_assert(
