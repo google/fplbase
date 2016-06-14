@@ -45,6 +45,7 @@
 #include "fplutil/file_utils.h"
 #include "fplutil/string_utils.h"
 #include "materials_generated.h"
+#include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 #include "mesh_generated.h"
 
@@ -57,6 +58,9 @@ using mathfu::mat4;
 using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
+using mathfu::kZeros2f;
+using mathfu::kZeros3f;
+using mathfu::kZeros4f;
 
 typedef uint8_t BoneIndex;
 
@@ -96,6 +100,29 @@ enum AxisSystem {
 
   kNumAxisSystems = kLastZUpAxisSystem
 };
+
+enum VertexAttribute {
+  kVertexAttribute_Position,
+  kVertexAttribute_Normal,
+  kVertexAttribute_Tangent,
+  kVertexAttribute_Uv,
+  kVertexAttribute_Color,
+  kVertexAttribute_Bone,
+
+  kVertexAttribute_Count,  // must come at end
+
+  // Bits for bitmask.
+  kVertexAttributeBit_Position = 1 << kVertexAttribute_Position,
+  kVertexAttributeBit_Normal = 1 << kVertexAttribute_Normal,
+  kVertexAttributeBit_Tangent = 1 << kVertexAttribute_Tangent,
+  kVertexAttributeBit_Uv = 1 << kVertexAttribute_Uv,
+  kVertexAttributeBit_Color = 1 << kVertexAttribute_Color,
+  kVertexAttributeBit_Bone = 1 << kVertexAttribute_Bone,
+  kVertexAttributeBit_All = (1 << kVertexAttribute_Count) - 1,
+};
+
+// Bitwise OR of the kVertexAttributeBits.
+typedef uint32_t VertexAttributeBitmask;
 
 static const char* const kImageExtensions[] = {"jpg", "jpeg", "png", "webp",
                                                "tga"};
@@ -187,6 +214,14 @@ static const float kDistanceUnitScales[] = {
 static_assert(FPL_ARRAYSIZE(kDistanceUnitNames) - 1 ==
                   FPL_ARRAYSIZE(kDistanceUnitScales),
               "kDistanceUnitNames and kDistanceUnitScales are not in sync.");
+
+static const char* kVertexAttributeShortNames[] = {
+    "p - positions", "n - normals",     "t - tangents", "u - UVs",
+    "c - colors",    "b - bone indices", nullptr,
+};
+static_assert(
+    FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
+    "kVertexAttributeShortNames is not in sync with VertexAttribute.");
 
 /// @class Logger
 /// @brief Output log messages if they are above an adjustable threshold.
@@ -343,10 +378,12 @@ class FlatTextureHash {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(int max_verts, Logger& log)
+  explicit FlatMesh(int max_verts, VertexAttributeBitmask vertex_attributes,
+                    Logger& log)
       : points_(max_verts),
         cur_index_buf_(nullptr),
         export_vertex_color_(false),
+        vertex_attributes_(vertex_attributes),
         log_(log) {
     points_.clear();
   }
@@ -398,8 +435,8 @@ class FlatMesh {
     assert(points_.capacity() > points_.size());
 
     // TODO: Round values before creating.
-    points_.push_back(Vertex(vertex, normal, tangent, color, uv,
-                             static_cast<uint8_t>(bones_.size() - 1)));
+    points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent, color,
+                             uv, static_cast<uint8_t>(bones_.size() - 1)));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -577,14 +614,16 @@ class FlatMesh {
       // zero'd out.
       memset(this, 0, sizeof(*this));
     }
-    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec4& c,
-           const vec2& u, BoneIndex bone)
-        : vertex(v),
-          normal(n),
-          tangent(t),
-          uv(u),
-          color(FlatBufferVec4ub(c)),
-          bone(bone) {}
+    // Only record the attributes that we're asked to record. Ignore the rest.
+    Vertex(VertexAttributeBitmask attribs, const vec3& v, const vec3& n,
+           const vec4& t, const vec4& c, const vec2& u, BoneIndex bone)
+        : vertex(attribs & kVertexAttributeBit_Position ? v : kZeros3f),
+          normal(attribs & kVertexAttributeBit_Normal ? n : kZeros3f),
+          tangent(attribs & kVertexAttributeBit_Tangent ? t : kZeros4f),
+          uv(attribs & kVertexAttributeBit_Uv ? u : kZeros2f),
+          color(attribs & kVertexAttributeBit_Color ? FlatBufferVec4ub(c)
+                                                    : Vec4ub(0, 0, 0, 0)),
+          bone(attribs & kVertexAttributeBit_Bone ? bone : 0) {}
   };
 
   struct VertexRef {
@@ -808,14 +847,26 @@ class FlatMesh {
     skin_weights.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
       const Vertex& p = *it;
-      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
-      vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
-      normals.push_back(FlatBufferVec3(vec3(p.normal)));
-      tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
-      colors.push_back(p.color);
-      uvs.push_back(FlatBufferVec2(vec2(p.uv)));
-      skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
-      skin_weights.push_back(Vec4ub(1, 0, 0, 0));
+      if (vertex_attributes_ & kVertexAttributeBit_Position) {
+        vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
+      }
+      if (vertex_attributes_ & kVertexAttributeBit_Normal) {
+        normals.push_back(FlatBufferVec3(vec3(p.normal)));
+      }
+      if (vertex_attributes_ & kVertexAttributeBit_Tangent) {
+        tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
+      }
+      if (vertex_attributes_ & kVertexAttributeBit_Uv) {
+        colors.push_back(p.color);
+      }
+      if (vertex_attributes_ & kVertexAttributeBit_Color) {
+        uvs.push_back(FlatBufferVec2(vec2(p.uv)));
+      }
+      if (vertex_attributes_ & kVertexAttributeBit_Bone) {
+        const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
+        skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
+        skin_weights.push_back(Vec4ub(1, 0, 0, 0));
+      }
     }
 
     // Output the bone transforms, for skinning, and the bone names,
@@ -928,6 +979,7 @@ class FlatMesh {
   IndexBuffer* cur_index_buf_;
   bool export_vertex_color_;
   std::vector<Bone> bones_;
+  VertexAttributeBitmask vertex_attributes_;
 
   // Information and warnings.
   Logger& log_;
@@ -1760,6 +1812,7 @@ struct MeshPipelineArgs {
         distance_unit_scale(-1.0f),
         recenter(false),
         hierarchy(false),
+        vertex_attributes(kVertexAttributeBit_All),
         log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
@@ -1772,6 +1825,7 @@ struct MeshPipelineArgs {
   float distance_unit_scale;
   bool recenter;       /// Translate geometry to origin.
   bool hierarchy;      /// Mesh vertices output relative to local pivot.
+  VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
 
@@ -1801,6 +1855,23 @@ static float ParseDistanceUnitScale(const char* s) {
   // parser.
   const float scale = static_cast<float>(atof(s));
   return scale;
+}
+
+static VertexAttributeBitmask ParseVertexAttribute(char c) {
+  for (int i = 0; i < kVertexAttribute_Count; ++i) {
+    if (c == kVertexAttributeShortNames[i][0]) return 1 << i;
+  }
+  return 0;
+}
+
+static VertexAttributeBitmask ParseVertexAttributes(const char* s) {
+  VertexAttributeBitmask vertex_attributes = 0;
+  for (const char* p = s; *p != '\0'; ++p) {
+    const VertexAttributeBitmask bit = ParseVertexAttribute(*p);
+    if (bit == 0) return 0;
+    vertex_attributes |= bit;
+  }
+  return vertex_attributes;
 }
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
@@ -1974,6 +2045,18 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         valid_args = false;
       }
 
+    } else if (arg == "--attrib" || arg == "--vertex-attributes") {
+      if (i + 1 < argc - 1) {
+        args->vertex_attributes = ParseVertexAttributes(argv[i + 1]);
+        valid_args = args->vertex_attributes != 0;
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown vertex attributes: %s\n\n", argv[i + 1]);
+        }
+        i++;
+      } else {
+        valid_args = false;
+      }
+
       // ignore empty arguments
     } else if (arg == "") {
       // Invalid switch.
@@ -1999,6 +2082,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
         "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
         "                     [-m BLEND_MODE] [-a AXES] [-u (unit)|(scale)]\n"
+        "                     [--attrib p|n|t|u|c|b]\n"
         "                     [-h] [-c] [-v|-d|-i]\n"
         "                     FBX_FILE\n"
         "\n"
@@ -2080,6 +2164,17 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                distance unit. For example, instead of '-u inches',\n"
         "                you could also use '-u 2.54'.\n"
         "                If unspecified, use FBX file's unit.\n"
+        "  --attrib, --vertex-attributes ATTRIBUTES\n"
+        "                Composition of the output vertex buffer.\n"
+        "                If unspecified, output all attributes.\n"
+        "                ATTRIBUTES is a combination of the following:\n");
+    LogOptions(kOptionIndent, kVertexAttributeShortNames, log);
+
+    log.Log(
+        kLogImportant,
+        "                For example, '--attrib pu' outputs the positions and\n"
+        "                UVs into the vertex buffer, but ignores normals,\n"
+        "                colors, and all other per-vertex data.\n"
         "  -h, --hierarchy\n"
         "                output vertices relative to local pivot of each\n"
         "                sub-mesh. The transforms from parent pivot to local\n"
@@ -2116,7 +2211,7 @@ int main(int argc, char** argv) {
 
   // Gather data into a format conducive to our FlatBuffer format.
   const int max_verts = pipe.NumVertsUpperBound();
-  fplbase::FlatMesh mesh(max_verts, log);
+  fplbase::FlatMesh mesh(max_verts, args.vertex_attributes, log);
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
