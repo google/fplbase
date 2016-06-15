@@ -536,14 +536,14 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
 
   int32_t channels;
   // STB has it's own format detection code inside stbi_load_from_memory.
-  image = stbi_load_from_memory(static_cast<stbi_uc const *>(img_buf), size,
-                                &width, &height, &channels, 0);
-
+  image = stbi_load_from_memory(static_cast<stbi_uc const *>(img_buf),
+                                static_cast<int>(size), &width, &height,
+                                &channels, 0);
 
   if (image && (scale.x() != 1.0f || scale.y() != 1.0f)) {
     // Scale the image.
-    int32_t new_width = width * scale.x();
-    int32_t new_height = height * scale.y();
+    int32_t new_width = static_cast<int32_t>(width * scale.x());
+    int32_t new_height = static_cast<int32_t>(height * scale.y());
     uint8_t *new_image = static_cast<uint8_t *>(malloc(new_width * new_height *
                                                        channels));
     stbir_resize_uint8(image, width, height, 0, new_image, new_width,
