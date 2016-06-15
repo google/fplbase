@@ -77,7 +77,15 @@ bool Renderer::Initialize(const vec2i & /*window_size*/,
 #define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, wglGetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
-#endif
+#endif  // defined(_WIN32)
+
+#ifdef __ANDROID__
+  const int version = AndroidGetContextClientVersion();
+  if (version >= 3) {
+    feature_level_ = kFeatureLevel30;
+    AndroidInitGl3Functions();
+  }
+#endif  // defined(__ANDROID__)
 
   return InitializeRenderingState();
 }
@@ -159,12 +167,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #ifdef PLATFORM_MOBILE
   if (context_) {
 #ifdef __ANDROID__
-#if __ANDROID_API__ < 18
-    // Get all function pointers.
-    // Using this rather than GLES3/gl3.h directly means we can still
-    // compile on older SDKs and run on older devices too.
-    gl3stubInit();
-#endif
+    AndroidInitGl3Functions();
 #endif
   } else {
     // Failed to get ES 3.0 context, let's try 2.0.

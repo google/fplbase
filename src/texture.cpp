@@ -164,6 +164,21 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
   }
 
+  bool generate_mips = mipmaps;
+  bool have_mips = mipmaps;
+
+  if (mipmaps && IsCompressed(texture_format)) {
+    LogError(kError, "Can't generate mipmaps for compressed textures");
+    generate_mips = false;
+
+    if (texture_format == kFormatKTX) {
+      const auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
+      have_mips = (header.mip_levels > 1);
+    } else {
+      have_mips = false;
+    }
+  }
+
   // In some Android devices (particulary Galaxy Nexus), there is an issue
   // of glGenerateMipmap() with 16BPP texture format.
   // In that case, we are going to fallback to 888/8888 textures
@@ -180,7 +195,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                          mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
+                          have_mips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
 
   auto format = GL_RGBA;
   auto type = GL_UNSIGNED_BYTE;
@@ -364,7 +379,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       assert(false);
   }
 
-  if (mipmaps) {
+  if (generate_mips) {
     // Work around for some Android devices to correctly generate miplevels.
     auto min_dimension = static_cast<float>(std::min(size.x(), size.y()));
     auto levels = ceil(log(min_dimension) / log(2.0f));
