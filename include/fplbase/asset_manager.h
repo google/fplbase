@@ -57,7 +57,12 @@ class AssetManager {
   AssetManager(Renderer &renderer);
 
   /// @brief AssetManager destructor that purges all assets.
-  ~AssetManager() { ClearAllAssets(); }
+  ~AssetManager() {
+    // Stop loading before clearing assets, since any pending assets need to be
+    // valid when loader calls Finalize().
+    loader_.Stop();
+    ClearAllAssets();
+  }
 
   /// @brief Returns a previously loaded shader object.
   ///

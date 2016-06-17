@@ -46,16 +46,23 @@ AsyncLoader::AsyncLoader() : worker_thread_(nullptr) {
 }
 
 AsyncLoader::~AsyncLoader() {
-  StopLoadingWhenComplete();
-  SDL_WaitThread(static_cast<SDL_Thread *>(worker_thread_), nullptr);
+  Stop();
+}
 
-  if (mutex_) {
-    SDL_DestroyMutex(static_cast<SDL_mutex *>(mutex_));
-    mutex_ = nullptr;
-  }
-  if (job_semaphore_) {
-    SDL_DestroySemaphore(static_cast<SDL_semaphore *>(job_semaphore_));
-    job_semaphore_ = nullptr;
+void AsyncLoader::Stop() {
+  if (worker_thread_) {
+    StopLoadingWhenComplete();
+    SDL_WaitThread(static_cast<SDL_Thread *>(worker_thread_), nullptr);
+    worker_thread_ = nullptr;
+
+    if (mutex_) {
+      SDL_DestroyMutex(static_cast<SDL_mutex *>(mutex_));
+      mutex_ = nullptr;
+    }
+    if (job_semaphore_) {
+      SDL_DestroySemaphore(static_cast<SDL_semaphore *>(job_semaphore_));
+      job_semaphore_ = nullptr;
+    }
   }
 }
 
