@@ -386,19 +386,20 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
 #if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
   // Get the target directory from the Bundle instead of using the directory
   // specified by the client.
-  CFBundleRef main_bundle = CFBundleGetMainBundle();
-  CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
-  char path[PATH_MAX];
-  if (!CFURLGetFileSystemRepresentation(
-          resources_url, true, reinterpret_cast<UInt8 *>(path), PATH_MAX)) {
-    LogError(kError, "Could not set the bundle directory");
-    return false;
+  {
+    CFBundleRef main_bundle = CFBundleGetMainBundle();
+    CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
+    char path[PATH_MAX];
+    if (!CFURLGetFileSystemRepresentation(
+            resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+      LogError(kError, "Could not set the bundle directory");
+      return false;
+    }
+    CFRelease(resources_url);
+    int success = chdir(path);
+    return (success == 0);
   }
-  CFRelease(resources_url);
-  target_dir_str = path;
-#endif
-
-#if !defined(__ANDROID__) && !(defined __IOS__)
+#elif !defined(__ANDROID__)
   {
     std::string current_dir = binary_dir;
     const std::string separator_str(1, flatbuffers::kPathSeparator);
@@ -423,7 +424,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   (void)binary_dir;
   (void)target_dir;
   return true;
-#endif  //  !defined(__ANDROID__) && !(defined __IOS__)
+#endif  //  !defined(__ANDROID__)
 }
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }
