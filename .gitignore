@@ -17,6 +17,7 @@ CMakeFiles/*
 CMakeLists.txt.user
 Makefile
 cmake_install.cmake
+mesh_pipeline/CMakeFiles/*
 test/CMakeFiles/*
 test/Makefile
 test/cmake_install.cmake
