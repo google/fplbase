@@ -168,14 +168,16 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   bool have_mips = mipmaps;
 
   if (mipmaps && IsCompressed(texture_format)) {
-    LogError(kError, "Can't generate mipmaps for compressed textures");
-    generate_mips = false;
-
     if (texture_format == kFormatKTX) {
       const auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
       have_mips = (header.mip_levels > 1);
     } else {
       have_mips = false;
+    }
+
+    if (!have_mips) {
+      LogError(kError, "Can't generate mipmaps for compressed textures");
+      generate_mips = false;
     }
   }
 
