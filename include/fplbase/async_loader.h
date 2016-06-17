@@ -166,6 +166,9 @@ class AsyncLoader {
   /// @return Returns true once the queue is empty.
   bool TryFinalize();
 
+  /// @brief Shuts down the loader after completing all pending loads.
+  void Stop();
+
  private:
 #ifdef FPL_BASE_BACKEND_SDL
   void Lock(const std::function<void()> &body);
