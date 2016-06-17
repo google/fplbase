@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "precompiled.h"
 #include "fplbase/utilities.h"
+// clang-format on
 
 #if defined(__ANDROID__)
 #include <string>
@@ -30,17 +32,19 @@
 #if defined(__ANDROID__)
 #if defined(FPL_BASE_BACKEND_SDL)
 #include "SDL_thread.h"
-#endif // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPL_BASE_BACKEND_SDL)
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
 }
-#endif // defined(__ANDROID__)
+#endif  // defined(__ANDROID__)
 
+// clang-format off
 #if defined(__APPLE__)
 #include "TargetConditionals.h"
 #include <CoreFoundation/CoreFoundation.h>
 #endif  // defined(__APPLE__)
+// clang-format on
 
 #endif  // defined(FPL_BASE_BACKEND_STDLIB)
 
@@ -386,7 +390,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
   char path[PATH_MAX];
   if (!CFURLGetFileSystemRepresentation(
-          resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+          resources_url, true, reinterpret_cast<UInt8 *>(path), PATH_MAX)) {
     LogError(kError, "Could not set the bundle directory");
     return false;
   }
@@ -957,7 +961,7 @@ PerformanceMode GetPerformanceMode() { return performance_mode; }
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string DeviceModel() {
   JNIEnv *env = fplbase::AndroidGetJNIEnv();
-  jclass build_class = env->FindClass("android.os.Build");
+  jclass build_class = env->FindClass("android/os/Build");
   jfieldID model_id =
       env->GetStaticFieldID(build_class, "MODEL", "Ljava/lang/String;");
   jstring model_object =
