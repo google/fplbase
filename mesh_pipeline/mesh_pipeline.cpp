@@ -347,8 +347,6 @@ class FlatMesh {
       : points_(max_verts),
         cur_index_buf_(nullptr),
         export_vertex_color_(false),
-        max_position_(-FLT_MAX),
-        min_position_(FLT_MAX),
         log_(log) {
     points_.clear();
   }
@@ -418,10 +416,6 @@ class FlatMesh {
 
     // Append index of polygon point.
     cur_index_buf_->push_back(ref.index);
-
-    // Update the min and max positions
-    min_position_ = vec3::Min(min_position_, vertex);
-    max_position_ = vec3::Max(max_position_, vertex);
 
     // Log the data we just added.
     log_.Log(kLogVerbose, "Point: index %d", ref.index);
@@ -539,6 +533,31 @@ class FlatMesh {
                  first_point.z());
       }
     }
+  }
+
+  void CalculateMinMaxPosition(vec3* min_position, vec3* max_position) const {
+    vec3 max(-FLT_MAX);
+    vec3 min(FLT_MAX);
+
+    // Loop through every vertex position on every bone.
+    for (size_t j = 0; j < bones_.size(); ++j) {
+      const Bone& b = bones_[j];
+      const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
+
+      // Loop through every vertex on this bone.
+      const size_t end_vertex_index = j < bones_.size() - 1
+                                          ? bones_[j + 1].first_vertex_index
+                                          : points_.size();
+      for (size_t i = b.first_vertex_index; i < end_vertex_index; ++i) {
+        // Keep track of the extreme positions, in object space.
+        const vec3 global_position = glob * vec3(points_[i].vertex);
+        min = vec3::Min(min, global_position);
+        max = vec3::Max(max, global_position);
+      }
+    }
+
+    *min_position = min;
+    *max_position = max;
   }
 
  private:
@@ -814,6 +833,11 @@ class FlatMesh {
       bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
     }
 
+    // Get the overal min/max values, in object space.
+    vec3 min_position;
+    vec3 max_position;
+    CalculateMinMaxPosition(&min_position, &max_position);
+
     // Then create a FlatBuffer vector for each array.
     auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
     auto normals_fb = fbb.CreateVectorOfStructs(normals);
@@ -823,8 +847,8 @@ class FlatMesh {
     auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
     auto skin_indices_fb = fbb.CreateVectorOfStructs(skin_indices);
     auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
-    auto max_fb = FlatBufferVec3(max_position_);
-    auto min_fb = FlatBufferVec3(min_position_);
+    auto max_fb = FlatBufferVec3(max_position);
+    auto min_fb = FlatBufferVec3(min_position);
     auto bone_names_fb = fbb.CreateVector(bone_names);
     auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
     auto bone_parents_fb = fbb.CreateVector(bone_parents);
@@ -903,8 +927,6 @@ class FlatMesh {
   std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
   bool export_vertex_color_;
-  vec3 max_position_;
-  vec3 min_position_;
   std::vector<Bone> bones_;
 
   // Information and warnings.
