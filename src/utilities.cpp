@@ -384,6 +384,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   std::string target_dir_str(target_dir);
 
 #if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
+  (void)binary_dir;
   // Get the target directory from the Bundle instead of using the directory
   // specified by the client.
   {
