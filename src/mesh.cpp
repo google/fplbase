@@ -153,8 +153,7 @@ Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
     : vertex_size_(vertex_size),
       num_vertices_(static_cast<size_t>(count)),
-      bone_transforms_(nullptr),
-      bone_global_transforms_(nullptr) {
+      default_bone_transform_inverses_(nullptr) {
   set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
@@ -186,11 +185,8 @@ Mesh::~Mesh() {
     GL_CALL(glDeleteBuffers(1, &it->ibo));
   }
 
-  delete[] bone_transforms_;
-  bone_transforms_ = nullptr;
-
-  delete[] bone_global_transforms_;
-  bone_global_transforms_ = nullptr;
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = nullptr;
 }
 
 void Mesh::set_format(const Attribute *format) {
@@ -219,13 +215,13 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
                     const uint8_t *bone_parents, const char **bone_names,
                     size_t num_bones, const uint8_t *shader_bone_indices,
                     size_t num_shader_bones) {
-  delete[] bone_transforms_;
-  bone_transforms_ = new mathfu::AffineTransform[num_bones];
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = new mathfu::AffineTransform[num_bones];
   bone_parents_.resize(num_bones);
   shader_bone_indices_.resize(num_shader_bones);
 
-  memcpy(&bone_transforms_[0], bone_transforms,
-         num_bones * sizeof(bone_transforms_[0]));
+  memcpy(&default_bone_transform_inverses_[0], bone_transforms,
+         num_bones * sizeof(default_bone_transform_inverses_[0]));
   memcpy(&bone_parents_[0], bone_parents, num_bones * sizeof(bone_parents_[0]));
   memcpy(&shader_bone_indices_[0], shader_bone_indices,
          num_shader_bones * sizeof(shader_bone_indices_[0]));
@@ -236,23 +232,6 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
     bone_names_.resize(num_bones);
     for (size_t i = 0; i < num_bones; ++i) {
       bone_names_[i] = bone_names[i];
-    }
-  }
-
-  // Record the global version of the transforms, so we can still display
-  // the mesh, even if it's not animated.
-  static const uint8_t kInvalidBoneIdx = 0xFF;
-  delete[] bone_global_transforms_;
-  bone_global_transforms_ = new mathfu::AffineTransform[num_bones];
-  for (size_t i = 0; i < num_bones; ++i) {
-    const size_t parent_idx = bone_parents[i];
-    if (parent_idx == kInvalidBoneIdx) {
-      bone_global_transforms_[i] = bone_transforms[i];
-    } else {
-      assert(i > parent_idx);
-      bone_global_transforms_[i] = mat4::ToAffineTransform(
-          mat4::FromAffineTransform(bone_global_transforms_[parent_idx]) *
-          mat4::FromAffineTransform(bone_transforms[i]));
     }
   }
 }
@@ -399,7 +378,10 @@ void Mesh::GatherShaderTransforms(
     const mathfu::AffineTransform *bone_transforms,
     mathfu::AffineTransform *shader_transforms) const {
   for (size_t i = 0; i < shader_bone_indices_.size(); ++i) {
-    shader_transforms[i] = bone_transforms[shader_bone_indices_[i]];
+    const int bone_idx = shader_bone_indices_[i];
+    shader_transforms[i] = mat4::ToAffineTransform(
+        mat4::FromAffineTransform(bone_transforms[bone_idx]) *
+        mat4::FromAffineTransform(default_bone_transform_inverses_[bone_idx]));
   }
 }
 

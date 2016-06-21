@@ -94,13 +94,20 @@ class Mesh : public Asset {
                 size_t num_bones, const uint8_t *shader_bone_indices,
                 size_t num_shader_bones);
 
-  /// @brief Compacts bone transforms to eliminate the bones that have no verts
-  ///        weighted to them.
+  /// @brief Convert bone transforms for consumption by a skinning shader.
   ///
-  /// @param bone_transforms Input array of bones, should be of length
-  ///        num_bones().
-  /// @param shader_transforms Output array of bones, should be of length
-  ///        num_shader_bones().
+  /// Vertices are stored in object space, but we need to manipulate them
+  /// in bone space, so the shader transform multiplies the inverse of the
+  /// default bone transform. See default_bone_transform_inverses_ for details.
+  ///
+  /// @param bone_transforms Array of bone transforms, in object space.
+  ///                        Length num_bones(). ith element represents the
+  ///                        tranformation of the ith skeleton bone to its
+  ///                        animated position.
+  /// @param shader_transforms Output array of transforms, one for each bone
+  ///                          that has vertices weighted to it. Bones without
+  ///                          any weighted vertices are pruned.
+  ///                          Length num_shader_bones().
   void GatherShaderTransforms(const mathfu::AffineTransform *bone_transforms,
                               mathfu::AffineTransform *shader_transforms) const;
 
@@ -310,18 +317,6 @@ class Mesh : public Asset {
   ///
   /// @return Returns the maximum position of the mesh.
   const mathfu::vec3 &max_position() const { return max_position_; }
-  /// @brief The relative transforms of the bones.
-  ///
-  /// @return Returns an array of transforms for the mesh's bones.
-  const mathfu::AffineTransform *bone_transforms() const {
-    return bone_transforms_;
-  }
-  /// @brief The global transforms of the bones (taking into account parents).
-  ///
-  /// @return Returns an array of global transforms for the mesh's bones.
-  const mathfu::AffineTransform *bone_global_transforms() const {
-    return bone_global_transforms_;
-  }
   /// @brief The defines parents of each bone.
   ///
   /// @return Returns an array of indices of each bone's parent.
@@ -384,11 +379,27 @@ class Mesh : public Asset {
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
 
-  // Bone arrays are of length NumBones().
-  // Note that vector<mat4> is not possible on Visual Studio 2010 because
-  // it doesn't support vectors of aligned types.
-  mathfu::AffineTransform *bone_transforms_;
-  mathfu::AffineTransform *bone_global_transforms_;
+  // The default bone positions, in object space, inverted. Length NumBones().
+  // Used when skinning.
+  //
+  // The vertex transform is,
+  //
+  //    mvp * bone_transforms_[i] * default_bone_transform_inverses_[i]
+  //
+  // where bone_transforms_[i] is the placement of bone i relative to
+  // the root of the object. So, when the bone is in its default position,
+  //    bone_transforms_[i] * default_bone_transform_inverses_[i] = Identity
+  // which makes sense.
+  //
+  // How to think of this: default_bone_transform_inverses_[i] maps the
+  // vertex from object space into bone space. That is, it gives the
+  // coordinates of the vertex relative to bone i. Then bone_transforms_[i]
+  // maps the bone back into object space, in its animated location.
+  //
+  // Note that vector<AffineTransform> is not possible on Visual Studio 2010
+  // because it doesn't support vectors of aligned types, so we use a raw
+  // pointer instead.
+  mathfu::AffineTransform *default_bone_transform_inverses_;
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;
