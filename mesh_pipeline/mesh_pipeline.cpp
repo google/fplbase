@@ -30,12 +30,12 @@
 #endif  // _MSC_VER
 
 #include <assert.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <cfloat>
 #include <fstream>
 #include <functional>
 #include <sstream>
-#include <stdarg.h>
-#include <stdio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -216,7 +216,7 @@ static_assert(FPL_ARRAYSIZE(kDistanceUnitNames) - 1 ==
               "kDistanceUnitNames and kDistanceUnitScales are not in sync.");
 
 static const char* kVertexAttributeShortNames[] = {
-    "p - positions", "n - normals",     "t - tangents", "u - UVs",
+    "p - positions", "n - normals",      "t - tangents", "u - UVs",
     "c - colors",    "b - bone indices", nullptr,
 };
 static_assert(
@@ -664,10 +664,8 @@ class FlatMesh {
     Bone() : depth(0), first_vertex_index(0) {}
     Bone(const char* name, const mat4& relative_transform, int depth,
          int first_vertex_index)
-        : name(name),
-          depth(depth),
-          first_vertex_index(first_vertex_index) {
-        relative_transform.Pack(this->relative_transform);
+        : name(name), depth(depth), first_vertex_index(first_vertex_index) {
+      relative_transform.Pack(this->relative_transform);
     }
   };
 
@@ -688,9 +686,10 @@ class FlatMesh {
   static std::string TextureFileName(const std::string& texture_file_name,
                                      const std::string& assets_sub_dir,
                                      const std::string& texture_extension) {
-    const std::string extension = texture_extension.length() == 0
-                                  ? fplutil::FileExtension(texture_file_name)
-                                  : texture_extension;
+    const std::string extension =
+        texture_extension.length() == 0
+            ? fplutil::FileExtension(texture_file_name)
+            : texture_extension;
     return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.' +
            extension;
   }
@@ -880,7 +879,8 @@ class FlatMesh {
     for (size_t i = 0; i < bones_.size(); ++i) {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
-      bone_transforms.push_back(FlatBufferMat3x4(mat4(bone.relative_transform)));
+      bone_transforms.push_back(
+          FlatBufferMat3x4(mat4(bone.relative_transform)));
       bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
     }
 
@@ -891,13 +891,17 @@ class FlatMesh {
 
     // Then create a FlatBuffer vector for each array.
     auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
-    auto normals_fb = fbb.CreateVectorOfStructs(normals);
-    auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
-    auto colors_fb =
-        export_vertex_color_ ? fbb.CreateVectorOfStructs(colors) : 0;
-    auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
-    auto skin_indices_fb = fbb.CreateVectorOfStructs(skin_indices);
-    auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
+    auto normals_fb = !normals.empty() ? fbb.CreateVectorOfStructs(normals) : 0;
+    auto tangents_fb =
+        !tangents.empty() ? fbb.CreateVectorOfStructs(tangents) : 0;
+    auto colors_fb = (export_vertex_color_ && !colors.empty())
+                         ? fbb.CreateVectorOfStructs(colors)
+                         : 0;
+    auto uvs_fb = !uvs.empty() ? fbb.CreateVectorOfStructs(uvs) : 0;
+    auto skin_indices_fb =
+        !skin_indices.empty() ? fbb.CreateVectorOfStructs(skin_indices) : 0;
+    auto skin_weights_fb =
+        !skin_weights.empty() ? fbb.CreateVectorOfStructs(skin_weights) : 0;
     auto max_fb = FlatBufferVec3(max_position);
     auto min_fb = FlatBufferVec3(min_position);
     auto bone_names_fb = fbb.CreateVector(bone_names);
@@ -1421,7 +1425,7 @@ class FbxMeshParser {
 
     // If the texture exists in the same directory as the source mesh, use it.
     const std::string texture_no_dir =
-      fplutil::RemoveDirectoryFromName(texture_name);
+        fplutil::RemoveDirectoryFromName(texture_name);
     const std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
     attempted_textures += texture_in_source_dir + '\n';
@@ -1823,8 +1827,8 @@ struct MeshPipelineArgs {
   matdef::BlendMode blend_mode;
   AxisSystem axis_system;
   float distance_unit_scale;
-  bool recenter;       /// Translate geometry to origin.
-  bool hierarchy;      /// Mesh vertices output relative to local pivot.
+  bool recenter;   /// Translate geometry to origin.
+  bool hierarchy;  /// Mesh vertices output relative to local pivot.
   VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
