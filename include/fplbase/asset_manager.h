@@ -148,10 +148,13 @@ class AssetManager {
   /// @param format The texture format, defaults to kFormatAuto.
   /// @param mipmaps If mipmaps should be used, defaults to true.
   /// @param async Whether to load the texture asynchronously.
+  /// @param is_cubemap Whether this is a 1x6 format texture that should be
+  /// loaded as a cubemap.
   /// @return Returns an unloaded texture object. If not async, may also
   ///         return null to signal and error.
   Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
-                       bool mipmaps = true, bool async = true);
+                       bool mipmaps = true, bool async = true,
+                       bool is_cubemap = false);
 
   /// @brief Start loading all previously queued textures.
   ///
