@@ -299,17 +299,25 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
-    const bool skin = meshdef->skin_indices() && meshdef->skin_weights() &&
-                      meshdef->bone_transforms() && meshdef->bone_parents() &&
-                      meshdef->shader_to_mesh_bones();
+    auto has_skinning =
+        meshdef->skin_indices() && meshdef->skin_indices()->size() &&
+        meshdef->skin_weights() && meshdef->skin_weights()->size() &&
+        meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
+        meshdef->bone_parents() && meshdef->bone_parents()->size() &&
+        meshdef->shader_to_mesh_bones() &&
+        meshdef->shader_to_mesh_bones()->size();
+    auto has_normals = meshdef->normals() && meshdef->normals()->size();
+    auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
+    auto has_colors = meshdef->colors() && meshdef->colors()->size();
+    auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
     // Collect what attributes are available.
     std::vector<Attribute> attrs;
     attrs.push_back(kPosition3f);
-    if (meshdef->normals()) attrs.push_back(kNormal3f);
-    if (meshdef->tangents()) attrs.push_back(kTangent4f);
-    if (meshdef->colors()) attrs.push_back(kColor4ub);
-    if (meshdef->texcoords()) attrs.push_back(kTexCoord2f);
-    if (skin) {
+    if (has_normals) attrs.push_back(kNormal3f);
+    if (has_tangents) attrs.push_back(kTangent4f);
+    if (has_colors) attrs.push_back(kColor4ub);
+    if (has_texcoords) attrs.push_back(kTexCoord2f);
+    if (has_skinning) {
       attrs.push_back(kBoneIndices4ub);
       attrs.push_back(kBoneWeights4ub);
     }
@@ -322,15 +330,13 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     auto p = buf;
     for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
       flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      if (meshdef->positions())
-        CopyAttribute(meshdef->positions()->Get(index), p);
-      if (meshdef->normals()) CopyAttribute(meshdef->normals()->Get(index), p);
-      if (meshdef->tangents())
-        CopyAttribute(meshdef->tangents()->Get(index), p);
-      if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(index), p);
-      if (meshdef->texcoords())
-        CopyAttribute(meshdef->texcoords()->Get(index), p);
-      if (skin) {
+      assert(meshdef->positions());
+      CopyAttribute(meshdef->positions()->Get(index), p);
+      if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
+      if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
+      if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
+      if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
+      if (has_skinning) {
         CopyAttribute(meshdef->skin_indices()->Get(index), p);
         CopyAttribute(meshdef->skin_weights()->Get(index), p);
       }
@@ -345,7 +351,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
                     meshdef->min_position() ? &min : nullptr);
     delete[] buf;
     // Load the bone information.
-    if (skin) {
+    if (has_skinning) {
       const size_t num_bones = meshdef->bone_parents()->Length();
       assert(meshdef->bone_transforms()->Length() == num_bones);
       std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
