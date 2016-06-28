@@ -107,6 +107,20 @@ if(NOT fplbase_use_external_sdl2)
     set_compiler_flags_for_external_libraries()
     # SDL appends EXTRA_CFLAGS to its CMAKE_CFLAGS
     list(APPEND EXTRA_CFLAGS ${CMAKE_C_FLAGS})
+
+    # Fix but in SDL CMakeLists.txt that prevents SDL from being built
+    # out-of-tree if the calling project is being built in-tree.
+    # SDL has to be built out-of-tree, but it checks the global variables
+    # (e.g. CMAKE_SOURCE_DIR) instead of the current variables
+    # (e.g. CMAKE_CURRENT_SOURCE_DIR), so its check is too strict.
+    # We hack the SDL CMakeLists.txt file until it is properly fixed upstream.
+    file(READ ${dependencies_sdl_dir}/CMakeLists.txt sdl_cmakelists)
+    string(REPLACE
+      "if(\${CMAKE_SOURCE_DIR} STREQUAL \${CMAKE_BINARY_DIR})"
+      "if(\${CMAKE_CURRENT_SOURCE_DIR} STREQUAL \${CMAKE_CURRENT_BINARY_DIR})"
+      sdl_cmakelists_fixed ${sdl_cmakelists})
+    file(WRITE ${dependencies_sdl_dir}/CMakeLists.txt ${sdl_cmakelists_fixed})
+
     add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
     restore_compiler_flags()
   endif()
