@@ -15,92 +15,43 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(mesh_pipeline)
 
-# Autodesk's FBX SDK must be installed to build the pipeline.
-set(fbx_sdk_dir $ENV{FBX_SDK})
-if("${fbx_sdk_dir}" STREQUAL "")
-  message(FATAL_ERROR ${fbx_sdk_msg})
-endif()
-
 # We check-in the mesh_pipeline executible, so we need to output it to
 # a platform-specific location.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_SYSTEM_NAME})
 
-# Search for the FBX library.
-# Visual Studio 64 bit option can be specified with
-# `cmake -G "Visual Studio 11 Win64"`
-if(CMAKE_CL_64)
-  set(fbs_sdk_subdir "x64")
-else()
-  set(fbs_sdk_subdir "x86")
+# Configurable locations of dependencies of this project.
+if(NOT DEFINED fpl_root)
+  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs"
+       REALPATH)
+  if(NOT EXISTS "${fpl_root}")
+    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  endif ()
 endif()
 
-# Prefer the static library '.a' over the sharedlibrary '.so'.
-find_library(fbx_sdk_lib_release
-  NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-  PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
-        ${fbx_sdk_dir}/lib/clang/release
-        ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/release
-        ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/release
-        ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/release
-        ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/release)
-
-find_library(fbx_sdk_lib_debug
-  NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-  PATHS ${fbx_sdk_dir}/lib/gcc4/x64/debug
-        ${fbx_sdk_dir}/lib/clang/debug
-        ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/debug
-        ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/debug
-        ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/debug
-        ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/debug)
-
-set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
-
-# Linux and Mac require these libs too.
-if(NOT MSVC)
-  set(fbx_sdk_extra_libs pthread dl)
-endif()
+# Include functions fbx_compile_options() and fbx_configure_target()
+include(${fpl_root}/fplutil/fbx_common/cmake_fbx.txt)
 
 # We use file_util.h from fplutil.
 set(fplutil_build_tests OFF CACHE BOOL "")
 add_subdirectory("${dependencies_fplutil_dir}/libfplutil"
                  ${tmp_dir}/fplutil)
 
+# Add the common FBX library.
+add_subdirectory(${dependencies_fplutil_dir}/fbx_common ${tmp_dir}/fbx_common)
+
 # Source files for the pipeline.
 set(fplbase_mesh_pipeline_SRCS mesh_pipeline.cpp)
 
-# Add the location of #include <fbxsdk.h>.
-include_directories(${fbx_sdk_dir}/include)
-
-# These warnings come from the FBX SDK, and they can't be suppressed
-# by pragmas around #include <fbxsdk.h>, so suppress them here.
-if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-  append_flags(CMAKE_CXX_FLAGS "-Wno-literal-suffix -Wno-comment")
-  string(REPLACE "-Wall" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  string(REPLACE "-pedantic" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  string(REPLACE "-Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  string(REPLACE "-Wextra" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endif()
-
-# Needed by the FBX SDK when we call some file manipulation functions.
-if(APPLE)
-  set(CMAKE_CXX_LINK_FLAGS "-framework Carbon")
-endif()
-
-# Statically link the C runtime .so files to make binary more portable.
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-  set(CMAKE_CXX_LINK_FLAGS "-static")
-endif()
+# Set compile options for FBX programs.
+fbx_compile_options()
 
 # Create the executable for mesh_pipeline.
 add_executable(mesh_pipeline ${fplbase_mesh_pipeline_SRCS})
 
-# Link the executable with the FBX SDK and the static libraries that the
-# FBX SDK needs.
-target_link_libraries(mesh_pipeline
-                      ${fbx_sdk_lib}
-                      ${fbx_sdk_extra_libs}
-                      fplutil)
+# Set further options for FBX programs.
+fbx_configure_target(mesh_pipeline)
+target_link_libraries(mesh_pipeline fplutil)
 
 # Additional flags for the target.
 fplbase_common_config(mesh_pipeline)

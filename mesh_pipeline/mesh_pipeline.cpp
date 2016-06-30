@@ -12,23 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Suppress warnings in external header.
-#ifdef _MSC_VER
-#pragma warning(push)            // for Visual Studio
-#pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
-#endif                           // _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Wunused-value"
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#include <fbxsdk.h>
-#pragma GCC diagnostic pop
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif  // _MSC_VER
-
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -41,6 +24,7 @@
 #include <vector>
 
 #include "common_generated.h"
+#include "fbx_common/fbx_common.h"
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
 #include "fplutil/string_utils.h"
@@ -51,6 +35,16 @@
 
 namespace fplbase {
 
+using fplutil::AxisSystem;
+using fplutil::IndexOfName;
+using fplutil::Logger;
+using fplutil::LogLevel;
+using fplutil::LogOptions;
+using fplutil::kLogVerbose;
+using fplutil::kLogInfo;
+using fplutil::kLogImportant;
+using fplutil::kLogWarning;
+using fplutil::kLogError;
 using mathfu::vec2;
 using mathfu::vec3;
 using mathfu::vec4;
@@ -63,43 +57,6 @@ using mathfu::kZeros3f;
 using mathfu::kZeros4f;
 
 typedef uint8_t BoneIndex;
-
-enum AxisSystem {
-  kInvalidAxisSystem = -2,
-  kUnspecifiedAxisSystem = -1,
-
-  kXUp_PositiveYFront_PositiveZLeft = 0,
-  kXUp_PositiveYFront_NegativeZLeft,
-  kXUp_NegativeYFront_PositiveZLeft,
-  kXUp_NegativeYFront_NegativeZLeft,
-  kXUp_PositiveZFront_PositiveYLeft,
-  kXUp_PositiveZFront_NegativeYLeft,
-  kXUp_NegativeZFront_PositiveYLeft,
-  kXUp_NegativeZFront_NegativeYLeft,
-  kLastXUpAxisSystem,
-
-  kYUp_PositiveXFront_PositiveZLeft = kLastXUpAxisSystem,
-  kYUp_PositiveXFront_NegativeZLeft,
-  kYUp_NegativeXFront_PositiveZLeft,
-  kYUp_NegativeXFront_NegativeZLeft,
-  kYUp_PositiveZFront_PositiveXLeft,
-  kYUp_PositiveZFront_NegativeXLeft,
-  kYUp_NegativeZFront_PositiveXLeft,
-  kYUp_NegativeZFront_NegativeXLeft,
-  kLastYUpAxisSystem,
-
-  kZUp_PositiveXFront_PositiveYLeft = kLastYUpAxisSystem,
-  kZUp_PositiveXFront_NegativeYLeft,
-  kZUp_NegativeXFront_PositiveYLeft,
-  kZUp_NegativeXFront_NegativeYLeft,
-  kZUp_PositiveYFront_PositiveXLeft,
-  kZUp_PositiveYFront_NegativeXLeft,
-  kZUp_NegativeYFront_PositiveXLeft,
-  kZUp_NegativeYFront_NegativeXLeft,
-  kLastZUpAxisSystem,
-
-  kNumAxisSystems = kLastZUpAxisSystem
-};
 
 enum VertexAttribute {
   kVertexAttribute_Position,
@@ -155,66 +112,6 @@ static const char* kTextureProperties[] = {
     FbxSurfaceMaterial::sReflectionFactor,
 };
 
-static const char* kAxisSystemNames[] = {
-    "x+y+z",  // kXUp_PositiveYFront_PositiveZLeft
-    "x+y-z",  // kXUp_PositiveYFront_NegativeZLeft
-    "x-y+z",  // kXUp_NegativeYFront_PositiveZLeft
-    "x-y-z",  // kXUp_NegativeYFront_NegativeZLeft
-    "x+z+y",  // kXUp_PositiveZFront_PositiveYLeft
-    "x+z-y",  // kXUp_PositiveZFront_NegativeYLeft
-    "x-z+y",  // kXUp_NegativeZFront_PositiveYLeft
-    "x-z-y",  // kXUp_NegativeZFront_NegativeYLeft
-    "y+x+z",  // kYUp_PositiveXFront_PositiveZLeft
-    "y+x-z",  // kYUp_PositiveXFront_NegativeZLeft
-    "y-x+z",  // kYUp_NegativeXFront_PositiveZLeft
-    "y-x-z",  // kYUp_NegativeXFront_NegativeZLeft
-    "y+z+x",  // kYUp_PositiveZFront_PositiveXLeft
-    "y+z-x",  // kYUp_PositiveZFront_NegativeXLeft
-    "y-z+x",  // kYUp_NegativeZFront_PositiveXLeft
-    "y-z-x",  // kYUp_NegativeZFront_NegativeXLeft
-    "z+x+y",  // kZUp_PositiveXFront_PositiveYLeft
-    "z+x-y",  // kZUp_PositiveXFront_NegativeYLeft
-    "z-x+y",  // kZUp_NegativeXFront_PositiveYLeft
-    "z-x-y",  // kZUp_NegativeXFront_NegativeYLeft
-    "z+y+x",  // kZUp_PositiveYFront_PositiveXLeft
-    "z+y-x",  // kZUp_PositiveYFront_NegativeXLeft
-    "z-y+x",  // kZUp_NegativeYFront_PositiveXLeft
-    "z-y-x",  // kZUp_NegativeYFront_NegativeXLeft
-    nullptr};
-static_assert(FPL_ARRAYSIZE(kAxisSystemNames) == kNumAxisSystems + 1, "");
-
-// Each log message is given a level of importance.
-// We only output messages that have level >= our current logging level.
-enum LogLevel {
-  kLogVerbose,
-  kLogInfo,
-  kLogImportant,
-  kLogWarning,
-  kLogError,
-  kNumLogLevels
-};
-
-// Prefix log messages at this level with this message.
-static const char* kLogPrefix[] = {
-    "",           // kLogVerbose
-    "",           // kLogInfo
-    "",           // kLogImportant
-    "Warning: ",  // kLogWarning
-    "Error: "     // kLogError
-};
-static_assert(FPL_ARRAYSIZE(kLogPrefix) == kNumLogLevels,
-              "kLogPrefix length is incorrect");
-
-static const char* kDistanceUnitNames[] = {"cm",   "m",     "inches",
-                                           "feet", "yards", nullptr};
-
-static const float kDistanceUnitScales[] = {
-    1.0f, 100.0f, 2.54f, 30.48f, 91.44f,
-};
-static_assert(FPL_ARRAYSIZE(kDistanceUnitNames) - 1 ==
-                  FPL_ARRAYSIZE(kDistanceUnitScales),
-              "kDistanceUnitNames and kDistanceUnitScales are not in sync.");
-
 static const char* kVertexAttributeShortNames[] = {
     "p - positions", "n - normals",      "t - tangents", "u - UVs",
     "c - colors",    "b - bone indices", nullptr,
@@ -222,37 +119,6 @@ static const char* kVertexAttributeShortNames[] = {
 static_assert(
     FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
     "kVertexAttributeShortNames is not in sync with VertexAttribute.");
-
-/// @class Logger
-/// @brief Output log messages if they are above an adjustable threshold.
-class Logger {
- public:
-  Logger() : level_(kLogImportant) {}
-
-  void set_level(LogLevel level) { level_ = level; }
-  LogLevel level() const { return level_; }
-
-  /// Output a printf-style message if our current logging level is
-  /// >= `level`.
-  void Log(LogLevel level, const char* format, ...) const {
-    if (level < level_) return;
-
-    // Prefix message with log level, if required.
-    const char* prefix = kLogPrefix[level];
-    if (prefix[0] != '\0') {
-      printf("%s", prefix);
-    }
-
-    // Redirect output to stdout.
-    va_list args;
-    va_start(args, format);
-    vprintf(format, args);
-    va_end(args);
-  }
-
- private:
-  LogLevel level_;
-};
 
 /// Return the direct index into `element`. If `element` is set up to be indexed
 /// directly, the return value is just `index`. Otherwise, we dereference the
@@ -1079,17 +945,19 @@ class FbxMeshParser {
     mesh_file_name_ = std::string(file_name);
 
     // Log nodes before we do anything to them.
-    LogNodes("Original scene nodes\n");
+    log_.Log(kLogVerbose, "Original scene nodes\n");
+    fplutil::LogFbxScene(scene_, 0, kLogVerbose, &log_);
 
     // Ensure the correct distance unit and axis system are being used.
-    ConvertScale(distance_unit_scale);
-    ConvertAxes(axis_system);
+    fplutil::ConvertFbxScale(distance_unit_scale, scene_, &log_);
+    fplutil::ConvertFbxAxes(axis_system, scene_, &log_);
 
     // Bring the geo into our format.
     ConvertGeometry(recenter);
 
     // Log nodes after we've processed them.
-    LogNodes("Converted scene nodes\n");
+    log_.Log(kLogVerbose, "Converted scene nodes\n");
+    fplutil::LogFbxScene(scene_, 0, kLogVerbose, &log_);
     return true;
   }
 
@@ -1110,102 +978,6 @@ class FbxMeshParser {
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FbxMeshParser);
-
-  // For debugging. Output details of the the node transforms.
-  void LogNodes(const char* header) const {
-    log_.Log(kLogVerbose, "--------------------\n%s\n", header);
-    LogNodesRecursive(scene_->GetRootNode(), FbxNode::eSourcePivot);
-  }
-
-  void LogNodesRecursive(const FbxNode* node,
-                         FbxNode::EPivotSet pivot_set) const {
-    if (log_.level() > kLogVerbose) return;
-
-    log_.Log(kLogVerbose, "-----\nNode: %s\n", node->GetName());
-
-    const FbxVector4 post_rotation = node->GetPostRotation(pivot_set);
-    const FbxVector4 pre_rotation = node->GetPreRotation(pivot_set);
-    const FbxVector4 rotation_offset = node->GetRotationOffset(pivot_set);
-    const FbxVector4 scaling_offset = node->GetScalingOffset(pivot_set);
-    const FbxVector4 rotation_pivot = node->GetRotationPivot(pivot_set);
-    const FbxVector4 scaling_pivot = node->GetScalingPivot(pivot_set);
-    const FbxVector4 geometric_translation =
-        node->GetGeometricTranslation(pivot_set);
-    const FbxVector4 geometric_rotation = node->GetGeometricRotation(pivot_set);
-    const FbxVector4 geometric_scaling = node->GetGeometricScaling(pivot_set);
-    const FbxDouble3 lcl_translation = node->LclTranslation.Get();
-    const FbxDouble3 lcl_rotation = node->LclRotation.Get();
-    const FbxDouble3 lcl_scaling = node->LclScaling.Get();
-
-    log_.Log(kLogVerbose, "post_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             post_rotation[0], post_rotation[1], post_rotation[2]);
-    log_.Log(kLogVerbose, "pre_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             pre_rotation[0], pre_rotation[1], pre_rotation[2]);
-    log_.Log(kLogVerbose, "rotation_offset = (%0.3f, %0.3f, %0.3f)\n",
-             rotation_offset[0], rotation_offset[1], rotation_offset[2]);
-    log_.Log(kLogVerbose, "scaling_offset = (%0.3f, %0.3f, %0.3f)\n",
-             scaling_offset[0], scaling_offset[1], scaling_offset[2]);
-    log_.Log(kLogVerbose, "rotation_pivot = (%0.3f, %0.3f, %0.3f)\n",
-             rotation_pivot[0], rotation_pivot[1], rotation_pivot[2]);
-    log_.Log(kLogVerbose, "scaling_pivot = (%0.3f, %0.3f, %0.3f)\n",
-             scaling_pivot[0], scaling_pivot[1], scaling_pivot[2]);
-    log_.Log(kLogVerbose, "geometric_translation = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_translation[0], geometric_translation[1],
-             geometric_translation[2]);
-    log_.Log(kLogVerbose, "geometric_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_rotation[0], geometric_rotation[1],
-             geometric_rotation[2]);
-    log_.Log(kLogVerbose, "geometric_scaling = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_scaling[0], geometric_scaling[1], geometric_scaling[2]);
-    log_.Log(kLogVerbose, "lcl_translation = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_translation[0], lcl_translation[1], lcl_translation[2]);
-    log_.Log(kLogVerbose, "lcl_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_rotation[0], lcl_rotation[1], lcl_rotation[2]);
-    log_.Log(kLogVerbose, "lcl_scaling = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_scaling[0], lcl_scaling[1], lcl_scaling[2]);
-
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      LogNodesRecursive(node->GetChild(i), pivot_set);
-    }
-  }
-
-  void ConvertScale(float distance_unit_scale) {
-    if (distance_unit_scale <= 0.0f) return;
-
-    const FbxSystemUnit import_unit =
-        scene_->GetGlobalSettings().GetSystemUnit();
-    const FbxSystemUnit export_unit(distance_unit_scale);
-
-    if (import_unit == export_unit) {
-      log_.Log(kLogVerbose,
-               "Scene's distance unit is already %s. Skipping conversion.\n",
-               import_unit.GetScaleFactorAsString().Buffer());
-      return;
-    }
-
-    log_.Log(kLogInfo, "Converting scene's distance unit from %s to %s.\n",
-             import_unit.GetScaleFactorAsString().Buffer(),
-             export_unit.GetScaleFactorAsString().Buffer());
-    export_unit.ConvertScene(scene_);
-  }
-
-  void ConvertAxes(AxisSystem axis_system) {
-    if (axis_system < 0) return;
-
-    const FbxAxisSystem import_axes =
-        scene_->GetGlobalSettings().GetAxisSystem();
-    const FbxAxisSystem export_axes = ConvertAxisSystemToFbx(axis_system);
-    if (import_axes == export_axes) {
-      log_.Log(kLogVerbose, "Scene's axes are already %s.\n",
-               kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
-      return;
-    }
-
-    log_.Log(kLogInfo, "Converting scene's axes (%s) to requested axes (%s).\n",
-             kAxisSystemNames[ConvertAxisSystemFromFbx(import_axes)],
-             kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
-    export_axes.ConvertScene(scene_);
-  }
 
   void ConvertGeometry(bool recenter) {
     FbxGeometryConverter geo_converter(manager_);
@@ -1604,7 +1376,7 @@ class FbxMeshParser {
                                FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
     // have no meshes, we early out.
-    if (node == nullptr || !NodeHasMesh(node)) return;
+    if (node == nullptr || !fplutil::NodeHasMesh(node)) return;
     log_.Log(kLogVerbose, "Node: %s\n", node->GetName());
 
     // The root node cannot have a transform applied to it, so we do not
@@ -1749,47 +1521,6 @@ class FbxMeshParser {
       }
     }
   };
-
-  static AxisSystem ConvertAxisSystemFromFbx(const FbxAxisSystem& axis) {
-    int up_sign = 0;
-    int front_sign = 0;
-    const FbxAxisSystem::EUpVector up = axis.GetUpVector(up_sign);
-    const FbxAxisSystem::EFrontVector front = axis.GetFrontVector(front_sign);
-    const FbxAxisSystem::ECoordSystem coord = axis.GetCoorSystem();
-    assert(up_sign > 0);
-
-    const int up_idx = up - FbxAxisSystem::eXAxis;
-    const int front_idx = front - FbxAxisSystem::eParityEven;
-    const int front_sign_idx = front_sign > 0 ? 0 : 1;
-    const int coord_idx = coord - FbxAxisSystem::eRightHanded;
-    return static_cast<AxisSystem>(8 * up_idx + 4 * front_idx +
-                                   2 * front_sign_idx + coord_idx);
-  }
-
-  static FbxAxisSystem ConvertAxisSystemToFbx(AxisSystem system) {
-    const int up_idx = system / 8 + FbxAxisSystem::eXAxis;
-    const int front_sign = system % 4 < 2 ? 1 : -1;
-    const int front_idx = (system % 8) / 4 + FbxAxisSystem::eParityEven;
-    const int coord_idx = system % 2;
-
-    const auto up = static_cast<FbxAxisSystem::EUpVector>(up_idx);
-    const auto front =
-        static_cast<FbxAxisSystem::EFrontVector>(front_sign * front_idx);
-    const auto coord = static_cast<FbxAxisSystem::ECoordSystem>(coord_idx);
-    return FbxAxisSystem(up, front, coord);
-  }
-
-  // Return true if `node` or any of its children has a mesh.
-  static bool NodeHasMesh(FbxNode* node) {
-    if (node->GetMesh() != nullptr) return true;
-
-    // Recursively traverse each child node.
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      if (NodeHasMesh(node->GetChild(i))) return true;
-    }
-    return false;
-  }
-
   // Entry point to the FBX SDK.
   FbxManager* manager_;
 
@@ -1812,7 +1543,7 @@ class FbxMeshParser {
 struct MeshPipelineArgs {
   MeshPipelineArgs()
       : blend_mode(static_cast<matdef::BlendMode>(-1)),
-        axis_system(kUnspecifiedAxisSystem),
+        axis_system(fplutil::kUnspecifiedAxisSystem),
         distance_unit_scale(-1.0f),
         recenter(false),
         hierarchy(false),
@@ -1833,34 +1564,6 @@ struct MeshPipelineArgs {
   LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
 
-// Returns index of `s` in `array_of_strings`, or -1 if `s` not found.
-// `array_of_strings` is a null-terminated array of char* strings, in the style
-// generated by FlatBuffers.
-static int IndexOfString(const char* s, const char** array_of_strings) {
-  int i = 0;
-  for (const char** a = array_of_strings; *a != nullptr; ++a) {
-    if (strcmp(*a, s) == 0) return i;
-    ++i;
-  }
-  return -1;
-}
-
-static AxisSystem ParseAxisSystem(const char* s) {
-  return static_cast<AxisSystem>(IndexOfString(s, kAxisSystemNames));
-}
-
-static float ParseDistanceUnitScale(const char* s) {
-  // Check for unit name.
-  const int unit_index = IndexOfString(s, kDistanceUnitNames);
-  if (unit_index >= 0) return kDistanceUnitScales[unit_index];
-
-  // Otherwise, must be a scale number.
-  // On failure, returns 0.0f, which is detected as an error by the command-line
-  // parser.
-  const float scale = static_cast<float>(atof(s));
-  return scale;
-}
-
 static VertexAttributeBitmask ParseVertexAttribute(char c) {
   for (int i = 0; i < kVertexAttribute_Count; ++i) {
     if (c == kVertexAttributeShortNames[i][0]) return 1 << i;
@@ -1880,12 +1583,12 @@ static VertexAttributeBitmask ParseVertexAttributes(const char* s) {
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
   return static_cast<matdef::TextureFormat>(
-      IndexOfString(s, matdef::EnumNamesTextureFormat()));
+      fplutil::IndexOfName(s, matdef::EnumNamesTextureFormat()));
 }
 
 static matdef::BlendMode ParseBlendMode(const char* s) {
   return static_cast<matdef::BlendMode>(
-      IndexOfString(s, matdef::EnumNamesBlendMode()));
+      fplutil::IndexOfName(s, matdef::EnumNamesBlendMode()));
 }
 
 static bool ParseTextureFormats(
@@ -1924,13 +1627,6 @@ static matdef::BlendMode DefaultBlendMode(
   return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0])
              ? matdef::BlendMode_ALPHA
              : matdef::BlendMode_OFF;
-}
-
-static void LogOptions(const char* indent, const char** array_of_options,
-                       Logger& log) {
-  for (const char** option = array_of_options; *option != nullptr; ++option) {
-    log.Log(kLogImportant, "%s%s\n", indent, *option);
-  }
 }
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
@@ -2027,7 +1723,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
     } else if (arg == "-a" || arg == "--axes") {
       if (i + 1 < argc - 1) {
-        args->axis_system = ParseAxisSystem(argv[i + 1]);
+        args->axis_system = fplutil::AxisSystemFromName(argv[i + 1]);
         valid_args = args->axis_system >= 0;
         if (!valid_args) {
           log.Log(kLogError, "Unknown coordinate system: %s\n\n", argv[i + 1]);
@@ -2039,7 +1735,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
     } else if (arg == "-u" || arg == "--unit") {
       if (i + 1 < argc - 1) {
-        args->distance_unit_scale = ParseDistanceUnitScale(argv[i + 1]);
+        args->distance_unit_scale = fplutil::DistanceUnitFromName(argv[i + 1]);
         valid_args = args->distance_unit_scale > 0.0f;
         if (!valid_args) {
           log.Log(kLogError, "Unknown distance unit: %s\n\n", argv[i + 1]);
@@ -2122,7 +1818,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                Default is %s.\n"
         "                Valid possibilities:\n",
         matdef::EnumNameTextureFormat(kDefaultTextureFormat));
-    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), log);
+    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), &log);
 
     log.Log(
         kLogImportant,
@@ -2131,7 +1827,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                If texture format has an alpha channel, defaults to\n"
         "                ALPHA. Otherwise, defaults to OFF.\n"
         "                Valid possibilities:\n");
-    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), log);
+    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), &log);
 
     log.Log(
         kLogImportant,
@@ -2160,7 +1856,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                is in meters, no matter the distance unit of the\n"
         "                FBX file.\n"
         "                (unit) can be one of the following:\n");
-    LogOptions(kOptionIndent, kDistanceUnitNames, log);
+    LogOptions(kOptionIndent, fplutil::DistanceUnitNames(), &log);
 
     log.Log(
         kLogImportant,
@@ -2172,7 +1868,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                Composition of the output vertex buffer.\n"
         "                If unspecified, output all attributes.\n"
         "                ATTRIBUTES is a combination of the following:\n");
-    LogOptions(kOptionIndent, kVertexAttributeShortNames, log);
+    LogOptions(kOptionIndent, kVertexAttributeShortNames, &log);
 
     log.Log(
         kLogImportant,
