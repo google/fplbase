@@ -43,10 +43,17 @@ enum TextureFormat {
   kFormatCount  // Must be at end.
 };
 
-enum TextureWrapping {
-  kRepeat,
-  kClampToEdge,
+enum TextureFlags {
+  kTextureFlagsNone = 0,
+  kTextureFlagsClampToEdge = 1 << 0,  // If not set, use repeating texcoords.
+  kTextureFlagsUseMipMaps = 1 << 1,   // Uses (or generates) mipmaps.
+  kTextureFlagsIsCubeMap = 1 << 2,    // Data represents a 1x6 cubemap.
+  kTextureFlagsLoadAsync = 1 << 3,    // Load texture asynchronously.
 };
+
+inline TextureFlags operator|(TextureFlags a, TextureFlags b) {
+  return static_cast<TextureFlags>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 /// @brief determines if the format has an alpha component.
 inline bool HasAlpha(TextureFormat format) {
@@ -88,18 +95,16 @@ class Texture : public AsyncAsset {
  public:
   /// @brief Constructor for a Texture.
   explicit Texture(const char *filename = nullptr,
-                   TextureFormat format = kFormatAuto, bool mipmaps = true,
-                   TextureWrapping wrapping = kRepeat, bool is_cubemap = false)
+                   TextureFormat format = kFormatAuto,
+                   TextureFlags flags = kTextureFlagsUseMipMaps)
       : AsyncAsset(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),
         original_size_(mathfu::kZeros2i),
         scale_(mathfu::kOnes2f),
         texture_format_(kFormat888),
-        mipmaps_(mipmaps),
-        is_cubemap_(is_cubemap),
         desired_(format),
-        wrapping_(wrapping) {}
+        flags_(flags) {}
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
@@ -145,13 +150,10 @@ class Texture : public AsyncAsset {
   /// @param[in] wrapping The desired TextureWrapping. Defaults to 'kRepeat'.
   /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
   /// power of two in size.
-  static TextureHandle CreateTexture(const uint8_t *buffer,
-                                     const mathfu::vec2i &size,
-                                     TextureFormat texture_format,
-                                     bool mipmaps = true,
-                                     TextureFormat desired = kFormatAuto,
-                                     TextureWrapping wrapping = kRepeat,
-                                     bool is_cubemap = false);
+  static TextureHandle CreateTexture(
+      const uint8_t *buffer, const mathfu::vec2i &size,
+      TextureFormat texture_format, TextureFormat desired = kFormatAuto,
+      TextureFlags flags = kTextureFlagsUseMipMaps);
 
   /// @brief Update (part of) the current texture with new pixel data.
   /// For now, must always update at least entire rows.
@@ -320,9 +322,8 @@ class Texture : public AsyncAsset {
   /// `x` and `y` scale components to set for the Texture.
   void set_scale(const mathfu::vec2 &scale) { scale_ = scale; }
 
-  /// @brief Queries whether the texture has mips.
-  /// @return Returns whether the texture has mips.
-  bool mipmaps() const { return mipmaps_; }
+  /// @brief returns the texture flags.
+  TextureFlags flags() const { return flags_; }
 
   /// @brief Get the original size of the Texture.
   /// @return Returns a const `mathfu::vec2` reference to the scale of the
@@ -372,10 +373,8 @@ class Texture : public AsyncAsset {
   mathfu::vec2i original_size_;
   mathfu::vec2 scale_;
   TextureFormat texture_format_;
-  bool mipmaps_;
-  bool is_cubemap_;
   TextureFormat desired_;
-  TextureWrapping wrapping_;
+  TextureFlags flags_;
 };
 
 /// @}

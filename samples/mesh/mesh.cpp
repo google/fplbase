@@ -47,8 +47,10 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   assert(mesh);
 
   // Also load a cubemap background.
-  auto cubetex = asset_manager.LoadTexture("cubemap.ktx", fplbase::kFormatAuto,
-                                           false, true, true);  // ETC2
+  auto cubetex =
+      asset_manager.LoadTexture("cubemap.ktx", fplbase::kFormatAuto,
+                                fplbase::kTextureFlagsLoadAsync |
+                                    fplbase::kTextureFlagsIsCubeMap);  // ETC2
   assert(cubetex);
   mesh->GetMaterial(0)->textures().push_back(cubetex);
 

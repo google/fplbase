@@ -102,14 +102,12 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
-  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_,
-                      wrapping_, is_cubemap_);
+  id_ = CreateTexture(data, size_, texture_format_, desired_, flags_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_,
-                        wrapping_, is_cubemap_);
+    id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
     CallFinalizeCallback();
@@ -118,8 +116,9 @@ void Texture::Finalize() {
 
 void Texture::Set(size_t unit) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
-  GL_CALL(
-      glBindTexture(is_cubemap_ ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, id_));
+  GL_CALL(glBindTexture(
+      flags_ & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D,
+      id_));
 }
 
 void Texture::Set(size_t unit) const { const_cast<Texture *>(this)->Set(unit); }
@@ -151,15 +150,14 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              TextureFormat texture_format, bool mipmaps,
-                              TextureFormat desired, TextureWrapping wrapping,
-                              bool is_cubemap) {
+                              TextureFormat texture_format,
+                              TextureFormat desired, TextureFlags flags) {
   GLenum tex_type = GL_TEXTURE_2D;
   GLenum tex_imagetype = GL_TEXTURE_2D;
   int tex_num_faces = 1;
   auto tex_size = size;
 
-  if (is_cubemap) {
+  if (flags & kTextureFlagsIsCubeMap) {
     tex_type = GL_TEXTURE_CUBE_MAP;
     tex_imagetype = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
     tex_num_faces = 6;
@@ -174,7 +172,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // Npot textures are supported in ES 2.0 if you use GL_CLAMP_TO_EDGE and no
     // mipmaps. See Section 3.8.2 of ES2.0 spec:
     // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
-    if (mipmaps || wrapping != kClampToEdge) {
+    if (flags & kTextureFlagsUseMipMaps ||
+        !(flags & kTextureFlagsClampToEdge)) {
       int area = tex_size.x() * tex_size.y();
       if (area & (area - 1)) {
         LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
@@ -184,10 +183,10 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
   }
 
-  bool generate_mips = mipmaps;
-  bool have_mips = mipmaps;
+  bool generate_mips = (flags & kTextureFlagsUseMipMaps) != 0;
+  bool have_mips = generate_mips;
 
-  if (mipmaps && IsCompressed(texture_format)) {
+  if (generate_mips && IsCompressed(texture_format)) {
     if (texture_format == kFormatKTX) {
       const auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
       have_mips = (header.mip_levels > 1);
@@ -206,7 +205,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   // In that case, we are going to fallback to 888/8888 textures
   const bool use_16bpp = MipmapGeneration16bppSupported();
   const GLint wrap_mode =
-      (wrapping == kClampToEdge) ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+      flags & kTextureFlagsClampToEdge ? GL_CLAMP_TO_EDGE : GL_REPEAT;
 
   // TODO(wvo): support default args for mipmap/wrap/trilinear
   GLuint texture_id;
@@ -215,7 +214,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   GL_CALL(glBindTexture(tex_type, texture_id));
   GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_S, wrap_mode));
   GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_T, wrap_mode));
-  if (is_cubemap) {
+  if (flags & kTextureFlagsIsCubeMap) {
     GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_R, wrap_mode));
   }
   GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -412,7 +411,9 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
         cur_size /= 2;
         offset += data_size;
         // Can't break up cubemaps beyond the block size.
-        if (is_cubemap && (cur_size.x() < 4 || cur_size.y() < 4)) break;
+        if ((flags & kTextureFlagsIsCubeMap) &&
+            (cur_size.x() < 4 || cur_size.y() < 4))
+          break;
       }
       break;
     }

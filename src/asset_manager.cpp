@@ -211,11 +211,11 @@ Texture *AssetManager::FindTexture(const char *filename) {
 }
 
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
-                                   bool mipmaps, bool async, bool is_cubemap) {
+                                   TextureFlags flags) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
-  tex = new Texture(filename, format, mipmaps, kRepeat, is_cubemap);
-  return LoadOrQueue(tex, texture_map_, async);
+  tex = new Texture(filename, format, flags);
+  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
@@ -252,8 +252,10 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               : kFormatAuto;
       auto tex = LoadTexture(
           matdef->texture_filenames()->Get(index)->c_str(), format,
-          matdef->mipmaps() != 0, false,
-          matdef->is_cubemap() && matdef->is_cubemap()->Get(i) != 0);
+          (matdef->mipmaps() ? kTextureFlagsUseMipMaps : kTextureFlagsNone) |
+              (matdef->is_cubemap() && matdef->is_cubemap()->Get(index)
+                   ? kTextureFlagsIsCubeMap
+                   : kTextureFlagsNone));
       mat->textures().push_back(tex);
 
       auto original_size =
@@ -402,7 +404,8 @@ TextureAtlas *AssetManager::FindTextureAtlas(const char *filename) {
 }
 
 TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
-    TextureFormat format, bool mipmaps, bool async) {
+                                             TextureFormat format,
+                                             TextureFlags flags) {
   auto atlas = FindTextureAtlas(filename);
   if (atlas) return atlas;
   std::string flatbuf;
@@ -411,8 +414,8 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
     auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
-    Texture *atlas_texture = LoadTexture(
-        atlasdef->texture_filename()->c_str(), format, mipmaps, async);
+    Texture *atlas_texture =
+        LoadTexture(atlasdef->texture_filename()->c_str(), format, flags);
     atlas = new TextureAtlas();
     atlas->set_atlas_texture(atlas_texture);
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {

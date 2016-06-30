@@ -146,15 +146,12 @@ class AssetManager {
   ///
   /// @param filename The name of the texture to load.
   /// @param format The texture format, defaults to kFormatAuto.
-  /// @param mipmaps If mipmaps should be used, defaults to true.
-  /// @param async Whether to load the texture asynchronously.
-  /// @param is_cubemap Whether this is a 1x6 format texture that should be
-  /// loaded as a cubemap.
+  /// @param flags The texture flags, by default loads textures async.
   /// @return Returns an unloaded texture object. If not async, may also
   ///         return null to signal and error.
   Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
-                       bool mipmaps = true, bool async = true,
-                       bool is_cubemap = false);
+                       TextureFlags flags = kTextureFlagsUseMipMaps |
+                                            kTextureFlagsLoadAsync);
 
   /// @brief Start loading all previously queued textures.
   ///
@@ -245,14 +242,14 @@ class AssetManager {
   ///
   /// @param filename Name of the texture atlas file to load.
   /// @param format The texture format, defaults to kFormatAuto.
-  /// @param mipmaps If mipmaps should be used, defaults to true.
-  /// @param async Whether to load the texture asynchronously.
+  /// @param flags Texture flags: by default load async.
   ///
   /// @return If this returns nullptr, the error can be found in
   /// Renderer::last_error().
   TextureAtlas *LoadTextureAtlas(const char *filename,
                                  TextureFormat format = kFormatAuto,
-                                 bool mipmaps = true, bool async = true);
+                                 TextureFlags flags = kTextureFlagsUseMipMaps |
+                                                      kTextureFlagsLoadAsync);
 
   /// @brief Delete a texture atlas and remove it from the asset manager.
   ///
