@@ -89,7 +89,7 @@ class Texture : public AsyncAsset {
   /// @brief Constructor for a Texture.
   explicit Texture(const char *filename = nullptr,
                    TextureFormat format = kFormatAuto, bool mipmaps = true,
-                   TextureWrapping wrapping = kRepeat)
+                   TextureWrapping wrapping = kRepeat, bool is_cubemap = false)
       : AsyncAsset(filename ? filename : ""),
         id_(0),
         size_(mathfu::kZeros2i),
@@ -97,6 +97,7 @@ class Texture : public AsyncAsset {
         scale_(mathfu::kOnes2f),
         texture_format_(kFormat888),
         mipmaps_(mipmaps),
+        is_cubemap_(is_cubemap),
         desired_(format),
         wrapping_(wrapping) {}
 
@@ -149,7 +150,8 @@ class Texture : public AsyncAsset {
                                      TextureFormat texture_format,
                                      bool mipmaps = true,
                                      TextureFormat desired = kFormatAuto,
-                                     TextureWrapping wrapping = kRepeat);
+                                     TextureWrapping wrapping = kRepeat,
+                                     bool is_cubemap = false);
 
   /// @brief Update (part of) the current texture with new pixel data.
   /// For now, must always update at least entire rows.
@@ -371,6 +373,7 @@ class Texture : public AsyncAsset {
   mathfu::vec2 scale_;
   TextureFormat texture_format_;
   bool mipmaps_;
+  bool is_cubemap_;
   TextureFormat desired_;
   TextureWrapping wrapping_;
 };

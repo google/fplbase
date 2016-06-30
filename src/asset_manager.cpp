@@ -211,10 +211,10 @@ Texture *AssetManager::FindTexture(const char *filename) {
 }
 
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
-                                   bool mipmaps, bool async) {
+                                   bool mipmaps, bool async, bool is_cubemap) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
-  tex = new Texture(filename, format, mipmaps);
+  tex = new Texture(filename, format, mipmaps, kRepeat, is_cubemap);
   return LoadOrQueue(tex, texture_map_, async);
 }
 
@@ -250,8 +250,10 @@ Material *AssetManager::LoadMaterial(const char *filename) {
           matdef->desired_format() && i < matdef->desired_format()->size()
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
               : kFormatAuto;
-      auto tex = LoadTexture(matdef->texture_filenames()->Get(index)->c_str(),
-                             format, matdef->mipmaps() != 0, false);
+      auto tex = LoadTexture(
+          matdef->texture_filenames()->Get(index)->c_str(), format,
+          matdef->mipmaps() != 0, false,
+          matdef->is_cubemap() && matdef->is_cubemap()->Get(i) != 0);
       mat->textures().push_back(tex);
 
       auto original_size =

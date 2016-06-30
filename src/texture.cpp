@@ -101,13 +101,13 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
   id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_,
-                      wrapping_);
+                      wrapping_, is_cubemap_);
 }
 
 void Texture::Finalize() {
   if (data_) {
     id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_,
-                        wrapping_);
+                        wrapping_, is_cubemap_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
     CallFinalizeCallback();
@@ -116,7 +116,8 @@ void Texture::Finalize() {
 
 void Texture::Set(size_t unit) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, id_));
+  GL_CALL(
+      glBindTexture(is_cubemap_ ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, id_));
 }
 
 void Texture::Set(size_t unit) const { const_cast<Texture *>(this)->Set(unit); }
@@ -149,16 +150,33 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                               TextureFormat texture_format, bool mipmaps,
-                              TextureFormat desired, TextureWrapping wrapping) {
+                              TextureFormat desired, TextureWrapping wrapping,
+                              bool is_cubemap) {
+  GLenum tex_type = GL_TEXTURE_2D;
+  GLenum tex_imagetype = GL_TEXTURE_2D;
+  int tex_num_faces = 1;
+  auto tex_size = size;
+
+  if (is_cubemap) {
+    tex_type = GL_TEXTURE_CUBE_MAP;
+    tex_imagetype = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+    tex_num_faces = 6;
+    tex_size = size / vec2i(1, tex_num_faces);
+    if (tex_size.x() != tex_size.y()) {
+      LogError(kError, "CreateTexture: cubemap not in 1x6 format: (%d,%d)",
+               size.x(), size.y());
+    }
+  }
+
   if (!Renderer::Get()->SupportsTextureNpot()) {
     // Npot textures are supported in ES 2.0 if you use GL_CLAMP_TO_EDGE and no
     // mipmaps. See Section 3.8.2 of ES2.0 spec:
     // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
     if (mipmaps || wrapping != kClampToEdge) {
-      int area = size.x() * size.y();
+      int area = tex_size.x() * tex_size.y();
       if (area & (area - 1)) {
         LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
-                 size.x(), size.y());
+                 tex_size.x(), tex_size.y());
         return 0;
       }
     }
@@ -177,8 +195,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
     if (!have_mips) {
       LogError(kError, "Can't generate mipmaps for compressed textures");
-      generate_mips = false;
     }
+    generate_mips = false;
   }
 
   // In some Android devices (particulary Galaxy Nexus), there is an issue
@@ -192,11 +210,14 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   GLuint texture_id;
   GL_CALL(glGenTextures(1, &texture_id));
   GL_CALL(glActiveTexture(GL_TEXTURE0));
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, texture_id));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+  GL_CALL(glBindTexture(tex_type, texture_id));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_S, wrap_mode));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_T, wrap_mode));
+  if (is_cubemap) {
+    GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_R, wrap_mode));
+  }
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MIN_FILTER,
                           have_mips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
 
   auto format = GL_RGBA;
@@ -208,6 +229,24 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   } else if (desired == kFormatNative) {
     desired = texture_format;
   }
+
+  auto gl_tex_image = [&](const uint8_t *buf, const vec2i &mip_size,
+                          int mip_level, int buf_size, bool compressed) {
+    for (int i = 0; i < tex_num_faces; i++) {
+      if (compressed) {
+        GL_CALL(glCompressedTexImage2D(tex_imagetype + i, mip_level, format,
+                                       mip_size.x(), mip_size.y(), 0, buf_size,
+                                       buf));
+      } else {
+        GL_CALL(glTexImage2D(tex_imagetype + i, mip_level, format, mip_size.x(),
+                             mip_size.y(), 0, format, type, buf));
+      }
+      if (buf) buf += buf_size;
+    }
+  };
+
+  int num_pixels = tex_size.x() * tex_size.y();
+
   switch (desired) {
     case kFormat5551: {
       switch (texture_format) {
@@ -215,17 +254,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
           if (use_16bpp) {
             auto buffer16 = Convert8888To5551(buffer, size);
             type = GL_UNSIGNED_SHORT_5_5_5_1;
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer16));
+            gl_tex_image(reinterpret_cast<const uint8_t *>(buffer16), tex_size,
+                         0, num_pixels * 2, false);
             delete[] buffer16;
           } else {
             // Fallback to 8888
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer));
+            gl_tex_image(buffer, tex_size, 0, num_pixels * 4, false);
           }
           break;
         case kFormat5551:
-          // Nothing to do.
+          // Nothing coversion.
+          gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
           break;
         default:
           // This conversion not supported yet.
@@ -241,17 +280,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
           if (use_16bpp) {
             auto buffer16 = Convert888To565(buffer, size);
             type = GL_UNSIGNED_SHORT_5_6_5;
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer16));
+            gl_tex_image(reinterpret_cast<const uint8_t *>(buffer16), tex_size,
+                         0, num_pixels * 2, false);
             delete[] buffer16;
           } else {
             // Fallback to 888
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer));
+            gl_tex_image(buffer, tex_size, 0, num_pixels * 3, false);
           }
           break;
         case kFormat565:
-          // Nothing to do.
+          // No conversion.
+          gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
           break;
         default:
           // This conversion not supported yet.
@@ -262,22 +301,19 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
     case kFormat8888: {
       assert(texture_format == kFormat8888);
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels * 4, false);
       break;
     }
     case kFormat888: {
       assert(texture_format == kFormat888);
       format = GL_RGB;
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels * 3, false);
       break;
     }
     case kFormatLuminance: {
       assert(texture_format == kFormatLuminance);
       format = GL_LUMINANCE;
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels, false);
       break;
     }
     case kFormatASTC: {
@@ -342,9 +378,10 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
         default:
           assert(false);
       }
-      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
-                                     size.y(), 0, data_size,
-                                     buffer + sizeof(ASTCHeader)));
+      // TODO(wvo): cubemaps in ASTC may not work for block sizes that straddle
+      // the face boundaries.
+      gl_tex_image(buffer + sizeof(ASTCHeader), tex_size, 0,
+                   data_size / tex_num_faces, true);
       break;
     }
     case kFormatPKM: {
@@ -354,9 +391,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto ext_ysize = (header.ext_height[0] << 8) | header.ext_height[1];
       auto data_size = (ext_xsize / 4) * (ext_ysize / 4) * 8;
       format = GL_COMPRESSED_RGB8_ETC2;
-      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
-                                     size.y(), 0, data_size,
-                                     buffer + sizeof(PKMHeader)));
+      gl_tex_image(buffer + sizeof(PKMHeader), tex_size, 0,
+                   data_size / tex_num_faces, true);
       break;
     }
     case kFormatKTX: {
@@ -364,16 +400,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
       format = header.internal_format;
       auto data = buffer + sizeof(KTXHeader);
-      auto cur_size = size;
+      auto cur_size = tex_size;
       auto offset = 0;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         auto data_size = *(reinterpret_cast<const int32_t *>(data + offset));
         offset += sizeof(int32_t);
-        GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, i, format, cur_size.x(),
-                                       cur_size.y(), 0, data_size,
-                                       data + offset));
+        gl_tex_image(data + offset, cur_size, i, data_size / tex_num_faces,
+                     true);
         cur_size /= 2;
         offset += data_size;
+        // Can't break up cubemaps beyond the block size.
+        if (is_cubemap && (cur_size.x() < 4 || cur_size.y() < 4)) break;
       }
       break;
     }
@@ -383,18 +420,16 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
   if (generate_mips) {
     // Work around for some Android devices to correctly generate miplevels.
-    auto min_dimension = static_cast<float>(std::min(size.x(), size.y()));
+    auto min_dimension =
+        static_cast<float>(std::min(tex_size.x(), tex_size.y()));
     auto levels = ceil(log(min_dimension) / log(2.0f));
-    auto width = size.x() / 2;
-    auto height = size.y() / 2;
+    auto mip_size = tex_size / 2;
     for (auto i = 1; i < levels; ++i) {
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, i, format, width, height, 0, format,
-                           type, nullptr));
-      width /= 2;
-      height /= 2;
+      gl_tex_image(nullptr, mip_size, i, 0, false);
+      mip_size /= 2;
     }
 
-    GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
+    GL_CALL(glGenerateMipmap(tex_type));
   }
   return texture_id;
 }
