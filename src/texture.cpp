@@ -402,18 +402,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       format = header.internal_format;
       auto data = buffer + sizeof(KTXHeader);
       auto cur_size = tex_size;
-      auto offset = 0;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
-        auto data_size = *(reinterpret_cast<const int32_t *>(data + offset));
-        offset += sizeof(int32_t);
-        gl_tex_image(data + offset, cur_size, i, data_size / tex_num_faces,
-                     true);
+        auto data_size = *(reinterpret_cast<const int32_t *>(data));
+        data += sizeof(int32_t);
+        gl_tex_image(data, cur_size, i, data_size / tex_num_faces, true);
         cur_size /= 2;
-        offset += data_size;
-        // Can't break up cubemaps beyond the block size.
-        if ((flags & kTextureFlagsIsCubeMap) &&
-            (cur_size.x() < 4 || cur_size.y() < 4))
-          break;
+        data += data_size;
+        // For some reason header.mip_levels can be big enough such that a
+        // coordinate goes to 0.
+        if (!cur_size.x() || !cur_size.y()) break;
+        // If the file has mips but the caller doesn't want them, stop here.
+        if (!have_mips) break;
       }
       break;
     }
@@ -432,6 +431,14 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       mip_size /= 2;
     }
 
+    GL_CALL(glGenerateMipmap(tex_type));
+  } else if (have_mips && IsCompressed(texture_format)) {
+    // At least on Linux, there appears to be a bug with uploading pre-made
+    // compressed mipmaps that makes the texture not show up if
+    // glGenerateMipmap isn't called, even though glGenerateMipmap can't
+    // generate any mipmaps for compressed textures.
+    // Also, this call should generate GL_INVALID_OPERATION but it doesn't?
+    // TODO(wvo): is this a driver bug, or what is the root cause of this?
     GL_CALL(glGenerateMipmap(tex_type));
   }
   return texture_id;
