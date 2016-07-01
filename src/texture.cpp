@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef FPL_BASE_BACKEND_STDLIB
 // Definitions to instantiate STB functions here.
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
+#endif  // FPL_BASE_BACKEND_STDLIB
 
 #include "fplbase/texture.h"
 #include "fplbase/renderer.h"
@@ -473,7 +475,7 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   static_assert(sizeof(TGA) == 18,
                 "Members of struct TGA need to be packed with no padding.");
   auto header = reinterpret_cast<const TGA *>(tga_buf);
-  int size =  header->id_len + header->width * header->height * header->bpp / 8;
+  int size = header->id_len + header->width * header->height * header->bpp / 8;
   return UnpackImage(tga_buf, size, mathfu::kOnes2f, dimensions,
                      texture_format);
 }
@@ -560,11 +562,8 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
   auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
   auto v = memcmp(header.id, magic, sizeof(header.id));
-  if (v != 0 ||
-      header.endian != 0x04030201 ||
-      header.depth != 0 ||
-      header.faces != 1 ||
-      header.keyvalue_data != 0)
+  if (v != 0 || header.endian != 0x04030201 || header.depth != 0 ||
+      header.faces != 1 || header.keyvalue_data != 0)
     return nullptr;
 
   *dimensions = vec2i(header.width, header.height);
@@ -582,7 +581,7 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
 uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
                               const vec2 &scale, vec2i *dimensions,
                               TextureFormat *texture_format) {
-  uint8_t* image = nullptr;
+  uint8_t *image = nullptr;
   int width = 0;
   int height = 0;
 
@@ -596,8 +595,8 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
     // Scale the image.
     int32_t new_width = static_cast<int32_t>(width * scale.x());
     int32_t new_height = static_cast<int32_t>(height * scale.y());
-    uint8_t *new_image = static_cast<uint8_t *>(malloc(new_width * new_height *
-                                                       channels));
+    uint8_t *new_image =
+        static_cast<uint8_t *>(malloc(new_width * new_height * channels));
     stbir_resize_uint8(image, width, height, 0, new_image, new_width,
                        new_height, 0, channels);
     stbi_image_free(image);
@@ -612,7 +611,7 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
   } else if (channels == 3) {
     *texture_format = kFormat888;
   } else if (channels == 1) {
-  *texture_format = kFormatLuminance;
+    *texture_format = kFormatLuminance;
   } else {
     assert(0);
   }
@@ -681,7 +680,7 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
 
   if (ext == "tga" || ext == "png" || ext == "jpg") {
     auto buf = UnpackImage(file.c_str(), file.length(), scale, dimensions,
-              texture_format);
+                           texture_format);
     if (!buf) LogError(kApplication, "Image format problem: %s", filename);
     return buf;
   } else if (ext == "webp") {
