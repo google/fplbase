@@ -29,6 +29,8 @@ namespace fplbase {
 /// @addtogroup fplbase_texture
 /// @{
 
+class RenderContext;
+
 enum TextureFormat {
   kFormatAuto = 0,  ///< @brief The default, picks based on loaded data.
   kFormat8888,
@@ -40,7 +42,7 @@ enum TextureFormat {
   kFormatPKM,
   kFormatKTX,
   kFormatNative,  ///< @brief Uses the same format as the source file.
-  kFormatCount  // Must be at end.
+  kFormatCount    // Must be at end.
 };
 
 enum TextureFlags {
@@ -127,12 +129,18 @@ class Texture : public AsyncAsset {
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
+  /// @param[in] render_context Pointer to the RenderContext object
   /// @note Modifies global OpenGL state.
+  void Set(size_t unit, RenderContext *render_context);
+  /// @overload void Set(size_t unit)
   void Set(size_t unit);
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
+  /// @param[in] render_context Pointer to the RenderContext object
   /// @note Modifies global OpenGL state.
+  void Set(size_t unit, RenderContext *render_context) const;
+  /// @overload void Set(size_t unit) const
   void Set(size_t unit) const;
 
   /// @brief Delete the Texture stored in `id_`, and reset `id_` to `0`.

@@ -114,11 +114,17 @@ void Texture::Finalize() {
   }
 }
 
-void Texture::Set(size_t unit) {
+void Texture::Set(size_t unit, RenderContext *) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
   GL_CALL(glBindTexture(
       flags_ & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D,
       id_));
+}
+
+void Texture::Set(size_t unit) { Set(unit, nullptr); }
+
+void Texture::Set(size_t unit, RenderContext *) const {
+  const_cast<Texture *>(this)->Set(unit);
 }
 
 void Texture::Set(size_t unit) const { const_cast<Texture *>(this)->Set(unit); }
