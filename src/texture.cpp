@@ -25,22 +25,26 @@
 #include "precompiled.h"
 #include "webp/decode.h"
 
-#define STBI_ONLY_JPEG
-#define STBI_ONLY_PNG
-#define STBI_ONLY_TGA
-#include "stb_image.h"
-
 // STB_image to resize PNG/JPG images.
 // Disable warnings in STB_image_resize.
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable : 4100)  // Disable 'unused reference' warning.
+#pragma warning(disable : 4100)  // unused reference
+#pragma warning(disable : 4244)  // conversion possible loss of data
+#pragma warning(disable : 4189)  // local variable not referenced
+#pragma warning(disable : 4702)  // unreachable code
 #else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif /* _MSC_VER */
+
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_ONLY_TGA
+#include "stb_image.h"
 #include "stb_image_resize.h"
+
 // Pop warning status.
 #ifdef _MSC_VER
 #pragma warning(pop)
