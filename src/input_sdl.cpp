@@ -114,13 +114,13 @@ void InputSystem::UpdateEvents(mathfu::vec2i *window_size) {
 #ifdef PLATFORM_MOBILE
       case SDL_FINGERDOWN: {
         touch_device_ = true;
-        int i = UpdateDragPosition(&event.tfinger, event.type, *window_size);
+        size_t i = UpdateDragPosition(&event.tfinger, event.type, *window_size);
         GetPointerButton(i).Update(true);
         break;
       }
       case SDL_FINGERUP: {
         touch_device_ = true;
-        int i = FindPointer(event.tfinger.fingerId);
+        size_t i = FindPointer(event.tfinger.fingerId);
         RemovePointer(i);
         GetPointerButton(i).Update(false);
         break;
@@ -366,10 +366,11 @@ void InputSystem::StopTextInput() { SDL_StopTextInput(); }
 
 void InputSystem::SetTextInputRect(const mathfu::vec4 &input_rect) {
   SDL_Rect rect;
-  rect.x = static_cast<size_t>(input_rect.x());
-  rect.y = static_cast<size_t>(input_rect.y());
-  rect.w = static_cast<size_t>(input_rect.z());
-  rect.h = static_cast<size_t>(input_rect.w());
+  mathfu::vec4i r(input_rect);
+  rect.x = r.x();
+  rect.y = r.y();
+  rect.w = r.z();
+  rect.h = r.w();
   SDL_SetTextInputRect(&rect);
 }
 

@@ -410,6 +410,7 @@ void Renderer::SetBlendMode(BlendMode blend_mode,
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
                             RenderContext *render_context) {
+  (void)amount;
   if (blend_mode == render_context->blend_mode_) return;
 
   if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
