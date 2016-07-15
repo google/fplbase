@@ -251,9 +251,9 @@ TEST_F(PreprocessorTests, TooManyEndif) {
                      "foo is defined.\n"
                      "#endif\n"
                      "#endif";
-  EXPECT_DEATH(fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                               empty_defines, &error_message_),
-               kIfStackEmptyRegex);
+  EXPECT_DEATH_IF_SUPPORTED(
+      fplbase::LoadFileWithDirectives(file.c_str(), &file_, empty_defines,
+                                      &error_message_), kIfStackEmptyRegex);
 }
 
 // Unknown directives should be passed through.

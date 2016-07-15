@@ -9,7 +9,7 @@ Building for iOS    {#fplbase_guide_ios}
 # Version Requirements
 
 Following are the minimum tested versions of tools and libraries you
-need to build [FPLBase][] for [OS X][]:
+need to build [FPLBase][] for [iOS][]:
 
    * [OS X][]: Mavericks 10.9.1.
    * [iOS SDK][]: 8.3
@@ -21,52 +21,31 @@ need to build [FPLBase][] for [OS X][]:
    * Install [Xcode][].
    * Install [CMake][].
 
-# Known limitations
-
-- When generated with CMake, Xcode projects are tied to a specific
-  platform and architecture.
-- SDL2 is not built using CMake but with the upstream provided
-  xcodeproj.
-- Resources are global to all samples.
-
 # Building with Xcode
 
-<!-- Templated from JSON parsing in JS. -->
-<div id="ios-sdk-version-select"></div>
+Firstly, the [Xcode][] project needs to be generated using [CMake][]:
 
-1. Build `flatc` for the host architecture and add it to your `PATH`:
+   * Open a command line window.
+   * Go to the [FPLBase][] project directory.
+   * Use [CMake][] to generate the [Xcode][] project.
+
 ~~~{.sh}
-    cd fplbase/dependencies/flatbuffers
-    cmake -GXcode . && xcodebuild
-    mkdir -p ~/bin && cp Debug/flatc ~/bin
-    export PATH=$PATH:~/bin
+    cd fplbase
+    cmake -DCMAKE_TOOLCHAIN_FILE=cmake/ios.cmake -GXcode .
 ~~~
 
-2. Build `libSDL2` for the Simulator architecture using the upstream
-   provided `xcodeproj` from the `fplbase/dependencies/sdl` directory:
+Then the project can be opened in [Xcode][] and built:
 
-   <!--Templated from JSON in JS.-->
-   <div id="build-sdl-iphonesimulator-code"></div>
-
-3. Generate the [Xcode][] project needs to be generated using [CMake][] from the
-   root `fplbase/` folder:
-~~~{.sh}
-    cd ../..
-    cmake -Dfplbase_use_external_sdl2=ON -Dexternal_sdl2_libraries=dependencies/sdl/Xcode-iOS/SDL/build/Release-iphonesimulator/libSDL2.a -Dexternal_sdl2_include_dir=dependencies/sdl/include -Dfplbase_use_host_flatc=ON -DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.xcode.cmake -GXcode .
-~~~
-
-4. Then the project can be opened in [Xcode][] and built:
-
-   * Double-click on `fplbase/fplbase.xcodeproj` to open the project in
+   * Double-click on `fplbase/FPLBase.xcodeproj` to open the project in
      [Xcode][].
    * Select "Product-->Build" from the menu.
 
-5. The demos can be run from within [Xcode][]:
+The samples and tests can be run from within [Xcode][]:
 
-   * Select one of the sample `Scheme`, for example
-     `fplbase-triangle-->iPhone Simulator`, from the combo box to the right of
-     the `Run` button.
-   * Click the `Run` button.
+   * Select an application `Scheme`, for example
+     "fplbase-texture-->iOS Simulators/iPhone 6s Plus",
+     from the combo box to the right of the "Run" button.
+   * Click the "Run" button.
 
 <br>
 
@@ -75,4 +54,5 @@ need to build [FPLBase][] for [OS X][]:
   [OS X]: http://www.apple.com/osx/
   [iOS]: http://www.apple.com/ios/
   [iOS SDK]: https://developer.apple.com/ios/
+  [SDL]: https://www.libsdl.org/
   [Xcode]: http://developer.apple.com/xcode/
