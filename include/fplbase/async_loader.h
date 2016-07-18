@@ -107,7 +107,7 @@ class AsyncAsset : public Asset {
   ///
   /// Add a callback so logic can be executed when an asset is done loading.
   ///
-  /// @param The function to be called.
+  /// @param callback The function to be called.
   void AddFinalizeCallback(AssetFinalizedCallback callback) {
     finalize_callbacks_.push_back(callback);
   }

@@ -20,8 +20,8 @@
 namespace fplbase {
 /// @brief Load a file like `LoadFile()`, but scan for directives.
 ///
-/// Supported directives include #include, #define, #ifdef, #ifndef, #else,
-/// and #endif.
+/// Supported directives include \#include, \#define, \#ifdef, \#ifndef, \#else,
+/// and \#endif.
 /// @param[in] filename A UTF-8 C-string representing the file to load.
 /// @param[out] dest A pointer to a `std::string` to capture the preprocessed
 /// version of the file.
@@ -32,13 +32,13 @@ namespace fplbase {
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
                             std::string *error_message);
 
-/// @brief Overloaded LoadFileWithDirectives to allow pre-definining #define
+/// @brief Overloaded LoadFileWithDirectives to allow pre-definining \#define
 /// identifiers.
 ///
 /// @param[in] filename A UTF-8 C-string representing the file to load.
 /// @param[out] dest A pointer to a `std::string` to capture the preprocessed
 /// version of the file.
-/// @param[in] defines A nullptr-terminated array of identifiers to #define
+/// @param[in] defines A nullptr-terminated array of identifiers to \#define
 /// before loading the file.
 /// @param[out] error_message A pointer to a `std::string` that captures an
 /// error message (if the function returned `false`, indicating failure).
