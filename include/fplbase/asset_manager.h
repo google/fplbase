@@ -82,11 +82,11 @@ class AssetManager {
 
   /// @brief Loads and returns a shader object with pre-defined identifiers.
   ///
-  /// Works like LoadShader (above), but takes in a set of #define variables.
+  /// Works like LoadShader (above), but takes in a set of \#define variables.
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to #define, or
-  /// nullptr if there are no initial #define variables.
+  /// @param defines A null-terminated array of variables to \#define, or
+  /// nullptr if there are no initial \#define variables.
   /// @note An example of how to create such an array:
   ///       static const char *kMyDefines[] = {
   ///         USE_SHADOWS,
@@ -104,8 +104,8 @@ class AssetManager {
   /// Otherwise works like LoadShader (above).
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to #define, or
-  /// nullptr if there are no initial #define variables.
+  /// @param defines A null-terminated array of variables to \#define, or
+  /// nullptr if there are no initial \#define variables.
   /// @return Returns the loaded shader, or nullptr if there was an error.
   /// @note If this function doesn't return nullptr, the pointer will be equal
   /// to any previous (Re)LoadShader calls.

@@ -283,8 +283,7 @@ class Renderer {
   void SetBlendMode(BlendMode blend_mode, float amount) {
     SetBlendMode(blend_mode, amount, default_render_context_);
   }
-  /// @overload void SetBlendMode(BlendMode blend_mode, RenderContext
-  /// *render_context)
+  /// @overload void SetBlendMode(BlendMode, RenderContext*)
   void SetBlendMode(BlendMode blend_mode, RenderContext *render_context);
   /// @overload void SetBlendMode(BlendMode blend_mode)
   void SetBlendMode(BlendMode blend_mode) {
@@ -316,8 +315,7 @@ class Renderer {
   /// @param render_context Pointer to the render context
   void ScissorOn(const mathfu::vec2i &pos, const mathfu::vec2i &size,
                  RenderContext *render_context);
-  /// @overload void ScissorOn(const mathfu::vec2i &ops, const mathfu::vec2i
-  /// &size)
+  /// @overload void ScissorOn(const mathfu::vec2i&, const mathfu::vec2i&)
   void ScissorOn(const mathfu::vec2i &ops, const mathfu::vec2i &size) {
     ScissorOn(ops, size, default_render_context_);
   }
@@ -469,8 +467,7 @@ class Renderer {
                          int num_bones, RenderContext *render_context) {
     render_context->SetBoneTransforms(bone_transforms, num_bones);
   }
-  /// @overload void SetBoneTransforms(const mathfu::AffineTransform
-  /// *bone_transforms,int num_bones)
+  /// @overload void SetBoneTransforms(const mathfu::AffineTransform*,int)
   void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
                          int num_bones) {
     SetBoneTransforms(bone_transforms, num_bones, default_render_context_);

@@ -18,7 +18,7 @@
 /// @file fplbase/systrace.h
 /// @brief Functions for creating systrace log events, for Android.
 ///
-/// To enable, `#define FPLBASE_ENABLE_SYSTRACE 1`.
+/// To enable, \#define FPLBASE_ENABLE_SYSTRACE 1.
 /// @addtogroup fplbase_systrace
 /// @{
 

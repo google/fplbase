@@ -152,10 +152,8 @@ class Texture : public AsyncAsset {
   /// @param[in] size A const `mathfu::vec2i` reference to the original
   /// Texture size `x` and `y` components.
   /// @param[in] texture_format The format of `buffer`.
-  /// @param[in] mipmaps If `true`, use the work around for some Android devices
-  /// to correctly generate miplevels. Defaults to `true`.
   /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
-  /// @param[in] wrapping The desired TextureWrapping. Defaults to 'kRepeat'.
+  /// @param[in] flags Options for the texture.
   /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
   /// power of two in size.
   static TextureHandle CreateTexture(
@@ -247,8 +245,7 @@ class Texture : public AsyncAsset {
   /// Texture sizes.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
-  /// image has an alpha.
+  /// @param[out] texture_format Pixel format of unpacked image.
   /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
@@ -266,8 +263,7 @@ class Texture : public AsyncAsset {
   /// Texture sizes.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
-  /// image has an alpha.
+  /// @param[out] texture_format Pixel format of unpacked image.
   /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
