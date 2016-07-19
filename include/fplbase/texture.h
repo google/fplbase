@@ -85,9 +85,10 @@ inline bool IsCompressed(TextureFormat format) {
   }
 }
 
-/// @brief This typedef is compatible with its OpenGL equivalent, but doesn't
+/// @brief These typedefs are compatible with OpenGL equivalents, but don't
 /// require this header to depend on OpenGL.
 typedef unsigned int TextureHandle;
+typedef unsigned int TextureTarget;
 
 /// @class Texture
 /// @brief Abstraction for a texture object loaded on the GPU.
@@ -98,15 +99,7 @@ class Texture : public AsyncAsset {
   /// @brief Constructor for a Texture.
   explicit Texture(const char *filename = nullptr,
                    TextureFormat format = kFormatAuto,
-                   TextureFlags flags = kTextureFlagsUseMipMaps)
-      : AsyncAsset(filename ? filename : ""),
-        id_(0),
-        size_(mathfu::kZeros2i),
-        original_size_(mathfu::kZeros2i),
-        scale_(mathfu::kOnes2f),
-        texture_format_(kFormat888),
-        desired_(format),
-        flags_(flags) {}
+                   TextureFlags flags = kTextureFlagsUseMipMaps);
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
@@ -307,6 +300,12 @@ class Texture : public AsyncAsset {
   static uint16_t *Convert888To565(const uint8_t *buffer,
                                    const mathfu::vec2i &size);
 
+  /// @brief Set texture target and id directly for textures that have been
+  /// created outside of this class.
+  /// @param[in] target Texture target to use when binding texture to context.
+  /// @param[in] id Texture handle ID.
+  void SetTextureId(TextureTarget target, TextureHandle id);
+
   /// @brief Get the Texture handle ID.
   /// @return Returns the TextureHandle ID.
   const TextureHandle &id() const { return id_; }
@@ -377,6 +376,7 @@ class Texture : public AsyncAsset {
   mathfu::vec2i original_size_;
   mathfu::vec2 scale_;
   TextureFormat texture_format_;
+  TextureTarget target_;
   TextureFormat desired_;
   TextureFlags flags_;
 };

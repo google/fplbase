@@ -95,6 +95,17 @@ struct KTXHeader {
   uint32_t keyvalue_data;
 };
 
+Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
+: AsyncAsset(filename ? filename : ""),
+  id_(0),
+  size_(mathfu::kZeros2i),
+  original_size_(mathfu::kZeros2i),
+  scale_(mathfu::kOnes2f),
+  texture_format_(kFormat888),
+  target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D),
+  desired_(format),
+  flags_(flags) {}
+
 void Texture::Load() {
   data_ =
       LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &texture_format_);
@@ -120,9 +131,7 @@ void Texture::Finalize() {
 
 void Texture::Set(size_t unit, RenderContext *) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
-  GL_CALL(glBindTexture(
-      flags_ & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D,
-      id_));
+  GL_CALL(glBindTexture(target_, id_));
 }
 
 void Texture::Set(size_t unit) { Set(unit, nullptr); }
@@ -157,6 +166,11 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
     buffer16[i] = ((c[0] >> 3) << 11) | ((c[1] >> 2) << 5) | ((c[2] >> 3) << 0);
   }
   return buffer16;
+}
+
+void Texture::SetTextureId(TextureTarget target, TextureHandle id) {
+  target_ = target;
+  id_ = id;
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
