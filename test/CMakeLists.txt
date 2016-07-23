@@ -135,3 +135,4 @@ function(test_executable name)
 endfunction()
 
 test_executable(preprocessor)
+test_executable(utils)

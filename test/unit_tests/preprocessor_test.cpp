@@ -14,7 +14,6 @@
 
 #include "gtest/gtest.h"
 #include "fplbase/preprocessor.h"
-// #include "fplbase/utilities.h"
 #include <string>
 #include <unordered_set>
 
