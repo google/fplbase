@@ -39,6 +39,7 @@ enum Attribute {
   kNormal3f,
   kTangent4f,
   kTexCoord2f,
+  kTexCoordAlt2f,  ///< @brief Second set of UVs for use with e.g. lightmaps.
   kColor4ub,
   kBoneIndices4ub,
   kBoneWeights4ub
@@ -297,6 +298,7 @@ class Mesh : public Asset {
     kAttributeNormal,
     kAttributeTangent,
     kAttributeTexCoord,
+    kAttributeTexCoordAlt,
     kAttributeColor,
     kAttributeBoneIndices,
     kAttributeBoneWeights,

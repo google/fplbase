@@ -343,14 +343,18 @@ Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
   if (vs) {
     auto ps = CompileShader(false, program, ps_source);
     if (ps) {
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributePosition, "aPosition"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeNormal, "aNormal"));
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributeTangent, "aTangent"));
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributeTexCoord, "aTexCoord"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor, "aColor"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributePosition,
+                                   "aPosition"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeNormal,
+                                   "aNormal"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTangent,
+                                   "aTangent"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoord,
+                                   "aTexCoord"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoordAlt,
+                                   "aTexCoordAlt"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor,
+                                   "aColor"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices,
                                    "aBoneIndices"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights,

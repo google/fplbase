@@ -314,6 +314,8 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
     auto has_colors = meshdef->colors() && meshdef->colors()->size();
     auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
+    auto has_texcoords_alt = meshdef->texcoords_alt() &&
+                             meshdef->texcoords_alt()->size();
     // Collect what attributes are available.
     std::vector<Attribute> attrs;
     attrs.push_back(kPosition3f);
@@ -321,6 +323,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     if (has_tangents) attrs.push_back(kTangent4f);
     if (has_colors) attrs.push_back(kColor4ub);
     if (has_texcoords) attrs.push_back(kTexCoord2f);
+    if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
     if (has_skinning) {
       attrs.push_back(kBoneIndices4ub);
       attrs.push_back(kBoneWeights4ub);
@@ -340,6 +343,8 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
       if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
       if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
       if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
+      if (has_texcoords_alt)
+        CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
       if (has_skinning) {
         CopyAttribute(meshdef->skin_indices()->Get(index), p);
         CopyAttribute(meshdef->skin_weights()->Get(index), p);

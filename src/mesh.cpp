@@ -71,6 +71,12 @@ void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                                       stride, buffer + offset));
         offset += 2 * sizeof(float);
         break;
+      case kTexCoordAlt2f:
+        GL_CALL(glEnableVertexAttribArray(kAttributeTexCoordAlt));
+        GL_CALL(glVertexAttribPointer(kAttributeTexCoordAlt, 2, GL_FLOAT, false,
+                                      stride, buffer + offset));
+        offset += 2 * sizeof(float);
+        break;
       case kColor4ub:
         GL_CALL(glEnableVertexAttribArray(kAttributeColor));
         GL_CALL(glVertexAttribPointer(kAttributeColor, 4, GL_UNSIGNED_BYTE,
@@ -110,6 +116,7 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
       case kNormal3f:       size += 3 * sizeof(float); break;
       case kTangent4f:      size += 4 * sizeof(float); break;
       case kTexCoord2f:     size += 2 * sizeof(float); break;
+      case kTexCoordAlt2f:  size += 2 * sizeof(float); break;
       case kColor4ub:       size += 4;                 break;
       case kBoneIndices4ub: size += 4;                 break;
       case kBoneWeights4ub: size += 4;                 break;
@@ -133,6 +140,9 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
         break;
       case kTexCoord2f:
         GL_CALL(glDisableVertexAttribArray(kAttributeTexCoord));
+        break;
+      case kTexCoordAlt2f:
+        GL_CALL(glDisableVertexAttribArray(kAttributeTexCoordAlt));
         break;
       case kColor4ub:
         GL_CALL(glDisableVertexAttribArray(kAttributeColor));

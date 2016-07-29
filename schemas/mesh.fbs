@@ -42,6 +42,7 @@ table Mesh {
                                 // bone index. The mesh bones are all the bones.
                                 // The shader bones are the subset of bones that
                                 // have at least one vertex weighted to them.
+  texcoords_alt:[fplbase.Vec2]; // E.g. lightmap coordinates.
 }
 
 root_type Mesh;
