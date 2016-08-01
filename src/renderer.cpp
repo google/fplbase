@@ -42,7 +42,9 @@ Renderer *Renderer::the_renderer_ = nullptr;
   name = data_function_union_##name.function;
 
 Renderer::Renderer()
-    :
+    : time_(0),
+      window_size_(vec2i(800, 600)),  // Overwritten elsewhere.
+      default_render_context_(nullptr),
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
       window_(nullptr),
       context_(nullptr),
@@ -50,6 +52,7 @@ Renderer::Renderer()
       feature_level_(kFeatureLevel20),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
+      force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
       version_(&Version()) {

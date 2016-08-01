@@ -603,7 +603,7 @@ class Renderer {
 
   int max_vertex_uniform_components_;
 
-  // Current version of the Corgi Entity Library.
+  // Current version of the library.
   const FplBaseVersion *version_;
 
   // Singleton instance.
