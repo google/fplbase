@@ -303,6 +303,17 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
+
+    // Ensure the data version matches the runtime version, or that it was not
+    // tied to a specific version to begin with (e.g. it's legacy or it's
+    // created from a json file instead of mesh_pipeline).
+    if (meshdef->version() != meshdef::MeshVersion_Unspecified &&
+        meshdef->version() != meshdef::MeshVersion_MostRecent) {
+      LogError(kError, "Mesh file is stale: %s", filename);
+      renderer_.set_last_error(std::string("Mesh file is stale: ") + filename);
+      return nullptr;
+    }
+
     auto has_skinning =
         meshdef->skin_indices() && meshdef->skin_indices()->size() &&
         meshdef->skin_weights() && meshdef->skin_weights()->size() &&

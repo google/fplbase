@@ -821,7 +821,7 @@ class FlatMesh {
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
         uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
         bone_names_fb, bone_transforms_fb, bone_parents_fb,
-        shader_to_mesh_bones_fb, uvs_alt_fb);
+        shader_to_mesh_bones_fb, uvs_alt_fb, meshdef::MeshVersion_MostRecent);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
