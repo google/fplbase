@@ -63,6 +63,7 @@ enum VertexAttribute {
   kVertexAttribute_Normal,
   kVertexAttribute_Tangent,
   kVertexAttribute_Uv,
+  kVertexAttribute_UvAlt,
   kVertexAttribute_Color,
   kVertexAttribute_Bone,
 
@@ -73,9 +74,11 @@ enum VertexAttribute {
   kVertexAttributeBit_Normal = 1 << kVertexAttribute_Normal,
   kVertexAttributeBit_Tangent = 1 << kVertexAttribute_Tangent,
   kVertexAttributeBit_Uv = 1 << kVertexAttribute_Uv,
+  kVertexAttributeBit_UvAlt = 1 << kVertexAttribute_UvAlt,
   kVertexAttributeBit_Color = 1 << kVertexAttribute_Color,
   kVertexAttributeBit_Bone = 1 << kVertexAttribute_Bone,
-  kVertexAttributeBit_All = (1 << kVertexAttribute_Count) - 1,
+
+  kVertexAttributeBit_AllAttributesInSourceFile = -1,
 };
 
 // Bitwise OR of the kVertexAttributeBits.
@@ -113,8 +116,8 @@ static const char* kTextureProperties[] = {
 };
 
 static const char* kVertexAttributeShortNames[] = {
-    "p - positions", "n - normals",      "t - tangents", "u - UVs",
-    "c - colors",    "b - bone indices", nullptr,
+    "p - positions",     "n - normals", "t - tangents",     "u - UVs",
+    "v - alternate UVs", "c - colors",  "b - bone indices", nullptr,
 };
 static_assert(
     FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
@@ -140,13 +143,14 @@ static T Element(const FbxLayerElementTemplate<T>& element, int index) {
 
 /// Return element[index], accounting for the index array, if it is used.
 template <class T>
-static T ElementFromIndices(const FbxLayerElementTemplate<T>& element,
+static T ElementFromIndices(const FbxLayerElementTemplate<T>* element,
                             int control_index, int vertex_counter) {
+  if (!element) return T();
   const int index =
-      element.GetMappingMode() == FbxGeometryElement::eByControlPoint
+      element->GetMappingMode() == FbxGeometryElement::eByControlPoint
           ? control_index
           : vertex_counter;
-  return Element(element, index);
+  return Element(*element, index);
 }
 
 static inline vec4 Vec4FromFbx(const FbxColor& v) {
@@ -169,6 +173,12 @@ static inline vec3 Vec3FromFbx(const FbxVector4& v) {
 static inline vec2 Vec2FromFbx(const FbxVector2& v) {
   const FbxDouble* d = v.mData;
   return vec2(static_cast<float>(d[0]), static_cast<float>(d[1]));
+}
+
+// FBX UV format has the v-coordinate inverted from OpenGL.
+static inline vec2 Vec2FromFbxUv(const FbxVector2& v) {
+  const FbxDouble* d = v.mData;
+  return vec2(static_cast<float>(d[0]), static_cast<float>(1.0 - d[1]));
 }
 
 static inline mat4 Mat4FromFbx(const FbxAMatrix& m) {
@@ -204,6 +214,21 @@ static inline Mat3x4 FlatBufferMat3x4(const mat4& matrix) {
   const mat4 m = matrix.Transpose();
   return Mat3x4(Vec4(m(0), m(1), m(2), m(3)), Vec4(m(4), m(5), m(6), m(7)),
                 Vec4(m(8), m(9), m(10), m(11)));
+}
+
+static void LogVertexAttributes(VertexAttributeBitmask attributes,
+                                const char* header, LogLevel level,
+                                Logger* log) {
+  log->Log(level, "%s", header);
+  for (int i = 0; i < kVertexAttribute_Count; ++i) {
+    const int i_bit = 1 << i;
+    if (attributes & i_bit) {
+      const bool prev_attribute_exists = attributes & (i_bit - 1);
+      log->Log(level, "%s%s", prev_attribute_exists ? ", " : "",
+               kVertexAttributeShortNames[i]);
+    }
+  }
+  log->Log(level, "\n");
 }
 
 class FlatTextures {
@@ -248,7 +273,7 @@ class FlatMesh {
                     Logger& log)
       : points_(max_verts),
         cur_index_buf_(nullptr),
-        export_vertex_color_(false),
+        mesh_vertex_attributes_(0),
         vertex_attributes_(vertex_attributes),
         log_(log) {
     points_.clear();
@@ -283,18 +308,28 @@ class FlatMesh {
     log_.Log(kLogVerbose, "\n");
   }
 
-  void SetExportVertexColor(bool should_export) {
-    if (points_.size() > 0 && export_vertex_color_ != should_export) {
-      log_.Log(kLogWarning,
-               "Some meshes have vertex colors and others do not."
-               " Meshes that do not will be assigned white vertices.\n");
+  void ReportSurfaceVertexAttributes(
+      VertexAttributeBitmask surface_vertex_attributes) {
+    // Warn when some surfaces have requested attributes but others do not.
+    const VertexAttributeBitmask missing_attributes =
+        vertex_attributes_ & mesh_vertex_attributes_ &
+        ~surface_vertex_attributes;
+    if (missing_attributes) {
+      LogVertexAttributes(
+          missing_attributes,
+          "Surface missing vertex attributes that are in previous surfaces: ",
+          kLogWarning, &log_);
     }
-    export_vertex_color_ = export_vertex_color_ || should_export;
+
+    // Remember which attributes exist so that we can output only those that
+    // we recorded, if so requested.
+    mesh_vertex_attributes_ |= surface_vertex_attributes;
   }
 
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
-                      const vec4& tangent, const vec4& color, const vec2& uv) {
+                      const vec4& tangent, const vec4& color, const vec2& uv,
+                      const vec2& uv_alt) {
     // The `unique_` map holds pointers into `points_`, so we cannot realloc
     // `points_`. Instead, we reserve enough memory for an upper bound on
     // its size. If this assert hits, NumVertsUpperBound() is incorrect.
@@ -302,7 +337,8 @@ class FlatMesh {
 
     // TODO: Round values before creating.
     points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent, color,
-                             uv, static_cast<uint8_t>(bones_.size() - 1)));
+                             uv, uv_alt,
+                             static_cast<BoneIndex>(bones_.size() - 1)));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -321,23 +357,38 @@ class FlatMesh {
     cur_index_buf_->push_back(ref.index);
 
     // Log the data we just added.
-    log_.Log(kLogVerbose, "Point: index %d", ref.index);
-    if (new_control_point_created) {
-      log_.Log(kLogVerbose,
-               ", vertex (%.3f, %.3f, %.3f)"
-               ", normal (%.3f, %.3f, %.3f)"
-               ", tangent (%.3f, %.3f, %.3f)"
-               ", binormal-handedness %.0f"
-               ", uv (%.3f, %.3f)",
-               vertex.x(), vertex.y(), vertex.z(), normal.x(), normal.y(),
-               normal.z(), tangent.x(), tangent.y(), tangent.z(), tangent.w(),
-               uv.x(), uv.y());
-      if (export_vertex_color_) {
-        log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
-                 color.y(), color.z(), color.w());
+    if (log_.level() <= kLogVerbose) {
+      log_.Log(kLogVerbose, "Point: index %d", ref.index);
+      if (new_control_point_created) {
+        const VertexAttributeBitmask attributes =
+            vertex_attributes_ & mesh_vertex_attributes_;
+        if (attributes & kVertexAttributeBit_Position) {
+          log_.Log(kLogVerbose, ", vertex (%.3f, %.3f, %.3f)", vertex.x(),
+                   vertex.y(), vertex.z());
+        }
+        if (attributes & kVertexAttributeBit_Normal) {
+          log_.Log(kLogVerbose, ", normal (%.3f, %.3f, %.3f)", normal.x(),
+                   normal.y(), normal.z());
+        }
+        if (attributes & kVertexAttributeBit_Tangent) {
+          log_.Log(kLogVerbose,
+                   ", tangent (%.3f, %.3f, %.3f) binormal-handedness %.0f",
+                   tangent.x(), tangent.y(), tangent.z(), tangent.w());
+        }
+        if (attributes & kVertexAttributeBit_Uv) {
+          log_.Log(kLogVerbose, ", uv (%.3f, %.3f)", uv.x(), uv.y());
+        }
+        if (attributes & kVertexAttributeBit_UvAlt) {
+          log_.Log(kLogVerbose, ", uv-alt (%.3f, %.3f)", uv_alt.x(),
+                   uv_alt.y());
+        }
+        if (attributes & kVertexAttributeBit_Color) {
+          log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
+                   color.y(), color.z(), color.w());
+        }
       }
+      log_.Log(kLogVerbose, "\n");
     }
-    log_.Log(kLogVerbose, "\n");
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
@@ -453,7 +504,8 @@ class FlatMesh {
     vec3_packed normal;
     vec4_packed tangent;  // 4th element is handedness: +1 or -1
     vec2_packed uv;
-    Vec4ub color;
+    vec2_packed uv_alt;
+    Vec4ub color;  // Use byte-format to ensure correct hashing.
     BoneIndex bone;
     Vertex() : color(0, 0, 0, 0) {
       // The Hash function operates on all the memory, so ensure everything is
@@ -461,12 +513,14 @@ class FlatMesh {
       memset(this, 0, sizeof(*this));
     }
     // Only record the attributes that we're asked to record. Ignore the rest.
-    Vertex(VertexAttributeBitmask attribs, const vec3& v, const vec3& n,
-           const vec4& t, const vec4& c, const vec2& u, BoneIndex bone)
-        : vertex(attribs & kVertexAttributeBit_Position ? v : kZeros3f),
+    Vertex(VertexAttributeBitmask attribs, const vec3& p, const vec3& n,
+           const vec4& t, const vec4& c, const vec2& u, const vec2& v,
+           BoneIndex bone)
+        : vertex(attribs & kVertexAttributeBit_Position ? p : kZeros3f),
           normal(attribs & kVertexAttributeBit_Normal ? n : kZeros3f),
           tangent(attribs & kVertexAttributeBit_Tangent ? t : kZeros4f),
           uv(attribs & kVertexAttributeBit_Uv ? u : kZeros2f),
+          uv_alt(attribs & kVertexAttributeBit_UvAlt ? v : kZeros2f),
           color(attribs & kVertexAttributeBit_Color ? FlatBufferVec4ub(c)
                                                     : Vec4ub(0, 0, 0, 0)),
           bone(attribs & kVertexAttributeBit_Bone ? bone : 0) {}
@@ -681,6 +735,7 @@ class FlatMesh {
     std::vector<Vec4> tangents;
     std::vector<Vec4ub> colors;
     std::vector<Vec2> uvs;
+    std::vector<Vec2> uvs_alt;
     std::vector<Vec4ub> skin_indices;
     std::vector<Vec4ub> skin_weights;
     vertices.reserve(points_.size());
@@ -688,30 +743,21 @@ class FlatMesh {
     tangents.reserve(points_.size());
     colors.reserve(points_.size());
     uvs.reserve(points_.size());
+    uvs_alt.reserve(points_.size());
     skin_indices.reserve(points_.size());
     skin_weights.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
       const Vertex& p = *it;
-      if (vertex_attributes_ & kVertexAttributeBit_Position) {
-        vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
-      }
-      if (vertex_attributes_ & kVertexAttributeBit_Normal) {
-        normals.push_back(FlatBufferVec3(vec3(p.normal)));
-      }
-      if (vertex_attributes_ & kVertexAttributeBit_Tangent) {
-        tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
-      }
-      if (vertex_attributes_ & kVertexAttributeBit_Uv) {
-        colors.push_back(p.color);
-      }
-      if (vertex_attributes_ & kVertexAttributeBit_Color) {
-        uvs.push_back(FlatBufferVec2(vec2(p.uv)));
-      }
-      if (vertex_attributes_ & kVertexAttributeBit_Bone) {
-        const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
-        skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
-        skin_weights.push_back(Vec4ub(1, 0, 0, 0));
-      }
+      vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
+      normals.push_back(FlatBufferVec3(vec3(p.normal)));
+      tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
+      colors.push_back(p.color);
+      uvs.push_back(FlatBufferVec2(vec2(p.uv)));
+      uvs_alt.push_back(FlatBufferVec2(vec2(p.uv_alt)));
+      // TODO: Support bone weighting.
+      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
+      skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
+      skin_weights.push_back(Vec4ub(1, 0, 0, 0));
     }
 
     // Output the bone transforms, for skinning, and the bone names,
@@ -735,19 +781,36 @@ class FlatMesh {
     vec3 max_position;
     CalculateMinMaxPosition(&min_position, &max_position);
 
-    // Then create a FlatBuffer vector for each array.
-    auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
-    auto normals_fb = !normals.empty() ? fbb.CreateVectorOfStructs(normals) : 0;
-    auto tangents_fb =
-        !tangents.empty() ? fbb.CreateVectorOfStructs(tangents) : 0;
-    auto colors_fb = (export_vertex_color_ && !colors.empty())
+    // Then create a FlatBuffer vector for each array that we want to export.
+    const VertexAttributeBitmask attributes =
+        vertex_attributes_ == kVertexAttributeBit_AllAttributesInSourceFile
+            ? mesh_vertex_attributes_
+            : vertex_attributes_;
+    LogVertexAttributes(attributes, "  Vertex attributes: ", kLogInfo, &log_);
+    auto vertices_fb = (attributes & kVertexAttributeBit_Position)
+                           ? fbb.CreateVectorOfStructs(vertices)
+                           : 0;
+    auto normals_fb = (attributes & kVertexAttributeBit_Normal)
+                          ? fbb.CreateVectorOfStructs(normals)
+                          : 0;
+    auto tangents_fb = (attributes & kVertexAttributeBit_Tangent)
+                           ? fbb.CreateVectorOfStructs(tangents)
+                           : 0;
+    auto colors_fb = (attributes & kVertexAttributeBit_Color)
                          ? fbb.CreateVectorOfStructs(colors)
                          : 0;
-    auto uvs_fb = !uvs.empty() ? fbb.CreateVectorOfStructs(uvs) : 0;
-    auto skin_indices_fb =
-        !skin_indices.empty() ? fbb.CreateVectorOfStructs(skin_indices) : 0;
-    auto skin_weights_fb =
-        !skin_weights.empty() ? fbb.CreateVectorOfStructs(skin_weights) : 0;
+    auto uvs_fb = (attributes & kVertexAttributeBit_Uv)
+                      ? fbb.CreateVectorOfStructs(uvs)
+                      : 0;
+    auto uvs_alt_fb = (attributes & kVertexAttributeBit_UvAlt)
+                          ? fbb.CreateVectorOfStructs(uvs_alt)
+                          : 0;
+    auto skin_indices_fb = (attributes & kVertexAttributeBit_Bone)
+                               ? fbb.CreateVectorOfStructs(skin_indices)
+                               : 0;
+    auto skin_weights_fb = (attributes & kVertexAttributeBit_Bone)
+                               ? fbb.CreateVectorOfStructs(skin_weights)
+                               : 0;
     auto max_fb = FlatBufferVec3(max_position);
     auto min_fb = FlatBufferVec3(min_position);
     auto bone_names_fb = fbb.CreateVector(bone_names);
@@ -758,7 +821,7 @@ class FlatMesh {
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
         uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
         bone_names_fb, bone_transforms_fb, bone_parents_fb,
-        shader_to_mesh_bones_fb);
+        shader_to_mesh_bones_fb, uvs_alt_fb);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
@@ -825,7 +888,7 @@ class FlatMesh {
   VertexSet unique_;
   std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
-  bool export_vertex_color_;
+  VertexAttributeBitmask mesh_vertex_attributes_;
   std::vector<Bone> bones_;
   VertexAttributeBitmask vertex_attributes_;
 
@@ -867,7 +930,8 @@ class FbxMeshParser {
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
   bool Load(const char* file_name, AxisSystem axis_system,
-            float distance_unit_scale, bool recenter) {
+            float distance_unit_scale, bool recenter,
+            VertexAttributeBitmask vertex_attributes) {
     if (!Valid()) return false;
 
     log_.Log(
@@ -923,7 +987,7 @@ class FbxMeshParser {
     fplutil::ConvertFbxAxes(axis_system, scene_, &log_);
 
     // Bring the geo into our format.
-    ConvertGeometry(recenter);
+    ConvertGeometry(recenter, vertex_attributes);
 
     // Log nodes after we've processed them.
     log_.Log(kLogVerbose, "Converted scene nodes\n");
@@ -949,7 +1013,8 @@ class FbxMeshParser {
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FbxMeshParser);
 
-  void ConvertGeometry(bool recenter) {
+  void ConvertGeometry(bool recenter,
+                       VertexAttributeBitmask vertex_attributes) {
     FbxGeometryConverter geo_converter(manager_);
 
     // Ensure origin is in the center of geometry.
@@ -968,10 +1033,11 @@ class FbxMeshParser {
     geo_converter.Triangulate(scene_, true);
 
     // Traverse all meshes in the scene, generating normals and tangents.
-    ConvertGeometryRecursive(scene_->GetRootNode());
+    ConvertGeometryRecursive(scene_->GetRootNode(), vertex_attributes);
   }
 
-  void ConvertGeometryRecursive(FbxNode* node) {
+  void ConvertGeometryRecursive(FbxNode* node,
+                                VertexAttributeBitmask vertex_attributes) {
     if (node == nullptr) return;
 
     // We're only interested in meshes, for the moment.
@@ -983,16 +1049,27 @@ class FbxMeshParser {
       FbxMesh* mesh = static_cast<FbxMesh*>(attr);
 
       // Generate normals. Leaves existing normal data if it already exists.
-      const bool normals_generated = mesh->GenerateNormals();
-      if (!normals_generated) {
-        log_.Log(kLogWarning, "Could not generate normals for mesh %s\n",
-                 mesh->GetName());
+      if (vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
+          (vertex_attributes & kVertexAttributeBit_Normal)) {
+        const bool normals_generated = mesh->GenerateNormals();
+        if (normals_generated) {
+          log_.Log(kLogInfo, "Generating normals for mesh %s\n",
+                   mesh->GetName());
+        } else {
+          log_.Log(kLogWarning, "Could not generate normals for mesh %s\n",
+                   mesh->GetName());
+        }
       }
 
       // Generate tangents. Leaves existing tangent data if it already exists.
-      if (mesh->GetElementUVCount() > 0) {
+      if (mesh->GetElementUVCount() > 0 &&
+          vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
+          (vertex_attributes & kVertexAttributeBit_Tangent)) {
         const bool tangents_generated = mesh->GenerateTangentsData(0);
-        if (!tangents_generated) {
+        if (tangents_generated) {
+          log_.Log(kLogInfo, "Generating tangents for mesh %s\n",
+                   mesh->GetName());
+        } else {
           log_.Log(kLogWarning, "Could not generate tangents for mesh %s\n",
                    mesh->GetName());
         }
@@ -1001,7 +1078,7 @@ class FbxMeshParser {
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      ConvertGeometryRecursive(node->GetChild(i));
+      ConvertGeometryRecursive(node->GetChild(i), vertex_attributes);
     }
   }
 
@@ -1028,27 +1105,34 @@ class FbxMeshParser {
   }
 
   // Get the UVs for a mesh.
-  const FbxGeometryElementUV* UvElement(const FbxMesh* mesh) const {
-    // Grab texture coordinates.
+  const FbxGeometryElementUV* UvElements(
+      const FbxMesh* mesh, const FbxGeometryElementUV** uv_alt_element) const {
     const int uv_count = mesh->GetElementUVCount();
-    if (uv_count <= 0) {
-      log_.Log(kLogWarning, "No UVs for mesh %s\n", mesh->GetName());
-      return nullptr;
-    }
+    const FbxGeometryElementUV* uv_element = nullptr;
+    *uv_alt_element = nullptr;
 
-    // Always use the first UV set.
-    const FbxGeometryElementUV* uv_element = mesh->GetElementUV(0);
-
-    // Warn if multiple UV sets exist.
-    if (uv_count > 1 && log_.level() >= kLogWarning) {
-      FbxStringList uv_set_names;
-      mesh->GetUVSetNames(uv_set_names);
-      log_.Log(kLogWarning, "Multiple UVs for mesh %s. Using %s. Ignoring %s\n",
-               mesh->GetName(), uv_set_names.GetStringAt(0),
-               uv_set_names.GetStringAt(1));
-    } else {
+    // Use the first UV set as the primary UV set.
+    if (uv_count > 0) {
+      uv_element = mesh->GetElementUV(0);
       log_.Log(kLogVerbose, "Using UV map %s for mesh %s.\n",
                uv_element->GetName(), mesh->GetName());
+    }
+
+    // Use the second UV set if it exists.
+    if (uv_count > 1) {
+      *uv_alt_element = mesh->GetElementUV(1);
+      log_.Log(kLogVerbose, "Using alternate UV map %s for mesh %s.\n",
+               (*uv_alt_element)->GetName(), mesh->GetName());
+    }
+
+    // Warn when more UV sets exist.
+    if (uv_count > 2 && log_.level() <= kLogWarning) {
+      FbxStringList uv_set_names;
+      mesh->GetUVSetNames(uv_set_names);
+      log_.Log(kLogWarning,
+               "Multiple UVs for mesh %s. Using %s and %s. Ignoring %s.\n",
+               mesh->GetName(), uv_set_names.GetStringAt(0),
+               uv_set_names.GetStringAt(1), uv_set_names.GetStringAt(2));
     }
 
     return uv_element;
@@ -1334,15 +1418,26 @@ class FbxMeshParser {
 
     // Get references to various vertex elements.
     const FbxVector4* vertices = mesh->GetControlPoints();
-    const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
     const FbxGeometryElementTangent* tangent_element =
         mesh->GetElementTangent();
     const FbxGeometryElementVertexColor* color_element =
         mesh->GetElementVertexColor();
-    assert(uv_element != nullptr && normal_element != nullptr &&
-           tangent_element != nullptr);
-    out->SetExportVertexColor(color_element != nullptr || has_solid_color);
+    const FbxGeometryElementUV* uv_alt_element = nullptr;
+    const FbxGeometryElementUV* uv_element = UvElements(mesh, &uv_alt_element);
+
+    // Record which vertex attributes exist for this surface.
+    // We reported the bone name and parents in AppendBone().
+    const VertexAttributeBitmask surface_vertex_attributes =
+        kVertexAttributeBit_Bone |
+        (vertices ? kVertexAttributeBit_Position : 0) |
+        (normal_element ? kVertexAttributeBit_Normal : 0) |
+        (tangent_element ? kVertexAttributeBit_Tangent : 0) |
+        (color_element != nullptr || has_solid_color ? kVertexAttributeBit_Color
+                                                     : 0) |
+        (uv_element ? kVertexAttributeBit_Uv : 0) |
+        (uv_alt_element ? kVertexAttributeBit_UvAlt : 0);
+    out->ReportSurfaceVertexAttributes(surface_vertex_attributes);
     log_.Log(kLogVerbose, color_element != nullptr
                               ? "Mesh has vertex colors\n"
                               : has_solid_color
@@ -1372,16 +1467,18 @@ class FbxMeshParser {
         // by control point or by polygon-vertex.
         const FbxVector4 vertex_fbx = vertices[control_index];
         const FbxVector4 normal_fbx =
-            ElementFromIndices(*normal_element, control_index, vertex_counter);
+            ElementFromIndices(normal_element, control_index, vertex_counter);
         const FbxVector4 tangent_fbx =
-            ElementFromIndices(*tangent_element, control_index, vertex_counter);
+            ElementFromIndices(tangent_element, control_index, vertex_counter);
         const FbxColor color_fbx =
             color_element != nullptr
-                ? ElementFromIndices(*color_element, control_index,
+                ? ElementFromIndices(color_element, control_index,
                                      vertex_counter)
                 : has_solid_color ? solid_color : kDefaultColor;
         const FbxVector2 uv_fbx =
-            ElementFromIndices(*uv_element, control_index, vertex_counter);
+            ElementFromIndices(uv_element, control_index, vertex_counter);
+        const FbxVector2 uv_alt_fbx =
+            ElementFromIndices(uv_alt_element, control_index, vertex_counter);
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
@@ -1392,9 +1489,9 @@ class FbxMeshParser {
             Vec3FromFbx(vector_transform.MultT(tangent_fbx)).Normalized(),
             static_cast<float>(tangent_fbx[3]));
         const vec4 color = Vec4FromFbx(color_fbx);
-        const vec2 uv =
-            Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
-        out->AppendPolyVert(vertex, normal, tangent, color, uv);
+        const vec2 uv = Vec2FromFbxUv(uv_fbx);
+        const vec2 uv_alt = Vec2FromFbxUv(uv_alt_fbx);
+        out->AppendPolyVert(vertex, normal, tangent, color, uv, uv_alt);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;
@@ -1421,7 +1518,7 @@ struct MeshPipelineArgs {
         axis_system(fplutil::kUnspecifiedAxisSystem),
         distance_unit_scale(-1.0f),
         recenter(false),
-        vertex_attributes(kVertexAttributeBit_All),
+        vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
         log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
@@ -1739,7 +1836,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                If unspecified, use FBX file's unit.\n"
         "  --attrib, --vertex-attributes ATTRIBUTES\n"
         "                Composition of the output vertex buffer.\n"
-        "                If unspecified, output all attributes.\n"
+        "                If unspecified, output attributes in source file.\n"
         "                ATTRIBUTES is a combination of the following:\n");
     LogOptions(kOptionIndent, kVertexAttributeShortNames, &log);
 
@@ -1773,7 +1870,8 @@ int main(int argc, char** argv) {
   // Load the FBX file.
   fplbase::FbxMeshParser pipe(log);
   const bool load_status = pipe.Load(args.fbx_file.c_str(), args.axis_system,
-                                     args.distance_unit_scale, args.recenter);
+                                     args.distance_unit_scale, args.recenter,
+                                     args.vertex_attributes);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.

@@ -361,7 +361,7 @@ class Mesh : public Asset {
   // this header to depend on OpenGL.
   typedef unsigned int BufferHandle;
 
-  static const int kMaxAttributes = 8;
+  static const int kMaxAttributes = 9;
 
   static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
