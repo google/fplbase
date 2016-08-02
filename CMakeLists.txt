@@ -72,6 +72,7 @@ include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
 set_common_build_variables()
 
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
+    CACHE PATH "Directory containing the Webp cmake project.")
 
 if(IOS)
   # iOS builds flatc and SDL externally. Disable building them in the xcodeproj.
