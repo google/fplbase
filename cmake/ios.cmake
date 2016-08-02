@@ -26,5 +26,4 @@ set(CMAKE_C_COMPILER_WORKS TRUE)
 set(CMAKE_MACOSX_BUNDLE YES)
 
 # add IOS hints
-set(IOS TRUE)
 add_definitions(-D__IOS__)

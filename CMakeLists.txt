@@ -42,10 +42,11 @@ option(fplbase_build_tests "Build tests for this project." ${fplbase_standalone_
 
 # Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
-option(fplbase_use_external_sdl2 "Use external SDL library." OFF)
-set(external_sdl2_include_dir "" CACHE PATH "Absolute path to directory containing external SDL includes.")
-set(external_sdl2_libraries "" CACHE PATH "List of semicolon separated absolute path to SDL libraries.")
-option(fplbase_use_host_flatc "Use host machine flatc." OFF)
+
+# We're on iOS if the system root is set to "iphoneos" or some variant.
+if("${CMAKE_OSX_SYSROOT}" MATCHES "iphoneos")
+  set(IOS TRUE CACHE BOOL "Target platform is iOS.")
+endif()
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -71,12 +72,36 @@ include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
 set_common_build_variables()
 
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
-    CACHE PATH "Directory containing the Webp cmake project.")
 
-# Detect clang
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
-   CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
-  set(CMAKE_COMPILER_IS_CLANGXX 1)
+if(IOS)
+  # iOS builds flatc and SDL externally. Disable building them in the xcodeproj.
+  set(fplbase_external_flatc_build_dir "${tmp_dir}/flatbuffers_external")
+  set(fplbase_external_flatc "${fplbase_external_flatc_build_dir}/bin/flatc")
+  set(FLATBUFFERS_FLATC_EXECUTABLE ${fplbase_external_flatc} CACHE STRING "")
+  set(FLATBUFFERS_BUILD_FLATC OFF CACHE BOOL "")
+
+  # Directory and target names for external flatc and SDL.
+  set(fplbase_external_sdl_build_dir "${tmp_dir}/sdl_external")
+  set(fplbase_external_sdl_lib_simulator_dir
+      "${fplbase_external_sdl_build_dir}/lib/iphonesimulator")
+  set(fplbase_external_sdl_lib_ios_dir
+      "${fplbase_external_sdl_build_dir}/lib/iphoneos")
+  set(fplbase_external_sdl_lib_simulator
+      "${fplbase_external_sdl_lib_simulator_dir}/libSDL2.a")
+  set(fplbase_external_sdl_lib_ios
+      "${fplbase_external_sdl_lib_ios_dir}/libSDL2.a")
+  set(fplbase_external_sdl_xcode_proj
+      "${dependencies_sdl_dir}/Xcode-iOS/SDL/SDL.xcodeproj")
+  set(fplbase_use_external_sdl ON)
+endif()
+
+# Find or Include FlatBuffers in this project.
+set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
+if(NOT TARGET flatc)
+  add_subdirectory("${dependencies_flatbuffers_dir}" ${tmp_dir}/flatbuffers)
+endif()
+if(fplbase_only_flatc)
+  return()
 endif()
 
 # Include MathFu in this project with test and benchmark builds disabled.
@@ -84,7 +109,7 @@ set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
 add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
-if(NOT fplbase_use_external_sdl2)
+if(NOT fplbase_use_external_sdl)
   # Include SDL in this project while working around SDL requirement of out of
   # tree builds.
   set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
@@ -103,7 +128,7 @@ if(NOT fplbase_use_external_sdl2)
     set(SDL_AUDIO_DRIVER_COREAUDIO 1)
   endif(APPLE)
 
-  if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
+  if(NOT TARGET SDL2-static)
     set_compiler_flags_for_external_libraries()
     # SDL appends EXTRA_CFLAGS to its CMAKE_CFLAGS
     list(APPEND EXTRA_CFLAGS ${CMAKE_C_FLAGS})
@@ -124,25 +149,12 @@ endif()
 # Include Webp in this project, and force build in release mode for speed.
 set(original_build_type ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release)
-if(NOT fplbase_only_flatc AND NOT TARGET webp)
+if(NOT TARGET webp)
   set_compiler_flags_for_external_libraries()
   add_subdirectory("${dependencies_webp_cmake_dir}" ${tmp_dir}/webp)
   restore_compiler_flags()
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
-
-# Find or Include FlatBuffers in this project.
-set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
-
-if(fplbase_use_host_flatc AND NOT fplbase_only_flatc)
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-      "${dependencies_flatbuffers_cmake_dir}")
-  find_package(FlatBuffers REQUIRED)
-endif()
-
-if(NOT TARGET flatc AND NOT FLATBUFFERS_FLATC_EXECUTABLE)
-  add_subdirectory("${dependencies_flatbuffers_dir}" ${tmp_dir}/flatbuffers)
-endif()
 
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
@@ -174,7 +186,6 @@ if(APPLE)
     SET(OPENGL_LIBRARIES "-framework OpenGL")
   endif()
 endif()
-
 
 set(fplbase_common_SRCS
   include/fplbase/asset.h
@@ -233,22 +244,19 @@ include_directories(${dependencies_webp_distr_dir}/include)
 include_directories(${dependencies_webp_distr_dir}/src)
 
 # SDL includes.
-if (NOT fplbase_use_external_sdl2)
-  include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+if (fplbase_use_external_sdl)
+  include_directories(${dependencies_sdl_dir}/include)
+  set(SDL_LIBRARIES
+      "${fplbase_external_sdl_lib_simulator};${fplbase_external_sdl_lib_ios}")
 else()
-  include_directories(${external_sdl2_include_dir})
-endif()
-
-if (NOT fplbase_use_external_sdl2)
-  set (SDL_LIBRARIES SDL2-static)
+  include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+  set(SDL_LIBRARIES SDL2-static)
   if(WIN32)
     add_definitions(-D_USE_MATH_DEFINES)
     set(OPENGL_LIBRARIES opengl32)
     set(SDL_LIBRARIES SDL2main ${SDL_LIBRARIES})
     link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
   endif()
-else()
-  set(SDL_LIBRARIES ${external_sdl2_libraries})
 endif()
 
 # STB includes.
@@ -286,6 +294,80 @@ if(fplbase_build_library)
     fplbase_common_config(fplbase_stdlib)
     target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
   endif()
+
+  # Setup iOS custom build target.
+  if(IOS)
+    # These commands are executed from within Xcode, which has its own set
+    # of environment variables. We use "env -i" to clear the Xcode environment
+    # variables, and manually keep the PATH to regular bash path.
+    # If we didn't do this, we'd end up building flatc for iOS instead of OSX,
+    # since the default Xcode environment variables target iOS when you're in
+    # an iOS project.
+    set(fplbase_command_line_path "$ENV{PATH}")
+
+    # Build flatc for OSX.
+    # Note that the WORKING_DIRECTORY option doesn't create the directory so
+    # we need to manually use `mkdir` and `cd` below.
+    # The -B and -H options are required because there may already be a cmake
+    # cached in the fplbase directory, so `cmake [fplbase]` will trigger a
+    # recreation of the existing cmake project, instead of creating a new one
+    # for flatc.
+    add_custom_command(
+      OUTPUT ${fplbase_external_flatc}
+      COMMAND (mkdir -p ${fplbase_external_flatc_build_dir} &&
+               cd ${fplbase_external_flatc_build_dir} &&
+               env -i PATH=${fplbase_command_line_path} cmake
+                     -Dfplbase_only_flatc=ON
+                     -B${fplbase_external_flatc_build_dir}
+                     -H${CMAKE_CURRENT_LIST_DIR} &&
+               env -i PATH=${fplbase_command_line_path} make)
+      COMMENT "Building flatc (the FlatBuffer schema compiler)")
+
+    # Build SDL libraries for the iOS simulator.
+    # SDL does not support iOS in its cmake files, so we have to build it
+    # manually from its Xcode project.
+    add_custom_command(
+      OUTPUT ${fplbase_external_sdl_lib_simulator}
+      COMMAND
+          (mkdir -p ${fplbase_external_sdl_build_dir} &&
+           cd ${fplbase_external_sdl_build_dir} &&
+           env -i PATH=${fplbase_command_line_path}  xcodebuild
+             -project ${fplbase_external_sdl_xcode_proj}
+             -alltargets
+             -sdk iphonesimulator
+             ARCHS='i386 x86_64'
+             CONFIGURATION_BUILD_DIR=${fplbase_external_sdl_lib_simulator_dir}
+             OBJROOT=${fplbase_external_sdl_build_dir}/obj
+             SYMROOT=${fplbase_external_sdl_build_dir}/sym)
+      COMMENT "Building SDL for the iOS simulator")
+
+    # Build SDL libraries for iOS devices.
+    add_custom_command(
+      OUTPUT ${fplbase_external_sdl_lib_ios}
+      COMMAND
+          (mkdir -p ${fplbase_external_sdl_build_dir} &&
+           cd ${fplbase_external_sdl_build_dir} &&
+           env -i PATH=${fplbase_command_line_path} xcodebuild
+             -project ${fplbase_external_sdl_xcode_proj}
+             -alltargets
+             -sdk iphoneos
+             ARCHS='arm64 armv7 armv7s'
+             CONFIGURATION_BUILD_DIR=${fplbase_external_sdl_lib_ios_dir}
+             OBJROOT=${fplbase_external_sdl_build_dir}/obj
+             SYMROOT=${fplbase_external_sdl_build_dir}/sym)
+      COMMENT "Building SDL for iOS devices")
+
+    # Add a target so that we can run the custom commands before the code build.
+    add_custom_target(
+      fplbase_ios_prebuilds
+      DEPENDS ${fplbase_external_flatc}
+              ${fplbase_external_sdl_lib_simulator}
+              ${fplbase_external_sdl_lib_ios})
+
+    add_dependencies(fplbase fplbase_ios_prebuilds)
+    add_dependencies(fplbase_stdlib fplbase_ios_prebuilds)
+    add_dependencies(fplbase_generated_includes fplbase_ios_prebuilds)
+  endif()  # IOS
 endif()
 
 if(fplbase_build_shader_pipeline)
