@@ -477,7 +477,7 @@ bool AndroidSystemFeature(const char *feature_name) {
 #endif
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-int32_t AndroidGetAPILevel() {
+int32_t AndroidGetApiLevel() {
   // Retrieve API level through JNI.
   JNIEnv *env = AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android/os/Build$VERSION");
