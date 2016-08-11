@@ -17,6 +17,15 @@
       "push": 0
     },
     {
+      "name": "googletest",
+      "url": "http://github.com/google/googletest.git",
+      "branch": "master",
+      "revision": "13206d6f53aaff844f2d3595a01ac83a29e383db",
+      "is_library": 1,
+      "third_party": 1,
+      "push": 0
+    },
+    {
       "name": "flatbuffers",
       "url": "http://github.com/google/flatbuffers.git",
       "branch": "master",
@@ -30,8 +39,7 @@
       "branch": "develop",
       "is_library": 1,
       "third_party": 0,
-      "push": 0,
-      "fetch_dependencies": 1
+      "push": 0
     },
     {
       "name": "sdl",
@@ -40,6 +48,15 @@
       "is_library": 1,
       "third_party": 1,
       "push": 1
+    },
+    {
+      "name": "stb",
+      "url": "https://github.com/nothings/stb.git",
+      "branch": "master",
+      "revision": "c9ead07188b342350530e92e14542222c3ad9abe",
+      "is_library": 1,
+      "third_party": 1,
+      "push": 0
     },
     {
       "name": "webp",

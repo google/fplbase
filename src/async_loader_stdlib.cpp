@@ -24,8 +24,14 @@ namespace fplbase {
 AsyncLoader::AsyncLoader() {}
 
 AsyncLoader::~AsyncLoader() {
-  StopLoadingWhenComplete();
-  worker_thread_.join();
+  Stop();
+}
+
+void AsyncLoader::Stop() {
+  if (worker_thread_.joinable()) {
+    StopLoadingWhenComplete();
+    worker_thread_.join();
+  }
 }
 
 void AsyncLoader::QueueJob(AsyncAsset *res) {

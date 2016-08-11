@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef SKINNED
+
 // TODO: Move this outside of this file, so that before including this file,
 //       you have to define this constant in your shader.
 // Maximum number of animated bones that have vertices weighted to them.
@@ -65,3 +67,4 @@ vec4 OneBoneSkinnedPosition(vec4 position) {
   return position * BoneTransformMatrixTranspose(int(aBoneIndices.x));
 }
 
+#endif  // SKINNED

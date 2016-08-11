@@ -24,6 +24,22 @@ using mathfu::vec4;
 using mathfu::vec4i;
 
 namespace fplbase {
+namespace {
+
+GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
+  switch (primitive) {
+    case Mesh::kLines:
+      return GL_LINES;
+    case Mesh::kPoints:
+      return GL_POINTS;
+    case Mesh::kTriangleStrip:
+      return GL_TRIANGLE_STRIP;
+    default:
+      return GL_TRIANGLES;
+  }
+}
+
+}  // namespace
 
 void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                          const char *buffer) {
@@ -52,6 +68,12 @@ void Mesh::SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
       case kTexCoord2f:
         GL_CALL(glEnableVertexAttribArray(kAttributeTexCoord));
         GL_CALL(glVertexAttribPointer(kAttributeTexCoord, 2, GL_FLOAT, false,
+                                      stride, buffer + offset));
+        offset += 2 * sizeof(float);
+        break;
+      case kTexCoordAlt2f:
+        GL_CALL(glEnableVertexAttribArray(kAttributeTexCoordAlt));
+        GL_CALL(glVertexAttribPointer(kAttributeTexCoordAlt, 2, GL_FLOAT, false,
                                       stride, buffer + offset));
         offset += 2 * sizeof(float);
         break;
@@ -94,6 +116,7 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
       case kNormal3f:       size += 3 * sizeof(float); break;
       case kTangent4f:      size += 4 * sizeof(float); break;
       case kTexCoord2f:     size += 2 * sizeof(float); break;
+      case kTexCoordAlt2f:  size += 2 * sizeof(float); break;
       case kColor4ub:       size += 4;                 break;
       case kBoneIndices4ub: size += 4;                 break;
       case kBoneWeights4ub: size += 4;                 break;
@@ -118,6 +141,9 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
       case kTexCoord2f:
         GL_CALL(glDisableVertexAttribArray(kAttributeTexCoord));
         break;
+      case kTexCoordAlt2f:
+        GL_CALL(glDisableVertexAttribArray(kAttributeTexCoordAlt));
+        break;
       case kColor4ub:
         GL_CALL(glDisableVertexAttribArray(kAttributeColor));
         break;
@@ -136,8 +162,8 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
 Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
     : vertex_size_(vertex_size),
-      bone_transforms_(nullptr),
-      bone_global_transforms_(nullptr) {
+      num_vertices_(static_cast<size_t>(count)),
+      default_bone_transform_inverses_(nullptr) {
   set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
@@ -169,11 +195,8 @@ Mesh::~Mesh() {
     GL_CALL(glDeleteBuffers(1, &it->ibo));
   }
 
-  delete[] bone_transforms_;
-  bone_transforms_ = nullptr;
-
-  delete[] bone_global_transforms_;
-  bone_global_transforms_ = nullptr;
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = nullptr;
 }
 
 void Mesh::set_format(const Attribute *format) {
@@ -202,13 +225,13 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
                     const uint8_t *bone_parents, const char **bone_names,
                     size_t num_bones, const uint8_t *shader_bone_indices,
                     size_t num_shader_bones) {
-  delete[] bone_transforms_;
-  bone_transforms_ = new mathfu::AffineTransform[num_bones];
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = new mathfu::AffineTransform[num_bones];
   bone_parents_.resize(num_bones);
   shader_bone_indices_.resize(num_shader_bones);
 
-  memcpy(&bone_transforms_[0], bone_transforms,
-         num_bones * sizeof(bone_transforms_[0]));
+  memcpy(&default_bone_transform_inverses_[0], bone_transforms,
+         num_bones * sizeof(default_bone_transform_inverses_[0]));
   memcpy(&bone_parents_[0], bone_parents, num_bones * sizeof(bone_parents_[0]));
   memcpy(&shader_bone_indices_[0], shader_bone_indices,
          num_shader_bones * sizeof(shader_bone_indices_[0]));
@@ -219,23 +242,6 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
     bone_names_.resize(num_bones);
     for (size_t i = 0; i < num_bones; ++i) {
       bone_names_[i] = bone_names[i];
-    }
-  }
-
-  // Record the global version of the transforms, so we can still display
-  // the mesh, even if it's not animated.
-  static const uint8_t kInvalidBoneIdx = 0xFF;
-  delete[] bone_global_transforms_;
-  bone_global_transforms_ = new mathfu::AffineTransform[num_bones];
-  for (size_t i = 0; i < num_bones; ++i) {
-    const size_t parent_idx = bone_parents[i];
-    if (parent_idx == kInvalidBoneIdx) {
-      bone_global_transforms_[i] = bone_transforms[i];
-    } else {
-      assert(i > parent_idx);
-      bone_global_transforms_[i] = mat4::ToAffineTransform(
-          mat4::FromAffineTransform(bone_global_transforms_[parent_idx]) *
-          mat4::FromAffineTransform(bone_transforms[i]));
     }
   }
 }
@@ -289,9 +295,20 @@ void Mesh::RenderArray(Primitive primitive, int index_count,
   SetAttributes(0, format, vertex_size,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-  auto gl_primitive = primitive == kLines ? GL_LINES : GL_TRIANGLES;
+  auto gl_primitive = GetGlPrimitiveType(primitive);
   GL_CALL(
       glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT, indices));
+  UnSetAttributes(format);
+}
+
+void Mesh::RenderArray(Primitive primitive, int vertex_count,
+                       const Attribute *format, int vertex_size,
+                       const void *vertices) {
+  SetAttributes(0, format, vertex_size,
+                reinterpret_cast<const char *>(vertices));
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+  auto gl_primitive = GetGlPrimitiveType(primitive);
+  GL_CALL(glDrawArrays(gl_primitive, 0, vertex_count));
   UnSetAttributes(format);
 }
 
@@ -371,8 +388,19 @@ void Mesh::GatherShaderTransforms(
     const mathfu::AffineTransform *bone_transforms,
     mathfu::AffineTransform *shader_transforms) const {
   for (size_t i = 0; i < shader_bone_indices_.size(); ++i) {
-    shader_transforms[i] = bone_transforms[shader_bone_indices_[i]];
+    const int bone_idx = shader_bone_indices_[i];
+    shader_transforms[i] = mat4::ToAffineTransform(
+        mat4::FromAffineTransform(bone_transforms[bone_idx]) *
+        mat4::FromAffineTransform(default_bone_transform_inverses_[bone_idx]));
   }
+}
+
+size_t Mesh::CalculateTotalNumberOfIndices() const {
+  int total = 0;
+  for (size_t i = 0; i < indices_.size(); ++i) {
+    total += indices_[i].count;
+  }
+  return static_cast<size_t>(total);
 }
 
 }  // namespace fplbase

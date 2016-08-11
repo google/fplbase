@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "precompiled.h"  // NOLINT
+
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
@@ -41,20 +42,17 @@ Renderer *Renderer::the_renderer_ = nullptr;
   name = data_function_union_##name.function;
 
 Renderer::Renderer()
-    : model_view_projection_(mat4::Identity()),
-      model_(mat4::Identity()),
-      color_(mathfu::kOnes4f),
-      light_pos_(mathfu::kZeros3f),
-      camera_pos_(mathfu::kZeros3f),
-      bone_transforms_(nullptr),
-      num_bones_(0),
+    : time_(0),
+      window_size_(vec2i(800, 600)),  // Overwritten elsewhere.
+      default_render_context_(nullptr),
 #ifdef FPL_BASE_RENDERER_BACKEND_SDL
       window_(nullptr),
       context_(nullptr),
 #endif  // FPL_BASE_RENDERER_BACKEND_SDL
-      blend_mode_(kBlendModeOff),
       feature_level_(kFeatureLevel20),
       supports_texture_format_(-1),
+      supports_texture_npot_(false),
+      force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
       version_(&Version()) {
@@ -64,9 +62,7 @@ Renderer::Renderer()
 
 #ifndef FPL_BASE_RENDERER_BACKEND_SDL
 
-Renderer::~Renderer() {
-  the_renderer_ = nullptr;
-}
+Renderer::~Renderer() { the_renderer_ = nullptr; }
 
 // When building without SDL we assume the window and rendering context have
 // already been created prior to calling initialize.
@@ -76,7 +72,15 @@ bool Renderer::Initialize(const vec2i & /*window_size*/,
 #define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, wglGetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
-#endif
+#endif  // defined(_WIN32)
+
+#ifdef __ANDROID__
+      const int version = AndroidGetContextClientVersion();
+  if (version >= 3) {
+    feature_level_ = kFeatureLevel30;
+    AndroidInitGl3Functions();
+  }
+#endif  // defined(__ANDROID__)
 
   return InitializeRenderingState();
 }
@@ -158,12 +162,7 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #ifdef PLATFORM_MOBILE
   if (context_) {
 #ifdef __ANDROID__
-#if __ANDROID_API__ < 18
-    // Get all function pointers.
-    // Using this rather than GLES3/gl3.h directly means we can still
-    // compile on older SDKs and run on older devices too.
-    gl3stubInit();
-#endif
+    AndroidInitGl3Functions();
 #endif
   } else {
     // Failed to get ES 3.0 context, let's try 2.0.
@@ -194,9 +193,15 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #undef GLEXT
 #endif
 
+      default_render_context_ = new RenderContext();
+
   // Non-SDL-specific initialization continues here:
   return InitializeRenderingState();
 }
+
+void Renderer::BeginRendering(RenderContext *) {}
+
+void Renderer::EndRendering(RenderContext *) {}
 
 void Renderer::AdvanceFrame(bool minimized, double time) {
   time_ = time;
@@ -233,10 +238,16 @@ bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;
 }
 
+bool Renderer::SupportsTextureNpot() const { return supports_texture_npot_; }
+
 bool Renderer::InitializeRenderingState() {
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
   auto HasGLExt = [&exts](const char *ext) -> bool {
+    // TODO(b/28761934): Consider supporting GL3.0 version.
+    if (exts == nullptr) {
+      return false;
+    }
     auto pos = strstr(exts, ext);
     return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
   };
@@ -245,8 +256,13 @@ bool Renderer::InitializeRenderingState() {
   if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
     supports_texture_format_ &= ~(1 << kFormatASTC);
   }
+  // Check for Non Power of 2 (NPOT) extension.
+  if (HasGLExt("GL_ARB_texture_non_power_of_two") ||
+      HasGLExt("GL_OES_texture_npot")) {
+    supports_texture_npot_ = true;
+  }
 
-  // Check for ETC2:
+// Check for ETC2:
 #ifdef PLATFORM_MOBILE
   if (feature_level_ < kFeatureLevel30) {
 #else
@@ -257,8 +273,7 @@ bool Renderer::InitializeRenderingState() {
 
 #ifndef PLATFORM_MOBILE
   if (!HasGLExt("GL_ARB_vertex_buffer_object") ||
-      !HasGLExt("GL_ARB_multitexture") ||
-      !HasGLExt("GL_ARB_vertex_program") ||
+      !HasGLExt("GL_ARB_multitexture") || !HasGLExt("GL_ARB_vertex_program") ||
       !HasGLExt("GL_ARB_fragment_program")) {
     last_error_ = "missing GL extensions";
     return false;
@@ -279,12 +294,14 @@ bool Renderer::InitializeRenderingState() {
   return true;
 }
 
-void Renderer::ClearFrameBuffer(const vec4 &color) {
+void Renderer::ClearFrameBuffer(const vec4 &color, RenderContext *) {
   GL_CALL(glClearColor(color.x(), color.y(), color.z(), color.w()));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
-void Renderer::ClearDepthBuffer() { GL_CALL(glClear(GL_DEPTH_BUFFER_BIT)); }
+void Renderer::ClearDepthBuffer(RenderContext *) {
+  GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
+}
 
 GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
                                const GLchar *source) {
@@ -329,14 +346,18 @@ Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
   if (vs) {
     auto ps = CompileShader(false, program, ps_source);
     if (ps) {
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributePosition, "aPosition"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeNormal, "aNormal"));
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributeTangent, "aTangent"));
-      GL_CALL(
-          glBindAttribLocation(program, Mesh::kAttributeTexCoord, "aTexCoord"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor, "aColor"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributePosition,
+                                   "aPosition"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeNormal,
+                                   "aNormal"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTangent,
+                                   "aTangent"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoord,
+                                   "aTexCoord"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoordAlt,
+                                   "aTexCoordAlt"));
+      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor,
+                                   "aColor"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices,
                                    "aBoneIndices"));
       GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights,
@@ -379,25 +400,30 @@ void Renderer::RecompileShader(const char *vs_source, const char *ps_source,
   shader = CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
-void Renderer::DepthTest(bool on) {
+void Renderer::DepthTest(bool on, RenderContext *render_context) {
   if (on) {
     GL_CALL(glEnable(GL_DEPTH_TEST));
+    render_context->depth_test = true;
   } else {
     GL_CALL(glDisable(GL_DEPTH_TEST));
+    render_context->depth_test = false;
   }
 }
 
-void Renderer::SetBlendMode(BlendMode blend_mode) {
-  SetBlendMode(blend_mode, 0.5f);
+void Renderer::SetBlendMode(BlendMode blend_mode,
+                            RenderContext *render_context) {
+  SetBlendMode(blend_mode, 0.5f, render_context);
 }
 
-void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
-  if (blend_mode == blend_mode_) return;
+void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
+                            RenderContext *render_context) {
+  (void)amount;
+  if (blend_mode == render_context->blend_mode_) return;
 
   if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
 
   // Disable current blend mode.
-  switch (blend_mode_) {
+  switch (render_context->blend_mode_) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
@@ -448,22 +474,22 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   }
 
   // Remember new mode as the current mode.
-  blend_mode_ = blend_mode;
+  render_context->blend_mode_ = blend_mode;
 }
 
-void Renderer::SetCulling(CullingMode mode) {
-  if (mode == kNoCulling) {
+void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
+  if (mode == kCullingModeNone) {
     GL_CALL(glDisable(GL_CULL_FACE));
   } else {
     GL_CALL(glEnable(GL_CULL_FACE));
     switch (mode) {
-      case kCullBack:
+      case kCullingModeBack:
         GL_CALL(glCullFace(GL_BACK));
         break;
-      case kCullFront:
+      case kCullingModeFront:
         GL_CALL(glCullFace(GL_FRONT));
         break;
-      case kCullFrontAndBack:
+      case kCullingModeFrontAndBack:
         GL_CALL(glCullFace(GL_FRONT_AND_BACK));
         break;
       default:
@@ -471,6 +497,7 @@ void Renderer::SetCulling(CullingMode mode) {
         assert(false);
     }
   }
+  render_context->cull_mode_ = mode;
 }
 
 vec2i Renderer::GetViewportSize() {
@@ -485,7 +512,7 @@ vec2i Renderer::GetViewportSize() {
 #endif
 }
 
-void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
+void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {
   glEnable(GL_SCISSOR_TEST);
   auto viewport_size = GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
@@ -499,7 +526,7 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
             static_cast<GLsizei>(scaled_size.y()));
 }
 
-void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
+void Renderer::ScissorOff(RenderContext *) { glDisable(GL_SCISSOR_TEST); }
 
 }  // namespace fplbase
 

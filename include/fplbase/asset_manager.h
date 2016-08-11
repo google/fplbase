@@ -57,7 +57,12 @@ class AssetManager {
   AssetManager(Renderer &renderer);
 
   /// @brief AssetManager destructor that purges all assets.
-  ~AssetManager() { ClearAllAssets(); }
+  ~AssetManager() {
+    // Stop loading before clearing assets, since any pending assets need to be
+    // valid when loader calls Finalize().
+    loader_.Stop();
+    ClearAllAssets();
+  }
 
   /// @brief Returns a previously loaded shader object.
   ///
@@ -77,11 +82,11 @@ class AssetManager {
 
   /// @brief Loads and returns a shader object with pre-defined identifiers.
   ///
-  /// Works like LoadShader (above), but takes in a set of #define variables.
+  /// Works like LoadShader (above), but takes in a set of \#define variables.
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to #define, or
-  /// nullptr if there are no initial #define variables.
+  /// @param defines A null-terminated array of variables to \#define, or
+  /// nullptr if there are no initial \#define variables.
   /// @note An example of how to create such an array:
   ///       static const char *kMyDefines[] = {
   ///         USE_SHADOWS,
@@ -90,7 +95,7 @@ class AssetManager {
   ///         nullptr
   ///       };
   /// @return Returns the loaded shader, or nullptr if there was an error.
-  Shader *LoadShader(const char *basename, const char **defines);
+  Shader *LoadShader(const char *basename, const char * const *defines);
 
   /// @brief Force a shader to reload.
   ///
@@ -99,12 +104,12 @@ class AssetManager {
   /// Otherwise works like LoadShader (above).
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to #define, or
-  /// nullptr if there are no initial #define variables.
+  /// @param defines A null-terminated array of variables to \#define, or
+  /// nullptr if there are no initial \#define variables.
   /// @return Returns the loaded shader, or nullptr if there was an error.
   /// @note If this function doesn't return nullptr, the pointer will be equal
   /// to any previous (Re)LoadShader calls.
-  Shader *ReloadShader(const char *basename, const char **defines);
+  Shader *ReloadShader(const char *basename, const char * const *defines);
 
   /// @brief Load a shader built by shader_pipeline.
   ///
@@ -141,12 +146,12 @@ class AssetManager {
   ///
   /// @param filename The name of the texture to load.
   /// @param format The texture format, defaults to kFormatAuto.
-  /// @param mipmaps If mipmaps should be used, defaults to true.
-  /// @param async Whether to load the texture asynchronously.
+  /// @param flags The texture flags, by default loads textures async.
   /// @return Returns an unloaded texture object. If not async, may also
   ///         return null to signal and error.
   Texture *LoadTexture(const char *filename, TextureFormat format = kFormatAuto,
-                       bool mipmaps = true, bool async = true);
+                       TextureFlags flags = kTextureFlagsUseMipMaps |
+                                            kTextureFlagsLoadAsync);
 
   /// @brief Start loading all previously queued textures.
   ///
@@ -235,9 +240,16 @@ class AssetManager {
   /// Loads a texture atlas, which is a compiled FlatBuffer file containing a
   /// texture path and subtexture rectangles.
   ///
+  /// @param filename Name of the texture atlas file to load.
+  /// @param format The texture format, defaults to kFormatAuto.
+  /// @param flags Texture flags: by default load async.
+  ///
   /// @return If this returns nullptr, the error can be found in
   /// Renderer::last_error().
-  TextureAtlas *LoadTextureAtlas(const char *filename);
+  TextureAtlas *LoadTextureAtlas(const char *filename,
+                                 TextureFormat format = kFormatAuto,
+                                 TextureFlags flags = kTextureFlagsUseMipMaps |
+                                                      kTextureFlagsLoadAsync);
 
   /// @brief Delete a texture atlas and remove it from the asset manager.
   ///
@@ -288,7 +300,7 @@ class AssetManager {
   void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
  private:
-   Shader *LoadShaderHelper(const char *basename, const char **defines,
+   Shader *LoadShaderHelper(const char *basename, const char * const *defines,
                             bool should_reload);
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 

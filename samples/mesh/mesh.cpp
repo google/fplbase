@@ -39,15 +39,23 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   (void)result;
   assert(result);
 
-  fplbase::AssetManager assetMgr(renderer);
-  fplbase::Shader *shader = assetMgr.LoadShader("mesh");
+  fplbase::AssetManager asset_manager(renderer);
+  fplbase::Shader *shader = asset_manager.LoadShader("mesh");
   assert(shader);
 
-  fplbase::Mesh *mesh = assetMgr.LoadMesh("meshes/sushi_shrimp.fplmesh");
+  fplbase::Mesh *mesh = asset_manager.LoadMesh("meshes/sushi_shrimp.fplmesh");
   assert(mesh);
 
-  assetMgr.StartLoadingTextures();
-  while (!assetMgr.TryFinalize()) {
+  // Also load a cubemap background.
+  auto cubetex =
+      asset_manager.LoadTexture("cubemap.ktx", fplbase::kFormatAuto,
+                                fplbase::kTextureFlagsLoadAsync |
+                                    fplbase::kTextureFlagsIsCubeMap);  // ETC2
+  assert(cubetex);
+  mesh->GetMaterial(0)->textures().push_back(cubetex);
+
+  asset_manager.StartLoadingTextures();
+  while (!asset_manager.TryFinalize()) {
   }
 
   while (!(input.exit_requested() ||
@@ -73,7 +81,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     shader->Set(renderer);
     mesh->Render(renderer);
   }
-  assetMgr.ClearAllAssets();
+  asset_manager.ClearAllAssets();
   renderer.ShutDown();
   return 0;
 }

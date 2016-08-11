@@ -40,6 +40,7 @@ using mathfu::vec4i;
 
 namespace fplbase {
 
+#ifdef FPL_BASE_BACKEND_SDL
 // Quick hack for HW scaler setting
 static vec2i g_android_scaler_resolution;
 
@@ -95,7 +96,6 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   return surface;
 }
 
-#ifdef FPL_BASE_BACKEND_SDL
 void AndroidPreCreateWindow() {
   // Apply scaler setting prior creating surface
   if (g_android_scaler_resolution.x() && g_android_scaler_resolution.y()) {
@@ -110,5 +110,19 @@ void AndroidPreCreateWindow() {
   }
 }
 #endif  // FPL_BASE_BACKEND_SDL
+
+int AndroidGetContextClientVersion() {
+  EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  EGLContext context = eglGetCurrentContext();
+  EGLint value = 0;
+  eglQueryContext(display, context, EGL_CONTEXT_CLIENT_VERSION, &value);
+  return value;
+}
+
+void AndroidInitGl3Functions() {
+#if __ANDROID_API__ < 18
+    gl3stubInit();
+#endif
+}
 
 }  // namespace fplbase

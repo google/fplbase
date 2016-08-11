@@ -128,7 +128,7 @@ GLEXTS
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.
 // This logs GL error when LOG_GL_ERRORS below is defined.
-#if defined(_DEBUG) || DEBUG == 1
+#if defined(_DEBUG) || DEBUG == 1 || !defined(NDEBUG)
 #define LOG_GL_ERRORS
 #endif
 

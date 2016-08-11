@@ -48,7 +48,14 @@ FPLBASE_COMMON_LIBRARIES := \
   libwebp \
   libmathfu
 
-FPLBASE_COMMON_LDLIBS := -lGLESv1_CM -lGLESv2 -llog -lz -lEGL -landroid
+FPLBASE_COMMON_LDLIBS := \
+  -lGLESv1_CM \
+  -lGLESv2 \
+  -llog \
+  -lz \
+  -lEGL \
+  -landroid \
+  -latomic
 
 FPLBASE_SCHEMA_DIR := $(FPLBASE_DIR)/schemas
 FPLBASE_SCHEMA_INCLUDE_DIRS :=
@@ -70,7 +77,8 @@ FPLBASE_COMMON_INCLUDES := \
   $(FPLBASE_DIR)/src \
   $(DEPENDENCIES_FLATBUFFERS_DIR)/include \
   $(DEPENDENCIES_FPLUTIL_DIR)/include \
-  $(DEPENDENCIES_WEBP_DIR)/src
+  $(DEPENDENCIES_WEBP_DIR)/src \
+  $(DEPENDENCIES_STB_DIR)
 
 
 include $(CLEAR_VARS)

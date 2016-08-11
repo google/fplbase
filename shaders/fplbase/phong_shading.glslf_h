@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PHONG_SHADING
+
 // Blinn-Phong shading model (aka modified Phong reflection model)
 //
 // Diffuse:
@@ -90,3 +92,5 @@ lowp vec4 CalculateSpecular(vec3 current_position, vec3 normal_vector,
 vec3 CalculateLightDirection(vec3 current_position, vec3 light_pos) {
   return normalize(light_pos - current_position);
 }
+
+#endif  // PHONG_SHADING

@@ -42,10 +42,11 @@ option(fplbase_build_tests "Build tests for this project." ${fplbase_standalone_
 
 # Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
-option(fplbase_use_external_sdl2 "Use external SDL library." OFF)
-set(external_sdl2_include_dir "" CACHE PATH "Absolute path to directory containing external SDL includes.")
-set(external_sdl2_libraries "" CACHE PATH "List of semicolon separated absolute path to SDL libraries.")
-option(fplbase_use_host_flatc "Use host machine flatc." OFF)
+
+# We're on iOS if the system root is set to "iphoneos" or some variant.
+if("${CMAKE_OSX_SYSROOT}" MATCHES "iphoneos")
+  set(IOS TRUE CACHE BOOL "Target platform is iOS.")
+endif()
 
 # Temporary files (like object files) created while compiling projects.
 set(tmp_dir ${CMAKE_CURRENT_BINARY_DIR}/obj)
@@ -73,10 +74,35 @@ set_common_build_variables()
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
     CACHE PATH "Directory containing the Webp cmake project.")
 
-# Detect clang
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR
-   CMAKE_CXX_COMPILER_ID MATCHES ".*clang")
-  set(CMAKE_COMPILER_IS_CLANGXX 1)
+if(IOS)
+  # iOS builds flatc and SDL externally. Disable building them in the xcodeproj.
+  set(fplbase_external_flatc_build_dir "${tmp_dir}/flatbuffers_external")
+  set(fplbase_external_flatc "${fplbase_external_flatc_build_dir}/bin/flatc")
+  set(FLATBUFFERS_FLATC_EXECUTABLE ${fplbase_external_flatc} CACHE STRING "")
+  set(FLATBUFFERS_BUILD_FLATC OFF CACHE BOOL "")
+
+  # Directory and target names for external flatc and SDL.
+  set(fplbase_external_sdl_build_dir "${tmp_dir}/sdl_external")
+  set(fplbase_external_sdl_lib_simulator_dir
+      "${fplbase_external_sdl_build_dir}/lib/iphonesimulator")
+  set(fplbase_external_sdl_lib_ios_dir
+      "${fplbase_external_sdl_build_dir}/lib/iphoneos")
+  set(fplbase_external_sdl_lib_simulator
+      "${fplbase_external_sdl_lib_simulator_dir}/libSDL2.a")
+  set(fplbase_external_sdl_lib_ios
+      "${fplbase_external_sdl_lib_ios_dir}/libSDL2.a")
+  set(fplbase_external_sdl_xcode_proj
+      "${dependencies_sdl_dir}/Xcode-iOS/SDL/SDL.xcodeproj")
+  set(fplbase_use_external_sdl ON)
+endif()
+
+# Find or Include FlatBuffers in this project.
+set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
+if(NOT TARGET flatc)
+  add_subdirectory("${dependencies_flatbuffers_dir}" ${tmp_dir}/flatbuffers)
+endif()
+if(fplbase_only_flatc)
+  return()
 endif()
 
 # Include MathFu in this project with test and benchmark builds disabled.
@@ -84,7 +110,7 @@ set(mathfu_build_benchmarks OFF CACHE BOOL "")
 set(mathfu_build_tests OFF CACHE BOOL "")
 add_subdirectory(${dependencies_mathfu_dir} ${tmp_dir}/mathfu)
 
-if(NOT fplbase_use_external_sdl2)
+if(NOT fplbase_use_external_sdl)
   # Include SDL in this project while working around SDL requirement of out of
   # tree builds.
   set(SDL_SHARED OFF CACHE BOOL "Build a shared version of the library")
@@ -103,10 +129,18 @@ if(NOT fplbase_use_external_sdl2)
     set(SDL_AUDIO_DRIVER_COREAUDIO 1)
   endif(APPLE)
 
-  if(NOT fplbase_only_flatc AND NOT TARGET SDL2-static)
+  if(NOT TARGET SDL2-static)
     set_compiler_flags_for_external_libraries()
     # SDL appends EXTRA_CFLAGS to its CMAKE_CFLAGS
     list(APPEND EXTRA_CFLAGS ${CMAKE_C_FLAGS})
+
+    # Fix bug in SDL CMakeLists.txt that prevents SDL from being built
+    # out-of-tree if the calling project is being built in-tree.
+    # SDL has to be built out-of-tree, but it checks the global variables
+    # (e.g. CMAKE_SOURCE_DIR) instead of the current variables
+    # (e.g. CMAKE_CURRENT_SOURCE_DIR), so its check is too strict.
+    # We hack the SDL CMakeLists.txt file until it is properly fixed upstream.
+    file(COPY cmake/sdl/CMakeLists.txt DESTINATION ${dependencies_sdl_dir})
     add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
     restore_compiler_flags()
   endif()
@@ -116,25 +150,12 @@ endif()
 # Include Webp in this project, and force build in release mode for speed.
 set(original_build_type ${CMAKE_BUILD_TYPE})
 set(CMAKE_BUILD_TYPE Release)
-if(NOT fplbase_only_flatc AND NOT TARGET webp)
+if(NOT TARGET webp)
   set_compiler_flags_for_external_libraries()
   add_subdirectory("${dependencies_webp_cmake_dir}" ${tmp_dir}/webp)
   restore_compiler_flags()
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
-
-# Find or Include FlatBuffers in this project.
-set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
-
-if(fplbase_use_host_flatc AND NOT fplbase_only_flatc)
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-      "${dependencies_flatbuffers_cmake_dir}")
-  find_package(FlatBuffers REQUIRED)
-endif()
-
-if(NOT TARGET flatc AND NOT FLATBUFFERS_FLATC_EXECUTABLE)
-  add_subdirectory("${dependencies_flatbuffers_dir}" ${tmp_dir}/flatbuffers)
-endif()
 
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
@@ -166,7 +187,6 @@ if(APPLE)
     SET(OPENGL_LIBRARIES "-framework OpenGL")
   endif()
 endif()
-
 
 set(fplbase_common_SRCS
   include/fplbase/asset.h
@@ -225,23 +245,23 @@ include_directories(${dependencies_webp_distr_dir}/include)
 include_directories(${dependencies_webp_distr_dir}/src)
 
 # SDL includes.
-if (NOT fplbase_use_external_sdl2)
-  include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+if (fplbase_use_external_sdl)
+  include_directories(${dependencies_sdl_dir}/include)
+  set(SDL_LIBRARIES
+      "${fplbase_external_sdl_lib_simulator};${fplbase_external_sdl_lib_ios}")
 else()
-  include_directories(${external_sdl2_include_dir})
-endif()
-
-if (NOT fplbase_use_external_sdl2)
-  set (SDL_LIBRARIES SDL2-static)
+  include_directories(${SDL2_BINARY_DIR}/include ${SDL2_SOURCE_DIR}/include)
+  set(SDL_LIBRARIES SDL2-static)
   if(WIN32)
     add_definitions(-D_USE_MATH_DEFINES)
     set(OPENGL_LIBRARIES opengl32)
     set(SDL_LIBRARIES SDL2main ${SDL_LIBRARIES})
     link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
   endif()
-else()
-  set(SDL_LIBRARIES ${external_sdl2_libraries})
 endif()
+
+# STB includes.
+include_directories(${dependencies_stb_dir})
 
 # Configure the specified target with the common dependencies and flags to
 # build fplbase.
@@ -275,100 +295,80 @@ if(fplbase_build_library)
     fplbase_common_config(fplbase_stdlib)
     target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
   endif()
-endif()
 
-if(fplbase_build_mesh_pipeline)
-  # Autodesk's FBX SDK must be installed to build the pipeline.
-  set(fbx_sdk_dir $ENV{FBX_SDK})
-  if("${fbx_sdk_dir}" STREQUAL "")
-    message(FATAL_ERROR ${fbx_sdk_msg})
-  endif()
+  # Setup iOS custom build target.
+  if(IOS)
+    # These commands are executed from within Xcode, which has its own set
+    # of environment variables. We use "env -i" to clear the Xcode environment
+    # variables, and manually keep the PATH to regular bash path.
+    # If we didn't do this, we'd end up building flatc for iOS instead of OSX,
+    # since the default Xcode environment variables target iOS when you're in
+    # an iOS project.
+    set(fplbase_command_line_path "$ENV{PATH}")
 
-  # We check-in the mesh_pipeline executible, so we need to output it to
-  # a platform-specific location.
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
-      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_SYSTEM_NAME})
+    # Build flatc for OSX.
+    # Note that the WORKING_DIRECTORY option doesn't create the directory so
+    # we need to manually use `mkdir` and `cd` below.
+    # The -B and -H options are required because there may already be a cmake
+    # cached in the fplbase directory, so `cmake [fplbase]` will trigger a
+    # recreation of the existing cmake project, instead of creating a new one
+    # for flatc.
+    add_custom_command(
+      OUTPUT ${fplbase_external_flatc}
+      COMMAND (mkdir -p ${fplbase_external_flatc_build_dir} &&
+               cd ${fplbase_external_flatc_build_dir} &&
+               env -i PATH=${fplbase_command_line_path} cmake
+                     -Dfplbase_only_flatc=ON
+                     -B${fplbase_external_flatc_build_dir}
+                     -H${CMAKE_CURRENT_LIST_DIR} &&
+               env -i PATH=${fplbase_command_line_path} make)
+      COMMENT "Building flatc (the FlatBuffer schema compiler)")
 
-  # Search for the FBX library.
-  # Visual Studio 64 bit option can be specified with
-  # `cmake -G "Visual Studio 11 Win64"`
-  if(CMAKE_CL_64)
-    set(fbs_sdk_subdir "x64")
-  else()
-    set(fbs_sdk_subdir "x86")
-  endif()
+    # Build SDL libraries for the iOS simulator.
+    # SDL does not support iOS in its cmake files, so we have to build it
+    # manually from its Xcode project.
+    add_custom_command(
+      OUTPUT ${fplbase_external_sdl_lib_simulator}
+      COMMAND
+          (mkdir -p ${fplbase_external_sdl_build_dir} &&
+           cd ${fplbase_external_sdl_build_dir} &&
+           env -i PATH=${fplbase_command_line_path}  xcodebuild
+             -project ${fplbase_external_sdl_xcode_proj}
+             -alltargets
+             -sdk iphonesimulator
+             ARCHS='i386 x86_64'
+             CONFIGURATION_BUILD_DIR=${fplbase_external_sdl_lib_simulator_dir}
+             OBJROOT=${fplbase_external_sdl_build_dir}/obj
+             SYMROOT=${fplbase_external_sdl_build_dir}/sym)
+      COMMENT "Building SDL for the iOS simulator")
 
-  # Prefer the static library '.a' over the sharedlibrary '.so'.
-  find_library(fbx_sdk_lib_release
-    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
-          ${fbx_sdk_dir}/lib/clang/release
-          ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/release)
+    # Build SDL libraries for iOS devices.
+    add_custom_command(
+      OUTPUT ${fplbase_external_sdl_lib_ios}
+      COMMAND
+          (mkdir -p ${fplbase_external_sdl_build_dir} &&
+           cd ${fplbase_external_sdl_build_dir} &&
+           env -i PATH=${fplbase_command_line_path} xcodebuild
+             -project ${fplbase_external_sdl_xcode_proj}
+             -alltargets
+             -sdk iphoneos
+             ARCHS='arm64 armv7 armv7s'
+             CONFIGURATION_BUILD_DIR=${fplbase_external_sdl_lib_ios_dir}
+             OBJROOT=${fplbase_external_sdl_build_dir}/obj
+             SYMROOT=${fplbase_external_sdl_build_dir}/sym)
+      COMMENT "Building SDL for iOS devices")
 
-  find_library(fbx_sdk_lib_debug
-    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/debug
-          ${fbx_sdk_dir}/lib/clang/debug
-          ${fbx_sdk_dir}/lib/vs2008/${fbs_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2010/${fbs_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2012/${fbs_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2013/${fbs_sdk_subdir}/debug)
+    # Add a target so that we can run the custom commands before the code build.
+    add_custom_target(
+      fplbase_ios_prebuilds
+      DEPENDS ${fplbase_external_flatc}
+              ${fplbase_external_sdl_lib_simulator}
+              ${fplbase_external_sdl_lib_ios})
 
-  set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
-
-  # Linux and Mac require these libs too.
-  if(NOT MSVC)
-    set(fbx_sdk_extra_libs pthread dl)
-  endif()
-
-  # Suppress deprecation of fopen.
-  if(MSVC)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  endif()
-
-  # We use file_util.h from fplutil.
-  set(fplutil_build_tests OFF)
-  add_subdirectory("${dependencies_fplutil_dir}/libfplutil"
-                   ${tmp_dir}/fplutil)
-
-  # Source files for the pipeline.
-  set(fplbase_mesh_pipeline_SRCS mesh_pipeline/mesh_pipeline.cpp)
-
-  # Add the location of #include <fbxsdk.h>.
-  include_directories(${fbx_sdk_dir}/include)
-
-  # These warnings come from the FBX SDK, and they can't be suppressed
-  # by pragmas around #include <fbxsdk.h>, so suppress them here.
-  if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS
-        "-std=c++0x -Wno-literal-suffix -Wno-comment ${C_FLAGS_WARNINGS}")
-  endif()
-
-  # Needed by the FBX SDK when we call some file manipulation functions.
-  if(APPLE)
-    set(CMAKE_CXX_LINK_FLAGS "-framework Carbon")
-  endif()
-
-  # Statically link the C runtime .so files to make binary more portable.
-  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    set(CMAKE_CXX_LINK_FLAGS "-static")
-  endif()
-
-  # Create the executable for mesh_pipeline.
-  add_executable(mesh_pipeline ${fplbase_mesh_pipeline_SRCS})
-
-  # Link the executable with the FBX SDK and the static libraries that the
-  # FBX SDK needs.
-  target_link_libraries(mesh_pipeline
-                        ${fbx_sdk_lib}
-                        ${fbx_sdk_extra_libs}
-                        fplutil)
-
-  # Additional flags for the target.
-  fplbase_common_config(mesh_pipeline)
+    add_dependencies(fplbase fplbase_ios_prebuilds)
+    add_dependencies(fplbase_stdlib fplbase_ios_prebuilds)
+    add_dependencies(fplbase_generated_includes fplbase_ios_prebuilds)
+  endif()  # IOS
 endif()
 
 if(fplbase_build_shader_pipeline)
@@ -389,3 +389,8 @@ endif()
 if(fplbase_build_tests)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
 endif()
+
+if(fplbase_build_mesh_pipeline)
+  add_subdirectory(mesh_pipeline)
+endif()
+

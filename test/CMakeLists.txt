@@ -36,6 +36,10 @@ endif()
 # libraries to use the new `external/googletest` path.
 set(dependencies_gtest_dir ${third_party_root}/googletest)
 
+if(EXISTS ${dependencies_gtest_dir}/googletest)
+  set(dependencies_gtest_dir ${third_party_root}/googletest/googletest)
+endif()
+
 # gtest seems to prefer the non-DLL runtime on Windows, which conflicts with
 # everything else.
 option(
@@ -49,8 +53,8 @@ if(NOT TARGET gtest)
 endif()
 
 # Set some variables describing file locations.
-set(GUNIT_INCDIR "${dependencies_gtest_dir}/googletest/include")
-set(GTEST_LIBDIR "${dependencies_gtest_dir}/googletest")
+set(GUNIT_INCDIR "${dependencies_gtest_dir}/include")
+set(GTEST_LIBDIR "${dependencies_gtest_dir}")
 
 # This is the directory into which the executables are built.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../bin")
@@ -131,3 +135,4 @@ function(test_executable name)
 endfunction()
 
 test_executable(preprocessor)
+test_executable(utils)

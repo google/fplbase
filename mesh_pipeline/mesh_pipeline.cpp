@@ -12,44 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Suppress warnings in external header.
-#ifdef _MSC_VER
-#pragma warning(push)            // for Visual Studio
-#pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
-#endif                           // _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Wunused-value"
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#include <fbxsdk.h>
-#pragma GCC diagnostic pop
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif  // _MSC_VER
-
 #include <assert.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <cfloat>
 #include <fstream>
 #include <functional>
 #include <sstream>
-#include <stdarg.h>
-#include <stdio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "common_generated.h"
+#include "fbx_common/fbx_common.h"
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
 #include "fplutil/string_utils.h"
 #include "materials_generated.h"
+#include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 #include "mesh_generated.h"
 
 namespace fplbase {
 
+using fplutil::AxisSystem;
+using fplutil::IndexOfName;
+using fplutil::Logger;
+using fplutil::LogLevel;
+using fplutil::LogOptions;
+using fplutil::kLogVerbose;
+using fplutil::kLogInfo;
+using fplutil::kLogImportant;
+using fplutil::kLogWarning;
+using fplutil::kLogError;
 using mathfu::vec2;
 using mathfu::vec3;
 using mathfu::vec4;
@@ -57,45 +52,37 @@ using mathfu::mat4;
 using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
+using mathfu::kZeros2f;
+using mathfu::kZeros3f;
+using mathfu::kZeros4f;
 
 typedef uint8_t BoneIndex;
 
-enum AxisSystem {
-  kInvalidAxisSystem = -2,
-  kUnspecifiedAxisSystem = -1,
+enum VertexAttribute {
+  kVertexAttribute_Position,
+  kVertexAttribute_Normal,
+  kVertexAttribute_Tangent,
+  kVertexAttribute_Uv,
+  kVertexAttribute_UvAlt,
+  kVertexAttribute_Color,
+  kVertexAttribute_Bone,
 
-  kXUp_PositiveYFront_PositiveZLeft = 0,
-  kXUp_PositiveYFront_NegativeZLeft,
-  kXUp_NegativeYFront_PositiveZLeft,
-  kXUp_NegativeYFront_NegativeZLeft,
-  kXUp_PositiveZFront_PositiveYLeft,
-  kXUp_PositiveZFront_NegativeYLeft,
-  kXUp_NegativeZFront_PositiveYLeft,
-  kXUp_NegativeZFront_NegativeYLeft,
-  kLastXUpAxisSystem,
+  kVertexAttribute_Count,  // must come at end
 
-  kYUp_PositiveXFront_PositiveZLeft = kLastXUpAxisSystem,
-  kYUp_PositiveXFront_NegativeZLeft,
-  kYUp_NegativeXFront_PositiveZLeft,
-  kYUp_NegativeXFront_NegativeZLeft,
-  kYUp_PositiveZFront_PositiveXLeft,
-  kYUp_PositiveZFront_NegativeXLeft,
-  kYUp_NegativeZFront_PositiveXLeft,
-  kYUp_NegativeZFront_NegativeXLeft,
-  kLastYUpAxisSystem,
+  // Bits for bitmask.
+  kVertexAttributeBit_Position = 1 << kVertexAttribute_Position,
+  kVertexAttributeBit_Normal = 1 << kVertexAttribute_Normal,
+  kVertexAttributeBit_Tangent = 1 << kVertexAttribute_Tangent,
+  kVertexAttributeBit_Uv = 1 << kVertexAttribute_Uv,
+  kVertexAttributeBit_UvAlt = 1 << kVertexAttribute_UvAlt,
+  kVertexAttributeBit_Color = 1 << kVertexAttribute_Color,
+  kVertexAttributeBit_Bone = 1 << kVertexAttribute_Bone,
 
-  kZUp_PositiveXFront_PositiveYLeft = kLastYUpAxisSystem,
-  kZUp_PositiveXFront_NegativeYLeft,
-  kZUp_NegativeXFront_PositiveYLeft,
-  kZUp_NegativeXFront_NegativeYLeft,
-  kZUp_PositiveYFront_PositiveXLeft,
-  kZUp_PositiveYFront_NegativeXLeft,
-  kZUp_NegativeYFront_PositiveXLeft,
-  kZUp_NegativeYFront_NegativeXLeft,
-  kLastZUpAxisSystem,
-
-  kNumAxisSystems = kLastZUpAxisSystem
+  kVertexAttributeBit_AllAttributesInSourceFile = -1,
 };
+
+// Bitwise OR of the kVertexAttributeBits.
+typedef uint32_t VertexAttributeBitmask;
 
 static const char* const kImageExtensions[] = {"jpg", "jpeg", "png", "webp",
                                                "tga"};
@@ -128,96 +115,13 @@ static const char* kTextureProperties[] = {
     FbxSurfaceMaterial::sReflectionFactor,
 };
 
-static const char* kAxisSystemNames[] = {
-    "x+y+z",  // kXUp_PositiveYFront_PositiveZLeft
-    "x+y-z",  // kXUp_PositiveYFront_NegativeZLeft
-    "x-y+z",  // kXUp_NegativeYFront_PositiveZLeft
-    "x-y-z",  // kXUp_NegativeYFront_NegativeZLeft
-    "x+z+y",  // kXUp_PositiveZFront_PositiveYLeft
-    "x+z-y",  // kXUp_PositiveZFront_NegativeYLeft
-    "x-z+y",  // kXUp_NegativeZFront_PositiveYLeft
-    "x-z-y",  // kXUp_NegativeZFront_NegativeYLeft
-    "y+x+z",  // kYUp_PositiveXFront_PositiveZLeft
-    "y+x-z",  // kYUp_PositiveXFront_NegativeZLeft
-    "y-x+z",  // kYUp_NegativeXFront_PositiveZLeft
-    "y-x-z",  // kYUp_NegativeXFront_NegativeZLeft
-    "y+z+x",  // kYUp_PositiveZFront_PositiveXLeft
-    "y+z-x",  // kYUp_PositiveZFront_NegativeXLeft
-    "y-z+x",  // kYUp_NegativeZFront_PositiveXLeft
-    "y-z-x",  // kYUp_NegativeZFront_NegativeXLeft
-    "z+x+y",  // kZUp_PositiveXFront_PositiveYLeft
-    "z+x-y",  // kZUp_PositiveXFront_NegativeYLeft
-    "z-x+y",  // kZUp_NegativeXFront_PositiveYLeft
-    "z-x-y",  // kZUp_NegativeXFront_NegativeYLeft
-    "z+y+x",  // kZUp_PositiveYFront_PositiveXLeft
-    "z+y-x",  // kZUp_PositiveYFront_NegativeXLeft
-    "z-y+x",  // kZUp_NegativeYFront_PositiveXLeft
-    "z-y-x",  // kZUp_NegativeYFront_NegativeXLeft
-    nullptr};
-static_assert(FPL_ARRAYSIZE(kAxisSystemNames) == kNumAxisSystems + 1, "");
-
-// Each log message is given a level of importance.
-// We only output messages that have level >= our current logging level.
-enum LogLevel {
-  kLogVerbose,
-  kLogInfo,
-  kLogImportant,
-  kLogWarning,
-  kLogError,
-  kNumLogLevels
+static const char* kVertexAttributeShortNames[] = {
+    "p - positions",     "n - normals", "t - tangents",     "u - UVs",
+    "v - alternate UVs", "c - colors",  "b - bone indices", nullptr,
 };
-
-// Prefix log messages at this level with this message.
-static const char* kLogPrefix[] = {
-    "",           // kLogVerbose
-    "",           // kLogInfo
-    "",           // kLogImportant
-    "Warning: ",  // kLogWarning
-    "Error: "     // kLogError
-};
-static_assert(FPL_ARRAYSIZE(kLogPrefix) == kNumLogLevels,
-              "kLogPrefix length is incorrect");
-
-static const char* kDistanceUnitNames[] = {"cm",   "m",     "inches",
-                                           "feet", "yards", nullptr};
-
-static const float kDistanceUnitScales[] = {
-    1.0f, 100.0f, 2.54f, 30.48f, 91.44f,
-};
-static_assert(FPL_ARRAYSIZE(kDistanceUnitNames) - 1 ==
-                  FPL_ARRAYSIZE(kDistanceUnitScales),
-              "kDistanceUnitNames and kDistanceUnitScales are not in sync.");
-
-/// @class Logger
-/// @brief Output log messages if they are above an adjustable threshold.
-class Logger {
- public:
-  Logger() : level_(kLogImportant) {}
-
-  void set_level(LogLevel level) { level_ = level; }
-  LogLevel level() const { return level_; }
-
-  /// Output a printf-style message if our current logging level is
-  /// >= `level`.
-  void Log(LogLevel level, const char* format, ...) const {
-    if (level < level_) return;
-
-    // Prefix message with log level, if required.
-    const char* prefix = kLogPrefix[level];
-    if (prefix[0] != '\0') {
-      printf("%s", prefix);
-    }
-
-    // Redirect output to stdout.
-    va_list args;
-    va_start(args, format);
-    vprintf(format, args);
-    va_end(args);
-  }
-
- private:
-  LogLevel level_;
-};
+static_assert(
+    FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
+    "kVertexAttributeShortNames is not in sync with VertexAttribute.");
 
 /// Return the direct index into `element`. If `element` is set up to be indexed
 /// directly, the return value is just `index`. Otherwise, we dereference the
@@ -239,13 +143,14 @@ static T Element(const FbxLayerElementTemplate<T>& element, int index) {
 
 /// Return element[index], accounting for the index array, if it is used.
 template <class T>
-static T ElementFromIndices(const FbxLayerElementTemplate<T>& element,
+static T ElementFromIndices(const FbxLayerElementTemplate<T>* element,
                             int control_index, int vertex_counter) {
+  if (!element) return T();
   const int index =
-      element.GetMappingMode() == FbxGeometryElement::eByControlPoint
+      element->GetMappingMode() == FbxGeometryElement::eByControlPoint
           ? control_index
           : vertex_counter;
-  return Element(element, index);
+  return Element(*element, index);
 }
 
 static inline vec4 Vec4FromFbx(const FbxColor& v) {
@@ -268,6 +173,12 @@ static inline vec3 Vec3FromFbx(const FbxVector4& v) {
 static inline vec2 Vec2FromFbx(const FbxVector2& v) {
   const FbxDouble* d = v.mData;
   return vec2(static_cast<float>(d[0]), static_cast<float>(d[1]));
+}
+
+// FBX UV format has the v-coordinate inverted from OpenGL.
+static inline vec2 Vec2FromFbxUv(const FbxVector2& v) {
+  const FbxDouble* d = v.mData;
+  return vec2(static_cast<float>(d[0]), static_cast<float>(1.0 - d[1]));
 }
 
 static inline mat4 Mat4FromFbx(const FbxAMatrix& m) {
@@ -303,6 +214,21 @@ static inline Mat3x4 FlatBufferMat3x4(const mat4& matrix) {
   const mat4 m = matrix.Transpose();
   return Mat3x4(Vec4(m(0), m(1), m(2), m(3)), Vec4(m(4), m(5), m(6), m(7)),
                 Vec4(m(8), m(9), m(10), m(11)));
+}
+
+static void LogVertexAttributes(VertexAttributeBitmask attributes,
+                                const char* header, LogLevel level,
+                                Logger* log) {
+  log->Log(level, "%s", header);
+  for (int i = 0; i < kVertexAttribute_Count; ++i) {
+    const int i_bit = 1 << i;
+    if (attributes & i_bit) {
+      const bool prev_attribute_exists = attributes & (i_bit - 1);
+      log->Log(level, "%s%s", prev_attribute_exists ? ", " : "",
+               kVertexAttributeShortNames[i]);
+    }
+  }
+  log->Log(level, "\n");
 }
 
 class FlatTextures {
@@ -343,18 +269,18 @@ class FlatTextureHash {
 
 class FlatMesh {
  public:
-  explicit FlatMesh(int max_verts, Logger& log)
+  explicit FlatMesh(int max_verts, VertexAttributeBitmask vertex_attributes,
+                    Logger& log)
       : points_(max_verts),
         cur_index_buf_(nullptr),
-        export_vertex_color_(false),
-        max_position_(-FLT_MAX),
-        min_position_(FLT_MAX),
+        mesh_vertex_attributes_(0),
+        vertex_attributes_(vertex_attributes),
         log_(log) {
     points_.clear();
   }
 
-  void AppendBone(const char* bone_name, const mat4& relative_transform,
-                  int depth) {
+  void AppendBone(const char* bone_name,
+                  const mat4& default_bone_transform_inverse, int depth) {
     // Bone count is limited by data size.
     if (bones_.size() >= kMaxBoneIndex) {
       log_.Log(kLogError, "%d bone limit exceeded.\n", kMaxBoneIndex);
@@ -363,8 +289,8 @@ class FlatMesh {
 
     // Until this function is called again, all appended vertices will
     // reference this bone.
-    bones_.push_back(
-        Bone(bone_name, relative_transform, depth, points_.size()));
+    bones_.push_back(Bone(bone_name, default_bone_transform_inverse, depth,
+                          points_.size()));
   }
 
   void SetSurface(const FlatTextures& textures) {
@@ -382,26 +308,37 @@ class FlatMesh {
     log_.Log(kLogVerbose, "\n");
   }
 
-  void SetExportVertexColor(bool should_export) {
-    if (points_.size() > 0 && export_vertex_color_ != should_export) {
-      log_.Log(kLogWarning,
-               "Some meshes have vertex colors and others do not."
-               " Meshes that do not will be assigned white vertices.\n");
+  void ReportSurfaceVertexAttributes(
+      VertexAttributeBitmask surface_vertex_attributes) {
+    // Warn when some surfaces have requested attributes but others do not.
+    const VertexAttributeBitmask missing_attributes =
+        vertex_attributes_ & mesh_vertex_attributes_ &
+        ~surface_vertex_attributes;
+    if (missing_attributes) {
+      LogVertexAttributes(
+          missing_attributes,
+          "Surface missing vertex attributes that are in previous surfaces: ",
+          kLogWarning, &log_);
     }
-    export_vertex_color_ = export_vertex_color_ || should_export;
+
+    // Remember which attributes exist so that we can output only those that
+    // we recorded, if so requested.
+    mesh_vertex_attributes_ |= surface_vertex_attributes;
   }
 
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
-                      const vec4& tangent, const vec4& color, const vec2& uv) {
+                      const vec4& tangent, const vec4& color, const vec2& uv,
+                      const vec2& uv_alt) {
     // The `unique_` map holds pointers into `points_`, so we cannot realloc
     // `points_`. Instead, we reserve enough memory for an upper bound on
     // its size. If this assert hits, NumVertsUpperBound() is incorrect.
     assert(points_.capacity() > points_.size());
 
     // TODO: Round values before creating.
-    points_.push_back(Vertex(vertex, normal, tangent, color, uv,
-                             static_cast<uint8_t>(bones_.size() - 1)));
+    points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent, color,
+                             uv, uv_alt,
+                             static_cast<BoneIndex>(bones_.size() - 1)));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -419,28 +356,39 @@ class FlatMesh {
     // Append index of polygon point.
     cur_index_buf_->push_back(ref.index);
 
-    // Update the min and max positions
-    min_position_ = vec3::Min(min_position_, vertex);
-    max_position_ = vec3::Max(max_position_, vertex);
-
     // Log the data we just added.
-    log_.Log(kLogVerbose, "Point: index %d", ref.index);
-    if (new_control_point_created) {
-      log_.Log(kLogVerbose,
-               ", vertex (%.3f, %.3f, %.3f)"
-               ", normal (%.3f, %.3f, %.3f)"
-               ", tangent (%.3f, %.3f, %.3f)"
-               ", binormal-handedness %.0f"
-               ", uv (%.3f, %.3f)",
-               vertex.x(), vertex.y(), vertex.z(), normal.x(), normal.y(),
-               normal.z(), tangent.x(), tangent.y(), tangent.z(), tangent.w(),
-               uv.x(), uv.y());
-      if (export_vertex_color_) {
-        log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
-                 color.y(), color.z(), color.w());
+    if (log_.level() <= kLogVerbose) {
+      log_.Log(kLogVerbose, "Point: index %d", ref.index);
+      if (new_control_point_created) {
+        const VertexAttributeBitmask attributes =
+            vertex_attributes_ & mesh_vertex_attributes_;
+        if (attributes & kVertexAttributeBit_Position) {
+          log_.Log(kLogVerbose, ", vertex (%.3f, %.3f, %.3f)", vertex.x(),
+                   vertex.y(), vertex.z());
+        }
+        if (attributes & kVertexAttributeBit_Normal) {
+          log_.Log(kLogVerbose, ", normal (%.3f, %.3f, %.3f)", normal.x(),
+                   normal.y(), normal.z());
+        }
+        if (attributes & kVertexAttributeBit_Tangent) {
+          log_.Log(kLogVerbose,
+                   ", tangent (%.3f, %.3f, %.3f) binormal-handedness %.0f",
+                   tangent.x(), tangent.y(), tangent.z(), tangent.w());
+        }
+        if (attributes & kVertexAttributeBit_Uv) {
+          log_.Log(kLogVerbose, ", uv (%.3f, %.3f)", uv.x(), uv.y());
+        }
+        if (attributes & kVertexAttributeBit_UvAlt) {
+          log_.Log(kLogVerbose, ", uv-alt (%.3f, %.3f)", uv_alt.x(),
+                   uv_alt.y());
+        }
+        if (attributes & kVertexAttributeBit_Color) {
+          log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
+                   color.y(), color.z(), color.w());
+        }
       }
+      log_.Log(kLogVerbose, "\n");
     }
-    log_.Log(kLogVerbose, "\n");
   }
 
   // Output material and mesh flatbuffers for the gathered surfaces.
@@ -450,7 +398,7 @@ class FlatMesh {
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
-      matdef::BlendMode blend_mode, bool skin) const {
+      matdef::BlendMode blend_mode) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = fplutil::BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -475,7 +423,7 @@ class FlatMesh {
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
-    OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir, skin);
+    OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir);
 
     // Log summary
     log_.Log(kLogImportant, "  %s (%d vertices, %d triangles)\n",
@@ -521,24 +469,29 @@ class FlatMesh {
       }
       log_.Log(kLogInfo, "\n");
 
-      // Output local matrix transform too.
-      const mat4 t(b.relative_transform);
+      // Output global-to-local matrix transform too.
+      const mat4 t(b.default_bone_transform_inverse);
       for (size_t k = 0; k < 3; ++k) {
         log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n",
                  indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
-
-      // And the first point, in global space.
-      // This should be the same in both hierarchical and flat outputs.
-      if (has_verts) {
-        const mat4 glob = BoneGlobalTransform(static_cast<int>(j));
-        const Vertex& first_vertex = points_[b.first_vertex_index];
-        const vec3 first_point = glob * vec3(first_vertex.vertex);
-        log_.Log(kLogVerbose, "   %s  first-point (%.3f, %.3f, %.3f)\n",
-                 indent.c_str(), first_point.x(), first_point.y(),
-                 first_point.z());
-      }
     }
+  }
+
+  void CalculateMinMaxPosition(vec3* min_position, vec3* max_position) const {
+    vec3 max(-FLT_MAX);
+    vec3 min(FLT_MAX);
+
+    // Loop through every vertex position.
+    // Note that vertex positions are always in object space.
+    for (size_t i = 0; i < points_.size(); ++i) {
+      const vec3 position = vec3(points_[i].vertex);
+      min = vec3::Min(min, position);
+      max = vec3::Max(max, position);
+    }
+
+    *min_position = min;
+    *max_position = max;
   }
 
  private:
@@ -551,21 +504,26 @@ class FlatMesh {
     vec3_packed normal;
     vec4_packed tangent;  // 4th element is handedness: +1 or -1
     vec2_packed uv;
-    Vec4ub color;
+    vec2_packed uv_alt;
+    Vec4ub color;  // Use byte-format to ensure correct hashing.
     BoneIndex bone;
     Vertex() : color(0, 0, 0, 0) {
       // The Hash function operates on all the memory, so ensure everything is
       // zero'd out.
       memset(this, 0, sizeof(*this));
     }
-    Vertex(const vec3& v, const vec3& n, const vec4& t, const vec4& c,
-           const vec2& u, BoneIndex bone)
-        : vertex(v),
-          normal(n),
-          tangent(t),
-          uv(u),
-          color(FlatBufferVec4ub(c)),
-          bone(bone) {}
+    // Only record the attributes that we're asked to record. Ignore the rest.
+    Vertex(VertexAttributeBitmask attribs, const vec3& p, const vec3& n,
+           const vec4& t, const vec4& c, const vec2& u, const vec2& v,
+           BoneIndex bone)
+        : vertex(attribs & kVertexAttributeBit_Position ? p : kZeros3f),
+          normal(attribs & kVertexAttributeBit_Normal ? n : kZeros3f),
+          tangent(attribs & kVertexAttributeBit_Tangent ? t : kZeros4f),
+          uv(attribs & kVertexAttributeBit_Uv ? u : kZeros2f),
+          uv_alt(attribs & kVertexAttributeBit_UvAlt ? v : kZeros2f),
+          color(attribs & kVertexAttributeBit_Color ? FlatBufferVec4ub(c)
+                                                    : Vec4ub(0, 0, 0, 0)),
+          bone(attribs & kVertexAttributeBit_Bone ? bone : 0) {}
   };
 
   struct VertexRef {
@@ -602,14 +560,13 @@ class FlatMesh {
     std::string name;
     int depth;
     size_t first_vertex_index;
-    vec4_packed relative_transform[4];
+    vec4_packed default_bone_transform_inverse[4];
     Bone() : depth(0), first_vertex_index(0) {}
-    Bone(const char* name, const mat4& relative_transform, int depth,
-         int first_vertex_index)
-        : name(name),
-          depth(depth),
-          first_vertex_index(first_vertex_index) {
-        relative_transform.Pack(this->relative_transform);
+    Bone(const char* name, const mat4& default_bone_transform_inverse,
+         int depth, int first_vertex_index)
+        : name(name), depth(depth), first_vertex_index(first_vertex_index) {
+      default_bone_transform_inverse.Pack(
+          this->default_bone_transform_inverse);
     }
   };
 
@@ -630,9 +587,10 @@ class FlatMesh {
   static std::string TextureFileName(const std::string& texture_file_name,
                                      const std::string& assets_sub_dir,
                                      const std::string& texture_extension) {
-    const std::string extension = texture_extension.length() == 0
-                                  ? fplutil::FileExtension(texture_file_name)
-                                  : texture_extension;
+    const std::string extension =
+        texture_extension.length() == 0
+            ? fplutil::FileExtension(texture_file_name)
+            : texture_extension;
     return TextureBaseFileName(texture_file_name, assets_sub_dir) + '.' +
            extension;
   }
@@ -732,8 +690,7 @@ class FlatMesh {
 
   void OutputMeshFlatBuffer(const std::string& mesh_name,
                             const std::string& assets_base_dir,
-                            const std::string& assets_sub_dir,
-                            bool skin) const {
+                            const std::string& assets_sub_dir) const {
     flatbuffers::FlatBufferBuilder fbb;
 
     const std::string rel_mesh_file_name =
@@ -778,6 +735,7 @@ class FlatMesh {
     std::vector<Vec4> tangents;
     std::vector<Vec4ub> colors;
     std::vector<Vec2> uvs;
+    std::vector<Vec2> uvs_alt;
     std::vector<Vec4ub> skin_indices;
     std::vector<Vec4ub> skin_weights;
     vertices.reserve(points_.size());
@@ -785,16 +743,19 @@ class FlatMesh {
     tangents.reserve(points_.size());
     colors.reserve(points_.size());
     uvs.reserve(points_.size());
+    uvs_alt.reserve(points_.size());
     skin_indices.reserve(points_.size());
     skin_weights.reserve(points_.size());
     for (auto it = points_.begin(); it != points_.end(); ++it) {
       const Vertex& p = *it;
-      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
       vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
       normals.push_back(FlatBufferVec3(vec3(p.normal)));
       tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
       colors.push_back(p.color);
       uvs.push_back(FlatBufferVec2(vec2(p.uv)));
+      uvs_alt.push_back(FlatBufferVec2(vec2(p.uv_alt)));
+      // TODO: Support bone weighting.
+      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
       skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
       skin_weights.push_back(Vec4ub(1, 0, 0, 0));
     }
@@ -810,33 +771,58 @@ class FlatMesh {
     for (size_t i = 0; i < bones_.size(); ++i) {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
-      bone_transforms.push_back(FlatBufferMat3x4(mat4(bone.relative_transform)));
+      bone_transforms.push_back(
+          FlatBufferMat3x4(mat4(bone.default_bone_transform_inverse)));
       bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
     }
 
-    // Then create a FlatBuffer vector for each array.
-    auto vertices_fb = fbb.CreateVectorOfStructs(vertices);
-    auto normals_fb = fbb.CreateVectorOfStructs(normals);
-    auto tangents_fb = fbb.CreateVectorOfStructs(tangents);
-    auto colors_fb =
-        export_vertex_color_ ? fbb.CreateVectorOfStructs(colors) : 0;
-    auto uvs_fb = fbb.CreateVectorOfStructs(uvs);
-    auto skin_indices_fb = fbb.CreateVectorOfStructs(skin_indices);
-    auto skin_weights_fb = fbb.CreateVectorOfStructs(skin_weights);
-    auto max_fb = FlatBufferVec3(max_position_);
-    auto min_fb = FlatBufferVec3(min_position_);
+    // Get the overal min/max values, in object space.
+    vec3 min_position;
+    vec3 max_position;
+    CalculateMinMaxPosition(&min_position, &max_position);
+
+    // Then create a FlatBuffer vector for each array that we want to export.
+    const VertexAttributeBitmask attributes =
+        vertex_attributes_ == kVertexAttributeBit_AllAttributesInSourceFile
+            ? mesh_vertex_attributes_
+            : vertex_attributes_;
+    LogVertexAttributes(attributes, "  Vertex attributes: ", kLogInfo, &log_);
+    auto vertices_fb = (attributes & kVertexAttributeBit_Position)
+                           ? fbb.CreateVectorOfStructs(vertices)
+                           : 0;
+    auto normals_fb = (attributes & kVertexAttributeBit_Normal)
+                          ? fbb.CreateVectorOfStructs(normals)
+                          : 0;
+    auto tangents_fb = (attributes & kVertexAttributeBit_Tangent)
+                           ? fbb.CreateVectorOfStructs(tangents)
+                           : 0;
+    auto colors_fb = (attributes & kVertexAttributeBit_Color)
+                         ? fbb.CreateVectorOfStructs(colors)
+                         : 0;
+    auto uvs_fb = (attributes & kVertexAttributeBit_Uv)
+                      ? fbb.CreateVectorOfStructs(uvs)
+                      : 0;
+    auto uvs_alt_fb = (attributes & kVertexAttributeBit_UvAlt)
+                          ? fbb.CreateVectorOfStructs(uvs_alt)
+                          : 0;
+    auto skin_indices_fb = (attributes & kVertexAttributeBit_Bone)
+                               ? fbb.CreateVectorOfStructs(skin_indices)
+                               : 0;
+    auto skin_weights_fb = (attributes & kVertexAttributeBit_Bone)
+                               ? fbb.CreateVectorOfStructs(skin_weights)
+                               : 0;
+    auto max_fb = FlatBufferVec3(max_position);
+    auto min_fb = FlatBufferVec3(min_position);
     auto bone_names_fb = fbb.CreateVector(bone_names);
     auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
     auto bone_parents_fb = fbb.CreateVector(bone_parents);
     auto shader_to_mesh_bones_fb = fbb.CreateVector(shader_to_mesh_bones);
     auto mesh_fb = meshdef::CreateMesh(
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
-        uvs_fb, skin ? skin_indices_fb : 0, skin ? skin_weights_fb : 0, &max_fb,
-        &min_fb, bone_names_fb, bone_transforms_fb, bone_parents_fb,
-        shader_to_mesh_bones_fb);
+        uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
+        bone_names_fb, bone_transforms_fb, bone_parents_fb,
+        shader_to_mesh_bones_fb, uvs_alt_fb, meshdef::MeshVersion_MostRecent);
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
-
-    log_.Log(kLogInfo, "Skin: %s\n", skin ? "yes" : "no");
 
     // Write the buffer to a file.
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
@@ -859,13 +845,13 @@ class FlatMesh {
   }
 
   mat4 BoneGlobalTransform(int i) const {
-    mat4 m(bones_[i].relative_transform);
+    mat4 m(bones_[i].default_bone_transform_inverse);
     for (;;) {
       i = BoneParent(i);
       if (i < 0) break;
 
       // Update with parent transform.
-      m = mat4(bones_[i].relative_transform) * m;
+      m = mat4(bones_[i].default_bone_transform_inverse) * m;
     }
     return m;
   }
@@ -902,10 +888,9 @@ class FlatMesh {
   VertexSet unique_;
   std::vector<Vertex> points_;
   IndexBuffer* cur_index_buf_;
-  bool export_vertex_color_;
-  vec3 max_position_;
-  vec3 min_position_;
+  VertexAttributeBitmask mesh_vertex_attributes_;
   std::vector<Bone> bones_;
+  VertexAttributeBitmask vertex_attributes_;
 
   // Information and warnings.
   Logger& log_;
@@ -916,7 +901,7 @@ class FlatMesh {
 class FbxMeshParser {
  public:
   explicit FbxMeshParser(Logger& log)
-      : manager_(nullptr), scene_(nullptr), hierarchy_(false), log_(log) {
+      : manager_(nullptr), scene_(nullptr), log_(log) {
     // The FbxManager is the gateway to the FBX API.
     manager_ = FbxManager::Create();
     if (manager_ == nullptr) {
@@ -945,7 +930,8 @@ class FbxMeshParser {
   bool Valid() const { return manager_ != nullptr && scene_ != nullptr; }
 
   bool Load(const char* file_name, AxisSystem axis_system,
-            float distance_unit_scale, bool recenter, bool hierarchy) {
+            float distance_unit_scale, bool recenter,
+            VertexAttributeBitmask vertex_attributes) {
     if (!Valid()) return false;
 
     log_.Log(
@@ -993,25 +979,19 @@ class FbxMeshParser {
       return false;
     }
 
-    // Remember if we're recording hierarchy information for these meshes,
-    // or flattening it.
-    hierarchy_ = hierarchy;
-
     // Remember the source file name so we can search for textures nearby.
     mesh_file_name_ = std::string(file_name);
 
-    // Log nodes before we do anything to them.
-    LogNodes("Original scene nodes\n");
-
     // Ensure the correct distance unit and axis system are being used.
-    ConvertScale(distance_unit_scale);
-    ConvertAxes(axis_system);
+    fplutil::ConvertFbxScale(distance_unit_scale, scene_, &log_);
+    fplutil::ConvertFbxAxes(axis_system, scene_, &log_);
 
     // Bring the geo into our format.
-    ConvertGeometry(recenter);
+    ConvertGeometry(recenter, vertex_attributes);
 
     // Log nodes after we've processed them.
-    LogNodes("Converted scene nodes\n");
+    log_.Log(kLogVerbose, "Converted scene nodes\n");
+    fplutil::LogFbxScene(scene_, 0, kLogVerbose, &log_);
     return true;
   }
 
@@ -1033,103 +1013,8 @@ class FbxMeshParser {
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FbxMeshParser);
 
-  // For debugging. Output details of the the node transforms.
-  void LogNodes(const char* header) const {
-    log_.Log(kLogVerbose, "--------------------\n%s\n", header);
-    LogNodesRecursive(scene_->GetRootNode(), FbxNode::eSourcePivot);
-  }
-
-  void LogNodesRecursive(const FbxNode* node,
-                         FbxNode::EPivotSet pivot_set) const {
-    if (log_.level() > kLogVerbose) return;
-
-    log_.Log(kLogVerbose, "-----\nNode: %s\n", node->GetName());
-
-    const FbxVector4 post_rotation = node->GetPostRotation(pivot_set);
-    const FbxVector4 pre_rotation = node->GetPreRotation(pivot_set);
-    const FbxVector4 rotation_offset = node->GetRotationOffset(pivot_set);
-    const FbxVector4 scaling_offset = node->GetScalingOffset(pivot_set);
-    const FbxVector4 rotation_pivot = node->GetRotationPivot(pivot_set);
-    const FbxVector4 scaling_pivot = node->GetScalingPivot(pivot_set);
-    const FbxVector4 geometric_translation =
-        node->GetGeometricTranslation(pivot_set);
-    const FbxVector4 geometric_rotation = node->GetGeometricRotation(pivot_set);
-    const FbxVector4 geometric_scaling = node->GetGeometricScaling(pivot_set);
-    const FbxDouble3 lcl_translation = node->LclTranslation.Get();
-    const FbxDouble3 lcl_rotation = node->LclRotation.Get();
-    const FbxDouble3 lcl_scaling = node->LclScaling.Get();
-
-    log_.Log(kLogVerbose, "post_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             post_rotation[0], post_rotation[1], post_rotation[2]);
-    log_.Log(kLogVerbose, "pre_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             pre_rotation[0], pre_rotation[1], pre_rotation[2]);
-    log_.Log(kLogVerbose, "rotation_offset = (%0.3f, %0.3f, %0.3f)\n",
-             rotation_offset[0], rotation_offset[1], rotation_offset[2]);
-    log_.Log(kLogVerbose, "scaling_offset = (%0.3f, %0.3f, %0.3f)\n",
-             scaling_offset[0], scaling_offset[1], scaling_offset[2]);
-    log_.Log(kLogVerbose, "rotation_pivot = (%0.3f, %0.3f, %0.3f)\n",
-             rotation_pivot[0], rotation_pivot[1], rotation_pivot[2]);
-    log_.Log(kLogVerbose, "scaling_pivot = (%0.3f, %0.3f, %0.3f)\n",
-             scaling_pivot[0], scaling_pivot[1], scaling_pivot[2]);
-    log_.Log(kLogVerbose, "geometric_translation = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_translation[0], geometric_translation[1],
-             geometric_translation[2]);
-    log_.Log(kLogVerbose, "geometric_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_rotation[0], geometric_rotation[1],
-             geometric_rotation[2]);
-    log_.Log(kLogVerbose, "geometric_scaling = (%0.3f, %0.3f, %0.3f)\n",
-             geometric_scaling[0], geometric_scaling[1], geometric_scaling[2]);
-    log_.Log(kLogVerbose, "lcl_translation = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_translation[0], lcl_translation[1], lcl_translation[2]);
-    log_.Log(kLogVerbose, "lcl_rotation = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_rotation[0], lcl_rotation[1], lcl_rotation[2]);
-    log_.Log(kLogVerbose, "lcl_scaling = (%0.3f, %0.3f, %0.3f)\n",
-             lcl_scaling[0], lcl_scaling[1], lcl_scaling[2]);
-
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      LogNodesRecursive(node->GetChild(i), pivot_set);
-    }
-  }
-
-  void ConvertScale(float distance_unit_scale) {
-    if (distance_unit_scale <= 0.0f) return;
-
-    const FbxSystemUnit import_unit =
-        scene_->GetGlobalSettings().GetSystemUnit();
-    const FbxSystemUnit export_unit(distance_unit_scale);
-
-    if (import_unit == export_unit) {
-      log_.Log(kLogVerbose,
-               "Scene's distance unit is already %s. Skipping conversion.\n",
-               import_unit.GetScaleFactorAsString().Buffer());
-      return;
-    }
-
-    log_.Log(kLogInfo, "Converting scene's distance unit from %s to %s.\n",
-             import_unit.GetScaleFactorAsString().Buffer(),
-             export_unit.GetScaleFactorAsString().Buffer());
-    export_unit.ConvertScene(scene_);
-  }
-
-  void ConvertAxes(AxisSystem axis_system) {
-    if (axis_system < 0) return;
-
-    const FbxAxisSystem import_axes =
-        scene_->GetGlobalSettings().GetAxisSystem();
-    const FbxAxisSystem export_axes = ConvertAxisSystemToFbx(axis_system);
-    if (import_axes == export_axes) {
-      log_.Log(kLogVerbose, "Scene's axes are already %s.\n",
-               kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
-      return;
-    }
-
-    log_.Log(kLogInfo, "Converting scene's axes (%s) to requested axes (%s).\n",
-             kAxisSystemNames[ConvertAxisSystemFromFbx(import_axes)],
-             kAxisSystemNames[ConvertAxisSystemFromFbx(export_axes)]);
-    export_axes.ConvertScene(scene_);
-  }
-
-  void ConvertGeometry(bool recenter) {
+  void ConvertGeometry(bool recenter,
+                       VertexAttributeBitmask vertex_attributes) {
     FbxGeometryConverter geo_converter(manager_);
 
     // Ensure origin is in the center of geometry.
@@ -1148,35 +1033,12 @@ class FbxMeshParser {
     geo_converter.Triangulate(scene_, true);
 
     // Traverse all meshes in the scene, generating normals and tangents.
-    ConvertGeometryRecursive(scene_->GetRootNode());
-
-    // For each mesh, set the geometry origin as the pivot.
-    if (hierarchy_) {
-      scene_->GetRootNode()->SetRotationPivotAsCenterRecursive();
-    }
+    ConvertGeometryRecursive(scene_->GetRootNode(), vertex_attributes);
   }
 
-  void ConvertGeometryRecursive(FbxNode* node) {
+  void ConvertGeometryRecursive(FbxNode* node,
+                                VertexAttributeBitmask vertex_attributes) {
     if (node == nullptr) return;
-
-    // When exporting the hierarchy, we center about the rotation pivot,
-    // and then ignore the rotation and scaling pivots. In this manner its
-    // easy to apply animated rotation and scaling values.
-    if (hierarchy_) {
-      const FbxVector4 rotation_pivot =
-          node->GetRotationPivot(FbxNode::eSourcePivot);
-      const FbxVector4 scaling_pivot =
-          node->GetScalingPivot(FbxNode::eSourcePivot);
-      if (rotation_pivot != scaling_pivot) {
-        log_.Log(kLogWarning,
-                 "Node %s has different rotation (%0.3f, %0.3f, %0.3f) and "
-                 "scale (%0.3f, %0.3f, %0.3f) pivots. Scaling will not be "
-                 "properly centered.\n",
-                 node->GetName(), rotation_pivot[0], rotation_pivot[1],
-                 rotation_pivot[2], scaling_pivot[0], scaling_pivot[1],
-                 scaling_pivot[2]);
-      }
-    }
 
     // We're only interested in meshes, for the moment.
     for (int i = 0; i < node->GetNodeAttributeCount(); ++i) {
@@ -1187,16 +1049,27 @@ class FbxMeshParser {
       FbxMesh* mesh = static_cast<FbxMesh*>(attr);
 
       // Generate normals. Leaves existing normal data if it already exists.
-      const bool normals_generated = mesh->GenerateNormals();
-      if (!normals_generated) {
-        log_.Log(kLogWarning, "Could not generate normals for mesh %s\n",
-                 mesh->GetName());
+      if (vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
+          (vertex_attributes & kVertexAttributeBit_Normal)) {
+        const bool normals_generated = mesh->GenerateNormals();
+        if (normals_generated) {
+          log_.Log(kLogInfo, "Generating normals for mesh %s\n",
+                   mesh->GetName());
+        } else {
+          log_.Log(kLogWarning, "Could not generate normals for mesh %s\n",
+                   mesh->GetName());
+        }
       }
 
       // Generate tangents. Leaves existing tangent data if it already exists.
-      if (mesh->GetElementUVCount() > 0) {
+      if (mesh->GetElementUVCount() > 0 &&
+          vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
+          (vertex_attributes & kVertexAttributeBit_Tangent)) {
         const bool tangents_generated = mesh->GenerateTangentsData(0);
-        if (!tangents_generated) {
+        if (tangents_generated) {
+          log_.Log(kLogInfo, "Generating tangents for mesh %s\n",
+                   mesh->GetName());
+        } else {
           log_.Log(kLogWarning, "Could not generate tangents for mesh %s\n",
                    mesh->GetName());
         }
@@ -1205,7 +1078,7 @@ class FbxMeshParser {
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      ConvertGeometryRecursive(node->GetChild(i));
+      ConvertGeometryRecursive(node->GetChild(i), vertex_attributes);
     }
   }
 
@@ -1232,27 +1105,34 @@ class FbxMeshParser {
   }
 
   // Get the UVs for a mesh.
-  const FbxGeometryElementUV* UvElement(const FbxMesh* mesh) const {
-    // Grab texture coordinates.
+  const FbxGeometryElementUV* UvElements(
+      const FbxMesh* mesh, const FbxGeometryElementUV** uv_alt_element) const {
     const int uv_count = mesh->GetElementUVCount();
-    if (uv_count <= 0) {
-      log_.Log(kLogWarning, "No UVs for mesh %s\n", mesh->GetName());
-      return nullptr;
-    }
+    const FbxGeometryElementUV* uv_element = nullptr;
+    *uv_alt_element = nullptr;
 
-    // Always use the first UV set.
-    const FbxGeometryElementUV* uv_element = mesh->GetElementUV(0);
-
-    // Warn if multiple UV sets exist.
-    if (uv_count > 1 && log_.level() >= kLogWarning) {
-      FbxStringList uv_set_names;
-      mesh->GetUVSetNames(uv_set_names);
-      log_.Log(kLogWarning, "Multiple UVs for mesh %s. Using %s. Ignoring %s\n",
-               mesh->GetName(), uv_set_names.GetStringAt(0),
-               uv_set_names.GetStringAt(1));
-    } else {
+    // Use the first UV set as the primary UV set.
+    if (uv_count > 0) {
+      uv_element = mesh->GetElementUV(0);
       log_.Log(kLogVerbose, "Using UV map %s for mesh %s.\n",
                uv_element->GetName(), mesh->GetName());
+    }
+
+    // Use the second UV set if it exists.
+    if (uv_count > 1) {
+      *uv_alt_element = mesh->GetElementUV(1);
+      log_.Log(kLogVerbose, "Using alternate UV map %s for mesh %s.\n",
+               (*uv_alt_element)->GetName(), mesh->GetName());
+    }
+
+    // Warn when more UV sets exist.
+    if (uv_count > 2 && log_.level() <= kLogWarning) {
+      FbxStringList uv_set_names;
+      mesh->GetUVSetNames(uv_set_names);
+      log_.Log(kLogWarning,
+               "Multiple UVs for mesh %s. Using %s and %s. Ignoring %s.\n",
+               mesh->GetName(), uv_set_names.GetStringAt(0),
+               uv_set_names.GetStringAt(1), uv_set_names.GetStringAt(2));
     }
 
     return uv_element;
@@ -1347,7 +1227,7 @@ class FbxMeshParser {
 
     // If the texture exists in the same directory as the source mesh, use it.
     const std::string texture_no_dir =
-      fplutil::RemoveDirectoryFromName(texture_name);
+        fplutil::RemoveDirectoryFromName(texture_name);
     const std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
     attempted_textures += texture_in_source_dir + '\n';
@@ -1431,12 +1311,10 @@ class FbxMeshParser {
 
   // Factor node's global_transform into two transforms:
   //   point_transform <== apply in pipeline
-  //   relative_transform <== apply at runtime
+  //   default_bone_transform_inverse <== apply at runtime
   void Transforms(FbxNode* node, FbxNode* parent_node,
-                  FbxAMatrix* relative_transform,
+                  FbxAMatrix* default_bone_transform_inverse,
                   FbxAMatrix* point_transform) const {
-    const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
-
     // geometric_transform is applied to each point, but is not inherited
     // by children.
     const FbxVector4 geometric_translation =
@@ -1448,77 +1326,14 @@ class FbxMeshParser {
     const FbxAMatrix geometric_transform(geometric_translation,
                                          geometric_rotation, geometric_scaling);
 
-    if (hierarchy_) {
-      // The FBX tranform format is defined as below (see
-      // http://help.autodesk.com/view/FBX/2016/ENU/?guid=__files_GUID_10CDD63C_79C1_4F2D_BB28_AD2BE65A02ED_htm):
-      //
-      // WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R *
-      //                  Rpost_inv * Rp_inv * Soff * Sp * S * Sp_inv
-      //
-      // In animation data, we animate T, R, and S (translation, rotation,
-      // scaling).
-      // However, we must make some assumptions so that T, R, and S they can be
-      // applied in order:
-      //
-      // Rp, Sp, Soff are translations that must be 0
-      // Rpre and Rpost are rotations that must be 0
-      //
-      // Then, since Roff and T are translations and therefore commutitive, we
-      // have:
-      //
-      // WorldTransform = ParentWorldTransform * Roff * T * R * S
-      //
-      // Note: We still use EvaluateGlobalTransform() instead of calculating it
-      //       ourselves because there could be intermediate nodes that are
-      //       not animated. These intermediate nodes do not have the same
-      //       restrictions.
-      //
-      // Note: anim_pipeline should be able to handle 90 degree pre-rotations.
-      const FbxVector4 post_rotation =
-          node->GetPostRotation(FbxNode::eSourcePivot);
-      const FbxVector4 scaling_offset =
-          node->GetScalingOffset(FbxNode::eSourcePivot);
-      const FbxVector4 rotation_pivot =
-          node->GetRotationPivot(FbxNode::eSourcePivot);
-      const FbxVector4 scaling_pivot =
-          node->GetScalingPivot(FbxNode::eSourcePivot);
-      const FbxVector4 zero(0.0, 0.0, 0.0, 0.0);
-      if (post_rotation != zero) {
-        log_.Log(kLogWarning,
-                 "post_rotation (%.3f, %.3f, %.3f) is non-zero. Animations "
-                 "will be incorrect.\n",
-                 post_rotation[0], post_rotation[1], post_rotation[2]);
-      }
-      if (scaling_offset != zero) {
-        log_.Log(kLogWarning,
-                 "scaling_offset (%.3f, %.3f, %.3f) is non-zero. Animations "
-                 "will be incorrect.\n",
-                 scaling_offset[0], scaling_offset[1], scaling_offset[2]);
-      }
-      if (rotation_pivot != zero) {
-        log_.Log(kLogWarning,
-                 "rotation_pivot (%.3f, %.3f, %.3f) is non-zero. Animations "
-                 "will be incorrect.\n",
-                 rotation_pivot[0], rotation_pivot[1], rotation_pivot[2]);
-      }
-      if (scaling_pivot != zero) {
-        log_.Log(kLogWarning,
-                 "scaling_pivot (%.3f, %.3f, %.3f) is non-zero. Animations "
-                 "will be incorrect.\n",
-                 scaling_pivot[0], scaling_pivot[1], scaling_pivot[2]);
-      }
+    const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
+    const FbxAMatrix parent_global_transform =
+        parent_node->EvaluateGlobalTransform();
 
-      *relative_transform =
-          parent_node->EvaluateGlobalTransform().Inverse() * global_transform;
-      *point_transform = geometric_transform;
-
-    } else {
-      // When meshes are output in global space, there are no parents (all is
-      // flat, so the relative transform is the identity). The points are
-      // brought into global space.
-      relative_transform->SetIdentity();
-      *point_transform = global_transform * geometric_transform;
-    }
+    // We want the root node to be the identity. Everything in object space
+    // is relative to the root.
+    *default_bone_transform_inverse = global_transform.Inverse();
+    *point_transform = global_transform * geometric_transform;
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
@@ -1526,21 +1341,21 @@ class FbxMeshParser {
                                FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
     // have no meshes, we early out.
-    if (node == nullptr || !NodeHasMesh(node)) return;
+    if (node == nullptr || !fplutil::NodeHasMesh(node)) return;
     log_.Log(kLogVerbose, "Node: %s\n", node->GetName());
 
     // The root node cannot have a transform applied to it, so we do not
     // export it as a bone.
     if (node != scene_->GetRootNode()) {
       // Get the transform to this node from its parent.
-      FbxAMatrix relative_transform;
+      FbxAMatrix default_bone_transform_inverse;
       FbxAMatrix point_transform;
-      Transforms(node, parent_node, &relative_transform, &point_transform);
+      Transforms(node, parent_node, &default_bone_transform_inverse,
+                 &point_transform);
 
-      // Create a "bone" for this node. The mesh_pipeline doesn't support
-      // skeleton definitions yet, but we use the mesh hierarchy to represent
-      // the animations.
-      out->AppendBone(node->GetName(), Mat4FromFbx(relative_transform), depth);
+      // Create a "bone" for this node.
+      out->AppendBone(node->GetName(),
+                      Mat4FromFbx(default_bone_transform_inverse), depth);
 
       // Gather mesh data for this bone.
       // Note that there may be more than one mesh attached to a node.
@@ -1576,8 +1391,7 @@ class FbxMeshParser {
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(hierarchy_ ? depth + 1 : depth, node->GetChild(i),
-                              node, out);
+      GatherFlatMeshRecursive(depth + 1, node->GetChild(i), node, out);
     }
   }
 
@@ -1604,15 +1418,26 @@ class FbxMeshParser {
 
     // Get references to various vertex elements.
     const FbxVector4* vertices = mesh->GetControlPoints();
-    const FbxGeometryElementUV* uv_element = UvElement(mesh);
     const FbxGeometryElementNormal* normal_element = mesh->GetElementNormal();
     const FbxGeometryElementTangent* tangent_element =
         mesh->GetElementTangent();
     const FbxGeometryElementVertexColor* color_element =
         mesh->GetElementVertexColor();
-    assert(uv_element != nullptr && normal_element != nullptr &&
-           tangent_element != nullptr);
-    out->SetExportVertexColor(color_element != nullptr || has_solid_color);
+    const FbxGeometryElementUV* uv_alt_element = nullptr;
+    const FbxGeometryElementUV* uv_element = UvElements(mesh, &uv_alt_element);
+
+    // Record which vertex attributes exist for this surface.
+    // We reported the bone name and parents in AppendBone().
+    const VertexAttributeBitmask surface_vertex_attributes =
+        kVertexAttributeBit_Bone |
+        (vertices ? kVertexAttributeBit_Position : 0) |
+        (normal_element ? kVertexAttributeBit_Normal : 0) |
+        (tangent_element ? kVertexAttributeBit_Tangent : 0) |
+        (color_element != nullptr || has_solid_color ? kVertexAttributeBit_Color
+                                                     : 0) |
+        (uv_element ? kVertexAttributeBit_Uv : 0) |
+        (uv_alt_element ? kVertexAttributeBit_UvAlt : 0);
+    out->ReportSurfaceVertexAttributes(surface_vertex_attributes);
     log_.Log(kLogVerbose, color_element != nullptr
                               ? "Mesh has vertex colors\n"
                               : has_solid_color
@@ -1642,16 +1467,18 @@ class FbxMeshParser {
         // by control point or by polygon-vertex.
         const FbxVector4 vertex_fbx = vertices[control_index];
         const FbxVector4 normal_fbx =
-            ElementFromIndices(*normal_element, control_index, vertex_counter);
+            ElementFromIndices(normal_element, control_index, vertex_counter);
         const FbxVector4 tangent_fbx =
-            ElementFromIndices(*tangent_element, control_index, vertex_counter);
+            ElementFromIndices(tangent_element, control_index, vertex_counter);
         const FbxColor color_fbx =
             color_element != nullptr
-                ? ElementFromIndices(*color_element, control_index,
+                ? ElementFromIndices(color_element, control_index,
                                      vertex_counter)
                 : has_solid_color ? solid_color : kDefaultColor;
         const FbxVector2 uv_fbx =
-            ElementFromIndices(*uv_element, control_index, vertex_counter);
+            ElementFromIndices(uv_element, control_index, vertex_counter);
+        const FbxVector2 uv_alt_fbx =
+            ElementFromIndices(uv_alt_element, control_index, vertex_counter);
 
         // Output this poly-vert.
         // Note that the v-axis is flipped between FBX UVs and FlatBuffer UVs.
@@ -1662,56 +1489,15 @@ class FbxMeshParser {
             Vec3FromFbx(vector_transform.MultT(tangent_fbx)).Normalized(),
             static_cast<float>(tangent_fbx[3]));
         const vec4 color = Vec4FromFbx(color_fbx);
-        const vec2 uv =
-            Vec2FromFbx(FbxVector2(uv_fbx.mData[0], 1.0 - uv_fbx.mData[1]));
-        out->AppendPolyVert(vertex, normal, tangent, color, uv);
+        const vec2 uv = Vec2FromFbxUv(uv_fbx);
+        const vec2 uv_alt = Vec2FromFbxUv(uv_alt_fbx);
+        out->AppendPolyVert(vertex, normal, tangent, color, uv, uv_alt);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;
       }
     }
   };
-
-  static AxisSystem ConvertAxisSystemFromFbx(const FbxAxisSystem& axis) {
-    int up_sign = 0;
-    int front_sign = 0;
-    const FbxAxisSystem::EUpVector up = axis.GetUpVector(up_sign);
-    const FbxAxisSystem::EFrontVector front = axis.GetFrontVector(front_sign);
-    const FbxAxisSystem::ECoordSystem coord = axis.GetCoorSystem();
-    assert(up_sign > 0);
-
-    const int up_idx = up - FbxAxisSystem::eXAxis;
-    const int front_idx = front - FbxAxisSystem::eParityEven;
-    const int front_sign_idx = front_sign > 0 ? 0 : 1;
-    const int coord_idx = coord - FbxAxisSystem::eRightHanded;
-    return static_cast<AxisSystem>(8 * up_idx + 4 * front_idx +
-                                   2 * front_sign_idx + coord_idx);
-  }
-
-  static FbxAxisSystem ConvertAxisSystemToFbx(AxisSystem system) {
-    const int up_idx = system / 8 + FbxAxisSystem::eXAxis;
-    const int front_sign = system % 4 < 2 ? 1 : -1;
-    const int front_idx = (system % 8) / 4 + FbxAxisSystem::eParityEven;
-    const int coord_idx = system % 2;
-
-    const auto up = static_cast<FbxAxisSystem::EUpVector>(up_idx);
-    const auto front =
-        static_cast<FbxAxisSystem::EFrontVector>(front_sign * front_idx);
-    const auto coord = static_cast<FbxAxisSystem::ECoordSystem>(coord_idx);
-    return FbxAxisSystem(up, front, coord);
-  }
-
-  // Return true if `node` or any of its children has a mesh.
-  static bool NodeHasMesh(FbxNode* node) {
-    if (node->GetMesh() != nullptr) return true;
-
-    // Recursively traverse each child node.
-    for (int i = 0; i < node->GetChildCount(); i++) {
-      if (NodeHasMesh(node->GetChild(i))) return true;
-    }
-    return false;
-  }
-
   // Entry point to the FBX SDK.
   FbxManager* manager_;
 
@@ -1722,11 +1508,6 @@ class FbxMeshParser {
   // are not found in their referenced location.
   std::string mesh_file_name_;
 
-  // If true, output mesh hiearchically, with each child node relative to the
-  // transform of its parents. If false, output mesh flat, with all points in
-  // global space.
-  bool hierarchy_;
-
   // Information and warnings.
   Logger& log_;
 };
@@ -1734,10 +1515,10 @@ class FbxMeshParser {
 struct MeshPipelineArgs {
   MeshPipelineArgs()
       : blend_mode(static_cast<matdef::BlendMode>(-1)),
-        axis_system(kUnspecifiedAxisSystem),
+        axis_system(fplutil::kUnspecifiedAxisSystem),
         distance_unit_scale(-1.0f),
         recenter(false),
-        hierarchy(false),
+        vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
         log_level(kLogWarning) {}
 
   std::string fbx_file;        /// FBX input file to convert.
@@ -1748,47 +1529,36 @@ struct MeshPipelineArgs {
   matdef::BlendMode blend_mode;
   AxisSystem axis_system;
   float distance_unit_scale;
-  bool recenter;       /// Translate geometry to origin.
-  bool hierarchy;      /// Mesh vertices output relative to local pivot.
+  bool recenter;   /// Translate geometry to origin.
+  VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
 
-// Returns index of `s` in `array_of_strings`, or -1 if `s` not found.
-// `array_of_strings` is a null-terminated array of char* strings, in the style
-// generated by FlatBuffers.
-static int IndexOfString(const char* s, const char** array_of_strings) {
-  int i = 0;
-  for (const char** a = array_of_strings; *a != nullptr; ++a) {
-    if (strcmp(*a, s) == 0) return i;
-    ++i;
+static VertexAttributeBitmask ParseVertexAttribute(char c) {
+  for (int i = 0; i < kVertexAttribute_Count; ++i) {
+    if (c == kVertexAttributeShortNames[i][0]) return 1 << i;
   }
-  return -1;
+  return 0;
 }
 
-static AxisSystem ParseAxisSystem(const char* s) {
-  return static_cast<AxisSystem>(IndexOfString(s, kAxisSystemNames));
-}
-
-static float ParseDistanceUnitScale(const char* s) {
-  // Check for unit name.
-  const int unit_index = IndexOfString(s, kDistanceUnitNames);
-  if (unit_index >= 0) return kDistanceUnitScales[unit_index];
-
-  // Otherwise, must be a scale number.
-  // On failure, returns 0.0f, which is detected as an error by the command-line
-  // parser.
-  const float scale = static_cast<float>(atof(s));
-  return scale;
+static VertexAttributeBitmask ParseVertexAttributes(const char* s) {
+  VertexAttributeBitmask vertex_attributes = 0;
+  for (const char* p = s; *p != '\0'; ++p) {
+    const VertexAttributeBitmask bit = ParseVertexAttribute(*p);
+    if (bit == 0) return 0;
+    vertex_attributes |= bit;
+  }
+  return vertex_attributes;
 }
 
 static matdef::TextureFormat ParseTextureFormat(const char* s) {
   return static_cast<matdef::TextureFormat>(
-      IndexOfString(s, matdef::EnumNamesTextureFormat()));
+      fplutil::IndexOfName(s, matdef::EnumNamesTextureFormat()));
 }
 
 static matdef::BlendMode ParseBlendMode(const char* s) {
   return static_cast<matdef::BlendMode>(
-      IndexOfString(s, matdef::EnumNamesBlendMode()));
+      fplutil::IndexOfName(s, matdef::EnumNamesBlendMode()));
 }
 
 static bool ParseTextureFormats(
@@ -1827,13 +1597,6 @@ static matdef::BlendMode DefaultBlendMode(
   return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0])
              ? matdef::BlendMode_ALPHA
              : matdef::BlendMode_OFF;
-}
-
-static void LogOptions(const char* indent, const char** array_of_options,
-                       Logger& log) {
-  for (const char** option = array_of_options; *option != nullptr; ++option) {
-    log.Log(kLogImportant, "%s%s\n", indent, *option);
-  }
 }
 
 static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
@@ -1896,7 +1659,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
       // -h switch
     } else if (arg == "-h" || arg == "--hierarchy") {
-      args->hierarchy = true;
+      // This switch has been deprecated.
 
       // -c switch
     } else if (arg == "-c" || arg == "--center") {
@@ -1930,7 +1693,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
     } else if (arg == "-a" || arg == "--axes") {
       if (i + 1 < argc - 1) {
-        args->axis_system = ParseAxisSystem(argv[i + 1]);
+        args->axis_system = fplutil::AxisSystemFromName(argv[i + 1]);
         valid_args = args->axis_system >= 0;
         if (!valid_args) {
           log.Log(kLogError, "Unknown coordinate system: %s\n\n", argv[i + 1]);
@@ -1942,10 +1705,22 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
 
     } else if (arg == "-u" || arg == "--unit") {
       if (i + 1 < argc - 1) {
-        args->distance_unit_scale = ParseDistanceUnitScale(argv[i + 1]);
+        args->distance_unit_scale = fplutil::DistanceUnitFromName(argv[i + 1]);
         valid_args = args->distance_unit_scale > 0.0f;
         if (!valid_args) {
           log.Log(kLogError, "Unknown distance unit: %s\n\n", argv[i + 1]);
+        }
+        i++;
+      } else {
+        valid_args = false;
+      }
+
+    } else if (arg == "--attrib" || arg == "--vertex-attributes") {
+      if (i + 1 < argc - 1) {
+        args->vertex_attributes = ParseVertexAttributes(argv[i + 1]);
+        valid_args = args->vertex_attributes != 0;
+        if (!valid_args) {
+          log.Log(kLogError, "Unknown vertex attributes: %s\n\n", argv[i + 1]);
         }
         i++;
       } else {
@@ -1977,6 +1752,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
         "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
         "                     [-m BLEND_MODE] [-a AXES] [-u (unit)|(scale)]\n"
+        "                     [--attrib p|n|t|u|c|b]\n"
         "                     [-h] [-c] [-v|-d|-i]\n"
         "                     FBX_FILE\n"
         "\n"
@@ -2012,7 +1788,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                Default is %s.\n"
         "                Valid possibilities:\n",
         matdef::EnumNameTextureFormat(kDefaultTextureFormat));
-    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), log);
+    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), &log);
 
     log.Log(
         kLogImportant,
@@ -2021,7 +1797,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                If texture format has an alpha channel, defaults to\n"
         "                ALPHA. Otherwise, defaults to OFF.\n"
         "                Valid possibilities:\n");
-    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), log);
+    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), &log);
 
     log.Log(
         kLogImportant,
@@ -2050,7 +1826,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                is in meters, no matter the distance unit of the\n"
         "                FBX file.\n"
         "                (unit) can be one of the following:\n");
-    LogOptions(kOptionIndent, kDistanceUnitNames, log);
+    LogOptions(kOptionIndent, fplutil::DistanceUnitNames(), &log);
 
     log.Log(
         kLogImportant,
@@ -2058,11 +1834,17 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "                distance unit. For example, instead of '-u inches',\n"
         "                you could also use '-u 2.54'.\n"
         "                If unspecified, use FBX file's unit.\n"
-        "  -h, --hierarchy\n"
-        "                output vertices relative to local pivot of each\n"
-        "                sub-mesh. The transforms from parent pivot to local\n"
-        "                pivot are also output.\n"
-        "                This option is necessary for animated meshes.\n"
+        "  --attrib, --vertex-attributes ATTRIBUTES\n"
+        "                Composition of the output vertex buffer.\n"
+        "                If unspecified, output attributes in source file.\n"
+        "                ATTRIBUTES is a combination of the following:\n");
+    LogOptions(kOptionIndent, kVertexAttributeShortNames, &log);
+
+    log.Log(
+        kLogImportant,
+        "                For example, '--attrib pu' outputs the positions and\n"
+        "                UVs into the vertex buffer, but ignores normals,\n"
+        "                colors, and all other per-vertex data.\n"
         "  -c, --center  ensure world origin is inside geometry bounding box\n"
         "                by adding a translation if required.\n"
         "  -v, --verbose output all informative messages\n"
@@ -2087,21 +1869,20 @@ int main(int argc, char** argv) {
 
   // Load the FBX file.
   fplbase::FbxMeshParser pipe(log);
-  const bool load_status =
-      pipe.Load(args.fbx_file.c_str(), args.axis_system,
-                args.distance_unit_scale, args.recenter, args.hierarchy);
+  const bool load_status = pipe.Load(args.fbx_file.c_str(), args.axis_system,
+                                     args.distance_unit_scale, args.recenter,
+                                     args.vertex_attributes);
   if (!load_status) return 1;
 
   // Gather data into a format conducive to our FlatBuffer format.
   const int max_verts = pipe.NumVertsUpperBound();
-  fplbase::FlatMesh mesh(max_verts, log);
+  fplbase::FlatMesh mesh(max_verts, args.vertex_attributes, log);
   pipe.GatherFlatMesh(&mesh);
 
   // Output gathered data to a binary FlatBuffer.
   const bool output_status = mesh.OutputFlatBuffer(
       args.fbx_file, args.asset_base_dir, args.asset_rel_dir,
-      args.texture_extension, args.texture_formats, args.blend_mode,
-      args.hierarchy);
+      args.texture_extension, args.texture_formats, args.blend_mode);
   if (!output_status) return 1;
 
   // Success.

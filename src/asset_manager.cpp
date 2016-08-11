@@ -43,6 +43,7 @@ void FileAsset::Load() {
 void FileAsset::Finalize() {
   // Since the asset was already "created", this is all we have to do here.
   data_ = nullptr;
+  CallFinalizeCallback();
 }
 
 static_assert(
@@ -59,19 +60,17 @@ static_assert(kBlendModeCount == kBlendModeMultiply + 1,
               "Please update static_assert above with new enum values.");
 static_assert(
     kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
-        kFormat8888 ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
-        kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
-        kFormat5551 ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
-        kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
-        kFormatLuminance ==
-            static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
-        kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
-        kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
-        kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX),
-    "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatKTX + 1,
+    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
+    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
+    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
+    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
+    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+    kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
+    kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
+    kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX) &&
+    kFormatNative == static_cast<TextureFormat>(matdef::TextureFormat_NATIVE),
+      "TextureFormat enums in material.h and material.fbs must match.");
+static_assert(kFormatCount == kFormatNative + 1,
               "Please update static_assert above with new enum values.");
 
 template <typename T>
@@ -108,7 +107,7 @@ Shader *AssetManager::FindShader(const char *basename) {
 }
 
 Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const char **defines,
+                                       const char * const *defines,
                                        bool should_reload) {
   auto shader = FindShader(basename);
   if (!should_reload && shader)
@@ -146,16 +145,18 @@ Shader *AssetManager::LoadShaderHelper(const char *basename,
   return nullptr;
 }
 
-Shader *AssetManager::LoadShader(const char *basename, const char **defines) {
+Shader *AssetManager::LoadShader(const char *basename,
+                                 const char * const *defines) {
   return LoadShaderHelper(basename, defines, false);
 }
 
 Shader *AssetManager::LoadShader(const char *basename) {
-  static const char **defines = {nullptr};
+  static const char * const *defines = {nullptr};
   return LoadShader(basename, defines);
 }
 
-Shader *AssetManager::ReloadShader(const char *basename, const char **defines) {
+Shader *AssetManager::ReloadShader(const char *basename,
+                                   const char * const *defines) {
   return LoadShaderHelper(basename, defines, true);
 }
 
@@ -210,11 +211,11 @@ Texture *AssetManager::FindTexture(const char *filename) {
 }
 
 Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
-                                   bool mipmaps, bool async) {
+                                   TextureFlags flags) {
   auto tex = FindTexture(filename);
   if (tex) return tex;
-  tex = new Texture(filename, format, mipmaps);
-  return LoadOrQueue(tex, texture_map_, async);
+  tex = new Texture(filename, format, flags);
+  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
@@ -249,8 +250,12 @@ Material *AssetManager::LoadMaterial(const char *filename) {
           matdef->desired_format() && i < matdef->desired_format()->size()
               ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
               : kFormatAuto;
-      auto tex = LoadTexture(matdef->texture_filenames()->Get(index)->c_str(),
-                             format, matdef->mipmaps() != 0, false);
+      auto tex = LoadTexture(
+          matdef->texture_filenames()->Get(index)->c_str(), format,
+          (matdef->mipmaps() ? kTextureFlagsUseMipMaps : kTextureFlagsNone) |
+              (matdef->is_cubemap() && matdef->is_cubemap()->Get(index)
+                   ? kTextureFlagsIsCubeMap
+                   : kTextureFlagsNone));
       mat->textures().push_back(tex);
 
       auto original_size =
@@ -298,17 +303,39 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(meshdef::VerifyMeshBuffer(verifier));
     auto meshdef = meshdef::GetMesh(flatbuf.c_str());
-    const bool skin = meshdef->skin_indices() && meshdef->skin_weights() &&
-                      meshdef->bone_transforms() && meshdef->bone_parents() &&
-                      meshdef->shader_to_mesh_bones();
+
+    // Ensure the data version matches the runtime version, or that it was not
+    // tied to a specific version to begin with (e.g. it's legacy or it's
+    // created from a json file instead of mesh_pipeline).
+    if (meshdef->version() != meshdef::MeshVersion_Unspecified &&
+        meshdef->version() != meshdef::MeshVersion_MostRecent) {
+      LogError(kError, "Mesh file is stale: %s", filename);
+      renderer_.set_last_error(std::string("Mesh file is stale: ") + filename);
+      return nullptr;
+    }
+
+    auto has_skinning =
+        meshdef->skin_indices() && meshdef->skin_indices()->size() &&
+        meshdef->skin_weights() && meshdef->skin_weights()->size() &&
+        meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
+        meshdef->bone_parents() && meshdef->bone_parents()->size() &&
+        meshdef->shader_to_mesh_bones() &&
+        meshdef->shader_to_mesh_bones()->size();
+    auto has_normals = meshdef->normals() && meshdef->normals()->size();
+    auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
+    auto has_colors = meshdef->colors() && meshdef->colors()->size();
+    auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
+    auto has_texcoords_alt = meshdef->texcoords_alt() &&
+                             meshdef->texcoords_alt()->size();
     // Collect what attributes are available.
     std::vector<Attribute> attrs;
     attrs.push_back(kPosition3f);
-    if (meshdef->normals()) attrs.push_back(kNormal3f);
-    if (meshdef->tangents()) attrs.push_back(kTangent4f);
-    if (meshdef->colors()) attrs.push_back(kColor4ub);
-    if (meshdef->texcoords()) attrs.push_back(kTexCoord2f);
-    if (skin) {
+    if (has_normals) attrs.push_back(kNormal3f);
+    if (has_tangents) attrs.push_back(kTangent4f);
+    if (has_colors) attrs.push_back(kColor4ub);
+    if (has_texcoords) attrs.push_back(kTexCoord2f);
+    if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
+    if (has_skinning) {
       attrs.push_back(kBoneIndices4ub);
       attrs.push_back(kBoneWeights4ub);
     }
@@ -321,15 +348,15 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
     auto p = buf;
     for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
       flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      if (meshdef->positions())
-        CopyAttribute(meshdef->positions()->Get(index), p);
-      if (meshdef->normals()) CopyAttribute(meshdef->normals()->Get(index), p);
-      if (meshdef->tangents())
-        CopyAttribute(meshdef->tangents()->Get(index), p);
-      if (meshdef->colors()) CopyAttribute(meshdef->colors()->Get(index), p);
-      if (meshdef->texcoords())
-        CopyAttribute(meshdef->texcoords()->Get(index), p);
-      if (skin) {
+      assert(meshdef->positions());
+      CopyAttribute(meshdef->positions()->Get(index), p);
+      if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
+      if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
+      if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
+      if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
+      if (has_texcoords_alt)
+        CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
+      if (has_skinning) {
         CopyAttribute(meshdef->skin_indices()->Get(index), p);
         CopyAttribute(meshdef->skin_weights()->Get(index), p);
       }
@@ -344,7 +371,7 @@ Mesh *AssetManager::LoadMesh(const char *filename) {
                     meshdef->min_position() ? &min : nullptr);
     delete[] buf;
     // Load the bone information.
-    if (skin) {
+    if (has_skinning) {
       const size_t num_bones = meshdef->bone_parents()->Length();
       assert(meshdef->bone_transforms()->Length() == num_bones);
       std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
@@ -392,7 +419,9 @@ TextureAtlas *AssetManager::FindTextureAtlas(const char *filename) {
   return FindInMap(texture_atlas_map_, filename);
 }
 
-TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
+TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
+                                             TextureFormat format,
+                                             TextureFlags flags) {
   auto atlas = FindTextureAtlas(filename);
   if (atlas) return atlas;
   std::string flatbuf;
@@ -401,7 +430,8 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
     auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
-    Texture *atlas_texture = LoadTexture(atlasdef->texture_filename()->c_str());
+    Texture *atlas_texture =
+        LoadTexture(atlasdef->texture_filename()->c_str(), format, flags);
     atlas = new TextureAtlas();
     atlas->set_atlas_texture(atlas_texture);
     for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {

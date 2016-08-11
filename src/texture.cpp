@@ -12,14 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef FPL_BASE_BACKEND_STDLIB
+// Definitions to instantiate STB functions here.
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#endif  // FPL_BASE_BACKEND_STDLIB
+
 #include "fplbase/texture.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
 #include "precompiled.h"
 #include "webp/decode.h"
-#ifdef FPL_BASE_SUPPORT_PNG
-#include "lodepng/lodepng.h"
+
+// STB_image to resize PNG/JPG images.
+// Disable warnings in STB_image_resize.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4100)  // unused reference
+#pragma warning(disable : 4244)  // conversion possible loss of data
+#pragma warning(disable : 4189)  // local variable not referenced
+#pragma warning(disable : 4702)  // unreachable code
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif /* _MSC_VER */
+
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_ONLY_TGA
+#include "stb_image.h"
+#include "stb_image_resize.h"
+
+// Pop warning status.
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
 #endif
 
 using mathfu::vec2;
@@ -65,6 +95,17 @@ struct KTXHeader {
   uint32_t keyvalue_data;
 };
 
+Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
+: AsyncAsset(filename ? filename : ""),
+  id_(0),
+  size_(mathfu::kZeros2i),
+  original_size_(mathfu::kZeros2i),
+  scale_(mathfu::kOnes2f),
+  texture_format_(kFormat888),
+  target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D),
+  desired_(format),
+  flags_(flags) {}
+
 void Texture::Load() {
   data_ =
       LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &texture_format_);
@@ -76,20 +117,27 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
-  id_ = CreateTexture(data, size_, texture_format_, mipmaps_, desired_);
+  id_ = CreateTexture(data, size_, texture_format_, desired_, flags_);
 }
 
 void Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, texture_format_, mipmaps_, desired_);
+    id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
+    CallFinalizeCallback();
   }
 }
 
-void Texture::Set(size_t unit) {
+void Texture::Set(size_t unit, RenderContext *) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, id_));
+  GL_CALL(glBindTexture(target_, id_));
+}
+
+void Texture::Set(size_t unit) { Set(unit, nullptr); }
+
+void Texture::Set(size_t unit, RenderContext *) const {
+  const_cast<Texture *>(this)->Set(unit);
 }
 
 void Texture::Set(size_t unit) const { const_cast<Texture *>(this)->Set(unit); }
@@ -120,31 +168,82 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
   return buffer16;
 }
 
+void Texture::SetTextureId(TextureTarget target, TextureHandle id) {
+  target_ = target;
+  id_ = id;
+}
+
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              TextureFormat texture_format, bool mipmaps,
-                              TextureFormat desired) {
-  int area = size.x() * size.y();
-  if (area & (area - 1)) {
-    LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
-             size.x(), size.y());
-    return 0;
+                              TextureFormat texture_format,
+                              TextureFormat desired, TextureFlags flags) {
+  GLenum tex_type = GL_TEXTURE_2D;
+  GLenum tex_imagetype = GL_TEXTURE_2D;
+  int tex_num_faces = 1;
+  auto tex_size = size;
+
+  if (flags & kTextureFlagsIsCubeMap) {
+    tex_type = GL_TEXTURE_CUBE_MAP;
+    tex_imagetype = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+    tex_num_faces = 6;
+    tex_size = size / vec2i(1, tex_num_faces);
+    if (tex_size.x() != tex_size.y()) {
+      LogError(kError, "CreateTexture: cubemap not in 1x6 format: (%d,%d)",
+               size.x(), size.y());
+    }
+  }
+
+  if (!Renderer::Get()->SupportsTextureNpot()) {
+    // Npot textures are supported in ES 2.0 if you use GL_CLAMP_TO_EDGE and no
+    // mipmaps. See Section 3.8.2 of ES2.0 spec:
+    // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
+    if (flags & kTextureFlagsUseMipMaps ||
+        !(flags & kTextureFlagsClampToEdge)) {
+      int area = tex_size.x() * tex_size.y();
+      if (area & (area - 1)) {
+        LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
+                 tex_size.x(), tex_size.y());
+        return 0;
+      }
+    }
+  }
+
+  bool generate_mips = (flags & kTextureFlagsUseMipMaps) != 0;
+  bool have_mips = generate_mips;
+
+  if (generate_mips && IsCompressed(texture_format)) {
+    if (texture_format == kFormatKTX) {
+      const auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
+      have_mips = (header.mip_levels > 1);
+    } else {
+      have_mips = false;
+    }
+
+    if (!have_mips) {
+      LogError(kError, "Can't generate mipmaps for compressed textures");
+    }
+    generate_mips = false;
   }
 
   // In some Android devices (particulary Galaxy Nexus), there is an issue
   // of glGenerateMipmap() with 16BPP texture format.
   // In that case, we are going to fallback to 888/8888 textures
   const bool use_16bpp = MipmapGeneration16bppSupported();
+  const GLint wrap_mode =
+      flags & kTextureFlagsClampToEdge ? GL_CLAMP_TO_EDGE : GL_REPEAT;
 
   // TODO(wvo): support default args for mipmap/wrap/trilinear
   GLuint texture_id;
   GL_CALL(glGenTextures(1, &texture_id));
   GL_CALL(glActiveTexture(GL_TEXTURE0));
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, texture_id));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                          mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
+  GL_CALL(glBindTexture(tex_type, texture_id));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_S, wrap_mode));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_T, wrap_mode));
+  if (flags & kTextureFlagsIsCubeMap) {
+    GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_WRAP_R, wrap_mode));
+  }
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MIN_FILTER,
+                          have_mips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR));
 
   auto format = GL_RGBA;
   auto type = GL_UNSIGNED_BYTE;
@@ -152,7 +251,27 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     desired = IsCompressed(texture_format)
                   ? texture_format
                   : HasAlpha(texture_format) ? kFormat5551 : kFormat565;
+  } else if (desired == kFormatNative) {
+    desired = texture_format;
   }
+
+  auto gl_tex_image = [&](const uint8_t *buf, const vec2i &mip_size,
+                          int mip_level, int buf_size, bool compressed) {
+    for (int i = 0; i < tex_num_faces; i++) {
+      if (compressed) {
+        GL_CALL(glCompressedTexImage2D(tex_imagetype + i, mip_level, format,
+                                       mip_size.x(), mip_size.y(), 0, buf_size,
+                                       buf));
+      } else {
+        GL_CALL(glTexImage2D(tex_imagetype + i, mip_level, format, mip_size.x(),
+                             mip_size.y(), 0, format, type, buf));
+      }
+      if (buf) buf += buf_size;
+    }
+  };
+
+  int num_pixels = tex_size.x() * tex_size.y();
+
   switch (desired) {
     case kFormat5551: {
       switch (texture_format) {
@@ -160,17 +279,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
           if (use_16bpp) {
             auto buffer16 = Convert8888To5551(buffer, size);
             type = GL_UNSIGNED_SHORT_5_5_5_1;
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer16));
+            gl_tex_image(reinterpret_cast<const uint8_t *>(buffer16), tex_size,
+                         0, num_pixels * 2, false);
             delete[] buffer16;
           } else {
             // Fallback to 8888
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer));
+            gl_tex_image(buffer, tex_size, 0, num_pixels * 4, false);
           }
           break;
         case kFormat5551:
-          // Nothing to do.
+          // Nothing coversion.
+          gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
           break;
         default:
           // This conversion not supported yet.
@@ -186,17 +305,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
           if (use_16bpp) {
             auto buffer16 = Convert888To565(buffer, size);
             type = GL_UNSIGNED_SHORT_5_6_5;
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer16));
+            gl_tex_image(reinterpret_cast<const uint8_t *>(buffer16), tex_size,
+                         0, num_pixels * 2, false);
             delete[] buffer16;
           } else {
             // Fallback to 888
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(),
-                                 0, format, type, buffer));
+            gl_tex_image(buffer, tex_size, 0, num_pixels * 3, false);
           }
           break;
         case kFormat565:
-          // Nothing to do.
+          // No conversion.
+          gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
           break;
         default:
           // This conversion not supported yet.
@@ -207,22 +326,19 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
     case kFormat8888: {
       assert(texture_format == kFormat8888);
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels * 4, false);
       break;
     }
     case kFormat888: {
       assert(texture_format == kFormat888);
       format = GL_RGB;
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels * 3, false);
       break;
     }
     case kFormatLuminance: {
       assert(texture_format == kFormatLuminance);
       format = GL_LUMINANCE;
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x(), size.y(), 0,
-                           format, type, buffer));
+      gl_tex_image(buffer, tex_size, 0, num_pixels, false);
       break;
     }
     case kFormatASTC: {
@@ -287,9 +403,10 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
         default:
           assert(false);
       }
-      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
-                                     size.y(), 0, data_size,
-                                     buffer + sizeof(ASTCHeader)));
+      // TODO(wvo): cubemaps in ASTC may not work for block sizes that straddle
+      // the face boundaries.
+      gl_tex_image(buffer + sizeof(ASTCHeader), tex_size, 0,
+                   data_size / tex_num_faces, true);
       break;
     }
     case kFormatPKM: {
@@ -299,9 +416,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto ext_ysize = (header.ext_height[0] << 8) | header.ext_height[1];
       auto data_size = (ext_xsize / 4) * (ext_ysize / 4) * 8;
       format = GL_COMPRESSED_RGB8_ETC2;
-      GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, format, size.x(),
-                                     size.y(), 0, data_size,
-                                     buffer + sizeof(PKMHeader)));
+      gl_tex_image(buffer + sizeof(PKMHeader), tex_size, 0,
+                   data_size / tex_num_faces, true);
       break;
     }
     case kFormatKTX: {
@@ -309,16 +425,18 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
       format = header.internal_format;
       auto data = buffer + sizeof(KTXHeader);
-      auto cur_size = size;
-      auto offset = 0;
+      auto cur_size = tex_size;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
-        auto data_size = *(reinterpret_cast<const int32_t *>(data + offset));
-        offset += sizeof(int32_t);
-        GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, i, format, cur_size.x(),
-                                       cur_size.y(), 0, data_size,
-                                       data + offset));
+        auto data_size = *(reinterpret_cast<const int32_t *>(data));
+        data += sizeof(int32_t);
+        gl_tex_image(data, cur_size, i, data_size / tex_num_faces, true);
         cur_size /= 2;
-        offset += data_size;
+        data += data_size;
+        // For some reason header.mip_levels can be big enough such that a
+        // coordinate goes to 0.
+        if (!cur_size.x() || !cur_size.y()) break;
+        // If the file has mips but the caller doesn't want them, stop here.
+        if (!have_mips) break;
       }
       break;
     }
@@ -326,20 +444,26 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       assert(false);
   }
 
-  if (mipmaps) {
+  if (generate_mips) {
     // Work around for some Android devices to correctly generate miplevels.
-    auto min_dimension = static_cast<float>(std::min(size.x(), size.y()));
+    auto min_dimension =
+        static_cast<float>(std::min(tex_size.x(), tex_size.y()));
     auto levels = ceil(log(min_dimension) / log(2.0f));
-    auto width = size.x() / 2;
-    auto height = size.y() / 2;
+    auto mip_size = tex_size / 2;
     for (auto i = 1; i < levels; ++i) {
-      GL_CALL(glTexImage2D(GL_TEXTURE_2D, i, format, width, height, 0, format,
-                           type, nullptr));
-      width /= 2;
-      height /= 2;
+      gl_tex_image(nullptr, mip_size, i, 0, false);
+      mip_size /= 2;
     }
 
-    GL_CALL(glGenerateMipmap(GL_TEXTURE_2D));
+    GL_CALL(glGenerateMipmap(tex_type));
+  } else if (have_mips && IsCompressed(texture_format)) {
+    // At least on Linux, there appears to be a bug with uploading pre-made
+    // compressed mipmaps that makes the texture not show up if
+    // glGenerateMipmap isn't called, even though glGenerateMipmap can't
+    // generate any mipmaps for compressed textures.
+    // Also, this call should generate GL_INVALID_OPERATION but it doesn't?
+    // TODO(wvo): is this a driver bug, or what is the root cause of this?
+    GL_CALL(glGenerateMipmap(tex_type));
   }
   return texture_id;
 }
@@ -349,14 +473,28 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
   // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
   // that we are updating entire row at once.
   // TODO(wvo): Optimize glTexSubImage2D call in ES3.0 capable platform.
+  auto texture_format = GL_RGBA;
+  auto pixel_format = GL_UNSIGNED_BYTE;
   switch (format) {
     case kFormatLuminance:
-      GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
-                              GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
+      texture_format = GL_LUMINANCE;
+      break;
+    case kFormat888:
+      texture_format = GL_RGB;
+      break;
+    case kFormat5551:
+      pixel_format = GL_UNSIGNED_SHORT_5_5_5_1;
+      break;
+    case kFormat565:
+      pixel_format = GL_UNSIGNED_SHORT_5_6_5;
+      break;
+    case kFormat8888:
       break;
     default:
       assert(false);  // TODO(wvo): not implemented.
   }
+  GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
+                          texture_format, pixel_format, data));
 }
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
@@ -368,43 +506,10 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
   };
   static_assert(sizeof(TGA) == 18,
                 "Members of struct TGA need to be packed with no padding.");
-  int little_endian = 1;
-  if (!*reinterpret_cast<char *>(&little_endian)) {
-    return nullptr;  // TODO(wvo): Endian swap the shorts instead.
-  }
   auto header = reinterpret_cast<const TGA *>(tga_buf);
-  if (header->color_map_type != 0  // No color map.
-      || header->image_type != 2   // RGB or RGBA only.
-      || (header->bpp != 32 && header->bpp != 24))
-    return nullptr;
-  auto pixels = reinterpret_cast<const unsigned char *>(header + 1);
-  pixels += header->id_len;
-  int size = header->width * header->height;
-  // We use malloc to ensure that all unpacked texture formats can be freed
-  // in the same way (see also other Unpack* functions).
-  auto dest = reinterpret_cast<uint8_t *>(malloc(size * header->bpp / 8));
-  int start_y, end_y, y_direction;
-  if (header->image_descriptor & 0x20) {  // y is not flipped.
-    start_y = 0;
-    end_y = header->height;
-    y_direction = 1;
-  } else {  // y is flipped.
-    start_y = header->height - 1;
-    end_y = -1;
-    y_direction = -1;
-  }
-  for (int y = start_y; y != end_y; y += y_direction) {
-    for (int x = 0; x < header->width; x++) {
-      auto p = dest + (y * header->width + x) * header->bpp / 8;
-      p[2] = *pixels++;  // BGR -> RGB
-      p[1] = *pixels++;
-      p[0] = *pixels++;
-      if (header->bpp == 32) p[3] = *pixels++;
-    }
-  }
-  *texture_format = header->bpp == 32 ? kFormat8888 : kFormat888;
-  *dimensions = vec2i(header->width, header->height);
-  return dest;
+  int size = header->id_len + header->width * header->height * header->bpp / 8;
+  return UnpackImage(tga_buf, size, mathfu::kOnes2f, dimensions,
+                     texture_format);
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
@@ -489,11 +594,8 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
   auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
   auto v = memcmp(header.id, magic, sizeof(header.id));
-  if (v != 0 ||
-      header.endian != 0x04030201 ||
-      header.depth != 0 ||
-      header.faces != 1 ||
-      header.keyvalue_data != 0)
+  if (v != 0 || header.endian != 0x04030201 || header.depth != 0 ||
+      header.faces != 1 || header.keyvalue_data != 0)
     return nullptr;
 
   *dimensions = vec2i(header.width, header.height);
@@ -508,30 +610,44 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   return buf;
 }
 
-uint8_t *Texture::UnpackPng(const void *png_buf, size_t size,
-                            const vec2 &scale, vec2i *dimensions,
-                            TextureFormat *texture_format) {
-#ifdef FPL_BASE_SUPPORT_PNG
-  uint8_t* image = nullptr;
-  unsigned int width = 0;
-  unsigned int height = 0;
-  unsigned int error = lodepng_decode32(&image, &width, &height,
-      reinterpret_cast<const unsigned char*>(png_buf), size);
-  if (error) {
-    return nullptr;
+uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
+                              const vec2 &scale, vec2i *dimensions,
+                              TextureFormat *texture_format) {
+  uint8_t *image = nullptr;
+  int width = 0;
+  int height = 0;
+
+  int32_t channels;
+  // STB has it's own format detection code inside stbi_load_from_memory.
+  image = stbi_load_from_memory(static_cast<stbi_uc const *>(img_buf),
+                                static_cast<int>(size), &width, &height,
+                                &channels, 0);
+
+  if (image && (scale.x() != 1.0f || scale.y() != 1.0f)) {
+    // Scale the image.
+    int32_t new_width = static_cast<int32_t>(width * scale.x());
+    int32_t new_height = static_cast<int32_t>(height * scale.y());
+    uint8_t *new_image =
+        static_cast<uint8_t *>(malloc(new_width * new_height * channels));
+    stbir_resize_uint8(image, width, height, 0, new_image, new_width,
+                       new_height, 0, channels);
+    stbi_image_free(image);
+    image = new_image;
+    width = new_width;
+    height = new_height;
   }
+
   *dimensions = vec2i(width, height);
-  *texture_format = kFormat8888;
+  if (channels == 4) {
+    *texture_format = kFormat8888;
+  } else if (channels == 3) {
+    *texture_format = kFormat888;
+  } else if (channels == 1) {
+    *texture_format = kFormatLuminance;
+  } else {
+    assert(0);
+  }
   return image;
-#else
-  (void)png_buf;
-  (void)size;
-  (void)scale;
-  (void)dimensions;
-  (void)texture_format;
-  LogError(kApplication, "Png decoding not supported.");
-  return nullptr;
-#endif
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
@@ -594,22 +710,15 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
     return nullptr;
   }
 
-  if (ext == "tga") {
-    auto buf = UnpackTGA(file.c_str(), dimensions, texture_format);
-    if (!buf) LogError(kApplication, "TGA format problem: %s", filename);
+  if (ext == "tga" || ext == "png" || ext == "jpg") {
+    auto buf = UnpackImage(file.c_str(), file.length(), scale, dimensions,
+                           texture_format);
+    if (!buf) LogError(kApplication, "Image format problem: %s", filename);
     return buf;
   } else if (ext == "webp") {
     auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
                           texture_format);
     if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
-    return buf;
-  } else if (ext == "png") {
-    auto buf =
-        UnpackPng(file.c_str(), file.length(), scale, dimensions,
-                  texture_format);
-    if (!buf) {
-      LogError(kApplication, "Png format problem: %s", filename);
-    }
     return buf;
   } else {
     LogError(kApplication, "Can\'t figure out file type from extension: %s",

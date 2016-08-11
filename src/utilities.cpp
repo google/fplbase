@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "precompiled.h"
 #include "fplbase/utilities.h"
+// clang-format on
 
 #if defined(__ANDROID__)
 #include <string>
@@ -30,17 +32,19 @@
 #if defined(__ANDROID__)
 #if defined(FPL_BASE_BACKEND_SDL)
 #include "SDL_thread.h"
-#endif // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPL_BASE_BACKEND_SDL)
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
 }
-#endif // defined(__ANDROID__)
+#endif  // defined(__ANDROID__)
 
+// clang-format off
 #if defined(__APPLE__)
 #include "TargetConditionals.h"
 #include <CoreFoundation/CoreFoundation.h>
 #endif  // defined(__APPLE__)
+// clang-format on
 
 #endif  // defined(FPL_BASE_BACKEND_STDLIB)
 
@@ -380,21 +384,23 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   std::string target_dir_str(target_dir);
 
 #if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
+  (void)binary_dir;
   // Get the target directory from the Bundle instead of using the directory
   // specified by the client.
-  CFBundleRef main_bundle = CFBundleGetMainBundle();
-  CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
-  char path[PATH_MAX];
-  if (!CFURLGetFileSystemRepresentation(
-          resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
-    LogError(kError, "Could not set the bundle directory");
-    return false;
+  {
+    CFBundleRef main_bundle = CFBundleGetMainBundle();
+    CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
+    char path[PATH_MAX];
+    if (!CFURLGetFileSystemRepresentation(
+            resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+      LogError(kError, "Could not set the bundle directory");
+      return false;
+    }
+    CFRelease(resources_url);
+    int success = chdir(path);
+    return (success == 0);
   }
-  CFRelease(resources_url);
-  target_dir_str = path;
-#endif
-
-#if !defined(__ANDROID__) && !(defined __IOS__)
+#elif !defined(__ANDROID__)
   {
     std::string current_dir = binary_dir;
     const std::string separator_str(1, flatbuffers::kPathSeparator);
@@ -419,7 +425,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
   (void)binary_dir;
   (void)target_dir;
   return true;
-#endif  //  !defined(__ANDROID__) && !(defined __IOS__)
+#endif  //  !defined(__ANDROID__)
 }
 
 static inline bool IsUpperCase(const char c) { return c == toupper(c); }
@@ -471,7 +477,7 @@ bool AndroidSystemFeature(const char *feature_name) {
 #endif
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
-int32_t AndroidGetAPILevel() {
+int32_t AndroidGetApiLevel() {
   // Retrieve API level through JNI.
   JNIEnv *env = AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android/os/Build$VERSION");
@@ -957,7 +963,7 @@ PerformanceMode GetPerformanceMode() { return performance_mode; }
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
 std::string DeviceModel() {
   JNIEnv *env = fplbase::AndroidGetJNIEnv();
-  jclass build_class = env->FindClass("android.os.Build");
+  jclass build_class = env->FindClass("android/os/Build");
   jfieldID model_id =
       env->GetStaticFieldID(build_class, "MODEL", "Ljava/lang/String;");
   jstring model_object =

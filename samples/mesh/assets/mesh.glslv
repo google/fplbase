@@ -13,11 +13,13 @@
 // limitations under the License.
 
 attribute vec4 aPosition;
+attribute vec3 aNormal;
 attribute vec2 aTexCoord;
+varying vec3 vNormal;
 varying vec2 vTexCoord;
 uniform mat4 model_view_projection;
-void main()
-{
+void main() {
   gl_Position = model_view_projection * aPosition;
+  vNormal = aNormal;
   vTexCoord = aTexCoord;
 }

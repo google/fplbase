@@ -29,6 +29,8 @@ namespace fplbase {
 /// @addtogroup fplbase_texture
 /// @{
 
+class RenderContext;
+
 enum TextureFormat {
   kFormatAuto = 0,  ///< @brief The default, picks based on loaded data.
   kFormat8888,
@@ -39,8 +41,21 @@ enum TextureFormat {
   kFormatASTC,
   kFormatPKM,
   kFormatKTX,
-  kFormatCount  // Must be at end.
+  kFormatNative,  ///< @brief Uses the same format as the source file.
+  kFormatCount    // Must be at end.
 };
+
+enum TextureFlags {
+  kTextureFlagsNone = 0,
+  kTextureFlagsClampToEdge = 1 << 0,  // If not set, use repeating texcoords.
+  kTextureFlagsUseMipMaps = 1 << 1,   // Uses (or generates) mipmaps.
+  kTextureFlagsIsCubeMap = 1 << 2,    // Data represents a 1x6 cubemap.
+  kTextureFlagsLoadAsync = 1 << 3,    // Load texture asynchronously.
+};
+
+inline TextureFlags operator|(TextureFlags a, TextureFlags b) {
+  return static_cast<TextureFlags>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 /// @brief determines if the format has an alpha component.
 inline bool HasAlpha(TextureFormat format) {
@@ -70,9 +85,10 @@ inline bool IsCompressed(TextureFormat format) {
   }
 }
 
-/// @brief This typedef is compatible with its OpenGL equivalent, but doesn't
+/// @brief These typedefs are compatible with OpenGL equivalents, but don't
 /// require this header to depend on OpenGL.
 typedef unsigned int TextureHandle;
+typedef unsigned int TextureTarget;
 
 /// @class Texture
 /// @brief Abstraction for a texture object loaded on the GPU.
@@ -82,15 +98,8 @@ class Texture : public AsyncAsset {
  public:
   /// @brief Constructor for a Texture.
   explicit Texture(const char *filename = nullptr,
-                   TextureFormat format = kFormatAuto, bool mipmaps = true)
-      : AsyncAsset(filename ? filename : ""),
-        id_(0),
-        size_(mathfu::kZeros2i),
-        original_size_(mathfu::kZeros2i),
-        scale_(mathfu::kOnes2f),
-        texture_format_(kFormat888),
-        mipmaps_(mipmaps),
-        desired_(format) {}
+                   TextureFormat format = kFormatAuto,
+                   TextureFlags flags = kTextureFlagsUseMipMaps);
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
@@ -113,12 +122,18 @@ class Texture : public AsyncAsset {
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
+  /// @param[in] render_context Pointer to the RenderContext object
   /// @note Modifies global OpenGL state.
+  void Set(size_t unit, RenderContext *render_context);
+  /// @overload void Set(size_t unit)
   void Set(size_t unit);
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
+  /// @param[in] render_context Pointer to the RenderContext object
   /// @note Modifies global OpenGL state.
+  void Set(size_t unit, RenderContext *render_context) const;
+  /// @overload void Set(size_t unit) const
   void Set(size_t unit) const;
 
   /// @brief Delete the Texture stored in `id_`, and reset `id_` to `0`.
@@ -130,16 +145,14 @@ class Texture : public AsyncAsset {
   /// @param[in] size A const `mathfu::vec2i` reference to the original
   /// Texture size `x` and `y` components.
   /// @param[in] texture_format The format of `buffer`.
-  /// @param[in] mipmaps If `true`, use the work around for some Android devices
-  /// to correctly generate miplevels. Defaults to `true`.
   /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
+  /// @param[in] flags Options for the texture.
   /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
   /// power of two in size.
-  static TextureHandle CreateTexture(const uint8_t *buffer,
-                                     const mathfu::vec2i &size,
-                                     TextureFormat texture_format,
-                                     bool mipmaps = true,
-                                     TextureFormat desired = kFormatAuto);
+  static TextureHandle CreateTexture(
+      const uint8_t *buffer, const mathfu::vec2i &size,
+      TextureFormat texture_format, TextureFormat desired = kFormatAuto,
+      TextureFlags flags = kTextureFlagsUseMipMaps);
 
   /// @brief Update (part of) the current texture with new pixel data.
   /// For now, must always update at least entire rows.
@@ -225,15 +238,34 @@ class Texture : public AsyncAsset {
   /// Texture sizes.
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
-  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
-  /// image has an alpha.
+  /// @param[out] texture_format Pixel format of unpacked image.
   /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackPng(const void *png_buf, size_t size,
                             const mathfu::vec2 &scale,
                             mathfu::vec2i *dimensions,
-                            TextureFormat *texture_format);
+                            TextureFormat *texture_format) {
+    return UnpackImage(png_buf, size, scale, dimensions, texture_format);
+  }
+
+  /// @brief Unpacks a memory buffer containing a Jpeg format file.
+  /// @param[in] jpg_buf The Jpeg image data.
+  /// @param[in] size The size of the memory block pointed to by `data`.
+  /// @param[in] scale A scale value must be a power of two to have correct
+  /// Texture sizes.
+  /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
+  /// width and height.
+  /// @param[out] texture_format Pixel format of unpacked image.
+  /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
+  /// the format is not understood.
+  /// @note You must `free()` on the returned pointer when done.
+  static uint8_t *UnpackJpg(const void *jpg_buf, size_t size,
+                            const mathfu::vec2 &scale,
+                            mathfu::vec2i *dimensions,
+                            TextureFormat *texture_format) {
+    return UnpackImage(jpg_buf, size, scale, dimensions, texture_format);
+  }
 
   /// @brief Loads the file in filename, and then unpacks the file format
   /// (supports TGA, WebP, KTX, PKM, ASTC).
@@ -268,6 +300,12 @@ class Texture : public AsyncAsset {
   static uint16_t *Convert888To565(const uint8_t *buffer,
                                    const mathfu::vec2i &size);
 
+  /// @brief Set texture target and id directly for textures that have been
+  /// created outside of this class.
+  /// @param[in] target Texture target to use when binding texture to context.
+  /// @param[in] id Texture handle ID.
+  void SetTextureId(TextureTarget target, TextureHandle id);
+
   /// @brief Get the Texture handle ID.
   /// @return Returns the TextureHandle ID.
   const TextureHandle &id() const { return id_; }
@@ -287,6 +325,9 @@ class Texture : public AsyncAsset {
   /// `x` and `y` scale components to set for the Texture.
   void set_scale(const mathfu::vec2 &scale) { scale_ = scale; }
 
+  /// @brief returns the texture flags.
+  TextureFlags flags() const { return flags_; }
+
   /// @brief Get the original size of the Texture.
   /// @return Returns a const `mathfu::vec2` reference to the scale of the
   /// Texture.
@@ -296,6 +337,10 @@ class Texture : public AsyncAsset {
   /// @param[in] size A `mathfu::vec2i` containing the original Texture
   /// `x` and `y` sizes.
   void set_original_size(const mathfu::vec2i &size) { original_size_ = size; }
+
+  /// @brief Get the Texture format.
+  /// @return Returns the texture format.
+  TextureFormat format() const { return texture_format_; }
 
   /// @brief If the original size has not yet been set, then set it.
   /// @param[in] size A `mathfu::vec2i` containing the original Texture
@@ -309,13 +354,31 @@ class Texture : public AsyncAsset {
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
+  /// @brief Unpacks a memory buffer containing a PNG/JPEG/TGA format file.
+  /// @param[in] img_buf The PNG/JPEG/TGA image data including an image header.
+  /// @param[in] size The size of the memory block pointed to by `data`.
+  /// @param[in] scale A scale value must be a power of two to have correct
+  /// Texture sizes.
+  /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
+  /// width and height.
+  /// @param[out] has_alpha A `bool` pointer that captures whether the Png
+  /// image has an alpha.
+  /// @return Returns a RGBA array of the returned dimensions or `nullptr`, if
+  /// the format is not understood.
+  /// @note You must `free()` on the returned pointer when done.
+  static uint8_t *UnpackImage(const void *img_buf, size_t size,
+                              const mathfu::vec2 &scale,
+                              mathfu::vec2i *dimensions,
+                              TextureFormat *texture_format);
+
   TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;
   mathfu::vec2 scale_;
   TextureFormat texture_format_;
-  bool mipmaps_;
+  TextureTarget target_;
   TextureFormat desired_;
+  TextureFlags flags_;
 };
 
 /// @}

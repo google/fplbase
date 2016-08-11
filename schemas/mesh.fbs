@@ -18,6 +18,16 @@ include "common.fbs";
 
 namespace meshdef;
 
+// Current mesh version is specified with `MostRecent`.
+// When a breaking data change is introduced, increment the `MostRecent`
+// enum value. The mesh_pipeline always outputs in the MostRecent format,
+// but hand-created meshes (for example, a mesh specified in a json file)
+// can leave MeshVersion as Unspecified to eschew the version check on load.
+enum MeshVersion : ushort {
+  Unspecified = 0,  // Eschew version check on load.
+  MostRecent = 1    // Increment on every breaking format change.
+}
+
 table Surface {
   indices:[ushort] (required);
   material:string (required);  // e.g. "materials/example.bin"
@@ -42,6 +52,8 @@ table Mesh {
                                 // bone index. The mesh bones are all the bones.
                                 // The shader bones are the subset of bones that
                                 // have at least one vertex weighted to them.
+  texcoords_alt:[fplbase.Vec2]; // E.g. lightmap coordinates.
+  version:MeshVersion = Unspecified;
 }
 
 root_type Mesh;

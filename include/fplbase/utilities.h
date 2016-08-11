@@ -352,6 +352,11 @@ const HighPerformanceParams &GetHighPerformanceParameters();
 /// @return Returns the model of the Android device the app is currently being
 /// run on.
 std::string DeviceModel();
+
+/// @brief Get the Android device's API level.
+/// @return Returns the API level of the Android device the app is currently
+/// being run on.
+int32_t AndroidGetApiLevel();
 #endif
 /// @}
 }  // namespace fplbase

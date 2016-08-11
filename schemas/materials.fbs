@@ -36,7 +36,8 @@ enum TextureFormat:ubyte {
   F_8,
   ASTC,  // https://en.wikipedia.org/wiki/Adaptive_Scalable_Texture_Compression
   PKM,   // https://en.wikipedia.org/wiki/Ericsson_Texture_Compression
-  KTX    // https://www.khronos.org/opengles/sdk/tools/KTX/
+  KTX,   // https://www.khronos.org/opengles/sdk/tools/KTX/
+  NATIVE,  // Uses the same format as the source file.
 }
 
 table Material {
@@ -50,7 +51,16 @@ table Material {
   // all of them will default to texture's size.
   original_size:[fplbase.Vec2i];
 
+  // Generate mipmaps for any textures in this material. If the file already
+  // contains mipmaps (e.g. .KTX), those will be used instead.
   mipmaps:bool = true;
+
+  // The corresponding texture represents a cubemap in 1x6 form (all
+  // cube faces vertically on top of eachother) and should be loaded as a
+  // cubemap.
+  // Default OpenGL order: https://www.opengl.org/wiki/Cubemap_Texture
+  // This field does not need to be specified.
+  is_cubemap:[bool];
 }
 
 root_type Material;
