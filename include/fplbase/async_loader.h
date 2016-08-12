@@ -102,7 +102,6 @@ class AsyncAsset : public Asset {
   /// @return Returns the filename.
   const std::string &filename() const { return filename_; }
 
-
   /// @brief Adds a callback to be called when the asset is finalized.
   ///
   /// Add a callback so logic can be executed when an asset is done loading.

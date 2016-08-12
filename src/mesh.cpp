@@ -14,7 +14,9 @@
 
 #include "precompiled.h"
 #include "fplbase/mesh.h"
+#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -37,6 +39,13 @@ GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
     default:
       return GL_TRIANGLES;
   }
+}
+
+template <typename T>
+void CopyAttribute(const T *attr, uint8_t *&buf) {
+  auto dest = (T *)buf;
+  *dest = *attr;
+  buf += sizeof(T);
 }
 
 }  // namespace
@@ -159,11 +168,45 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
   }
 }
 
-Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
+Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
+    : AsyncAsset(filename ? filename : ""),
+      num_vertices_(0),
+      vbo_(0),
+      default_bone_transform_inverses_(nullptr),
+      material_loader_fn_(material_loader_fn) {}
+
+Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
-    : vertex_size_(vertex_size),
-      num_vertices_(static_cast<size_t>(count)),
-      default_bone_transform_inverses_(nullptr) {
+    : Mesh(nullptr /* filename */, nullptr /* material_loader_fn */) {
+  LoadFromMemory(vertex_data, count, vertex_size, format, max_position,
+                 min_position);
+}
+
+Mesh::~Mesh() {
+  if (vbo_) {
+    GL_CALL(glDeleteBuffers(1, &vbo_));
+  }
+  for (auto it = indices_.begin(); it != indices_.end(); ++it) {
+    GL_CALL(glDeleteBuffers(1, &it->ibo));
+  }
+
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = nullptr;
+
+  if (data_ != nullptr) {
+    delete reinterpret_cast<const std::string *>(data_);
+    data_ = nullptr;
+  }
+}
+
+void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
+                          size_t vertex_size, const Attribute *format,
+                          vec3 *max_position, vec3 *min_position) {
+  assert(count > 0);
+  vertex_size_ = vertex_size;
+  num_vertices_ = count;
+  default_bone_transform_inverses_ = nullptr;
+
   set_format(format);
   GL_CALL(glGenBuffers(1, &vbo_));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
@@ -181,7 +224,7 @@ Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
     int step = vertex_size / sizeof(float);
     min_position_ = vec3(data);
     max_position_ = min_position_;
-    for (int vertex = 1; vertex < count; vertex++) {
+    for (size_t vertex = 1; vertex < count; vertex++) {
       data += step;
       min_position_ = vec3::Min(min_position_, vec3(data));
       max_position_ = vec3::Max(max_position_, vec3(data));
@@ -189,14 +232,138 @@ Mesh::Mesh(const void *vertex_data, int count, int vertex_size,
   }
 }
 
-Mesh::~Mesh() {
-  GL_CALL(glDeleteBuffers(1, &vbo_));
-  for (auto it = indices_.begin(); it != indices_.end(); ++it) {
-    GL_CALL(glDeleteBuffers(1, &it->ibo));
+void Mesh::Load() {
+  std::string *flatbuf = new std::string();
+  if (LoadFile(filename_.c_str(), flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf->c_str()), flatbuf->length());
+    assert(meshdef::VerifyMeshBuffer(verifier));
+    data_ = reinterpret_cast<const uint8_t *>(flatbuf);
+  } else {
+    LogError(kError, "Couldn\'t load: %s", filename_.c_str());
+    data_ = nullptr;
+  }
+}
+
+void Mesh::Finalize() {
+  if (data_ == nullptr) {
+    return;
+  }
+  const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
+  const meshdef::Mesh *meshdef = meshdef::GetMesh(flatbuf->c_str());
+  InitFromMeshDef(meshdef);
+  delete flatbuf;
+  data_ = nullptr;
+  CallFinalizeCallback();
+}
+
+bool Mesh::InitFromMeshDef(const meshdef::Mesh *meshdef) {
+  // Ensure the data version matches the runtime version, or that it was not
+  // tied to a specific version to begin with (e.g. it's legacy or it's
+  // created from a json file instead of mesh_pipeline).
+  if (meshdef->version() != meshdef::MeshVersion_Unspecified &&
+      meshdef->version() != meshdef::MeshVersion_MostRecent) {
+    LogError(kError, "Mesh file is stale: %s", filename_.c_str());
+    return false;
   }
 
-  delete[] default_bone_transform_inverses_;
-  default_bone_transform_inverses_ = nullptr;
+  // Load materials, return error if there is any material that is failed to
+  // load.
+  assert(material_loader_fn_ != nullptr || meshdef->surfaces()->size() == 0);
+  std::vector<std::pair<const meshdef::Surface *, Material *>> indices_data;
+  for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
+    flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+    auto surface = meshdef->surfaces()->Get(index);
+    auto mat = material_loader_fn_(surface->material()->c_str());
+    if (!mat) {
+      LogError(kError, "Invalid material file: ", surface->material()->c_str());
+      return false;
+    }  // Error msg already set.
+    indices_data.emplace_back(surface, mat);
+  }
+
+  // Load indices from surface and material.
+  for (auto it = indices_data.begin(); it != indices_data.end(); it++) {
+    auto surface = it->first;
+    auto mat = it->second;
+    AddIndices(reinterpret_cast<const uint16_t *>(surface->indices()->Data()),
+               surface->indices()->Length(), mat);
+  }
+
+  auto has_skinning =
+      meshdef->skin_indices() && meshdef->skin_indices()->size() &&
+      meshdef->skin_weights() && meshdef->skin_weights()->size() &&
+      meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
+      meshdef->bone_parents() && meshdef->bone_parents()->size() &&
+      meshdef->shader_to_mesh_bones() &&
+      meshdef->shader_to_mesh_bones()->size();
+  auto has_normals = meshdef->normals() && meshdef->normals()->size();
+  auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
+  auto has_colors = meshdef->colors() && meshdef->colors()->size();
+  auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
+  auto has_texcoords_alt =
+      meshdef->texcoords_alt() && meshdef->texcoords_alt()->size();
+  // Collect what attributes are available.
+  std::vector<Attribute> attrs;
+  attrs.push_back(kPosition3f);
+  if (has_normals) attrs.push_back(kNormal3f);
+  if (has_tangents) attrs.push_back(kTangent4f);
+  if (has_colors) attrs.push_back(kColor4ub);
+  if (has_texcoords) attrs.push_back(kTexCoord2f);
+  if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
+  if (has_skinning) {
+    attrs.push_back(kBoneIndices4ub);
+    attrs.push_back(kBoneWeights4ub);
+  }
+  attrs.push_back(kEND);
+  auto vert_size = Mesh::VertexSize(attrs.data());
+  // Create an interleaved buffer. Would be cool to do this without
+  // the additional copy, but that's not easy in OpenGL.
+  // Could use multiple buffers instead, but likely less efficient.
+  auto buf = new uint8_t[vert_size * meshdef->positions()->Length()];
+  auto p = buf;
+  for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
+    flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+    assert(meshdef->positions());
+    CopyAttribute(meshdef->positions()->Get(index), p);
+    if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
+    if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
+    if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
+    if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
+    if (has_texcoords_alt)
+      CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
+    if (has_skinning) {
+      CopyAttribute(meshdef->skin_indices()->Get(index), p);
+      CopyAttribute(meshdef->skin_weights()->Get(index), p);
+    }
+  }
+  vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
+                                     : mathfu::kZeros3f;
+  vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
+                                     : mathfu::kZeros3f;
+  LoadFromMemory(buf, meshdef->positions()->Length(), vert_size, attrs.data(),
+                 meshdef->max_position() ? &max : nullptr,
+                 meshdef->min_position() ? &min : nullptr);
+  delete[] buf;
+  // Load the bone information.
+  if (has_skinning) {
+    const size_t num_bones = meshdef->bone_parents()->Length();
+    assert(meshdef->bone_transforms()->Length() == num_bones);
+    std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
+        new mathfu::AffineTransform[num_bones]);
+    std::vector<const char *> bone_names(num_bones);
+    for (size_t i = 0; i < num_bones; ++i) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(index));
+      bone_names[i] = meshdef->bone_names()->Get(index)->c_str();
+    }
+    const uint8_t *bone_parents = meshdef->bone_parents()->data();
+    SetBones(&bone_transforms[0], bone_parents, &bone_names[0], num_bones,
+             meshdef->shader_to_mesh_bones()->Data(),
+             meshdef->shader_to_mesh_bones()->Length());
+  }
+
+  return true;
 }
 
 void Mesh::set_format(const Attribute *format) {

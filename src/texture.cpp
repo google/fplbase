@@ -104,15 +104,16 @@ static bool HasWebpHeader(const std::string &file) {
 }
 
 Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
-: AsyncAsset(filename ? filename : ""),
-  id_(0),
-  size_(mathfu::kZeros2i),
-  original_size_(mathfu::kZeros2i),
-  scale_(mathfu::kOnes2f),
-  texture_format_(kFormat888),
-  target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D),
-  desired_(format),
-  flags_(flags) {}
+    : AsyncAsset(filename ? filename : ""),
+      id_(0),
+      size_(mathfu::kZeros2i),
+      original_size_(mathfu::kZeros2i),
+      scale_(mathfu::kOnes2f),
+      texture_format_(kFormat888),
+      target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP
+                                             : GL_TEXTURE_2D),
+      desired_(format),
+      flags_(flags) {}
 
 void Texture::Load() {
   data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, flags_, &size_,

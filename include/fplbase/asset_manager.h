@@ -217,7 +217,7 @@ class AssetManager {
   ///
   /// @param filename The name of the mesh.
   /// @return
-  Mesh *LoadMesh(const char *filename);
+  Mesh *LoadMesh(const char *filename, bool async = false);
 
   /// @brief Deletes the previously loaded mesh.
   ///

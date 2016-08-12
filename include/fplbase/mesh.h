@@ -20,9 +20,11 @@
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/asset.h"
 
+#include "fplbase/async_loader.h"
 #include "fplbase/material.h"
 #include "fplbase/shader.h"
 #include "mathfu/constants.h"
+#include "mesh_generated.h"
 
 namespace fplbase {
 
@@ -49,7 +51,7 @@ enum Attribute {
 /// @brief Abstraction for a set of indices, used for rendering.
 ///
 /// A mesh instance contains a VBO and one or more IBO's.
-class Mesh : public Asset {
+class Mesh : public AsyncAsset {
  public:
   enum Primitive {
     kTriangles,
@@ -58,11 +60,34 @@ class Mesh : public Asset {
     kPoints,
   };
 
+  typedef std::function<Material *(const char *filename)> MaterialLoaderFn;
+
+  /// @brief Initialize a Mesh from a file asynchronously.
+  ///
+  /// Asynchronously create mesh from a file if filename is valid.
+  /// Otherwise, if filename is null, need to call LoadFromMemory to init
+  /// manually.
+  Mesh(const char *filename = nullptr,
+       MaterialLoaderFn material_loader_fn = nullptr);
+
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
-  Mesh(const void *vertex_data, int count, int vertex_size,
+  Mesh(const void *vertex_data, size_t count, size_t vertex_size,
        const Attribute *format, mathfu::vec3 *max_position = nullptr,
        mathfu::vec3 *min_position = nullptr);
+
   ~Mesh();
+
+  /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
+  virtual void LoadFromMemory(const void *vertex_data, size_t count,
+                              size_t vertex_size, const Attribute *format,
+                              mathfu::vec3 *max_position = nullptr,
+                              mathfu::vec3 *min_position = nullptr);
+
+  /// @brief Loads and unpacks the Mesh from 'filename_' and 'data_'.
+  virtual void Load();
+
+  /// @brief Creates a mesh from 'data_'.
+  virtual void Finalize();
 
   /// @brief Add an index buffer object to be part of this mesh
   ///
@@ -357,6 +382,9 @@ class Mesh : public Asset {
   Mesh(const Mesh &);
   Mesh &operator=(const Mesh &);
 
+  // Init mesh from meshdef::Mesh FlatBuffer.
+  bool InitFromMeshDef(const meshdef::Mesh *meshdef);
+
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
   // this header to depend on OpenGL.
   typedef unsigned int BufferHandle;
@@ -405,6 +433,9 @@ class Mesh : public Asset {
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;
+
+  // Function to load material by filename.
+  MaterialLoaderFn material_loader_fn_;
 };
 
 /// @}

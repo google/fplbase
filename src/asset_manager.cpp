@@ -292,125 +292,13 @@ Mesh *AssetManager::FindMesh(const char *filename) {
   return FindInMap(mesh_map_, filename);
 }
 
-template <typename T>
-void CopyAttribute(const T *attr, uint8_t *&buf) {
-  auto dest = (T *)buf;
-  *dest = *attr;
-  buf += sizeof(T);
-}
-
-Mesh *AssetManager::LoadMesh(const char *filename) {
+Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
   auto mesh = FindMesh(filename);
   if (mesh) return mesh;
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(meshdef::VerifyMeshBuffer(verifier));
-    auto meshdef = meshdef::GetMesh(flatbuf.c_str());
-
-    // Ensure the data version matches the runtime version, or that it was not
-    // tied to a specific version to begin with (e.g. it's legacy or it's
-    // created from a json file instead of mesh_pipeline).
-    if (meshdef->version() != meshdef::MeshVersion_Unspecified &&
-        meshdef->version() != meshdef::MeshVersion_MostRecent) {
-      LogError(kError, "Mesh file is stale: %s", filename);
-      renderer_.set_last_error(std::string("Mesh file is stale: ") + filename);
-      return nullptr;
-    }
-
-    auto has_skinning =
-        meshdef->skin_indices() && meshdef->skin_indices()->size() &&
-        meshdef->skin_weights() && meshdef->skin_weights()->size() &&
-        meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
-        meshdef->bone_parents() && meshdef->bone_parents()->size() &&
-        meshdef->shader_to_mesh_bones() &&
-        meshdef->shader_to_mesh_bones()->size();
-    auto has_normals = meshdef->normals() && meshdef->normals()->size();
-    auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
-    auto has_colors = meshdef->colors() && meshdef->colors()->size();
-    auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
-    auto has_texcoords_alt = meshdef->texcoords_alt() &&
-                             meshdef->texcoords_alt()->size();
-    // Collect what attributes are available.
-    std::vector<Attribute> attrs;
-    attrs.push_back(kPosition3f);
-    if (has_normals) attrs.push_back(kNormal3f);
-    if (has_tangents) attrs.push_back(kTangent4f);
-    if (has_colors) attrs.push_back(kColor4ub);
-    if (has_texcoords) attrs.push_back(kTexCoord2f);
-    if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
-    if (has_skinning) {
-      attrs.push_back(kBoneIndices4ub);
-      attrs.push_back(kBoneWeights4ub);
-    }
-    attrs.push_back(kEND);
-    auto vert_size = Mesh::VertexSize(attrs.data());
-    // Create an interleaved buffer. Would be cool to do this without
-    // the additional copy, but that's not easy in OpenGL.
-    // Could use multiple buffers instead, but likely less efficient.
-    auto buf = new uint8_t[vert_size * meshdef->positions()->Length()];
-    auto p = buf;
-    for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      assert(meshdef->positions());
-      CopyAttribute(meshdef->positions()->Get(index), p);
-      if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
-      if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
-      if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
-      if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
-      if (has_texcoords_alt)
-        CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
-      if (has_skinning) {
-        CopyAttribute(meshdef->skin_indices()->Get(index), p);
-        CopyAttribute(meshdef->skin_weights()->Get(index), p);
-      }
-    }
-    vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
-                                       : mathfu::kZeros3f;
-    vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
-                                       : mathfu::kZeros3f;
-    mesh = new Mesh(buf, static_cast<int>(meshdef->positions()->Length()),
-                    static_cast<int>(vert_size), attrs.data(),
-                    meshdef->max_position() ? &max : nullptr,
-                    meshdef->min_position() ? &min : nullptr);
-    delete[] buf;
-    // Load the bone information.
-    if (has_skinning) {
-      const size_t num_bones = meshdef->bone_parents()->Length();
-      assert(meshdef->bone_transforms()->Length() == num_bones);
-      std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
-          new mathfu::AffineTransform[num_bones]);
-      std::vector<const char *> bone_names(num_bones);
-      for (size_t i = 0; i < num_bones; ++i) {
-        flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-        bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(index));
-        bone_names[i] = meshdef->bone_names()->Get(index)->c_str();
-      }
-      const uint8_t *bone_parents = meshdef->bone_parents()->data();
-      mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0],
-                     num_bones, meshdef->shader_to_mesh_bones()->Data(),
-                     meshdef->shader_to_mesh_bones()->Length());
-    }
-
-    // Load indices an materials.
-    for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      auto surface = meshdef->surfaces()->Get(index);
-      auto mat = LoadMaterial(surface->material()->c_str());
-      if (!mat) {
-        delete mesh;
-        return nullptr;
-      }  // Error msg already set.
-      mesh->AddIndices(
-          reinterpret_cast<const uint16_t *>(surface->indices()->Data()),
-          surface->indices()->Length(), mat);
-    }
-    mesh_map_[filename] = mesh;
-    return mesh;
-  }
-  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
-  return nullptr;
+  mesh = new Mesh(filename, [this](const char *filename) {
+    return LoadMaterial(filename);
+  });
+  return LoadOrQueue(mesh, mesh_map_, async);
 }
 
 void AssetManager::UnloadMesh(const char *filename) {
