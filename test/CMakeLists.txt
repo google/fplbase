@@ -49,7 +49,7 @@ option(
 
 # Import gtest if it's not already present.
 if(NOT TARGET gtest)
-	add_subdirectory(${dependencies_gtest_dir} ${tmp_dir}/googletest)
+  add_subdirectory(${dependencies_gtest_dir} ${tmp_dir}/googletest)
 endif()
 
 # Set some variables describing file locations.
@@ -134,5 +134,4 @@ function(test_executable name)
   mathfu_configure_flags(${name}_test)
 endfunction()
 
-test_executable(preprocessor)
 test_executable(utils)
