@@ -59,8 +59,6 @@ bool LoadFileWithDirectivesHelper(
     cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
     cursor += strspn(cursor, "\n\r");   // Skip newline;
   }
-  // Early out for files with no includes.
-  if (!includes.size()) return true;
 
   // Add the #defines.
   if (defines) {
@@ -70,6 +68,7 @@ bool LoadFileWithDirectivesHelper(
       insertion_point += def.length();
     }
   }
+
   // Now insert the includes.
   std::string include;
   for (auto it = includes.begin(); it != includes.end(); ++it) {
