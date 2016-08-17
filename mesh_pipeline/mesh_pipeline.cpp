@@ -691,14 +691,13 @@ class FlatMesh {
   void OutputMeshFlatBuffer(const std::string& mesh_name,
                             const std::string& assets_base_dir,
                             const std::string& assets_sub_dir) const {
+    log_.Log(kLogInfo, "Mesh:\n");
     flatbuffers::FlatBufferBuilder fbb;
 
     const std::string rel_mesh_file_name =
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
-    log_.Log(kLogInfo, "Mesh:\n  %s has %d verts\n", rel_mesh_file_name.c_str(),
-             points_.size());
 
     // Get the mapping from mesh bones (i.e. all bones in the model)
     // to shader bones (i.e. bones that have verts weighted to them).
@@ -1214,7 +1213,7 @@ class FbxMeshParser {
   // Try variations of the texture name until we find one on disk.
   std::string FindSourceTextureFileName(const std::string& source_mesh_name,
                                         const std::string& texture_name) const {
-    std::string attempted_textures;
+    std::set<std::string> attempted_textures;
 
     // If the texture name is relative, check for it relative to the
     // source mesh's directory.
@@ -1222,7 +1221,7 @@ class FbxMeshParser {
     if (!fplutil::AbsoluteFileName(texture_name)) {
       const std::string texture_rel_name = source_dir + texture_name;
       if (TextureFileExists(texture_rel_name)) return texture_rel_name;
-      attempted_textures += texture_rel_name + '\n';
+      attempted_textures.insert(texture_rel_name);
     }
 
     // If the texture exists in the same directory as the source mesh, use it.
@@ -1230,7 +1229,7 @@ class FbxMeshParser {
         fplutil::RemoveDirectoryFromName(texture_name);
     const std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
-    attempted_textures += texture_in_source_dir + '\n';
+    attempted_textures.insert(texture_in_source_dir);
 
     // Check to see if there's a texture with the same base name as the mesh.
     const std::string source_name = fplutil::BaseFileName(source_mesh_name);
@@ -1238,7 +1237,7 @@ class FbxMeshParser {
     const std::string source_texture =
         source_dir + source_name + "." + texture_extension;
     if (TextureFileExists(source_texture)) return source_texture;
-    attempted_textures += source_texture + '\n';
+    attempted_textures.insert(source_texture);
 
     // Gather potential base names for the texture (i.e. name without directory
     // or extension).
@@ -1254,7 +1253,7 @@ class FbxMeshParser {
         const std::string potential_name =
             source_dir + base_names[i] + "." + kImageExtensions[j];
         if (TextureFileExists(potential_name)) return potential_name;
-        attempted_textures += potential_name + '\n';
+        attempted_textures.insert(potential_name);
       }
     }
 
@@ -1262,12 +1261,20 @@ class FbxMeshParser {
     // do this, normally, since the name can be an absolute path on the drive,
     // or relative to the directory we're currently running from.
     if (TextureFileExists(texture_name)) return texture_name;
-    attempted_textures += texture_name + '\n';
+    attempted_textures.insert(texture_name);
 
-    // Texture can't be found.
-    log_.Log(kLogWarning,
-             "Can't find texture `%s`. Tried these variants:\n%s\n",
-             texture_name.c_str(), attempted_textures.c_str());
+    // Texture can't be found. Only log warning once, to avoid spamming.
+    static std::unordered_set<std::string> missing_textures;
+    if (missing_textures.find(texture_name) == missing_textures.end()) {
+      log_.Log(kLogWarning, "Can't find texture `%s`. Tried these variants:\n",
+               texture_name.c_str());
+      for (auto it = attempted_textures.begin(); it != attempted_textures.end();
+           ++it) {
+        log_.Log(kLogWarning, "  %s\n", it->c_str());
+      }
+      log_.Log(kLogWarning, "\n");
+      missing_textures.insert(texture_name);
+    }
     return "";
   }
 
