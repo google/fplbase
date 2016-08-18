@@ -56,8 +56,6 @@ using mathfu::kZeros2f;
 using mathfu::kZeros3f;
 using mathfu::kZeros4f;
 
-typedef uint8_t BoneIndex;
-
 enum VertexAttribute {
   kVertexAttribute_Position,
   kVertexAttribute_Normal,
@@ -66,34 +64,34 @@ enum VertexAttribute {
   kVertexAttribute_UvAlt,
   kVertexAttribute_Color,
   kVertexAttribute_Bone,
-
-  kVertexAttribute_Count,  // must come at end
-
-  // Bits for bitmask.
-  kVertexAttributeBit_Position = 1 << kVertexAttribute_Position,
-  kVertexAttributeBit_Normal = 1 << kVertexAttribute_Normal,
-  kVertexAttributeBit_Tangent = 1 << kVertexAttribute_Tangent,
-  kVertexAttributeBit_Uv = 1 << kVertexAttribute_Uv,
-  kVertexAttributeBit_UvAlt = 1 << kVertexAttribute_UvAlt,
-  kVertexAttributeBit_Color = 1 << kVertexAttribute_Color,
-  kVertexAttributeBit_Bone = 1 << kVertexAttribute_Bone,
-
-  kVertexAttributeBit_AllAttributesInSourceFile = -1,
+  kVertexAttribute_Count  // must come at end
 };
 
 // Bitwise OR of the kVertexAttributeBits.
 typedef uint32_t VertexAttributeBitmask;
+static const VertexAttributeBitmask kVertexAttributeBit_Position =
+    1 << kVertexAttribute_Position;
+static const VertexAttributeBitmask kVertexAttributeBit_Normal =
+    1 << kVertexAttribute_Normal;
+static const VertexAttributeBitmask kVertexAttributeBit_Tangent =
+    1 << kVertexAttribute_Tangent;
+static const VertexAttributeBitmask kVertexAttributeBit_Uv =
+    1 << kVertexAttribute_Uv;
+static const VertexAttributeBitmask kVertexAttributeBit_UvAlt =
+    1 << kVertexAttribute_UvAlt;
+static const VertexAttributeBitmask kVertexAttributeBit_Color =
+    1 << kVertexAttribute_Color;
+static const VertexAttributeBitmask kVertexAttributeBit_Bone =
+    1 << kVertexAttribute_Bone;
+static const VertexAttributeBitmask
+    kVertexAttributeBit_AllAttributesInSourceFile =
+        static_cast<VertexAttributeBitmask>(-1);
 
 static const char* const kImageExtensions[] = {"jpg", "jpeg", "png", "webp",
                                                "tga"};
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
-static const BoneIndex kInvalidBoneIdx = 0xFF;
 static const matdef::TextureFormat kDefaultTextureFormat =
     matdef::TextureFormat_AUTO;
-
-// We use uint8_t for bone indices, and 0xFF marks invalid bones,
-// so the limit is 254.
-static const BoneIndex kMaxBoneIndex = 0xFE;
 
 // Defines the order in which textures are assigned shader indices.
 // Shader indices are assigned, starting from 0, as textures are found.
@@ -281,12 +279,6 @@ class FlatMesh {
 
   void AppendBone(const char* bone_name,
                   const mat4& default_bone_transform_inverse, int depth) {
-    // Bone count is limited by data size.
-    if (bones_.size() >= kMaxBoneIndex) {
-      log_.Log(kLogError, "%d bone limit exceeded.\n", kMaxBoneIndex);
-      return;
-    }
-
     // Until this function is called again, all appended vertices will
     // reference this bone.
     bones_.push_back(Bone(bone_name, default_bone_transform_inverse, depth,
@@ -496,8 +488,24 @@ class FlatMesh {
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FlatMesh);
-  typedef uint16_t IndexBufIndex;
-  typedef std::vector<IndexBufIndex> IndexBuffer;
+  typedef uint32_t BoneIndex;
+  typedef uint8_t BoneIndexCompact;
+  typedef uint32_t VertIndex;
+  typedef uint16_t VertIndexCompact;
+  typedef std::vector<VertIndex> IndexBuffer;
+  typedef std::vector<VertIndexCompact> IndexBufferCompact;
+
+  // We use uint8_t for bone indices, and 0xFF marks invalid bones,
+  // so the limit is 254.
+  static const BoneIndex kMaxBoneIndex = 0xFE;
+  static const BoneIndex kMaxNumBones = kMaxBoneIndex + 1;
+  static const BoneIndex kInvalidBoneIdx = static_cast<BoneIndex>(-1);
+  static const BoneIndexCompact kInvalidBoneIdxCompact = 0xFF;
+
+  // We use uint16_t for vertex indices. It's possible for a large mesh to have
+  // more vertices than that, so we output an error in that case.
+  static const VertIndex kMaxVertexIndex = 0xFFFF;
+  static const VertIndex kMaxNumPoints = kMaxVertexIndex + 1;
 
   struct Vertex {
     vec3_packed vertex;
@@ -528,10 +536,10 @@ class FlatMesh {
 
   struct VertexRef {
     const Vertex* ref;
-    IndexBufIndex index;
+    VertIndex index;
     VertexRef(const Vertex* v, size_t index)
-        : ref(v), index(static_cast<IndexBufIndex>(index)) {
-      assert(index <= std::numeric_limits<IndexBufIndex>::max());
+        : ref(v), index(static_cast<VertIndex>(index)) {
+      assert(index <= std::numeric_limits<VertIndex>::max());
     }
   };
 
@@ -691,13 +699,41 @@ class FlatMesh {
   void OutputMeshFlatBuffer(const std::string& mesh_name,
                             const std::string& assets_base_dir,
                             const std::string& assets_sub_dir) const {
-    log_.Log(kLogInfo, "Mesh:\n");
-    flatbuffers::FlatBufferBuilder fbb;
-
     const std::string rel_mesh_file_name =
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
         assets_base_dir + rel_mesh_file_name;
+
+    log_.Log(kLogInfo, "Mesh:\n");
+
+    const VertexAttributeBitmask attributes =
+        vertex_attributes_ == kVertexAttributeBit_AllAttributesInSourceFile
+            ? mesh_vertex_attributes_
+            : vertex_attributes_;
+    LogVertexAttributes(attributes, "  Vertex attributes: ", kLogInfo, &log_);
+
+    // Bone count is limited since we index with an 8-bit value.
+    const bool bone_overflow = bones_.size() > kMaxBoneIndex;
+    if (bone_overflow && (attributes & kVertexAttributeBit_Bone)) {
+      log_.Log(kLogError,
+               "Bone count %d exeeds maximum %d. "
+               "Verts weighted to bones beyond %d will instead be weighted"
+               " to bone 0.\n",
+               bones_.size(), kMaxBoneIndex, kMaxBoneIndex);
+    }
+
+    // If there are too many points then indices can't fit in 16-bits.
+    // In this case, we remove any triangles with big indices, and only output
+    // the first 2^16 points. Essentially, we truncate the mesh.
+    const bool point_overflow = points_.size() > kMaxNumPoints;
+    const size_t num_points = point_overflow ? kMaxNumPoints : points_.size();
+    if (point_overflow) {
+      log_.Log(kLogError,
+               "Vertex count %d exceeds maximum %d. "
+               "Omitting some triangles. "
+               "Try limitting vertex attributes with --attrib.\n",
+               kMaxNumPoints, points_.size());
+    }
 
     // Get the mapping from mesh bones (i.e. all bones in the model)
     // to shader bones (i.e. bones that have verts weighted to them).
@@ -706,23 +742,34 @@ class FlatMesh {
     CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
 
     // Output the surfaces.
+    flatbuffers::FlatBufferBuilder fbb;
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
     size_t surface_idx = 0;
+    IndexBufferCompact index_buf_compact;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
       const IndexBuffer& index_buf = it->second;
+
+      TruncateIndexBuf(index_buf, &index_buf_compact);
       const std::string material_file_name =
           HasTexture(textures)
               ? MaterialFileName(mesh_name, surface_idx, assets_sub_dir)
               : std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
-      auto indices_fb = fbb.CreateVector(index_buf);
+      auto indices_fb = fbb.CreateVector(index_buf_compact);
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
       surfaces_fb.push_back(surface_fb);
 
       log_.Log(kLogInfo, "  Surface %d (%s) has %d triangles\n", surface_idx,
-               material_file_name.c_str(), index_buf.size() / 3);
+               material_file_name.length() == 0 ? "unnamed"
+                                                : material_file_name.c_str(),
+               index_buf.size() / 3);
+      const size_t num_triangles_omitted =
+          index_buf.size() - index_buf_compact.size();
+      if (num_triangles_omitted > 0) {
+        log_.Log(kLogInfo, "    Omitted %d triangles\n", num_triangles_omitted);
+      }
       surface_idx++;
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
@@ -737,16 +784,16 @@ class FlatMesh {
     std::vector<Vec2> uvs_alt;
     std::vector<Vec4ub> skin_indices;
     std::vector<Vec4ub> skin_weights;
-    vertices.reserve(points_.size());
-    normals.reserve(points_.size());
-    tangents.reserve(points_.size());
-    colors.reserve(points_.size());
-    uvs.reserve(points_.size());
-    uvs_alt.reserve(points_.size());
-    skin_indices.reserve(points_.size());
-    skin_weights.reserve(points_.size());
-    for (auto it = points_.begin(); it != points_.end(); ++it) {
-      const Vertex& p = *it;
+    vertices.reserve(num_points);
+    normals.reserve(num_points);
+    tangents.reserve(num_points);
+    colors.reserve(num_points);
+    uvs.reserve(num_points);
+    uvs_alt.reserve(num_points);
+    skin_indices.reserve(num_points);
+    skin_weights.reserve(num_points);
+    for (size_t i = 0; i < num_points; ++i) {
+      const Vertex& p = points_[i];
       vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
       normals.push_back(FlatBufferVec3(vec3(p.normal)));
       tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
@@ -754,7 +801,8 @@ class FlatMesh {
       uvs.push_back(FlatBufferVec2(vec2(p.uv)));
       uvs_alt.push_back(FlatBufferVec2(vec2(p.uv_alt)));
       // TODO: Support bone weighting.
-      const BoneIndex shader_bone_idx = mesh_to_shader_bones[p.bone];
+      const BoneIndexCompact shader_bone_idx =
+          TruncateBoneIndex(mesh_to_shader_bones[p.bone]);
       skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
       skin_weights.push_back(Vec4ub(1, 0, 0, 0));
     }
@@ -763,16 +811,20 @@ class FlatMesh {
     // for debugging.
     std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
     std::vector<Mat3x4> bone_transforms;
-    std::vector<BoneIndex> bone_parents;
+    std::vector<BoneIndexCompact> bone_parents;
+    std::vector<BoneIndexCompact> shader_to_mesh_bones_compact;
     bone_names.reserve(bones_.size());
     bone_transforms.reserve(bones_.size());
     bone_parents.reserve(bones_.size());
+    shader_to_mesh_bones_compact.reserve(bones_.size());
     for (size_t i = 0; i < bones_.size(); ++i) {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
       bone_transforms.push_back(
           FlatBufferMat3x4(mat4(bone.default_bone_transform_inverse)));
-      bone_parents.push_back(static_cast<BoneIndex>(BoneParent(i)));
+      bone_parents.push_back(TruncateBoneIndex(BoneParent(i)));
+      shader_to_mesh_bones_compact.push_back(
+          TruncateBoneIndex(shader_to_mesh_bones[i]));
     }
 
     // Get the overal min/max values, in object space.
@@ -781,11 +833,6 @@ class FlatMesh {
     CalculateMinMaxPosition(&min_position, &max_position);
 
     // Then create a FlatBuffer vector for each array that we want to export.
-    const VertexAttributeBitmask attributes =
-        vertex_attributes_ == kVertexAttributeBit_AllAttributesInSourceFile
-            ? mesh_vertex_attributes_
-            : vertex_attributes_;
-    LogVertexAttributes(attributes, "  Vertex attributes: ", kLogInfo, &log_);
     auto vertices_fb = (attributes & kVertexAttributeBit_Position)
                            ? fbb.CreateVectorOfStructs(vertices)
                            : 0;
@@ -815,7 +862,8 @@ class FlatMesh {
     auto bone_names_fb = fbb.CreateVector(bone_names);
     auto bone_transforms_fb = fbb.CreateVectorOfStructs(bone_transforms);
     auto bone_parents_fb = fbb.CreateVector(bone_parents);
-    auto shader_to_mesh_bones_fb = fbb.CreateVector(shader_to_mesh_bones);
+    auto shader_to_mesh_bones_fb =
+        fbb.CreateVector(shader_to_mesh_bones_compact);
     auto mesh_fb = meshdef::CreateMesh(
         fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
         uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
@@ -883,6 +931,40 @@ class FlatMesh {
     }
   }
 
+  // Compact index_buf into truncated_buf, omiting any triangles that
+  // have indices beyond the maximum compact index.
+  static void TruncateIndexBuf(const IndexBuffer& index_buf,
+                               IndexBufferCompact* truncated_buf) {
+    // Indices are output in groups of three, since we only output triangles.
+    assert(index_buf.size() % 3 == 0);
+
+    // The truncated_buf may be smaller than index_buf, but not bigger.
+    truncated_buf->clear();
+    truncated_buf->reserve(index_buf.size());
+
+    // Remove any triangles that have indices above the maximum.
+    for (size_t i = 0; i < index_buf.size(); i += 3) {
+      const bool valid_tri = index_buf[i] <= kMaxVertexIndex &&
+                             index_buf[i + 1] <= kMaxVertexIndex &&
+                             index_buf[i + 2] <= kMaxVertexIndex;
+      if (valid_tri) {
+        truncated_buf->push_back(index_buf[i]);
+        truncated_buf->push_back(index_buf[i + 1]);
+        truncated_buf->push_back(index_buf[i + 2]);
+      }
+    }
+  }
+
+  // Bones >8-bits are unindexable, so weight them to the root bone 0.
+  // This will look funny but it's the best we can do.
+  static BoneIndexCompact TruncateBoneIndex(BoneIndex bone_idx) {
+    return bone_idx == kInvalidBoneIdx
+               ? kInvalidBoneIdxCompact
+               : bone_idx > kMaxBoneIndex
+                     ? 0
+                     : static_cast<BoneIndexCompact>(bone_idx);
+  }
+
   SurfaceMap surfaces_;
   VertexSet unique_;
   std::vector<Vertex> points_;
@@ -894,6 +976,10 @@ class FlatMesh {
   // Information and warnings.
   Logger& log_;
 };
+
+// This instance is required since push_back takes its reference.
+// static
+const FlatMesh::BoneIndex FlatMesh::kInvalidBoneIdx;
 
 /// @class FbxMeshParser
 /// @brief Load FBX files and save their geometry in our FlatBuffer format.
@@ -1505,6 +1591,7 @@ class FbxMeshParser {
       }
     }
   };
+
   // Entry point to the FBX SDK.
   FbxManager* manager_;
 
