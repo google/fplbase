@@ -299,9 +299,9 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       break;
     }
     case kFormat565: {
+      format = GL_RGB;
       switch (texture_format) {
         case kFormat888:
-          format = GL_RGB;
           if (use_16bpp) {
             auto buffer16 = Convert888To565(buffer, size);
             type = GL_UNSIGNED_SHORT_5_6_5;
@@ -315,6 +315,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
           break;
         case kFormat565:
           // No conversion.
+          type = GL_UNSIGNED_SHORT_5_6_5;
           gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
           break;
         default:
