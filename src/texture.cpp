@@ -95,6 +95,14 @@ struct KTXHeader {
   uint32_t keyvalue_data;
 };
 
+// Returns true if the file has a Resource Interchange File Format (RIFF) header
+// whose first chunk has a WEBP FOURCC. This will not check chunks other than
+// the first one. https://developers.google.com/speed/webp/docs/riff_container
+static bool HasWebpHeader(const std::string &file) {
+  return file.size() > 12 && file.substr(0, 4) == "RIFF" &&
+         file.substr(8, 4) == "WEBP";
+}
+
 Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
 : AsyncAsset(filename ? filename : ""),
   id_(0),
@@ -716,7 +724,7 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
                            texture_format);
     if (!buf) LogError(kApplication, "Image format problem: %s", filename);
     return buf;
-  } else if (ext == "webp") {
+  } else if (ext == "webp" || HasWebpHeader(file)) {
     auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
                           texture_format);
     if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
