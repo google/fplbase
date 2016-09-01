@@ -812,17 +812,21 @@ class FlatMesh {
     std::vector<flatbuffers::Offset<flatbuffers::String>> bone_names;
     std::vector<Mat3x4> bone_transforms;
     std::vector<BoneIndexCompact> bone_parents;
-    std::vector<BoneIndexCompact> shader_to_mesh_bones_compact;
     bone_names.reserve(bones_.size());
     bone_transforms.reserve(bones_.size());
     bone_parents.reserve(bones_.size());
-    shader_to_mesh_bones_compact.reserve(bones_.size());
     for (size_t i = 0; i < bones_.size(); ++i) {
       const Bone& bone = bones_[i];
       bone_names.push_back(fbb.CreateString(bone.name));
       bone_transforms.push_back(
           FlatBufferMat3x4(mat4(bone.default_bone_transform_inverse)));
       bone_parents.push_back(TruncateBoneIndex(BoneParent(i)));
+    }
+
+    // Compact the shader to mesh bone map.
+    std::vector<BoneIndexCompact> shader_to_mesh_bones_compact;
+    shader_to_mesh_bones_compact.reserve(shader_to_mesh_bones.size());
+    for (size_t i = 0; i < shader_to_mesh_bones.size(); ++i) {
       shader_to_mesh_bones_compact.push_back(
           TruncateBoneIndex(shader_to_mesh_bones[i]));
     }
