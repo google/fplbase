@@ -41,6 +41,11 @@ enum TextureFormat:ubyte {
   NATIVE,  // Uses the same format as the source file.
 }
 
+enum TextureWrap:ubyte {
+  REPEAT = 0, // The default.
+  CLAMP = 1
+}
+
 table Material {
   texture_filenames:[string];
   blendmode:BlendMode;
@@ -62,6 +67,11 @@ table Material {
   // Default OpenGL order: https://www.opengl.org/wiki/Cubemap_Texture
   // This field does not need to be specified.
   is_cubemap:[bool];
+
+  // Controls the value of the GL_TEXTURE_WRAP_[S,T] texture parameter,
+  // allowing for GL_REPEAT and GL_CLAMP_TO_EDGE.
+  // See https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml
+  wrapmode:TextureWrap = REPEAT;
 }
 
 root_type Material;
