@@ -15,6 +15,7 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
+#include <map>
 #include <string>
 #include "fplbase/config.h"  // Must come first.
 
@@ -359,6 +360,71 @@ std::string DeviceModel();
 int32_t AndroidGetApiLevel();
 #endif
 /// @}
+
+// Definition to enable the memory allocation tracker.
+//#define TRACK_ALLOCATION (1)
+
+#ifdef TRACK_ALLOCATION
+// Custom memory allocation for allocation tracker using malloc/free explicitly.
+template <typename T>
+struct track_alloc : std::allocator<T> {
+  typedef typename std::allocator<T>::pointer pointer;
+  typedef typename std::allocator<T>::size_type size_type;
+
+  template <typename U>
+  struct rebind {
+    typedef track_alloc<U> other;
+  };
+
+  track_alloc() {}
+
+  template <typename U>
+  track_alloc(track_alloc<U> const &u)
+      : std::allocator<T>(u) {}
+
+  pointer allocate(size_type size, std::allocator<void>::const_pointer = 0) {
+    void *p = malloc(size * sizeof(T));
+    if (p == 0) {
+      throw std::bad_alloc();
+    }
+    return static_cast<pointer>(p);
+  }
+
+  void deallocate(pointer p, size_type) { free(p); }
+};
+
+// Allocation tracker class that tracks C++ memory allocations in fplbase.
+class AllocationTracker {
+ public:
+  AllocationTracker() {}
+  ~AllocationTracker() {};
+  static void Allocate(void *p, size_t size) {
+    allocation_total_ += size;
+    allocations_[p] = size;
+  }
+  static void Free(void *p) {
+    auto it = allocations_.find(p);
+    if (it == allocations_.end()) {
+      fplbase::LogInfo(
+          "Trying to free a memory not allocated by fplbase allocator. %xd", p);
+      return;
+    }
+    allocations_.erase(it);
+    allocation_total_ -= it->second;
+  }
+  static void Status() {
+    fplbase::LogInfo("Currently allocated: %d allocations, %d bytes",
+                     allocations_.size(), allocation_total_);
+  }
+
+ private:
+  static std::map<void *, size_t, std::less<void *>,
+                  track_alloc<std::pair<void *const, std::size_t> > >
+      allocations_;
+  static size_t allocation_total_;
+};
+#endif
+
 }  // namespace fplbase
 
 #endif  // FPLBASE_UTILITIES_H

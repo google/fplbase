@@ -392,7 +392,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
     CFURLRef resources_url = CFBundleCopyResourcesDirectoryURL(main_bundle);
     char path[PATH_MAX];
     if (!CFURLGetFileSystemRepresentation(
-            resources_url, true, reinterpret_cast<UInt8*>(path), PATH_MAX)) {
+             resources_url, true, reinterpret_cast<UInt8 *>(path), PATH_MAX)) {
       LogError(kError, "Could not set the bundle directory");
       return false;
     }
@@ -980,6 +980,35 @@ std::string DeviceModel() {
 }  // namespace fplbase
 
 #if !defined(FPLBASE_DISABLE_NEW_DELETE_OPERATORS)
+#ifdef TRACK_ALLOCATION
+// Override global new/delete with an allocation tracker enabled.
+void *operator new(std::size_t n) {
+  auto p = mathfu::AllocateAligned(n);
+  fplbase::AllocationTracker::Allocate(p, n);
+  return p;
+}
+
+void *operator new [](std::size_t n) {
+  auto p = mathfu::AllocateAligned(n);
+  fplbase::AllocationTracker::Allocate(p, n);
+  return p;
+} void
+operator delete(void *p) noexcept {
+  fplbase::AllocationTracker::Free(p);
+  mathfu::FreeAligned(p);
+}
+void operator delete[](void *p) noexcept {
+  fplbase::AllocationTracker::Free(p);
+  mathfu::FreeAligned(p);
+}
+
+// Static variables used in the allocation tracker.
+std::map<void *, size_t, std::less<void *>,
+         fplbase::track_alloc<std::pair<void *const, std::size_t> > >
+    fplbase::AllocationTracker::allocations_;
+size_t fplbase::AllocationTracker::allocation_total_;
+#else   // TRACK_ALLOCATION
 // We use SIMD types in dynamically allocated objects and arrays.
 MATHFU_DEFINE_GLOBAL_SIMD_AWARE_NEW_DELETE
+#endif  // TRACK_ALLOCATION
 #endif
