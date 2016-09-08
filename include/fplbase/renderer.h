@@ -122,6 +122,8 @@ class RenderContext {
     num_bones_ = num_bones;
   }
 
+  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
+
   // other render state
   Shader *shader_;
   BlendMode blend_mode_;
