@@ -48,6 +48,10 @@ enum BlendMode {
   kBlendModeMultiply, /**< Multiplicative blending, where the resulting color is
                            the product of the image color and the background
                            color. */
+  kBlendModePreMultipliedAlpha, /**< Like Alpha, except the source RGB values
+                                     are assumed to have already been multiplied
+                                     by the alpha, so the blend function doesn't
+                                     touch them. */
   kBlendModeCount  /** Used at the end of the enum as sentinel value. */
 };
 
