@@ -24,7 +24,8 @@ enum BlendMode:ubyte {
   ALPHA,
   ADD,
   ADDALPHA,
-  MULTIPLY
+  MULTIPLY,
+  PREMULTIPLIEDALPHA
 }
 
 enum TextureFormat:ubyte {

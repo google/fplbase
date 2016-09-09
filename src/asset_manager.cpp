@@ -54,9 +54,11 @@ static_assert(
         kBlendModeAddAlpha ==
             static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
         kBlendModeMultiply ==
-            static_cast<BlendMode>(matdef::BlendMode_MULTIPLY),
+            static_cast<BlendMode>(matdef::BlendMode_MULTIPLY) &&
+        kBlendModePreMultipliedAlpha ==
+        static_cast<BlendMode>(matdef::BlendMode_PREMULTIPLIEDALPHA),
     "BlendMode enums in material.h and material.fbs must match.");
-static_assert(kBlendModeCount == kBlendModeMultiply + 1,
+static_assert(kBlendModeCount == kBlendModePreMultipliedAlpha + 1,
               "Please update static_assert above with new enum values.");
 static_assert(
     kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
