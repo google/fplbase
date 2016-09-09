@@ -769,7 +769,8 @@ class InputSystem {
   void SetTextInputRect(const mathfu::vec4 &input_rect);
 
   /// @brief Gets the vector of all the input pointers in the system.
-  const std::vector<InputPointer> &get_pointers() { return pointers_; }
+  const std::vector<InputPointer> &get_pointers() const { return pointers_; }
+  std::vector<InputPointer> &get_pointers() { return pointers_; }
 
   /// @brief Gets if the application is currently minimized.
   bool minimized() { return minimized_; }
