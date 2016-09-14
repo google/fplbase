@@ -62,7 +62,10 @@ Renderer::Renderer()
 
 #ifndef FPL_BASE_RENDERER_BACKEND_SDL
 
-Renderer::~Renderer() { the_renderer_ = nullptr; }
+Renderer::~Renderer() {
+  the_renderer_ = nullptr;
+  delete default_render_context_;
+}
 
 // When building without SDL we assume the window and rendering context have
 // already been created prior to calling initialize.
@@ -93,6 +96,7 @@ void Renderer::SetWindowSize(const vec2i &window_size) {
 
 Renderer::~Renderer() {
   the_renderer_ = nullptr;
+  delete default_render_context_;
   ShutDown();
 }
 
@@ -193,8 +197,6 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #undef GLEXT
 #endif
 
-      default_render_context_ = new RenderContext();
-
   // Non-SDL-specific initialization continues here:
   return InitializeRenderingState();
 }
@@ -241,6 +243,8 @@ bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
 bool Renderer::SupportsTextureNpot() const { return supports_texture_npot_; }
 
 bool Renderer::InitializeRenderingState() {
+  default_render_context_ = new RenderContext();
+
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
   auto HasGLExt = [&exts](const char *ext) -> bool {
