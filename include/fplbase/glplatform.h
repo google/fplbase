@@ -28,13 +28,16 @@
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
 #else  // !defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#define PLATFORM_OSX
 #include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
 #define glDrawElementsInstanced glDrawElementsInstancedARB
 #endif  // defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 
 #else  // !defined(__APPLE__)
 #ifdef __ANDROID__
 #define PLATFORM_MOBILE
+#include <EGL/egl.h>
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 18
 #include <GLES3/gl3.h>
@@ -42,7 +45,6 @@
 #include <GLES2/gl2.h>
 #include "gl3stub.h"
 #endif  // __ANDROID_API__ < 18
-
 #else  // !defined(__ANDROID__), so WIN32 & Linux
 #ifdef _WIN32
 #define VC_EXTRALEAN
@@ -59,72 +61,94 @@
 #include <GL/glext.h>
 #if !defined(GL_GLEXT_PROTOTYPES)
 #ifdef _WIN32
-#define GLBASEEXTS                                             \
-  GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture)            \
-  GLEXT(PFNGLCOMPRESSEDTEXIMAGE2DPROC, glCompressedTexImage2D)
+#define GLBASEEXTS                                                  \
+  GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture, true)           \
+  GLEXT(PFNGLCOMPRESSEDTEXIMAGE2DPROC, glCompressedTexImage2D, true)
 #else   // !defined(_WIN32)
 #define GLBASEEXTS
 #endif  // !defined(_WIN32)
-#define GLEXTS                                                                \
-  GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers)                          \
-      GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer)                   \
-      GLEXT(PFNGLGENRENDERBUFFERSEXTPROC, glGenRenderbuffers)                 \
-      GLEXT(PFNGLBINDRENDERBUFFEREXTPROC, glBindRenderbuffer)                 \
-      GLEXT(PFNGLRENDERBUFFERSTORAGEEXTPROC, glRenderbufferStorage)           \
-      GLEXT(PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC, glFramebufferRenderbuffer)   \
-      GLEXT(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D)            \
-      GLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers)                              \
-      GLEXT(PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC, glCheckFramebufferStatus)     \
-      GLEXT(PFNGLDELETERENDERBUFFERSEXTPROC, glDeleteRenderbuffers)           \
-      GLEXT(PFNGLDELETEFRAMEBUFFERSEXTPROC, glDeleteFramebuffers)             \
-      GLEXT(PFNGLGENBUFFERSARBPROC, glGenBuffers)                             \
-      GLEXT(PFNGLBINDBUFFERARBPROC, glBindBuffer)                             \
-      GLEXT(PFNGLMAPBUFFERARBPROC, glMapBuffer)                               \
-      GLEXT(PFNGLUNMAPBUFFERARBPROC, glUnmapBuffer)                           \
-      GLEXT(PFNGLBUFFERDATAARBPROC, glBufferData)                             \
-      GLEXT(PFNGLBUFFERSUBDATAARBPROC, glBufferSubData)                       \
-      GLEXT(PFNGLDELETEBUFFERSARBPROC, glDeleteBuffers)                       \
-      GLEXT(PFNGLGETBUFFERSUBDATAARBPROC, glGetBufferSubData)                 \
-      GLEXT(PFNGLVERTEXATTRIBPOINTERARBPROC, glVertexAttribPointer)           \
-      GLEXT(PFNGLENABLEVERTEXATTRIBARRAYARBPROC, glEnableVertexAttribArray)   \
-      GLEXT(PFNGLDISABLEVERTEXATTRIBARRAYARBPROC, glDisableVertexAttribArray) \
-      GLEXT(PFNGLCREATEPROGRAMPROC, glCreateProgram)                          \
-      GLEXT(PFNGLDELETEPROGRAMPROC, glDeleteProgram)                          \
-      GLEXT(PFNGLDELETESHADERPROC, glDeleteShader)                            \
-      GLEXT(PFNGLUSEPROGRAMPROC, glUseProgram)                                \
-      GLEXT(PFNGLCREATESHADERPROC, glCreateShader)                            \
-      GLEXT(PFNGLSHADERSOURCEPROC, glShaderSource)                            \
-      GLEXT(PFNGLCOMPILESHADERPROC, glCompileShader)                          \
-      GLEXT(PFNGLGETPROGRAMIVARBPROC, glGetProgramiv)                         \
-      GLEXT(PFNGLGETSHADERIVPROC, glGetShaderiv)                              \
-      GLEXT(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog)                  \
-      GLEXT(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog)                    \
-      GLEXT(PFNGLATTACHSHADERPROC, glAttachShader)                            \
-      GLEXT(PFNGLLINKPROGRAMARBPROC, glLinkProgram)                           \
-      GLEXT(PFNGLGETUNIFORMLOCATIONARBPROC, glGetUniformLocation)             \
-      GLEXT(PFNGLUNIFORM1FARBPROC, glUniform1f)                               \
-      GLEXT(PFNGLUNIFORM2FARBPROC, glUniform2f)                               \
-      GLEXT(PFNGLUNIFORM3FARBPROC, glUniform3f)                               \
-      GLEXT(PFNGLUNIFORM4FARBPROC, glUniform4f)                               \
-      GLEXT(PFNGLUNIFORM1FVARBPROC, glUniform1fv)                             \
-      GLEXT(PFNGLUNIFORM2FVARBPROC, glUniform2fv)                             \
-      GLEXT(PFNGLUNIFORM3FVARBPROC, glUniform3fv)                             \
-      GLEXT(PFNGLUNIFORM4FVARBPROC, glUniform4fv)                             \
-      GLEXT(PFNGLUNIFORM1IARBPROC, glUniform1i)                               \
-      GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC, glUniformMatrix4fv)                 \
-      GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC /*type*/, glUniformMatrix3x4fv)      \
-      GLEXT(PFNGLBINDATTRIBLOCATIONARBPROC, glBindAttribLocation)             \
-      GLEXT(PFNGLGETACTIVEUNIFORMARBPROC, glGetActiveUniform)                 \
-      GLEXT(PFNGLGENERATEMIPMAPEXTPROC, glGenerateMipmap)                     \
-      GLEXT(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation)                  \
-      GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced)
-#define GLEXT(type, name) extern type name;
+#define GLEXTS                                                                 \
+  GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers, true)                     \
+  GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer, true)                  \
+  GLEXT(PFNGLGENRENDERBUFFERSEXTPROC, glGenRenderbuffers, true)                \
+  GLEXT(PFNGLBINDRENDERBUFFEREXTPROC, glBindRenderbuffer, true)                \
+  GLEXT(PFNGLRENDERBUFFERSTORAGEEXTPROC, glRenderbufferStorage, true)          \
+  GLEXT(PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC, glFramebufferRenderbuffer, true)  \
+  GLEXT(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D, true)           \
+  GLEXT(PFNGLDRAWBUFFERSPROC, glDrawBuffers, true)                             \
+  GLEXT(PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC, glCheckFramebufferStatus, true)    \
+  GLEXT(PFNGLDELETERENDERBUFFERSEXTPROC, glDeleteRenderbuffers, true)          \
+  GLEXT(PFNGLDELETEFRAMEBUFFERSEXTPROC, glDeleteFramebuffers, true)            \
+  GLEXT(PFNGLGENBUFFERSARBPROC, glGenBuffers, true)                            \
+  GLEXT(PFNGLBINDBUFFERARBPROC, glBindBuffer, true)                            \
+  GLEXT(PFNGLMAPBUFFERARBPROC, glMapBuffer, true)                              \
+  GLEXT(PFNGLUNMAPBUFFERARBPROC, glUnmapBuffer, true)                          \
+  GLEXT(PFNGLBUFFERDATAARBPROC, glBufferData, true)                            \
+  GLEXT(PFNGLBUFFERSUBDATAARBPROC, glBufferSubData, true)                      \
+  GLEXT(PFNGLDELETEBUFFERSARBPROC, glDeleteBuffers, true)                      \
+  GLEXT(PFNGLGETBUFFERSUBDATAARBPROC, glGetBufferSubData, true)                \
+  GLEXT(PFNGLVERTEXATTRIBPOINTERARBPROC, glVertexAttribPointer, true)          \
+  GLEXT(PFNGLENABLEVERTEXATTRIBARRAYARBPROC, glEnableVertexAttribArray, true)  \
+  GLEXT(PFNGLDISABLEVERTEXATTRIBARRAYARBPROC, glDisableVertexAttribArray, true)\
+  GLEXT(PFNGLCREATEPROGRAMPROC, glCreateProgram, true)                         \
+  GLEXT(PFNGLDELETEPROGRAMPROC, glDeleteProgram, true)                         \
+  GLEXT(PFNGLDELETESHADERPROC, glDeleteShader, true)                           \
+  GLEXT(PFNGLUSEPROGRAMPROC, glUseProgram, true)                               \
+  GLEXT(PFNGLCREATESHADERPROC, glCreateShader, true)                           \
+  GLEXT(PFNGLSHADERSOURCEPROC, glShaderSource, true)                           \
+  GLEXT(PFNGLCOMPILESHADERPROC, glCompileShader, true)                         \
+  GLEXT(PFNGLGETPROGRAMIVARBPROC, glGetProgramiv, true)                        \
+  GLEXT(PFNGLGETSHADERIVPROC, glGetShaderiv, true)                             \
+  GLEXT(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog, true)                 \
+  GLEXT(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog, true)                   \
+  GLEXT(PFNGLATTACHSHADERPROC, glAttachShader, true)                           \
+  GLEXT(PFNGLLINKPROGRAMARBPROC, glLinkProgram, true)                          \
+  GLEXT(PFNGLGETUNIFORMLOCATIONARBPROC, glGetUniformLocation, true)            \
+  GLEXT(PFNGLUNIFORM1FARBPROC, glUniform1f, true)                              \
+  GLEXT(PFNGLUNIFORM2FARBPROC, glUniform2f, true)                              \
+  GLEXT(PFNGLUNIFORM3FARBPROC, glUniform3f, true)                              \
+  GLEXT(PFNGLUNIFORM4FARBPROC, glUniform4f, true)                              \
+  GLEXT(PFNGLUNIFORM1FVARBPROC, glUniform1fv, true)                            \
+  GLEXT(PFNGLUNIFORM2FVARBPROC, glUniform2fv, true)                            \
+  GLEXT(PFNGLUNIFORM3FVARBPROC, glUniform3fv, true)                            \
+  GLEXT(PFNGLUNIFORM4FVARBPROC, glUniform4fv, true)                            \
+  GLEXT(PFNGLUNIFORM1IARBPROC, glUniform1i, true)                              \
+  GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC, glUniformMatrix4fv, true)                \
+  GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC /*type*/, glUniformMatrix3x4fv, true)     \
+  GLEXT(PFNGLBINDATTRIBLOCATIONARBPROC, glBindAttribLocation, true)            \
+  GLEXT(PFNGLGETACTIVEUNIFORMARBPROC, glGetActiveUniform, true)                \
+  GLEXT(PFNGLGENERATEMIPMAPEXTPROC, glGenerateMipmap, true)                    \
+  GLEXT(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation, true)                 \
+  GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced, true)         \
+  GLEXT(PFNGLPUSHDEBUGGROUPPROC, glPushDebugGroup, false)                      \
+  GLEXT(PFNGLPOPDEBUGGROUPPROC, glPopDebugGroup, false)
+#define GLEXT(type, name, required) extern type name;
 GLBASEEXTS
 GLEXTS
 #undef GLEXT
 #endif  // !defined(GL_GLEXT_PROTOTYPES)
 #endif  // !defined(__ANDROID__), so WIN32 & Linux
 #endif  // !defined(__APPLE__)
+
+#ifdef PLATFORM_MOBILE
+// OpenGL ES extensions function pointers.
+typedef void (*PFNGLPUSHGROUPMARKEREXTPROC)(GLsizei length, const GLchar* message);
+typedef void (*PFNPOPGROUPMARKEREXTPROC)(void);
+#define glPushGroupMarker glPushGroupMarkerEXT
+#define glPopGroupMarker glPopGroupMarkerEXT
+#define GLESEXTS                                                               \
+      GLEXT(PFNGLPUSHGROUPMARKEREXTPROC, glPushGroupMarkerEXT, false)          \
+      GLEXT(PFNPOPGROUPMARKEREXTPROC, glPopGroupMarkerEXT, false)
+
+#define GLEXT(type, name, required) extern type name;
+GLESEXTS
+#undef GLEXT
+#endif  // PLATFORM_MOBILE
+
+#ifdef PLATFORM_OSX
+#define glPushGroupMarker glPushGroupMarkerEXT
+#define glPopGroupMarker glPopGroupMarkerEXT
+#endif  // PLATFORM_OSX
 
 // Define a GL_CALL macro to wrap each (void-returning) OpenGL call.
 // This logs GL error when LOG_GL_ERRORS below is defined.
