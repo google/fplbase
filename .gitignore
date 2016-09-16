@@ -23,6 +23,8 @@ demo/cmake_install.cmake
 fplbase.build/*
 fplbase.xcodeproj/*
 mesh_pipeline/CMakeFiles/*
+mesh_pipeline/CMakeScripts/*
+mesh_pipeline/mesh_pipeline.xcodeproj/*
 samples/CMakeFiles/*
 samples/CMakeScripts/*
 samples/*/CMakeFiles/*
