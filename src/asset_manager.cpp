@@ -257,6 +257,9 @@ Material *AssetManager::LoadMaterial(const char *filename) {
           (matdef->mipmaps() ? kTextureFlagsUseMipMaps : kTextureFlagsNone) |
               (matdef->is_cubemap() && matdef->is_cubemap()->Get(index)
                    ? kTextureFlagsIsCubeMap
+                   : kTextureFlagsNone) |
+              (matdef->wrapmode() == matdef::TextureWrap_CLAMP
+                   ? kTextureFlagsClampToEdge
                    : kTextureFlagsNone));
       mat->textures().push_back(tex);
 

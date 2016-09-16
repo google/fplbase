@@ -28,6 +28,20 @@ bool LoadFileWithDirectivesHelper(
     *error_message = std::string("cannot load ") + filename;
     return false;
   }
+
+  // Add the #defines.
+  if (defines) {
+    std::string to_insert;
+    for (auto defs = defines; *defs; defs++) {
+      if (**defs) {  // Skip empty strings.
+        to_insert.append("#define ").append(*defs).append("\n");
+      }
+    }
+    if (to_insert != "") {
+      dest->insert(0, to_insert);
+    }
+  }
+
   all_includes->insert(filename);
   std::vector<std::string> includes;
   auto cursor = dest->c_str();
@@ -58,15 +72,6 @@ bool LoadFileWithDirectivesHelper(
     // Something else, skip it.
     cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
     cursor += strspn(cursor, "\n\r");   // Skip newline;
-  }
-
-  // Add the #defines.
-  if (defines) {
-    for (auto defs = defines; *defs; defs++) {
-      auto def = std::string("#define ") + *defs + "\n";
-      dest->insert(insertion_point, def);
-      insertion_point += def.length();
-    }
   }
 
   // Now insert the includes.

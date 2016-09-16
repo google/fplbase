@@ -29,13 +29,13 @@ namespace fplbase {
 
 Renderer *Renderer::the_renderer_ = nullptr;
 
-#define LOOKUP_GL_FUNCTION(type, name, lookup_fn)                  \
+#define LOOKUP_GL_FUNCTION(type, name, required, lookup_fn)        \
   union {                                                          \
     void *data;                                                    \
     type function;                                                 \
   } data_function_union_##name;                                    \
   data_function_union_##name.data = lookup_fn(#name);              \
-  if (!data_function_union_##name.data) {                          \
+  if (required && !data_function_union_##name.data) {              \
     last_error_ = "could not retrieve GL function pointer " #name; \
     return false;                                                  \
   }                                                                \
@@ -72,7 +72,8 @@ Renderer::~Renderer() {
 bool Renderer::Initialize(const vec2i & /*window_size*/,
                           const char * /*window_size*/) {
 #if defined(_WIN32)
-#define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, wglGetProcAddress)
+#define GLEXT(type, name, required) \
+  LOOKUP_GL_FUNCTION(type, name, required, wglGetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif  // defined(_WIN32)
@@ -83,6 +84,13 @@ bool Renderer::Initialize(const vec2i & /*window_size*/,
     feature_level_ = kFeatureLevel30;
     AndroidInitGl3Functions();
   }
+
+#ifdef PLATFORM_MOBILE
+#define GLEXT(type, name, required) \
+  LOOKUP_GL_FUNCTION(type, name, required, eglGetProcAddress)
+  GLESEXTS
+#undef GLEXT
+#endif  // PLATFORM_MOBILE
 #endif  // defined(__ANDROID__)
 
   return InitializeRenderingState();
@@ -192,10 +200,18 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
 #endif
 
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#define GLEXT(type, name) LOOKUP_GL_FUNCTION(type, name, SDL_GL_GetProcAddress)
+#define GLEXT(type, name, required) \
+  LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
+
+#ifdef PLATFORM_MOBILE
+#define GLEXT(type, name, required) \
+  LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
+  GLESEXTS
+#undef GLEXT
+#endif  // PLATFORM_MOBILE
 
   // Non-SDL-specific initialization continues here:
   return InitializeRenderingState();
@@ -571,8 +587,13 @@ void LogGLError(const char *file, int line, const char *call) {
 
 #if !defined(GL_GLEXT_PROTOTYPES)
 #if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#define GLEXT(type, name) type name = nullptr;
+#define GLEXT(type, name, required) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 #endif  // !defined(GL_GLEXT_PROTOTYPES)
+
+#ifdef PLATFORM_MOBILE
+#define GLEXT(type, name, required) type name = nullptr;
+  GLESEXTS
+#endif  // PLATFORM_MOBILE

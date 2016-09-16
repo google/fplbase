@@ -43,6 +43,9 @@ option(fplbase_build_tests "Build tests for this project." ${fplbase_standalone_
 # Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 
+# Option to enable debug markers
+option(fplbase_debug_markers "Enable OpenGL debug markers." OFF)
+
 # We're on iOS if the system root is set to "iphoneos" or some variant.
 if("${CMAKE_OSX_SYSROOT}" MATCHES "iphoneos")
   set(IOS TRUE CACHE BOOL "Target platform is iOS.")
@@ -157,6 +160,10 @@ if(NOT TARGET webp)
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
 
+if(fplbase_debug_markers)
+  add_definitions(-DFPLBASE_ENABLE_DEBUG_MARKERS)
+endif()
+
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
@@ -192,6 +199,7 @@ set(fplbase_common_SRCS
   include/fplbase/asset.h
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
+  include/fplbase/debug_markers.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
