@@ -115,8 +115,8 @@ Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
   flags_(flags) {}
 
 void Texture::Load() {
-  data_ =
-      LoadAndUnpackTexture(filename_.c_str(), scale_, &size_, &texture_format_);
+  data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, flags_, &size_,
+                               &texture_format_);
   SetOriginalSizeIfNotYetSet(size_);
 }
 
@@ -506,8 +506,11 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
                           texture_format, pixel_format, data));
 }
 
-uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
-                            TextureFormat *texture_format) {
+uint8_t *Texture::UnpackTGA(const void *tga_buf, TextureFlags flags,
+                            vec2i *dimensions, TextureFormat *texture_format) {
+  if (flags & kTextureFlagsPremultiplyAlpha) {
+    LogError(kApplication, "Premultipled alpha not supported for TGA\n");
+  }
   struct TGA {
     uint8_t id_len, color_map_type, image_type, color_map_data[5];
     uint16_t x_origin, y_origin, width, height;
@@ -517,13 +520,13 @@ uint8_t *Texture::UnpackTGA(const void *tga_buf, vec2i *dimensions,
                 "Members of struct TGA need to be packed with no padding.");
   auto header = reinterpret_cast<const TGA *>(tga_buf);
   int size = header->id_len + header->width * header->height * header->bpp / 8;
-  return UnpackImage(tga_buf, size, mathfu::kOnes2f, dimensions,
+  return UnpackImage(tga_buf, size, mathfu::kOnes2f, flags, dimensions,
                      texture_format);
 }
 
 uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
-                             const vec2 &scale, vec2i *dimensions,
-                             TextureFormat *texture_format) {
+                             const vec2 &scale, TextureFlags flags,
+                             vec2i *dimensions, TextureFormat *texture_format) {
   WebPDecoderConfig config;
   memset(&config, 0, sizeof(WebPDecoderConfig));
   auto status = WebPGetFeatures(static_cast<const uint8_t *>(webp_buf), size,
@@ -540,7 +543,11 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   }
 
   if (config.input.has_alpha) {
-    config.output.colorspace = MODE_RGBA;
+    if (flags & kTextureFlagsPremultiplyAlpha) {
+      config.output.colorspace = MODE_rgbA;
+    } else {
+      config.output.colorspace = MODE_RGBA;
+    }
   }
   status = WebPDecode(static_cast<const uint8_t *>(webp_buf), size, &config);
   if (status != VP8_STATUS_OK) return nullptr;
@@ -551,7 +558,11 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
 }
 
 uint8_t *Texture::UnpackASTC(const void *astc_buf, size_t size,
-                             vec2i *dimensions, TextureFormat *texture_format) {
+                             TextureFlags flags, vec2i *dimensions,
+                             TextureFormat *texture_format) {
+  if (flags & kTextureFlagsPremultiplyAlpha) {
+    LogError(kApplication, "Premultipled alpha not supported for ASTC");
+  }
   auto &header = *reinterpret_cast<const ASTCHeader *>(astc_buf);
   static const uint8_t magic[] = {0x13, 0xab, 0xa1, 0x5c};
   if (memcmp(header.magic, magic, sizeof(magic))) return nullptr;
@@ -579,7 +590,11 @@ uint8_t *Texture::UnpackASTC(const void *astc_buf, size_t size,
 }
 
 uint8_t *Texture::UnpackPKM(const void *file_buf, size_t size,
-                            vec2i *dimensions, TextureFormat *texture_format) {
+                            TextureFlags flags, vec2i *dimensions,
+                            TextureFormat *texture_format) {
+  if (flags & kTextureFlagsPremultiplyAlpha) {
+    LogError(kApplication, "Premultipled alpha not supported for PKM");
+  }
   auto &header = *reinterpret_cast<const PKMHeader *>(file_buf);
   if (strncmp(header.magic, "PKM ", 4) && strncmp(header.version, "10", 2))
     return nullptr;
@@ -599,7 +614,11 @@ uint8_t *Texture::UnpackPKM(const void *file_buf, size_t size,
 }
 
 uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
-                            vec2i *dimensions, TextureFormat *texture_format) {
+                            TextureFlags flags, vec2i *dimensions,
+                            TextureFormat *texture_format) {
+  if (flags & kTextureFlagsPremultiplyAlpha) {
+    LogError(kApplication, "Premultipled alpha not supported for KTX");
+  }
   auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
   auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
   auto v = memcmp(header.id, magic, sizeof(header.id));
@@ -620,8 +639,12 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
 }
 
 uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
-                              const vec2 &scale, vec2i *dimensions,
+                              const vec2 &scale, TextureFlags flags,
+                              vec2i *dimensions,
                               TextureFormat *texture_format) {
+  if (flags & kTextureFlagsPremultiplyAlpha) {
+    LogError(kApplication, "Premultipled alpha not supported for this image");
+  }
   uint8_t *image = nullptr;
   int width = 0;
   int height = 0;
@@ -660,7 +683,7 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
 }
 
 uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
-                                       vec2i *dimensions,
+                                       TextureFlags flags, vec2i *dimensions,
                                        TextureFormat *texture_format) {
   std::string ext;
   std::string basename = filename;
@@ -676,8 +699,8 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   if (ext == "astc") {
     if (Renderer::Get()->SupportsTextureFormat(kFormatASTC) &&
         LoadFile(filename, &file)) {
-      auto buf =
-          UnpackASTC(file.c_str(), file.length(), dimensions, texture_format);
+      auto buf = UnpackASTC(file.c_str(), file.length(), flags, dimensions,
+                            texture_format);
       if (!buf) LogError(kApplication, "ASTC format problem: %s", filename);
       return buf;
     } else {
@@ -689,8 +712,8 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   if (ext == "pkm") {
     if (Renderer::Get()->SupportsTextureFormat(kFormatPKM) &&
         LoadFile(filename, &file)) {
-      auto buf =
-          UnpackPKM(file.c_str(), file.length(), dimensions, texture_format);
+      auto buf = UnpackPKM(file.c_str(), file.length(), flags, dimensions,
+                           texture_format);
       if (!buf) LogError(kApplication, "PKM format problem: %s", filename);
       return buf;
     } else {
@@ -702,8 +725,8 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   if (ext == "ktx") {
     if (Renderer::Get()->SupportsTextureFormat(kFormatKTX) &&
         LoadFile(filename, &file)) {
-      auto buf =
-          UnpackKTX(file.c_str(), file.length(), dimensions, texture_format);
+      auto buf = UnpackKTX(file.c_str(), file.length(), flags, dimensions,
+                           texture_format);
       if (!buf) LogError(kApplication, "KTX format problem: %s", filename);
       return buf;
     } else {
@@ -720,12 +743,12 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
   }
 
   if (ext == "tga" || ext == "png" || ext == "jpg") {
-    auto buf = UnpackImage(file.c_str(), file.length(), scale, dimensions,
-                           texture_format);
+    auto buf = UnpackImage(file.c_str(), file.length(), scale, flags,
+                           dimensions, texture_format);
     if (!buf) LogError(kApplication, "Image format problem: %s", filename);
     return buf;
   } else if (ext == "webp" || HasWebpHeader(file)) {
-    auto buf = UnpackWebP(file.c_str(), file.length(), scale, dimensions,
+    auto buf = UnpackWebP(file.c_str(), file.length(), scale, flags, dimensions,
                           texture_format);
     if (!buf) LogError(kApplication, "WebP format problem: %s", filename);
     return buf;
