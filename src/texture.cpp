@@ -438,12 +438,19 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         auto data_size = *(reinterpret_cast<const int32_t *>(data));
         data += sizeof(int32_t);
-        gl_tex_image(data, cur_size, i, data_size / tex_num_faces, true);
+        // Keep loading mip data even if one of our calculated dimensions goes
+        // to 0, but maintain a min size of 1.  This is needed to get non-square
+        // mip chains to work using ETC2 (eg a 256x512 needs 10 mips defined).
+        gl_tex_image(data, vec2i::Max(mathfu::kOnes2i, cur_size), i,
+            data_size / tex_num_faces, true);
         cur_size /= 2;
         data += data_size;
-        // For some reason header.mip_levels can be big enough such that a
-        // coordinate goes to 0.
-        if (!cur_size.x() || !cur_size.y()) break;
+        // Guard against extra mip levels in the ktx.
+        if (!cur_size.x() && !cur_size.y()) {
+          LogError("KTX file has too many mips: %dx%d, %d mips",
+                   tex_size.x(), tex_size.y(), header.mip_levels);
+          break;
+        }
         // If the file has mips but the caller doesn't want them, stop here.
         if (!have_mips) break;
       }
