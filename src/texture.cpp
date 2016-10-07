@@ -436,6 +436,12 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto data = buffer + sizeof(KTXHeader);
       auto cur_size = tex_size;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
+        // Guard against extra mip levels in the ktx.
+        if (cur_size.x() == 0 && cur_size.y() == 0) {
+          LogError("KTX file has too many mips: %dx%d, %d mips",
+                   tex_size.x(), tex_size.y(), header.mip_levels);
+          break;
+        }
         auto data_size = *(reinterpret_cast<const int32_t *>(data));
         data += sizeof(int32_t);
         // Keep loading mip data even if one of our calculated dimensions goes
@@ -445,12 +451,6 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
             data_size / tex_num_faces, true);
         cur_size /= 2;
         data += data_size;
-        // Guard against extra mip levels in the ktx.
-        if (!cur_size.x() && !cur_size.y()) {
-          LogError("KTX file has too many mips: %dx%d, %d mips",
-                   tex_size.x(), tex_size.y(), header.mip_levels);
-          break;
-        }
         // If the file has mips but the caller doesn't want them, stop here.
         if (!have_mips) break;
       }
