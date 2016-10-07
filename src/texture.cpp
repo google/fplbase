@@ -479,7 +479,11 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // generate any mipmaps for compressed textures.
     // Also, this call should generate GL_INVALID_OPERATION but it doesn't?
     // TODO(wvo): is this a driver bug, or what is the root cause of this?
+    // On android/adreno, this goes generate a GL_INVALID_OPERATION and isn't
+    // needed.
+#ifndef __ANDROID__
     GL_CALL(glGenerateMipmap(tex_type));
+#endif
   }
   return texture_id;
 }
