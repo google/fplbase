@@ -1309,25 +1309,25 @@ class FbxMeshParser {
     // source mesh's directory.
     const std::string source_dir = fplutil::DirectoryName(source_mesh_name);
     if (!fplutil::AbsoluteFileName(texture_name)) {
-      const std::string texture_rel_name = source_dir + texture_name;
+      std::string texture_rel_name = source_dir + texture_name;
       if (TextureFileExists(texture_rel_name)) return texture_rel_name;
-      attempted_textures.insert(texture_rel_name);
+      attempted_textures.insert(std::move(texture_rel_name));
     }
 
     // If the texture exists in the same directory as the source mesh, use it.
     const std::string texture_no_dir =
         fplutil::RemoveDirectoryFromName(texture_name);
-    const std::string texture_in_source_dir = source_dir + texture_no_dir;
+    std::string texture_in_source_dir = source_dir + texture_no_dir;
     if (TextureFileExists(texture_in_source_dir)) return texture_in_source_dir;
-    attempted_textures.insert(texture_in_source_dir);
+    attempted_textures.insert(std::move(texture_in_source_dir));
 
     // Check to see if there's a texture with the same base name as the mesh.
     const std::string source_name = fplutil::BaseFileName(source_mesh_name);
     const std::string texture_extension = fplutil::FileExtension(texture_name);
-    const std::string source_texture =
+    std::string source_texture =
         source_dir + source_name + "." + texture_extension;
     if (TextureFileExists(source_texture)) return source_texture;
-    attempted_textures.insert(source_texture);
+    attempted_textures.insert(std::move(source_texture));
 
     // Gather potential base names for the texture (i.e. name without directory
     // or extension).
@@ -1340,10 +1340,10 @@ class FbxMeshParser {
     // The image may have been converted to a new format.
     for (size_t i = 0; i < FPL_ARRAYSIZE(base_names); ++i) {
       for (size_t j = 0; j < FPL_ARRAYSIZE(kImageExtensions); ++j) {
-        const std::string potential_name =
+        std::string potential_name =
             source_dir + base_names[i] + "." + kImageExtensions[j];
         if (TextureFileExists(potential_name)) return potential_name;
-        attempted_textures.insert(potential_name);
+        attempted_textures.insert(std::move(potential_name));
       }
     }
 
@@ -1351,7 +1351,7 @@ class FbxMeshParser {
     // do this, normally, since the name can be an absolute path on the drive,
     // or relative to the directory we're currently running from.
     if (TextureFileExists(texture_name)) return texture_name;
-    attempted_textures.insert(texture_name);
+    attempted_textures.insert(texture_name.c_str());
 
     // Texture can't be found. Only log warning once, to avoid spamming.
     static std::unordered_set<std::string> missing_textures;
@@ -1363,7 +1363,7 @@ class FbxMeshParser {
         log_.Log(kLogWarning, "  %s\n", it->c_str());
       }
       log_.Log(kLogWarning, "\n");
-      missing_textures.insert(texture_name);
+      missing_textures.insert(texture_name.c_str());
     }
     return "";
   }
