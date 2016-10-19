@@ -29,27 +29,9 @@ namespace fplbase {
 
 Renderer *Renderer::the_renderer_ = nullptr;
 
-#define LOOKUP_GL_FUNCTION(type, name, required, lookup_fn)        \
-  union {                                                          \
-    void *data;                                                    \
-    type function;                                                 \
-  } data_function_union_##name;                                    \
-  data_function_union_##name.data = lookup_fn(#name);              \
-  if (required && !data_function_union_##name.data) {              \
-    last_error_ = "could not retrieve GL function pointer " #name; \
-    return false;                                                  \
-  }                                                                \
-  name = data_function_union_##name.function;
-
 Renderer::Renderer()
     : time_(0),
-      window_size_(vec2i(800, 600)),  // Overwritten elsewhere.
       default_render_context_(nullptr),
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
-      window_(nullptr),
-      context_(nullptr),
-#endif  // FPL_BASE_RENDERER_BACKEND_SDL
-      feature_level_(kFeatureLevel20),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
       force_shader_(nullptr),
@@ -60,48 +42,6 @@ Renderer::Renderer()
   the_renderer_ = this;
 }
 
-#ifndef FPL_BASE_RENDERER_BACKEND_SDL
-
-Renderer::~Renderer() {
-  the_renderer_ = nullptr;
-  delete default_render_context_;
-}
-
-// When building without SDL we assume the window and rendering context have
-// already been created prior to calling initialize.
-bool Renderer::Initialize(const vec2i & /*window_size*/,
-                          const char * /*window_size*/) {
-#if defined(_WIN32)
-#define GLEXT(type, name, required) \
-  LOOKUP_GL_FUNCTION(type, name, required, wglGetProcAddress)
-  GLBASEEXTS GLEXTS
-#undef GLEXT
-#endif  // defined(_WIN32)
-
-#ifdef __ANDROID__
-      const int version = AndroidGetContextClientVersion();
-  if (version >= 3) {
-    feature_level_ = kFeatureLevel30;
-    AndroidInitGl3Functions();
-  }
-
-#ifdef PLATFORM_MOBILE
-#define GLEXT(type, name, required) \
-  LOOKUP_GL_FUNCTION(type, name, required, eglGetProcAddress)
-  GLESEXTS
-#undef GLEXT
-#endif  // PLATFORM_MOBILE
-#endif  // defined(__ANDROID__)
-
-  return InitializeRenderingState();
-}
-
-void Renderer::SetWindowSize(const vec2i &window_size) {
-  window_size_ = window_size;
-}
-
-#else  // !FPL_BASE_RENDERER_BACKEND_SDL
-
 Renderer::~Renderer() {
   the_renderer_ = nullptr;
   delete default_render_context_;
@@ -109,148 +49,27 @@ Renderer::~Renderer() {
 }
 
 bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
-  // Basic SDL initialization, does not actually initialize a Window or OpenGL,
-  // typically should not fail.
-  SDL_SetMainReady();
-  if (SDL_Init(SDL_INIT_VIDEO)) {
-    last_error_ = std::string("SDL_Init fail: ") + SDL_GetError();
+  if (!environment_.Initialize(window_size, window_title)) {
+    last_error_ = environment_.last_error();
     return false;
   }
-
-  SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
-
-#ifdef __ANDROID__
-  // Setup HW scaler in Android
-  AndroidSetScalerResolution(window_size);
-  AndroidPreCreateWindow();
-#endif
-
-  // Always double buffer.
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-  // Set back buffer format to 565
-  SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
-  SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 6);
-  SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
-
-  // Create the window:
-  window_ = SDL_CreateWindow(
-      window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-      window_size.x(), window_size.y(), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
-#ifdef PLATFORM_MOBILE
-                                            SDL_WINDOW_BORDERLESS);
-#else
-                                            SDL_WINDOW_RESIZABLE);
-#endif
-  if (!window_) {
-    last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
-    return false;
-  }
-
-  // Get the size we actually got, which typically is native res for
-  // any fullscreen display:
-  SDL_GetWindowSize(static_cast<SDL_Window *>(window_), &window_size_.x(),
-                    &window_size_.y());
-
-  // Create the OpenGL context:
-  // Try to get OpenGL ES 3 on mobile.
-  // On desktop, we assume we can get function pointers for all ES 3 equivalent
-  // functions.
-  feature_level_ = kFeatureLevel30;
-#ifdef PLATFORM_MOBILE
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#else
-#ifdef __APPLE__
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-#else
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-#endif
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                      SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-#endif
-  context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-#ifdef PLATFORM_MOBILE
-  if (context_) {
-#ifdef __ANDROID__
-    AndroidInitGl3Functions();
-#endif
-  } else {
-    // Failed to get ES 3.0 context, let's try 2.0.
-    feature_level_ = kFeatureLevel20;
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    context_ = SDL_GL_CreateContext(static_cast<SDL_Window *>(window_));
-  }
-#endif
-  if (!context_) {
-    last_error_ = std::string("SDL_GL_CreateContext fail: ") + SDL_GetError();
-    return false;
-  }
-
-#ifdef PLATFORM_MOBILE
-  LogInfo("FPLBase: got OpenGL ES context level %s",
-          feature_level_ == kFeatureLevel20 ? "2.0" : "3.0");
-#endif
-
-// Enable Vsync on desktop
-#ifndef PLATFORM_MOBILE
-  SDL_GL_SetSwapInterval(1);
-#endif
-
-#if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
-#define GLEXT(type, name, required) \
-  LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
-  GLBASEEXTS GLEXTS
-#undef GLEXT
-#endif
-
-#ifdef PLATFORM_MOBILE
-#define GLEXT(type, name, required) \
-  LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
-  GLESEXTS
-#undef GLEXT
-#endif  // PLATFORM_MOBILE
-
-  // Non-SDL-specific initialization continues here:
+  // Non-environment-specific initialization continues here:
   return InitializeRenderingState();
+}
+
+void Renderer::AdvanceFrame(bool minimized, double time) {
+  time_ = time;
+
+  environment_.AdvanceFrame(minimized);
+
+  auto viewport_size = environment_.GetViewportSize();
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  DepthTest(true);
 }
 
 void Renderer::BeginRendering(RenderContext *) {}
 
 void Renderer::EndRendering(RenderContext *) {}
-
-void Renderer::AdvanceFrame(bool minimized, double time) {
-  time_ = time;
-  if (minimized) {
-    // Save some cpu / battery:
-    SDL_Delay(10);
-  } else {
-    SDL_GL_SwapWindow(static_cast<SDL_Window *>(window_));
-  }
-  // Get window size again, just in case it has changed.
-  SDL_GetWindowSize(static_cast<SDL_Window *>(window_), &window_size_.x(),
-                    &window_size_.y());
-
-  auto viewport_size = GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
-  DepthTest(true);
-}
-
-void Renderer::ShutDown() {
-  if (context_) {
-    SDL_GL_DeleteContext(context_);
-    context_ = nullptr;
-  }
-  if (window_) {
-    SDL_DestroyWindow(static_cast<SDL_Window *>(window_));
-    window_ = nullptr;
-  }
-  SDL_Quit();
-}
-
-#endif  // !FPL_BASE_RENDERER_BACKEND_SDL
 
 bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;
@@ -284,7 +103,7 @@ bool Renderer::InitializeRenderingState() {
 
 // Check for ETC2:
 #ifdef PLATFORM_MOBILE
-  if (feature_level_ < kFeatureLevel30) {
+  if (environment.feature_level() < kFeatureLevel30) {
 #else
   if (!HasGLExt("GL_ARB_ES3_compatibility")) {
 #endif
@@ -525,24 +344,12 @@ void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
   render_context->cull_mode_ = mode;
 }
 
-vec2i Renderer::GetViewportSize() {
-#if defined(__ANDROID__) && defined(FPL_BASE_RENDERER_BACKEND_SDL)
-  // Check HW scaler setting and change a viewport size if they are set.
-  vec2i scaled_size = fplbase::AndroidGetScalerResolution();
-  vec2i viewport_size =
-      scaled_size.x() && scaled_size.y() ? scaled_size : window_size_;
-  return viewport_size;
-#else
-  return window_size_;
-#endif
-}
-
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {
   glEnable(GL_SCISSOR_TEST);
-  auto viewport_size = GetViewportSize();
+  auto viewport_size = environment_.GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
 
-  auto scaling_ratio = vec2(viewport_size) / vec2(window_size_);
+  auto scaling_ratio = vec2(viewport_size) / vec2(environment_.window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
   glScissor(static_cast<GLint>(scaled_pos.x()),

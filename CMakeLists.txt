@@ -200,6 +200,7 @@ set(fplbase_common_SRCS
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
   include/fplbase/debug_markers.h
+  include/fplbase/environment.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/input.h
@@ -216,8 +217,8 @@ set(fplbase_common_SRCS
   include/fplbase/utilities.h
   include/fplbase/version.h
   schemas
-  src/input.cpp
   src/asset_manager.cpp
+  src/input.cpp
   src/material.cpp
   src/mesh.cpp
   src/precompiled.h
@@ -232,12 +233,14 @@ set(fplbase_common_SRCS
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
   src/async_loader.cpp
+  src/environment_sdl.cpp
   src/input_sdl.cpp
   src/main.cpp)
 
 set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_stdlib.cpp
+  src/environment_stdlib.cpp
   src/input_stdlib.cpp)
 
 # Includes for this project.

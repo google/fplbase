@@ -15,6 +15,7 @@
 #include "precompiled.h"
 #include "fplbase/mesh.h"
 #include "fplbase/flatbuffer_utils.h"
+#include "fplbase/environment.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 
@@ -418,7 +419,7 @@ void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
     GL_CALL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0));
   } else {
     (void)renderer;
-    assert(renderer.feature_level() == Renderer::kFeatureLevel30);
+    assert(renderer.feature_level() == kFeatureLevel30);
     GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0,
                                     instances));
   }

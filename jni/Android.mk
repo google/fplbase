@@ -25,6 +25,7 @@ FPLBASE_DIR := $(LOCAL_PATH)
 
 FPLBASE_COMMON_SRC_FILES := \
   src/asset_manager.cpp \
+  src/environment_sdl.cpp \
   src/input.cpp \
   src/material.cpp \
   src/mesh.cpp \

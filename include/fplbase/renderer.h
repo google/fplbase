@@ -17,6 +17,7 @@
 
 #include "fplbase/config.h"  // Must come first.
 
+#include "fplbase/environment.h"
 #include "fplbase/material.h"
 #include "fplbase/mesh.h"
 #include "fplbase/shader.h"
@@ -24,14 +25,8 @@
 #include "fplbase/version.h"
 #include "mathfu/glsl_mappings.h"
 
-#ifdef __ANDROID__
-#include "fplbase/renderer_android.h"
-#endif
-
 namespace fplbase {
 
-typedef void *Window;
-typedef void *GLContext;
 class RenderTarget;
 
 enum CullingMode {
@@ -157,39 +152,20 @@ class Renderer {
   // Get current singleton instance.
   static Renderer *Get() { return the_renderer_; }
 
-  // OpenGL ES feature level we are able to obtain.
-  enum FeatureLevel {
-    kFeatureLevel20,  // 2.0: Our fallback.
-    kFeatureLevel30,  // 3.0: We request this by default.
-  };
-
-// clang-format off
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
-  /// @brief Creates the window + OpenGL context.
+  /// @brief Initializes the renderer by initializing the Environment object.
   ///
-  /// window_size is used on desktop platforms, but typically is ignored on
-  /// mobile platforms in favor of the native resolution.
+  /// both parameters are used on desktop platforms, but may be ignored on
+  /// mobile platforms or certain environment backends in favor of the native
+  /// resolution.
+  /// Whether this actually still needs to create an context depends on the
+  /// backend.
   /// A descriptive error is in last_error() if it returns false.
   ///
   /// @param window_size The default size to initialize the window to.
   /// @param window_title The title of the created window.
   /// @return Returns true on success, false if there was an error.
-#else
-  /// @brief Initializes internal state of the renderer.
-  ///
-  /// This assumes a window and OpenGL context have already been created by
-  /// the caller.
-  ///
-  /// @param window_size This is ignored and only present for compatibility
-  /// with the interface that uses SDL as a backend.
-  /// @param window_title This is ignored and only present for compatibility
-  /// with the interface that uses SDL as a backend.
-  /// @return Returns true on success, false if there was an error.
-#endif  // FPL_BASE_RENDERER_BACKEND_SDL
   bool Initialize(const mathfu::vec2i &window_size, const char *window_title);
-// clang-format on
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
   /// @brief Swaps frames. Call this once per frame inside your main loop.
   ///
   /// The two arguments are typically the result of the InputManager's
@@ -200,17 +176,16 @@ class Renderer {
   void AdvanceFrame(bool minimized, double time);
 
   /// @brief Cleans up the resources initialized by the renderer.
-  void ShutDown();
-#else
+  void ShutDown() { environment_.ShutDown(); }
   /// @brief Sets the window size, for when window is not owned by the renderer.
   ///
   /// In the non-window-owning use case, call to update the window size whenever
   /// it changes.
   ///
   /// @param window_size The size to set the window to.
-  void SetWindowSize(const mathfu::vec2i &window_size);
-#endif  // FPL_BASE_RENDERER_BACKEND_SDL
-
+  void SetWindowSize(const mathfu::vec2i &window_size) {
+    environment_.SetWindowSize(window_size);
+  }
   /// @brief Clears the framebuffer.
   ///
   /// Call this after AdvanceFrame if desired.
@@ -492,15 +467,19 @@ class Renderer {
   /// navigation buttons turning on/off.
   ///
   /// @return Returns the current framebuffer size.
-  const mathfu::vec2i &window_size() const { return window_size_; }
+  const mathfu::vec2i &window_size() const {
+    return environment_.window_size();
+  }
   /// @overload mathfu::vec2i &window_size()
-  mathfu::vec2i &window_size() { return window_size_; }
+  mathfu::vec2i &window_size() { return environment_.window_size(); }
 
   /// @brief Sets the window size
   ///
   /// Sets the window_size member variable to the given parameter
   /// @param ws The 2D vector for the window size
-  void set_window_size(const mathfu::vec2i &ws) { window_size_ = ws; }
+  void set_window_size(const mathfu::vec2i &ws) {
+    environment_.SetWindowSize(ws);
+  }
 
   /// @brief Get the size of the viewport.
   ///
@@ -509,6 +488,8 @@ class Renderer {
   ///
   /// @return Returns the current viewport size.
   mathfu::vec2i GetViewportSize();
+
+  Environment &environment() { return environment_; }
 
   /// @brief Time in seconds since program start.
   ///
@@ -519,7 +500,7 @@ class Renderer {
 
   /// @brief The supported OpenGL ES feature level.
   /// @return Returns the supported OpenGL ES feature level.
-  FeatureLevel feature_level() const { return feature_level_; }
+  FeatureLevel feature_level() const { return environment_.feature_level(); }
 
   /// @brief The blend that will be used for all draw calls.
   /// @return Returns the blend mode that will be used.
@@ -583,18 +564,13 @@ class Renderer {
   bool InitializeRenderingState();
 
   double time_;
-  mathfu::vec2i window_size_;
 
   std::string last_error_;
 
   RenderContext *default_render_context_;
 
-#ifdef FPL_BASE_RENDERER_BACKEND_SDL
-  Window window_;
-  GLContext context_;
-#endif
+  Environment environment_;
 
-  FeatureLevel feature_level_;
   int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   bool supports_texture_npot_;
