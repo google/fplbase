@@ -15,6 +15,7 @@
 #include "precompiled.h"  // NOLINT
 
 #include "fplbase/environment.h"
+#include "fplbase/utilities.h"
 
 #ifdef __ANDROID__
 #include "fplbase/renderer_android.h"
@@ -102,7 +103,7 @@ bool Environment::Initialize(const vec2i &window_size,
 #endif
   auto context = SDL_GL_CreateContext(window);
 #ifdef PLATFORM_MOBILE
-  if (context_) {
+  if (context) {
 #ifdef __ANDROID__
     AndroidInitGl3Functions();
 #endif
@@ -111,7 +112,7 @@ bool Environment::Initialize(const vec2i &window_size,
     feature_level_ = kFeatureLevel20;
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    context_ = SDL_GL_CreateContext(window);
+    context = SDL_GL_CreateContext(window);
   }
 #endif
   if (!context) {

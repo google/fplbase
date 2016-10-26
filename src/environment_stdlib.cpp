@@ -16,6 +16,10 @@
 
 #include "fplbase/environment.h"
 
+#ifdef __ANDROID__
+#include "fplbase/renderer_android.h"
+#endif
+
 using mathfu::mat4;
 using mathfu::vec2;
 using mathfu::vec2i;

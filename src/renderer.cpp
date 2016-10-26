@@ -103,7 +103,7 @@ bool Renderer::InitializeRenderingState() {
 
 // Check for ETC2:
 #ifdef PLATFORM_MOBILE
-  if (environment.feature_level() < kFeatureLevel30) {
+  if (environment_.feature_level() < kFeatureLevel30) {
 #else
   if (!HasGLExt("GL_ARB_ES3_compatibility")) {
 #endif

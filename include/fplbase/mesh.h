@@ -24,7 +24,6 @@
 #include "fplbase/material.h"
 #include "fplbase/shader.h"
 #include "mathfu/constants.h"
-#include "mesh_generated.h"
 
 namespace fplbase {
 
@@ -382,8 +381,8 @@ class Mesh : public AsyncAsset {
   Mesh(const Mesh &);
   Mesh &operator=(const Mesh &);
 
-  // Init mesh from meshdef::Mesh FlatBuffer.
-  bool InitFromMeshDef(const meshdef::Mesh *meshdef);
+  // Init mesh from MeshDef FlatBuffer.
+  bool InitFromMeshDef(const void *meshdef_buffer);
 
   // This typedef is compatible with its OpenGL equivalent, but doesn't require
   // this header to depend on OpenGL.

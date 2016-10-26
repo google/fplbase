@@ -19,6 +19,8 @@
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
 
+#include "mesh_generated.h"
+
 using mathfu::mat4;
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -273,14 +275,14 @@ void Mesh::Finalize() {
     return;
   }
   const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
-  const meshdef::Mesh *meshdef = meshdef::GetMesh(flatbuf->c_str());
-  InitFromMeshDef(meshdef);
+  InitFromMeshDef(flatbuf->c_str());
   delete flatbuf;
   data_ = nullptr;
   CallFinalizeCallback();
 }
 
-bool Mesh::InitFromMeshDef(const meshdef::Mesh *meshdef) {
+bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
+  const meshdef::Mesh *meshdef = meshdef::GetMesh(meshdef_buffer);
   // Ensure the data version matches the runtime version, or that it was not
   // tied to a specific version to begin with (e.g. it's legacy or it's
   // created from a json file instead of mesh_pipeline).

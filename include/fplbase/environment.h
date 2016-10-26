@@ -15,6 +15,8 @@
 #ifndef FPLBASE_ENVIRONMENT_H
 #define FPLBASE_ENVIRONMENT_H
 
+#include <string>
+
 #include "fplbase/config.h"  // Must come first.
 
 #include "mathfu/glsl_mappings.h"
@@ -74,7 +76,7 @@ class Environment {
     void *data;                                                    \
     type function;                                                 \
   } data_function_union_##name;                                    \
-  data_function_union_##name.data = lookup_fn(#name);              \
+  data_function_union_##name.data = (void *)lookup_fn(#name);      \
   if (required && !data_function_union_##name.data) {              \
     last_error_ = "could not retrieve GL function pointer " #name; \
     return false;                                                  \

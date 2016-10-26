@@ -25,7 +25,6 @@ FPLBASE_DIR := $(LOCAL_PATH)
 
 FPLBASE_COMMON_SRC_FILES := \
   src/asset_manager.cpp \
-  src/environment_sdl.cpp \
   src/input.cpp \
   src/material.cpp \
   src/mesh.cpp \
@@ -125,6 +124,7 @@ LOCAL_C_INCLUDES := $(FPLBASE_COMMON_INCLUDES) $(DEPENDENCIES_SDL_DIR)
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader.cpp \
+  src/environment_sdl.cpp \
   src/input_sdl.cpp \
   src/renderer_android.cpp
 
@@ -162,6 +162,7 @@ LOCAL_C_INCLUDES := \
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader_stdlib.cpp \
+  src/environment_stdlib.cpp \
   src/input_stdlib.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
