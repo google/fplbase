@@ -120,6 +120,9 @@
   GLEXT(PFNGLGENERATEMIPMAPEXTPROC, glGenerateMipmap, true)                    \
   GLEXT(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation, true)                 \
   GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced, true)         \
+  GLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays, true)                     \
+  GLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays, true)               \
+  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)                     \
   GLEXT(PFNGLPUSHDEBUGGROUPPROC, glPushDebugGroup, false)                      \
   GLEXT(PFNGLPOPDEBUGGROUPPROC, glPopDebugGroup, false)
 #define GLEXT(type, name, required) extern type name;

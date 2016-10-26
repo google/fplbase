@@ -169,10 +169,25 @@ void Mesh::UnSetAttributes(const Attribute *attributes) {
   }
 }
 
+void Mesh::BindAttributes() {
+  if (vao_) {
+    glBindVertexArray(vao_);
+  } else {
+    SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
+  }
+}
+
+void Mesh::UnbindAttributes() {
+  if (vao_) {
+    glBindVertexArray(0);  // TODO(wvo): could probably omit this?
+  } else {
+    UnSetAttributes(format_);
+  }
+}
+
 Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
     : AsyncAsset(filename ? filename : ""),
-      num_vertices_(0),
-      vbo_(0),
+      num_vertices_(0), vbo_(0), vao_(0),
       default_bone_transform_inverses_(nullptr),
       material_loader_fn_(material_loader_fn) {}
 
@@ -213,6 +228,13 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo_));
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, count * vertex_size, vertex_data,
                        GL_STATIC_DRAW));
+
+  if (Renderer::Get()->feature_level() >= kFeatureLevel30) {
+    glGenVertexArrays(1, &vao_);
+    glBindVertexArray(vao_);
+    SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
+    glBindVertexArray(0);
+  }
 
   // Determine the min and max position
   if (max_position && min_position) {
@@ -426,20 +448,20 @@ void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
 }
 
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
-  SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
+  BindAttributes();
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
     DrawElement(renderer, it->count, static_cast<int32_t>(instances));
   }
-  UnSetAttributes(format_);
+  UnbindAttributes();
 }
 
 void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
                         const vec4i *viewport, const mat4 *mvp,
                         const vec3 *camera_position, bool ignore_material,
                         size_t instances) {
-  SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);
+  BindAttributes();
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
@@ -454,7 +476,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
       DrawElement(renderer, it->count, static_cast<int32_t>(instances));
     }
   }
-  UnSetAttributes(format_);
+  UnbindAttributes();
 }
 
 void Mesh::RenderArray(Primitive primitive, int index_count,

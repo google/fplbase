@@ -394,6 +394,10 @@ class Mesh : public AsyncAsset {
   static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
                             int vertex_size, const char *buffer);
   static void UnSetAttributes(const Attribute *attributes);
+
+  void BindAttributes();
+  void UnbindAttributes();
+
   void DrawElement(Renderer &renderer, int32_t count, int32_t instances);
 
   struct Indices {
@@ -406,6 +410,7 @@ class Mesh : public AsyncAsset {
   size_t num_vertices_;
   Attribute format_[kMaxAttributes];
   BufferHandle vbo_;
+  BufferHandle vao_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
 
