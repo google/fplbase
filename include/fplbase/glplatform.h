@@ -31,6 +31,9 @@
 #define PLATFORM_OSX
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#define glGenVertexArrays glGenVertexArraysAPPLE
+#define glBindVertexArray glBindVertexArrayAPPLE
+#define glDeleteVertexArrays glDeleteVertexArraysAPPLE
 #define glDrawElementsInstanced glDrawElementsInstancedARB
 #endif  // defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 
