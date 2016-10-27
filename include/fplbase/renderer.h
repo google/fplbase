@@ -487,7 +487,7 @@ class Renderer {
   /// scalar is enabled.
   ///
   /// @return Returns the current viewport size.
-  mathfu::vec2i GetViewportSize();
+  mathfu::vec2i GetViewportSize() { return environment_.GetViewportSize(); }
 
   Environment &environment() { return environment_; }
 
