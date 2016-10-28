@@ -15,6 +15,7 @@
 #include "precompiled.h"
 #include <vector>
 
+#include "fplbase/preprocessor.h"
 #include "fplbase/renderer.h"
 #include "fplbase/shader.h"
 
@@ -25,10 +26,103 @@
 
 namespace fplbase {
 
-Shader::~Shader() {
-  if (vs_) GL_CALL(glDeleteShader(vs_));
-  if (ps_) GL_CALL(glDeleteShader(ps_));
-  if (program_) GL_CALL(glDeleteProgram(program_));
+Shader::~Shader() { Clear(); }
+
+void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
+                  const char *const *defines, Renderer *renderer) {
+  program_ = program;
+  vs_ = vs;
+  ps_ = ps;
+  uniform_model_view_projection_ = -1;
+  uniform_model_ = -1;
+  uniform_color_ = -1;
+  uniform_light_pos_ = -1;
+  uniform_camera_pos_ = -1;
+  uniform_time_ = -1;
+  uniform_bone_transforms_ = -1;
+  renderer_ = renderer;
+  defines_ = defines;
+}
+
+bool Shader::Reload(const char *basename, const char *const *defines) {
+  filename_ = basename;
+  defines_ = defines;
+
+  ShaderSourcePair *source_pair = LoadSourceFile();
+  if (source_pair != nullptr) {
+    renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                               source_pair->fragment_shader.c_str(), this);
+    delete source_pair;
+    return true;
+  } else {
+    delete source_pair;
+    return false;
+  }
+}
+
+void Shader::Reset(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
+  Clear();
+  program_ = program;
+  vs_ = vs;
+  ps_ = ps;
+}
+
+void Shader::Load() {
+  ShaderSourcePair *source_pair = LoadSourceFile();
+  if (source_pair != nullptr) {
+    data_ = reinterpret_cast<uint8_t *>(source_pair);
+  }
+}
+
+void Shader::Finalize() {
+  if (data_ == nullptr) {
+    return;
+  }
+  const ShaderSourcePair *source_pair =
+      reinterpret_cast<const ShaderSourcePair *>(data_);
+  // This funciton will call Shader::Reset() -> Shader::Clear() to clear
+  // 'data_'.
+  renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                             source_pair->fragment_shader.c_str(), this);
+  CallFinalizeCallback();
+}
+
+void Shader::Clear() {
+  if (vs_) {
+    GL_CALL(glDeleteShader(vs_));
+    vs_ = 0;
+  }
+  if (ps_) {
+    GL_CALL(glDeleteShader(ps_));
+    ps_ = 0;
+  }
+  if (program_) {
+    GL_CALL(glDeleteProgram(program_));
+    program_ = 0;
+  }
+  if (data_ != nullptr) {
+    delete reinterpret_cast<const ShaderSourcePair *>(data_);
+    data_ = nullptr;
+  }
+}
+
+Shader::ShaderSourcePair *Shader::LoadSourceFile() {
+  std::string filename = std::string(filename_) + ".glslv";
+  std::string error_message;
+
+  ShaderSourcePair *source_pair = new ShaderSourcePair();
+  if (LoadFileWithDirectives(filename.c_str(), &source_pair->vertex_shader,
+                             defines_, &error_message)) {
+    filename = std::string(filename_) + ".glslf";
+    if (LoadFileWithDirectives(filename.c_str(), &source_pair->fragment_shader,
+                               defines_, &error_message)) {
+      return source_pair;
+    }
+  }
+  LogError(kError, "%s", error_message.c_str());
+  renderer_->set_last_error(error_message.c_str());
+  delete source_pair;
+  return nullptr;
 }
 
 UniformHandle Shader::FindUniform(const char *uniform_name) {

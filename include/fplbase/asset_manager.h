@@ -77,8 +77,9 @@ class AssetManager {
   /// If this returns nullptr, the error can be found in Renderer::last_error().
   ///
   /// @param basename The name of the shader.
+  /// @param async A boolean to indicate whether to load asynchronously or not.
   /// @return Returns the loaded shader, or nullptr if there was an error.
-  Shader *LoadShader(const char *basename);
+  Shader *LoadShader(const char *basename, bool async = false);
 
   /// @brief Loads and returns a shader object with pre-defined identifiers.
   ///
@@ -87,6 +88,7 @@ class AssetManager {
   /// @param basename The name of the shader.
   /// @param defines A null-terminated array of variables to \#define, or
   /// nullptr if there are no initial \#define variables.
+  /// @param async A boolean to indicate whether to load asynchronously or not.
   /// @note An example of how to create such an array:
   ///       static const char *kMyDefines[] = {
   ///         USE_SHADOWS,
@@ -95,7 +97,8 @@ class AssetManager {
   ///         nullptr
   ///       };
   /// @return Returns the loaded shader, or nullptr if there was an error.
-  Shader *LoadShader(const char *basename, const char * const *defines);
+  Shader *LoadShader(const char *basename, const char *const *defines,
+                     bool async = false);
 
   /// @brief Force a shader to reload.
   ///
@@ -300,8 +303,8 @@ class AssetManager {
   void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
  private:
-   Shader *LoadShaderHelper(const char *basename, const char * const *defines,
-                            bool should_reload);
+  Shader *LoadShaderHelper(const char *basename, const char *const *defines,
+                           bool should_reload, bool async);
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 
   // This implements the mechanism for each asset to be both loadable

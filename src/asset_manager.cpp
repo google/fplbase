@@ -109,57 +109,35 @@ Shader *AssetManager::FindShader(const char *basename) {
 }
 
 Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const char * const *defines,
-                                       bool should_reload) {
+                                       const char *const *defines,
+                                       bool should_reload, bool async) {
   auto shader = FindShader(basename);
   if (!should_reload && shader)
     return shader;
-  std::string vs_file, ps_file;
-  std::string filename = std::string(basename) + ".glslv";
-  std::string error_message;
-  if (LoadFileWithDirectives(filename.c_str(), &vs_file, defines,
-                             &error_message)) {
-    filename = std::string(basename) + ".glslf";
-    if (LoadFileWithDirectives(filename.c_str(), &ps_file, defines,
-                               &error_message)) {
-      if (should_reload) {
-        renderer_.RecompileShader(vs_file.c_str(), ps_file.c_str(), shader);
-      } else {
-        shader =
-            renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
-      }
-      if (shader) {
-        shader_map_[basename] = shader;
-      } else {
-        LogError(kError, "Shader Error: ");
-        LogError(kError, "VS:  -----------------------------------");
-        LogError(kError, "%s", vs_file.c_str());
-        LogError(kError, "PS:  -----------------------------------");
-        LogError(kError, "%s", ps_file.c_str());
-        LogError(kError, "----------------------------------------");
-        LogError(kError, "%s", renderer_.last_error().c_str());
-      }
-      return shader;
-    }
+  if (shader) {
+    // should_reload must be true.
+    shader->Reload(basename, defines);
+    return shader;
+  } else {
+    shader = new Shader(basename, defines, &renderer_);
+    return LoadOrQueue(shader, shader_map_, async);
   }
-  LogError(kError, "%s", error_message.c_str());
-  renderer_.set_last_error(error_message.c_str());
-  return nullptr;
 }
 
 Shader *AssetManager::LoadShader(const char *basename,
-                                 const char * const *defines) {
-  return LoadShaderHelper(basename, defines, false);
+                                 const char *const *defines, bool async) {
+  return LoadShaderHelper(basename, defines, false, async);
 }
 
-Shader *AssetManager::LoadShader(const char *basename) {
+Shader *AssetManager::LoadShader(const char *basename, bool async) {
   static const char * const *defines = {nullptr};
-  return LoadShader(basename, defines);
+  return LoadShader(basename, defines, async);
 }
 
 Shader *AssetManager::ReloadShader(const char *basename,
                                    const char * const *defines) {
-  return LoadShaderHelper(basename, defines, true);
+  return LoadShaderHelper(basename, defines, true /* should_reload */,
+                          false /* async */);
 }
 
 Shader *AssetManager::LoadShaderDef(const char *filename) {

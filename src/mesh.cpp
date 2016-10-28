@@ -195,7 +195,8 @@ Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
 
 Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
-    : Mesh(nullptr /* filename */, nullptr /* material_loader_fn */) {
+    : num_vertices_(0), vbo_(0), vao_(0),
+      default_bone_transform_inverses_(nullptr) {
   LoadFromMemory(vertex_data, count, vertex_size, format, max_position,
                  min_position);
 }

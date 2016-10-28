@@ -16,7 +16,7 @@
 #define FPLBASE_SHADER_H
 
 #include "fplbase/config.h"  // Must come first.
-#include "fplbase/asset.h"
+#include "fplbase/async_loader.h"
 
 #include "mathfu/glsl_mappings.h"
 
@@ -40,21 +40,27 @@ typedef int UniformHandle;
 ///
 /// Represents a shader consisting of a vertex and pixel shader. Also stores
 /// ids of standard uniforms. Use the Renderer class below to create these.
-class Shader : public Asset {
+class Shader : public AsyncAsset {
  public:
-  Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
-      : program_(program),
-        vs_(vs),
-        ps_(ps),
-        uniform_model_view_projection_(-1),
-        uniform_model_(-1),
-        uniform_color_(-1),
-        uniform_light_pos_(-1),
-        uniform_camera_pos_(-1),
-        uniform_time_(-1),
-        uniform_bone_transforms_(-1) {}
+  Shader(const char *filename, const char *const *defines, Renderer *renderer)
+      : AsyncAsset(filename ? filename : "") {
+    Init(0 /* program */, 0 /* vs */, 0 /* ps */, defines, renderer);
+  }
+
+  Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
+    Init(program, vs, ps, nullptr /* defines */, nullptr /* renderer */);
+  }
 
   ~Shader();
+
+  /// @brief Reloads this shader with given filename and defines.
+  bool Reload(const char *filename, const char *const *defines);
+
+  /// @brief Loads and unpacks the Mesh from `filename_` into `data_`.
+  virtual void Load();
+
+  /// @brief Creates a Texture from `data_`.
+  virtual void Finalize();
 
   /// @brief Activate this shader for subsequent draw calls.
   ///
@@ -142,6 +148,25 @@ class Shader : public Asset {
   ShaderHandle program() const { return program_; }
 
  private:
+  friend class Renderer;
+
+  // Holds the source code of vertex shader and fragment shader.
+  struct ShaderSourcePair {
+    std::string vertex_shader;
+    std::string fragment_shader;
+  };
+
+  // Used by constructor to init inner variables.
+  void Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
+            const char *const *defines, Renderer *renderer);
+
+  /// @brief Clear the Shader and reset everything to null.
+  void Clear();
+
+  void Reset(ShaderHandle program, ShaderHandle vs, ShaderHandle ps);
+
+  ShaderSourcePair *LoadSourceFile();
+
   ShaderHandle program_, vs_, ps_;
 
   UniformHandle uniform_model_view_projection_;
@@ -151,6 +176,9 @@ class Shader : public Asset {
   UniformHandle uniform_camera_pos_;
   UniformHandle uniform_time_;
   UniformHandle uniform_bone_transforms_;
+
+  Renderer *renderer_;
+  const char *const *defines_;
 };
 
 /// @}

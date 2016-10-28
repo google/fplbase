@@ -209,9 +209,8 @@ Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
           // Load a new shader.
           shader = new Shader(program, vs, ps);
         } else {
-          // Destruct old shader and create recompiled shader in its place.
-          shader->~Shader();
-          shader = new (shader) Shader(program, vs, ps);
+          // Reset the old shader with the recompiled shader.
+          shader->Reset(program, vs, ps);
         }
         GL_CALL(glUseProgram(program));
         shader->InitializeUniforms();
