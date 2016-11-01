@@ -652,7 +652,60 @@ JNIEnv *AndroidGetJNIEnv() {
   return reinterpret_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
 }
 #else
-// TODO: Implement JNI methods that do not depend upon SDL.
+static JavaVM* g_jvm = NULL;
+static jint g_jni_version = 0;
+static pthread_key_t g_pthread_key;
+
+static JavaVM* GetJVM() {
+  return g_jvm;
+}
+
+static JNIEnv* AttachCurrentThread() {
+  JNIEnv* env = NULL;
+  JavaVM* jvm = GetJVM();
+  if (!jvm)
+    return NULL;
+
+  // Avoid attaching threads provided by the JVM.
+  if (jvm->GetEnv(reinterpret_cast<void**>(&env), g_jni_version) == JNI_OK)
+    return env;
+
+  if (!(env = static_cast<JNIEnv*>(pthread_getspecific(g_pthread_key)))) {
+    jint ret = jvm->AttachCurrentThread(&env, NULL);
+    if (ret != JNI_OK)
+      return NULL;
+
+    pthread_setspecific(g_pthread_key, env);
+  }
+
+  return env;
+}
+
+static void DetachCurrentThread() {
+  JavaVM* jvm = GetJVM();
+  if (jvm) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+static void DetachCurrentThreadWrapper(void* value) {
+  JNIEnv* env = reinterpret_cast<JNIEnv*>(value);
+  if (env) {
+    DetachCurrentThread();
+    pthread_setspecific(g_pthread_key, NULL);
+  }
+}
+
+void AndroidSetJavaVM(JavaVM* vm, jint jni_version) {
+  g_jvm = vm;
+  g_jni_version = jni_version;
+
+  pthread_key_create(&g_pthread_key, DetachCurrentThreadWrapper);
+}
+
+JNIEnv* AndroidGetJNIEnv() {
+  return AttachCurrentThread();
+}
 #endif  // defined(FPL_BASE_BACKEND_SDL)
 #endif
 

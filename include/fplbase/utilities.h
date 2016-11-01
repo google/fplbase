@@ -296,11 +296,14 @@ std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
-/// @breif Set an Android asset manager.
+/// @brief Set an Android asset manager.
 /// @param[in] manager A pointer to an already-created instance of
 /// `AAssetManager`.
 /// @note Must call this function once before loading any assets.
 void SetAAssetManager(AAssetManager *manager);
+/// @brief Set global Java virtual machine object.
+/// @note This method should be called only once.
+void AndroidSetJavaVM(JavaVM* vm, jint jni_version);
 #endif
 
 /// @brief Retrieve a path where an app can store data files.
