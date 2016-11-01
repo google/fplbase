@@ -64,9 +64,10 @@
 #include <GL/glext.h>
 #if !defined(GL_GLEXT_PROTOTYPES)
 #ifdef _WIN32
-#define GLBASEEXTS                                                  \
-  GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture, true)           \
-  GLEXT(PFNGLCOMPRESSEDTEXIMAGE2DPROC, glCompressedTexImage2D, true)
+#define GLBASEEXTS                                                             \
+  GLEXT(PFNGLACTIVETEXTUREARBPROC, glActiveTexture, true)                      \
+  GLEXT(PFNGLCOMPRESSEDTEXIMAGE2DPROC, glCompressedTexImage2D, true)           \
+  GLEXT(PFNGLBINDSAMPLERPROC, glBindSampler, true)
 #else   // !defined(_WIN32)
 #define GLBASEEXTS
 #endif  // !defined(_WIN32)
