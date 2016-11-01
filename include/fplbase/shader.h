@@ -60,7 +60,11 @@ class Shader : public AsyncAsset {
   virtual void Load();
 
   /// @brief Creates a Texture from `data_`.
-  virtual void Finalize();
+  virtual bool Finalize();
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  bool IsValid() { return program_ != 0; }
 
   /// @brief Activate this shader for subsequent draw calls.
   ///

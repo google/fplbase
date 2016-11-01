@@ -40,11 +40,14 @@ void FileAsset::Load() {
   }
 }
 
-void FileAsset::Finalize() {
+bool FileAsset::Finalize() {
   // Since the asset was already "created", this is all we have to do here.
   data_ = nullptr;
   CallFinalizeCallback();
+  return true;
 }
+
+bool FileAsset::IsValid() { return true; }
 
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
@@ -239,8 +242,11 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               (matdef->wrapmode() == matdef::TextureWrap_CLAMP
                    ? kTextureFlagsClampToEdge
                    : kTextureFlagsNone));
+      if (!tex) {
+        delete mat;
+        return nullptr;
+      }
       mat->textures().push_back(tex);
-
       auto original_size =
           matdef->original_size() && index < matdef->original_size()->size()
               ? LoadVec2i(matdef->original_size()->Get(index))

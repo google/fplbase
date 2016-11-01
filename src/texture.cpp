@@ -129,13 +129,14 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   id_ = CreateTexture(data, size_, texture_format_, desired_, flags_);
 }
 
-void Texture::Finalize() {
+bool Texture::Finalize() {
   if (data_) {
     id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_);
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
   CallFinalizeCallback();
+  return id_ != 0;
 }
 
 void Texture::Set(size_t unit, RenderContext *) {

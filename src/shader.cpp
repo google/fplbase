@@ -50,10 +50,11 @@ bool Shader::Reload(const char *basename, const char *const *defines) {
 
   ShaderSourcePair *source_pair = LoadSourceFile();
   if (source_pair != nullptr) {
-    renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                               source_pair->fragment_shader.c_str(), this);
+    auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                                         source_pair->fragment_shader.c_str(),
+                                         this);
     delete source_pair;
-    return true;
+    return sh != nullptr;
   } else {
     delete source_pair;
     return false;
@@ -74,17 +75,19 @@ void Shader::Load() {
   }
 }
 
-void Shader::Finalize() {
+bool Shader::Finalize() {
   if (data_ == nullptr) {
-    return;
+    return false;
   }
   const ShaderSourcePair *source_pair =
       reinterpret_cast<const ShaderSourcePair *>(data_);
   // This funciton will call Shader::Reset() -> Shader::Clear() to clear
   // 'data_'.
-  renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                             source_pair->fragment_shader.c_str(), this);
+  auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                                       source_pair->fragment_shader.c_str(),
+                                       this);
   CallFinalizeCallback();
+  return sh != nullptr;
 }
 
 void Shader::Clear() {
