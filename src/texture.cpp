@@ -461,8 +461,12 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       assert(false);
   }
 
-  if (generate_mips) {
+  if (generate_mips && buffer != nullptr) {
     // Work around for some Android devices to correctly generate miplevels.
+    // NOTE:  If client creates a texture with buffer == nullptr (i.e. to
+    // render into later), and wants mipmapping, and is on a phone requiring
+    // this workaround, the client will need to do this preallocation
+    // workaround themselves.
     auto min_dimension =
         static_cast<float>(std::min(tex_size.x(), tex_size.y()));
     auto levels = ceil(log(min_dimension) / log(2.0f));
