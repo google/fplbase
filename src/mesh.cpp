@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <utility>
+
 #include "precompiled.h"
 #include "fplbase/mesh.h"
 #include "fplbase/flatbuffer_utils.h"
@@ -189,9 +191,11 @@ void Mesh::UnbindAttributes() {
 
 Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
     : AsyncAsset(filename ? filename : ""),
-      num_vertices_(0), vbo_(0), vao_(0),
+      num_vertices_(0),
+      vbo_(0),
+      vao_(0),
       default_bone_transform_inverses_(nullptr),
-      material_loader_fn_(material_loader_fn) {}
+      material_loader_fn_(std::move(material_loader_fn)) {}
 
 Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position)
@@ -247,7 +251,7 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
     auto data = static_cast<const float *>(vertex_data);
     const Attribute *attribute = format;
     data += VertexSize(attribute, kPosition3f) / sizeof(float);
-    int step = vertex_size / sizeof(float);
+    const size_t step = vertex_size / sizeof(float);
     min_position_ = vec3(data);
     max_position_ = min_position_;
     for (size_t vertex = 1; vertex < count; vertex++) {
