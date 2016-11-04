@@ -15,6 +15,8 @@
 #ifndef FPLBASE_SHADER_H
 #define FPLBASE_SHADER_H
 
+#include <unordered_set>
+
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/async_loader.h"
 
@@ -42,19 +44,29 @@ typedef int UniformHandle;
 /// ids of standard uniforms. Use the Renderer class below to create these.
 class Shader : public AsyncAsset {
  public:
-  Shader(const char *filename, const char *const *defines, Renderer *renderer)
+  Shader(const char *filename, const std::vector<std::string> &defines,
+         Renderer *renderer)
       : AsyncAsset(filename ? filename : "") {
     Init(0 /* program */, 0 /* vs */, 0 /* ps */, defines, renderer);
   }
 
   Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
-    Init(program, vs, ps, nullptr /* defines */, nullptr /* renderer */);
+    static const std::vector<std::string> empty_defines;
+    Init(program, vs, ps, empty_defines, nullptr /* renderer */);
   }
 
   ~Shader();
 
   /// @brief Reloads this shader with given filename and defines.
-  bool Reload(const char *filename, const char *const *defines);
+  bool Reload(const char *filename, const std::vector<std::string> &defines);
+
+  /// @brief Reloads the defines of this shader.
+  ///
+  /// @param defines_to_add the defines to be added into 'original_defines'.
+  /// @param defines_to_omit the defines to be omit if it's existed in
+  /// 'original_defines'.
+  bool ReloadDefines(const std::vector<std::string> &defines_to_add,
+                     const std::vector<std::string> &defines_to_omit);
 
   /// @brief Loads and unpacks the Mesh from `filename_` into `data_`.
   virtual void Load();
@@ -147,6 +159,13 @@ class Shader : public AsyncAsset {
 
   ShaderHandle program() const { return program_; }
 
+  bool HasDefine(const char *define) const {
+    return enabled_defines_.find(define) != enabled_defines_.end();
+  }
+
+  bool IsDirty() const { return dirty_; }
+  void SetDirty() { dirty_ = true; }
+
  private:
   friend class Renderer;
 
@@ -158,12 +177,14 @@ class Shader : public AsyncAsset {
 
   // Used by constructor to init inner variables.
   void Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
-            const char *const *defines, Renderer *renderer);
+            const std::vector<std::string> &defines, Renderer *renderer);
 
   /// @brief Clear the Shader and reset everything to null.
   void Clear();
 
   void Reset(ShaderHandle program, ShaderHandle vs, ShaderHandle ps);
+
+  bool ReloadInternal();
 
   ShaderSourcePair *LoadSourceFile();
 
@@ -178,7 +199,12 @@ class Shader : public AsyncAsset {
   UniformHandle uniform_bone_transforms_;
 
   Renderer *renderer_;
-  const char *const *defines_;
+  // Original defines set by Init() or Reload().
+  std::vector<std::string> original_defines_;
+  // Defines that are actually enabled for this shader.
+  std::unordered_set<std::string> enabled_defines_;
+  // If true, means this shader needs to be reloaded.
+  bool dirty_;
 };
 
 /// @}

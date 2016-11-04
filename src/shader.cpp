@@ -29,7 +29,7 @@ namespace fplbase {
 Shader::~Shader() { Clear(); }
 
 void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
-                  const char *const *defines, Renderer *renderer) {
+                  const std::vector<std::string> &defines, Renderer *renderer) {
   program_ = program;
   vs_ = vs;
   ps_ = ps;
@@ -41,13 +41,43 @@ void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
   uniform_time_ = -1;
   uniform_bone_transforms_ = -1;
   renderer_ = renderer;
-  defines_ = defines;
+
+  original_defines_ = defines;
+  // All defines are enabled by default.
+  std::copy(defines.begin(), defines.end(),
+            std::inserter(enabled_defines_, enabled_defines_.begin()));
+  dirty_ = false;
 }
 
-bool Shader::Reload(const char *basename, const char *const *defines) {
+bool Shader::Reload(const char *basename,
+                    const std::vector<std::string> &defines) {
   filename_ = basename;
-  defines_ = defines;
+  original_defines_ = defines;
+  // All defines are enabled by default.
+  enabled_defines_.clear();
+  std::copy(defines.begin(), defines.end(),
+            std::inserter(enabled_defines_, enabled_defines_.begin()));
 
+  return ReloadInternal();
+}
+
+bool Shader::ReloadDefines(const std::vector<std::string> &defines_to_add,
+                           const std::vector<std::string> &defines_to_omit) {
+  enabled_defines_.clear();
+  std::copy(original_defines_.begin(), original_defines_.end(),
+            std::inserter(enabled_defines_, enabled_defines_.begin()));
+  std::copy(defines_to_add.begin(), defines_to_add.end(),
+            std::inserter(enabled_defines_, enabled_defines_.begin()));
+  for (auto iter = defines_to_omit.begin(); iter != defines_to_omit.end();
+       ++iter) {
+    enabled_defines_.erase(*iter);
+  }
+  dirty_ = false;
+
+  return ReloadInternal();
+}
+
+bool Shader::ReloadInternal() {
   ShaderSourcePair *source_pair = LoadSourceFile();
   if (source_pair != nullptr) {
     renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
@@ -112,10 +142,10 @@ Shader::ShaderSourcePair *Shader::LoadSourceFile() {
 
   ShaderSourcePair *source_pair = new ShaderSourcePair();
   if (LoadFileWithDirectives(filename.c_str(), &source_pair->vertex_shader,
-                             defines_, &error_message)) {
+                             enabled_defines_, &error_message)) {
     filename = std::string(filename_) + ".glslf";
     if (LoadFileWithDirectives(filename.c_str(), &source_pair->fragment_shader,
-                               defines_, &error_message)) {
+                               enabled_defines_, &error_message)) {
       return source_pair;
     }
   }
