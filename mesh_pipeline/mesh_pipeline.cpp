@@ -827,23 +827,23 @@ class FlatMesh {
       size_t vert_size = 0;
       if (attributes & kVertexAttributeBit_Position) {
         format.push_back(meshdef::Attribute_Position3f);
-        vert_size += sizeof(vec3);
+        vert_size += sizeof(vec3_packed);
       }
       if (attributes & kVertexAttributeBit_Normal) {
         format.push_back(meshdef::Attribute_Normal3f);
-        vert_size += sizeof(vec3);
+        vert_size += sizeof(vec3_packed);
       }
       if (attributes & kVertexAttributeBit_Tangent) {
         format.push_back(meshdef::Attribute_Tangent4f);
-        vert_size += sizeof(vec4);
+        vert_size += sizeof(vec4_packed);
       }
       if (attributes & kVertexAttributeBit_Uv) {
         format.push_back(meshdef::Attribute_TexCoord2f);
-        vert_size += sizeof(vec2);
+        vert_size += sizeof(vec2_packed);
       }
       if (attributes & kVertexAttributeBit_UvAlt) {
         format.push_back(meshdef::Attribute_TexCoordAlt2f);
-        vert_size += sizeof(vec2);
+        vert_size += sizeof(vec2_packed);
       }
       if (attributes & kVertexAttributeBit_Color) {
         format.push_back(meshdef::Attribute_Color4ub);
@@ -854,6 +854,7 @@ class FlatMesh {
         format.push_back(meshdef::Attribute_BoneWeights4ub);
         vert_size += sizeof(Vec4ub) + sizeof(Vec4ub);
       }
+      format.push_back(meshdef::Attribute_END);
       std::vector<uint8_t> iattrs;
       iattrs.reserve(num_points * vert_size);
       // TODO(wvo): this is only valid on little-endian.
@@ -861,32 +862,37 @@ class FlatMesh {
         const Vertex& p = points_[i];
         if (attributes & kVertexAttributeBit_Position) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.vertex);
-          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec3));
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec3_packed));
         }
         if (attributes & kVertexAttributeBit_Normal) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.normal);
-          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec3));
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec3_packed));
         }
         if (attributes & kVertexAttributeBit_Tangent) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.tangent);
-          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec4));
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec4_packed));
         }
         if (attributes & kVertexAttributeBit_Uv) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.uv);
-          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec2));
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec2_packed));
         }
         if (attributes & kVertexAttributeBit_UvAlt) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.uv_alt);
-          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec2));
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec2_packed));
         }
         if (attributes & kVertexAttributeBit_Color) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.color);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
         }
         if (attributes & kVertexAttributeBit_Bone) {
-          auto attr = reinterpret_cast<const uint8_t *>(&p.bone);
+          // TODO: Support bone weighting.
+          const BoneIndexCompact shader_bone_idx =
+              TruncateBoneIndex(mesh_to_shader_bones[p.bone]);
+          Vec4ub bone(shader_bone_idx, 0, 0, 0);
+          Vec4ub weights(std::numeric_limits<uint8_t>::max(), 0, 0, 0);
+          auto attr = reinterpret_cast<const uint8_t *>(&bone);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
-          attr = reinterpret_cast<const uint8_t *>(&p.weights);
+          attr = reinterpret_cast<const uint8_t *>(&weights);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
         }
       }
