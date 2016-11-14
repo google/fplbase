@@ -33,6 +33,21 @@ using mathfu::vec4i;
 namespace fplbase {
 namespace {
 
+static_assert(
+    kEND == static_cast<Attribute>(meshdef::Attribute_END) &&
+    kPosition3f == static_cast<Attribute>(meshdef::Attribute_Position3f) &&
+    kNormal3f == static_cast<Attribute>(meshdef::Attribute_Normal3f) &&
+    kTangent4f == static_cast<Attribute>(meshdef::Attribute_Tangent4f) &&
+    kTexCoord2f == static_cast<Attribute>(meshdef::Attribute_TexCoord2f) &&
+    kTexCoordAlt2f ==
+      static_cast<Attribute>(meshdef::Attribute_TexCoordAlt2f) &&
+    kColor4ub == static_cast<Attribute>(meshdef::Attribute_Color4ub) &&
+    kBoneIndices4ub ==
+      static_cast<Attribute>(meshdef::Attribute_BoneIndices4ub) &&
+    kBoneWeights4ub ==
+      static_cast<Attribute>(meshdef::Attribute_BoneWeights4ub),
+    "Attribute enums in mesh.h and mesh.fbs must match.");
+
 GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
   switch (primitive) {
     case Mesh::kLines:
@@ -205,21 +220,34 @@ Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
                  min_position);
 }
 
-Mesh::~Mesh() {
+void Mesh::Clear() {
   if (vbo_) {
     GL_CALL(glDeleteBuffers(1, &vbo_));
+    vbo_ = 0;
+  }
+  if (vao_) {
+    GL_CALL(glDeleteVertexArrays(1, &vao_));
+    vao_ = 0;
   }
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     GL_CALL(glDeleteBuffers(1, &it->ibo));
   }
+  indices_.clear();
 
   delete[] default_bone_transform_inverses_;
   default_bone_transform_inverses_ = nullptr;
+  bone_parents_.clear();
+  bone_names_.clear();
+  shader_bone_indices_.clear();
 
   if (data_ != nullptr) {
     delete reinterpret_cast<const std::string *>(data_);
     data_ = nullptr;
   }
+}
+
+Mesh::~Mesh() {
+  Clear();
 }
 
 void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
@@ -275,19 +303,88 @@ void Mesh::Load() {
   }
 }
 
-void Mesh::Finalize() {
+bool Mesh::Finalize() {
   if (data_ == nullptr) {
-    return;
+    return false;
   }
   const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
-  InitFromMeshDef(flatbuf->c_str());
+  bool ok = InitFromMeshDef(flatbuf->c_str());
   delete flatbuf;
   data_ = nullptr;
+  if (!ok) Clear();
   CallFinalizeCallback();
+  return ok;
+}
+
+void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
+                                      InterleavedVertexData *ivd) {
+  auto meshdef = meshdef::GetMesh(meshdef_buffer);
+  ivd->has_skinning =
+      meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
+      meshdef->bone_parents() && meshdef->bone_parents()->size() &&
+      meshdef->shader_to_mesh_bones() &&
+      meshdef->shader_to_mesh_bones()->size();
+  // See if we're loading interleaved or non-interleaved data.
+  if (meshdef->vertices() && meshdef->vertices()->size() &&
+      meshdef->attributes() && meshdef->attributes()->size()) {
+    // Interleaved.
+    for (size_t i = 0; i < meshdef->attributes()->size(); i++) {
+      ivd->format.push_back(
+            static_cast<Attribute>(meshdef->attributes()->Get(i)));
+    }
+    ivd->vertex_size = Mesh::VertexSize(ivd->format.data());
+    ivd->vertex_data = meshdef->vertices()->data();
+    ivd->count = meshdef->vertices()->size() / ivd->vertex_size;
+  } else {  // Non-interleaved.
+    ivd->has_skinning = ivd->has_skinning &&
+        meshdef->skin_indices() && meshdef->skin_indices()->size() &&
+        meshdef->skin_weights() && meshdef->skin_weights()->size();
+    auto has_normals = meshdef->normals() && meshdef->normals()->size();
+    auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
+    auto has_colors = meshdef->colors() && meshdef->colors()->size();
+    auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
+    auto has_texcoords_alt =
+        meshdef->texcoords_alt() && meshdef->texcoords_alt()->size();
+    // Collect what attributes are available.
+    ivd->format.push_back(kPosition3f);
+    if (has_normals) ivd->format.push_back(kNormal3f);
+    if (has_tangents) ivd->format.push_back(kTangent4f);
+    if (has_colors) ivd->format.push_back(kColor4ub);
+    if (has_texcoords) ivd->format.push_back(kTexCoord2f);
+    if (has_texcoords_alt) ivd->format.push_back(kTexCoordAlt2f);
+    if (ivd->has_skinning) {
+      ivd->format.push_back(kBoneIndices4ub);
+      ivd->format.push_back(kBoneWeights4ub);
+    }
+    ivd->format.push_back(kEND);
+    ivd->vertex_size = Mesh::VertexSize(ivd->format.data());
+    // Create an interleaved buffer. Would be cool to do this without
+    // the additional copy, but that's not easy in OpenGL.
+    // Could use multiple buffers instead, but likely less efficient.
+    ivd->count = meshdef->positions()->size();
+    ivd->owned_vertex_data.resize(ivd->vertex_size * ivd->count);
+    auto p = ivd->owned_vertex_data.data();
+    ivd->vertex_data = p;
+    for (size_t i = 0; i < ivd->count; i++) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      assert(meshdef->positions());
+      CopyAttribute(meshdef->positions()->Get(index), p);
+      if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
+      if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
+      if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
+      if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
+      if (has_texcoords_alt)
+        CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
+      if (ivd->has_skinning) {
+        CopyAttribute(meshdef->skin_indices()->Get(index), p);
+        CopyAttribute(meshdef->skin_weights()->Get(index), p);
+      }
+    }
+  }
 }
 
 bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
-  const meshdef::Mesh *meshdef = meshdef::GetMesh(meshdef_buffer);
+  auto meshdef = meshdef::GetMesh(meshdef_buffer);
   // Ensure the data version matches the runtime version, or that it was not
   // tied to a specific version to begin with (e.g. it's legacy or it's
   // created from a json file instead of mesh_pipeline).
@@ -320,63 +417,17 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
                surface->indices()->Length(), mat);
   }
 
-  auto has_skinning =
-      meshdef->skin_indices() && meshdef->skin_indices()->size() &&
-      meshdef->skin_weights() && meshdef->skin_weights()->size() &&
-      meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
-      meshdef->bone_parents() && meshdef->bone_parents()->size() &&
-      meshdef->shader_to_mesh_bones() &&
-      meshdef->shader_to_mesh_bones()->size();
-  auto has_normals = meshdef->normals() && meshdef->normals()->size();
-  auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
-  auto has_colors = meshdef->colors() && meshdef->colors()->size();
-  auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
-  auto has_texcoords_alt =
-      meshdef->texcoords_alt() && meshdef->texcoords_alt()->size();
-  // Collect what attributes are available.
-  std::vector<Attribute> attrs;
-  attrs.push_back(kPosition3f);
-  if (has_normals) attrs.push_back(kNormal3f);
-  if (has_tangents) attrs.push_back(kTangent4f);
-  if (has_colors) attrs.push_back(kColor4ub);
-  if (has_texcoords) attrs.push_back(kTexCoord2f);
-  if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
-  if (has_skinning) {
-    attrs.push_back(kBoneIndices4ub);
-    attrs.push_back(kBoneWeights4ub);
-  }
-  attrs.push_back(kEND);
-  auto vert_size = Mesh::VertexSize(attrs.data());
-  // Create an interleaved buffer. Would be cool to do this without
-  // the additional copy, but that's not easy in OpenGL.
-  // Could use multiple buffers instead, but likely less efficient.
-  auto buf = new uint8_t[vert_size * meshdef->positions()->Length()];
-  auto p = buf;
-  for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
-    flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-    assert(meshdef->positions());
-    CopyAttribute(meshdef->positions()->Get(index), p);
-    if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
-    if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
-    if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
-    if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
-    if (has_texcoords_alt)
-      CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
-    if (has_skinning) {
-      CopyAttribute(meshdef->skin_indices()->Get(index), p);
-      CopyAttribute(meshdef->skin_weights()->Get(index), p);
-    }
-  }
+  InterleavedVertexData ivd;
+  ParseInterleavedVertexData(meshdef_buffer, &ivd);
   vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
                                      : mathfu::kZeros3f;
   vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
                                      : mathfu::kZeros3f;
-  LoadFromMemory(buf, meshdef->positions()->Length(), vert_size, attrs.data(),
+  LoadFromMemory(ivd.vertex_data, ivd.count, ivd.vertex_size, ivd.format.data(),
                  meshdef->max_position() ? &max : nullptr,
                  meshdef->min_position() ? &min : nullptr);
-  delete[] buf;
   // Load the bone information.
-  if (has_skinning) {
+  if (ivd.has_skinning) {
     const size_t num_bones = meshdef->bone_parents()->Length();
     assert(meshdef->bone_transforms()->Length() == num_bones);
     std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(

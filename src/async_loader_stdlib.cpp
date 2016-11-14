@@ -57,7 +57,11 @@ bool AsyncLoader::TryFinalize() {
     }
 
     if (!resource) break;
-    resource->Finalize();
+    bool ok = resource->Finalize();
+    if (!ok) {
+      // Can't do much here, since res is already constructed. Caller has to
+      // check IsValid() to know if resource can be used.
+    }
 
     {
       std::unique_lock<std::mutex> lock(mutex_);

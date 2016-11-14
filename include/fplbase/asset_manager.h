@@ -36,7 +36,8 @@ namespace fplbase {
 /// @brief A generic asset whose contents the AssetManager doesn't care about.
 class FileAsset : public AsyncAsset {
   virtual void Load();
-  virtual void Finalize();
+  virtual bool Finalize();
+  virtual bool IsValid();
  public:
   std::string contents;
 };
@@ -166,13 +167,14 @@ class AssetManager {
   /// loading of all files, and decompression.
   void StartLoadingTextures();
 
-  /// @brief Check for the status of async loading textures.
+  /// @brief Check for the status of async loading resources.
   ///
-  /// Call this repeatedly until it returns true, which signals all textures
-  /// will have loaded, and turned into OpenGL textures.
-  /// Textures with a 0 id will have failed to load.
+  /// Call this repeatedly until it returns true, which signals all resources
+  /// will have loaded, and turned into OpenGL resources.
+  /// Call IsValid() on a resource to see if there were problems in loading /
+  /// finalizing.
   ///
-  /// @return Returns true when all textures have been loaded.
+  /// @return Returns true when all resources have been loaded & finalized.
   bool TryFinalize();
 
   /// @brief Deletes the previously loaded texture.

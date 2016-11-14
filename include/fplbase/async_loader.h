@@ -75,7 +75,11 @@ class AsyncAsset : public Asset {
   /// This should implement the behavior of turning data_ into the actual
   /// desired resource. Called on the main thread only.
   /// Should check if data_ is null.
-  virtual void Finalize() = 0;
+  virtual bool Finalize() = 0;
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  virtual bool IsValid() = 0;
 
   /// @brief Performs a synchronous load by calling Load & Finalize.
   ///
@@ -85,8 +89,7 @@ class AsyncAsset : public Asset {
     Load();
     bool ok = data_ != nullptr;
     // Call this even if data_ is null, to enforce Finalize() checking for it.
-    Finalize();
-    return ok;
+    return Finalize() && ok;
   }
 
   /// @brief Sets the filename that should be loaded.
