@@ -43,7 +43,7 @@ enum Attribute {
   kTexCoordAlt2f,  ///< @brief Second set of UVs for use with e.g. lightmaps.
   kColor4ub,
   kBoneIndices4ub,
-  kBoneWeights4ub
+  kBoneWeights4ub,
 };
 
 /// @class Mesh
@@ -86,7 +86,11 @@ class Mesh : public AsyncAsset {
   virtual void Load();
 
   /// @brief Creates a mesh from 'data_'.
-  virtual void Finalize();
+  virtual bool Finalize();
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  bool IsValid() { return vbo_ != 0; }
 
   /// @brief Add an index buffer object to be part of this mesh
   ///
@@ -372,6 +376,23 @@ class Mesh : public AsyncAsset {
   /// @return Returns the total number of indices across all IBOs.
   size_t CalculateTotalNumberOfIndices() const;
 
+  /// @brief Holder for data that can be turned into a mesh.
+  struct InterleavedVertexData {
+    const void *vertex_data;
+    std::vector<uint8_t> owned_vertex_data;
+    size_t count;
+    size_t vertex_size;
+    std::vector<Attribute> format;
+    bool has_skinning;
+
+    InterleavedVertexData()
+      : vertex_data(nullptr), count(0), vertex_size(0), has_skinning(false) {}
+  };
+
+  /// @brief: Load vertex data from a FlatBuffer into CPU memory first.
+  void ParseInterleavedVertexData(const void *meshdef_buffer,
+                                  InterleavedVertexData *ivd);
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
@@ -380,6 +401,8 @@ class Mesh : public AsyncAsset {
   // if required.
   Mesh(const Mesh &);
   Mesh &operator=(const Mesh &);
+
+  void Clear();
 
   // Init mesh from MeshDef FlatBuffer.
   bool InitFromMeshDef(const void *meshdef_buffer);

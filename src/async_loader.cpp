@@ -30,7 +30,8 @@ class BookendAsyncResource : public AsyncAsset {
   BookendAsyncResource() : AsyncAsset(kBookendFileName) {}
   virtual ~BookendAsyncResource() {}
   virtual void Load() {}
-  virtual void Finalize() {}
+  virtual bool Finalize() { return true; }
+  virtual bool IsValid() { return true; }
   static bool IsBookend(const AsyncAsset &res) {
     return res.filename() == kBookendFileName;
   }
@@ -113,7 +114,11 @@ bool AsyncLoader::TryFinalize() {
     auto res = LockReturn<AsyncAsset *>(
         [this]() { return done_.empty() ? nullptr : done_[0]; });
     if (!res) break;
-    res->Finalize();
+    bool ok = res->Finalize();
+    if (!ok) {
+      // Can't do much here, since res is already constructed. Caller has to
+      // check IsValid() to know if resource can be used.
+    }
     Lock([this]() { done_.erase(done_.begin()); });
   }
   return LockReturn<bool>([this]() { return queue_.empty() && done_.empty(); });
