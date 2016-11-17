@@ -14,13 +14,12 @@
 
 #include "fplbase/preprocessor.h"
 #include <stack>
+#include <unordered_set>
 #include "fplbase/fpl_common.h"
 #include "precompiled.h"
 
 namespace fplbase {
 namespace {
-
-static const std::set<std::string> kEmptySet;
 
 // Maps desktop GLSL [1] shader to mobile GLSL-ES [2] shader #versions.
 // [1] https://www.opengl.org/wiki/Core_Language_(GLSL)
@@ -75,22 +74,23 @@ const char *FindNextLine(const char *ptr) {
 bool LoadFileWithDirectivesHelper(
     const char *filename, std::string *dest, std::string *error_message,
     std::set<std::string> *all_includes,
-    const std::set<std::string> &defines) {
+    const char *const *defines) {
   if (!LoadFile(filename, dest)) {
     *error_message = std::string("cannot load ") + filename;
     return false;
   }
 
   // Add the #defines.
-  std::string to_insert;
-  for (auto iter = defines.begin(); iter != defines.end(); ++iter) {
-    const std::string &define = *iter;
-    if (!define.empty()) {  // Skip empty strings.
-      to_insert.append("#define ").append(define).append("\n");
+  if (defines) {
+    std::string to_insert;
+    for (auto defs = defines; *defs; defs++) {
+      if (**defs) {  // Skip empty strings.
+        to_insert.append("#define ").append(*defs).append("\n");
+      }
     }
-  }
-  if (to_insert != "") {
-    dest->insert(0, to_insert);
+    if (to_insert != "") {
+      dest->insert(0, to_insert);
+    }
   }
 
   all_includes->insert(filename);
@@ -130,7 +130,7 @@ bool LoadFileWithDirectivesHelper(
   for (auto it = includes.begin(); it != includes.end(); ++it) {
     if (all_includes->find(*it) == all_includes->end()) {
       if (!LoadFileWithDirectivesHelper(it->c_str(), &include, error_message,
-                                        all_includes, kEmptySet)) {
+                                        all_includes, nullptr)) {
         return false;
       }
       dest->insert(insertion_point, include);
@@ -145,7 +145,7 @@ bool LoadFileWithDirectivesHelper(
 }
 
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            const std::set<std::string> &defines,
+                            const char *const *defines,
                             std::string *error_message) {
   std::set<std::string> all_includes;
   return LoadFileWithDirectivesHelper(filename, dest, error_message,
@@ -154,22 +154,7 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 
 bool LoadFileWithDirectives(const char *filename, std::string *dest,
                             std::string *error_message) {
-  return LoadFileWithDirectives(filename, dest, kEmptySet, error_message);
-}
-
-bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            const char * const *defines,
-                            std::string *error_message) {
-  // Convert defines into an set.
-  std::set<std::string> defines_set;
-  if (defines) {
-    for (auto defs = defines; *defs; defs++) {
-      if (**defs) {  // Skip empty strings.
-        defines_set.insert(std::string(*defs));
-      }
-    }
-  }
-  return LoadFileWithDirectives(filename, dest, defines_set, error_message);
+  return LoadFileWithDirectives(filename, dest, nullptr, error_message);
 }
 
 void PlatformSanitizeShaderSource(const char *csource,

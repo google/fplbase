@@ -234,9 +234,9 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
   return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
 }
 
-Shader *Renderer::RecompileShader(const char *vs_source, const char *ps_source,
-                                  Shader *shader) {
-  return CompileAndLinkShaderHelper(vs_source, ps_source, shader);
+void Renderer::RecompileShader(const char *vs_source, const char *ps_source,
+                               Shader *shader) {
+  shader = CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
 void Renderer::DepthTest(bool on, RenderContext *render_context) {

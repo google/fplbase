@@ -15,7 +15,6 @@
 #ifndef FPLBASE_PREPROCESSOR_H
 #define FPLBASE_PREPROCESSOR_H
 
-#include <set>
 #include "fplbase/utilities.h"
 
 namespace fplbase {
@@ -34,23 +33,6 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 
 /// @brief Overloaded LoadFileWithDirectives to allow pre-definining \#define
 /// identifiers.
-///
-/// @param[in] filename A UTF-8 C-string representing the file to load.
-/// @param[out] dest A pointer to a `std::string` to capture the preprocessed
-/// version of the file.
-/// @param[in] defines A set of identifiers which will be
-/// prefixed with \#define at the start of the file.
-/// before loading the file.
-/// @param[out] error_message A pointer to a `std::string` that captures an
-/// error message (if the function returned `false`, indicating failure).
-/// @return If this function returns false, `error_message` indicates which
-/// directive caused the problem and why.
-bool LoadFileWithDirectives(const char *filename, std::string *dest,
-                            const std::set<std::string> &defines,
-                            std::string *error_message);
-
-/// @brief Overloaded LoadFileWithDirectives to allow pre-definining \#define
-/// identifiers in an array.
 ///
 /// @param[in] filename A UTF-8 C-string representing the file to load.
 /// @param[out] dest A pointer to a `std::string` to capture the preprocessed

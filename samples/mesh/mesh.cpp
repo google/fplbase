@@ -43,7 +43,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
   fplbase::Shader *shader = asset_manager.LoadShader("mesh");
   assert(shader);
 
-  fplbase::Mesh *mesh = asset_manager.LoadMesh("meshes/bird_rig.fplmesh");
+  fplbase::Mesh *mesh = asset_manager.LoadMesh("meshes/sushi_shrimp.fplmesh");
   assert(mesh);
 
   // Also load a cubemap background.
@@ -52,13 +52,11 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
                                 fplbase::kTextureFlagsLoadAsync |
                                     fplbase::kTextureFlagsIsCubeMap);  // ETC2
   assert(cubetex);
+  mesh->GetMaterial(0)->textures().push_back(cubetex);
 
   asset_manager.StartLoadingTextures();
   while (!asset_manager.TryFinalize()) {
   }
-
-  assert(cubetex->IsValid());
-  mesh->GetMaterial(0)->textures().push_back(cubetex);
 
   while (!(input.exit_requested() ||
            input.GetButton(fplbase::FPLK_AC_BACK).went_down())) {
@@ -68,12 +66,16 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
 
     // generate animation matrix
     auto time = static_cast<float>(input.Time());
-    auto roty = mathfu::mat3::RotationY(std::sin(time) * 3);
-    auto zoom = mathfu::kOnes3f * 0.15f;
+    auto c = cos(time);
+    auto s = sin(time);
+    auto rotz = mathfu::mat3::RotationZ(s * 3);
+    auto rotx = mathfu::mat3::RotationX(s * 5);
+    auto zoom = mathfu::vec3(10.0f, 10.0f, 10.0f) + mathfu::vec3(c, c, 1.0f);
     auto aspect = static_cast<float>(renderer.window_size().y()) /
                   renderer.window_size().x();
     auto mvp = mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
-               mathfu::mat4::FromRotationMatrix(roty) *
+               mathfu::mat4::FromRotationMatrix(rotz) *
+               mathfu::mat4::FromRotationMatrix(rotx) *
                mathfu::mat4::FromScaleVector(zoom);
     renderer.set_model_view_projection(mvp);
     shader->Set(renderer);
