@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "precompiled.h"
-
-#include <iterator>
 #include <vector>
 
 #include "fplbase/preprocessor.h"
@@ -31,7 +29,7 @@ namespace fplbase {
 Shader::~Shader() { Clear(); }
 
 void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
-                  const std::vector<std::string> &defines, Renderer *renderer) {
+                  const char *const *defines, Renderer *renderer) {
   program_ = program;
   vs_ = vs;
   ps_ = ps;
@@ -43,50 +41,19 @@ void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
   uniform_time_ = -1;
   uniform_bone_transforms_ = -1;
   renderer_ = renderer;
-
-  original_defines_ = defines;
-  // All defines are enabled by default.
-  std::copy(defines.begin(), defines.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-  dirty_ = false;
+  defines_ = defines;
 }
 
-bool Shader::Reload(const char *basename,
-                    const std::vector<std::string> &defines) {
+bool Shader::Reload(const char *basename, const char *const *defines) {
   filename_ = basename;
-  original_defines_ = defines;
-  // All defines are enabled by default.
-  enabled_defines_.clear();
-  std::copy(defines.begin(), defines.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
+  defines_ = defines;
 
-  return ReloadInternal();
-}
-
-bool Shader::ReloadDefines(const std::vector<std::string> &defines_to_add,
-                           const std::vector<std::string> &defines_to_omit) {
-  enabled_defines_.clear();
-  std::copy(original_defines_.begin(), original_defines_.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-  std::copy(defines_to_add.begin(), defines_to_add.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-  for (auto iter = defines_to_omit.begin(); iter != defines_to_omit.end();
-       ++iter) {
-    enabled_defines_.erase(*iter);
-  }
-  dirty_ = false;
-
-  return ReloadInternal();
-}
-
-bool Shader::ReloadInternal() {
   ShaderSourcePair *source_pair = LoadSourceFile();
   if (source_pair != nullptr) {
-    auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                                         source_pair->fragment_shader.c_str(),
-                                         this);
+    renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                               source_pair->fragment_shader.c_str(), this);
     delete source_pair;
-    return sh != nullptr;
+    return true;
   } else {
     delete source_pair;
     return false;
@@ -107,19 +74,17 @@ void Shader::Load() {
   }
 }
 
-bool Shader::Finalize() {
+void Shader::Finalize() {
   if (data_ == nullptr) {
-    return false;
+    return;
   }
   const ShaderSourcePair *source_pair =
       reinterpret_cast<const ShaderSourcePair *>(data_);
   // This funciton will call Shader::Reset() -> Shader::Clear() to clear
   // 'data_'.
-  auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                                       source_pair->fragment_shader.c_str(),
-                                       this);
+  renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                             source_pair->fragment_shader.c_str(), this);
   CallFinalizeCallback();
-  return sh != nullptr;
 }
 
 void Shader::Clear() {
@@ -147,10 +112,10 @@ Shader::ShaderSourcePair *Shader::LoadSourceFile() {
 
   ShaderSourcePair *source_pair = new ShaderSourcePair();
   if (LoadFileWithDirectives(filename.c_str(), &source_pair->vertex_shader,
-                             enabled_defines_, &error_message)) {
+                             defines_, &error_message)) {
     filename = std::string(filename_) + ".glslf";
     if (LoadFileWithDirectives(filename.c_str(), &source_pair->fragment_shader,
-                               enabled_defines_, &error_message)) {
+                               defines_, &error_message)) {
       return source_pair;
     }
   }

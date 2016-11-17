@@ -203,7 +203,6 @@ set(fplbase_common_SRCS
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
-  include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/texture.h

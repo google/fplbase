@@ -14,9 +14,8 @@
 
 #include "fplbase/preprocessor.h"
 #include <string>
+#include <unordered_set>
 #include "gtest/gtest.h"
-
-static const std::set<std::string> kEmptyDefines;
 
 class PreprocessorTests : public ::testing::Test {
  protected:
@@ -25,7 +24,7 @@ class PreprocessorTests : public ::testing::Test {
 
   std::string error_message_;
   std::set<std::string> all_includes_;
-  std::set<std::string> all_define_;
+  std::unordered_set<std::string> all_define_;
 
   std::string file_;
 };
@@ -50,14 +49,15 @@ void PreprocessorTests::TearDown() {
 // #defines should just be passed through.
 TEST_F(PreprocessorTests, DefinePassthrough) {
   const char *file = "#define foo";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
-                                                &error_message_);
+  bool result =
+      fplbase::LoadFileWithDirectives(file, &file_, nullptr, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string(file));
 }
 
 // An empty list of defines should also be valid.
 TEST_F(PreprocessorTests, EmptyDefineList) {
+  const char *kEmptyDefines[] = {nullptr};
   const char *file = "#define foo";
   bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
                                                 &error_message_);
@@ -67,22 +67,18 @@ TEST_F(PreprocessorTests, EmptyDefineList) {
 
 // #defines passed-in should be inserted into the file. Try with just one.
 TEST_F(PreprocessorTests, OneDefinePassedIn) {
-  std::set<std::string> defines;
-  defines.insert("foo");
+  const char *kOneDefine[] = {"foo", nullptr};
   bool result =
-      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
+      fplbase::LoadFileWithDirectives("", &file_, kOneDefine, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string("#define foo\n"));
 }
 
 // #defines passed-in should be inserted into the file. Try with multiple.
 TEST_F(PreprocessorTests, MultipleDefinesPassedIn) {
-  std::set<std::string> defines;
-  defines.insert("foo");
-  defines.insert("foo2");
-  defines.insert("foo3");
-  bool result =
-      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
+  const char *kMultipleDefines[] = {"foo", "foo2", "foo3", nullptr};
+  bool result = fplbase::LoadFileWithDirectives("", &file_, kMultipleDefines,
+                                                &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string("#define foo\n#define foo2\n#define foo3\n"));
 }
@@ -92,18 +88,17 @@ TEST_F(PreprocessorTests, DefineSameIdTwice) {
   const char *file =
       "#define foo\n"
       "#define foo";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
-                                                &error_message_);
+  bool result =
+      fplbase::LoadFileWithDirectives(file, &file_, nullptr, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string(file));
 }
 
 // #defines with a value should be passed through.
 TEST_F(PreprocessorTests, ValuePassedIn) {
-  std::set<std::string> defines;
-  defines.insert("foo 1");
+  const char *kOneDefine[] = {"foo 1", nullptr};
   bool result =
-      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
+      fplbase::LoadFileWithDirectives("", &file_, kOneDefine, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string("#define foo 1\n"));
 }
@@ -111,8 +106,8 @@ TEST_F(PreprocessorTests, ValuePassedIn) {
 // #defines with a value should be left alone.
 TEST_F(PreprocessorTests, ValuePassthrough) {
   const char *file = "#define foo 1";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
-                                                &error_message_);
+  bool result =
+      fplbase::LoadFileWithDirectives(file, &file_, nullptr, &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string(file));
 }

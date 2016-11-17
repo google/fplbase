@@ -20,7 +20,6 @@
 #include "fplbase/environment.h"
 #include "fplbase/material.h"
 #include "fplbase/mesh.h"
-#include "fplbase/render_state.h"
 #include "fplbase/shader.h"
 #include "fplbase/texture.h"
 #include "fplbase/version.h"
@@ -29,6 +28,13 @@
 namespace fplbase {
 
 class RenderTarget;
+
+enum CullingMode {
+  kCullingModeNone,
+  kCullingModeFront,
+  kCullingModeBack,
+  kCullingModeFrontAndBack
+};
 
 /// @file
 /// @addtogroup fplbase_renderer
@@ -44,7 +50,8 @@ class RenderContext {
  public:
   // Render Context Class
   RenderContext()
-      : model_view_projection_(mathfu::mat4::Identity()),
+      : blend_mode_(kBlendModeOff),
+        model_view_projection_(mathfu::mat4::Identity()),
         model_(mathfu::mat4::Identity()),
         color_(mathfu::kOnes4f),
         light_pos_(mathfu::kZeros3f),
@@ -114,7 +121,10 @@ class RenderContext {
 
   // other render state
   Shader *shader_;
-  RenderState render_state_;
+  BlendMode blend_mode_;
+  float blend_amount_;
+  CullingMode cull_mode_;
+  bool depth_test;
 
  private:
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
@@ -209,14 +219,13 @@ class Renderer {
   /// @brief Like CompileAndLinkShader, but pass in an old shader to replace.
   ///
   /// Use `placement new` to use the same memory for the new shader.
-  /// Returns nullptr upon error, with a descriptive message in glsl_error().
   /// @note Only call this at the start of the frame.
   ///
   /// @param shader The old shader to replace with the recompiled shader.
   /// @param vs_source The source code of the vertex shader.
   /// @param ps_source The source code of the fragment shader.
-  Shader *RecompileShader(const char *vs_source, const char *ps_source,
-                          Shader *shader);
+  void RecompileShader(const char *vs_source, const char *ps_source,
+                       Shader *shader);
 
   /// @brief Begin rendering commands.
   /// This must be called before any rendering commands are done
@@ -270,14 +279,11 @@ class Renderer {
 
   /// @brief Set to compare fragment against Z-buffer before writing, or not.
   ///
-  /// @param depth_func The depth function to use.
+  /// @param on Should depth testing be enabled.
   /// @param render_context Pointer to the render context
-  void SetDepthFunction(DepthFunction depth_func,
-                        RenderContext *render_context);
-  /// @overload SetDepthFunction(DepthFunction depth_func)
-  void SetDepthFunction(DepthFunction depth_func) {
-    SetDepthFunction(depth_func, default_render_context_);
-  }
+  void DepthTest(bool on, RenderContext *render_context);
+  /// @overload DepthTest(bool on)
+  void DepthTest(bool on) { DepthTest(on, default_render_context_); }
 
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
