@@ -19,11 +19,14 @@
 #endif  // FPL_BASE_BACKEND_STDLIB
 
 #include "fplbase/texture.h"
+#include "fplbase/texture_atlas.h"
 #include "fplbase/renderer.h"
+#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
 #include "precompiled.h"
 #include "webp/decode.h"
+#include "texture_atlas_generated.h"
 
 // STB_image to resize PNG/JPG images.
 // Disable warnings in STB_image_resize.
@@ -774,6 +777,35 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
              filename);
     return nullptr;
   }
+}
+
+TextureAtlas *TextureAtlas::LoadTextureAtlas(const char *filename,
+                                             TextureFormat format,
+                                             TextureFlags flags,
+                                             const TextureLoaderFn &tlf) {
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
+    auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
+    Texture *atlas_texture =
+        tlf(atlasdef->texture_filename()->c_str(), format, flags);
+    auto atlas = new TextureAtlas();
+    atlas->set_atlas_texture(atlas_texture);
+    for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      atlas->index_map().insert(std::make_pair(
+          atlasdef->entries()->Get(index)->name()->str(), index));
+      vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
+      vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
+      atlas->subtexture_bounds().push_back(
+          vec4(location.x(), location.y(), size.x(), size.y()));
+    }
+    return atlas;
+  }
+  Renderer::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  return nullptr;
 }
 
 }  // namespace fplbase
