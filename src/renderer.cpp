@@ -65,7 +65,7 @@ void Renderer::AdvanceFrame(bool minimized, double time) {
 
   auto viewport_size = environment_.GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
-  DepthTest(true);
+  SetDepthFunction(kDepthFunctionLess);
 }
 
 void Renderer::BeginRendering(RenderContext *) {}
@@ -239,14 +239,63 @@ void Renderer::RecompileShader(const char *vs_source, const char *ps_source,
   shader = CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
-void Renderer::DepthTest(bool on, RenderContext *render_context) {
-  if (on) {
-    GL_CALL(glEnable(GL_DEPTH_TEST));
-    render_context->depth_test = true;
-  } else {
-    GL_CALL(glDisable(GL_DEPTH_TEST));
-    render_context->depth_test = false;
+void Renderer::SetDepthFunction(DepthFunction depth_func,
+                                RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
+  if (depth_func == render_state.depth_function) {
+    return;
   }
+
+  if (render_state.depth_function == kDepthFunctionDisabled) {
+    // The depth test is currently disabled, enable it before setting the
+    // appropriate depth function.
+    GL_CALL(glEnable(GL_DEPTH_TEST));
+  }
+
+  switch (depth_func) {
+    case kDepthFunctionDisabled:
+      GL_CALL(glDisable(GL_DEPTH_TEST));
+      break;
+
+    case kDepthFunctionNever:
+      GL_CALL(glDepthFunc(GL_NEVER));
+      break;
+
+    case kDepthFunctionAlways:
+      GL_CALL(glDepthFunc(GL_ALWAYS));
+      break;
+
+    case kDepthFunctionLess:
+      GL_CALL(glDepthFunc(GL_LESS));
+      break;
+
+    case kDepthFunctionLessEqual:
+      GL_CALL(glDepthFunc(GL_LEQUAL));
+      break;
+
+    case kDepthFunctionGreater:
+      GL_CALL(glDepthFunc(GL_GREATER));
+      break;
+
+    case kDepthFunctionGreaterEqual:
+      GL_CALL(glDepthFunc(GL_GEQUAL));
+      break;
+
+    case kDepthFunctionEqual:
+      GL_CALL(glDepthFunc(GL_EQUAL));
+      break;
+
+    case kDepthFunctionNotEqual:
+      GL_CALL(glDepthFunc(GL_NOTEQUAL));
+      break;
+
+    default:
+      assert(false);  // Invalid depth function.
+      break;
+  }
+
+  render_state.depth_function = depth_func;
 }
 
 void Renderer::SetBlendMode(BlendMode blend_mode,
@@ -256,13 +305,15 @@ void Renderer::SetBlendMode(BlendMode blend_mode,
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
                             RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
   (void)amount;
-  if (blend_mode == render_context->blend_mode_) return;
+  if (blend_mode == render_state.blend_mode) return;
 
   if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
 
   // Disable current blend mode.
-  switch (render_context->blend_mode_) {
+  switch (render_state.blend_mode) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
@@ -318,10 +369,16 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
   }
 
   // Remember new mode as the current mode.
-  render_context->blend_mode_ = blend_mode;
+  render_state.blend_mode = blend_mode;
 }
 
 void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
+  if (mode == render_state.cull_mode) {
+    return;
+  }
+
   if (mode == kCullingModeNone) {
     GL_CALL(glDisable(GL_CULL_FACE));
   } else {
@@ -341,7 +398,7 @@ void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
         assert(false);
     }
   }
-  render_context->cull_mode_ = mode;
+  render_state.cull_mode = mode;
 }
 
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {

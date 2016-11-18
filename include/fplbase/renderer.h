@@ -20,6 +20,7 @@
 #include "fplbase/environment.h"
 #include "fplbase/material.h"
 #include "fplbase/mesh.h"
+#include "fplbase/render_state.h"
 #include "fplbase/shader.h"
 #include "fplbase/texture.h"
 #include "fplbase/version.h"
@@ -28,13 +29,6 @@
 namespace fplbase {
 
 class RenderTarget;
-
-enum CullingMode {
-  kCullingModeNone,
-  kCullingModeFront,
-  kCullingModeBack,
-  kCullingModeFrontAndBack
-};
 
 /// @file
 /// @addtogroup fplbase_renderer
@@ -50,8 +44,7 @@ class RenderContext {
  public:
   // Render Context Class
   RenderContext()
-      : blend_mode_(kBlendModeOff),
-        model_view_projection_(mathfu::mat4::Identity()),
+      : model_view_projection_(mathfu::mat4::Identity()),
         model_(mathfu::mat4::Identity()),
         color_(mathfu::kOnes4f),
         light_pos_(mathfu::kZeros3f),
@@ -121,10 +114,7 @@ class RenderContext {
 
   // other render state
   Shader *shader_;
-  BlendMode blend_mode_;
-  float blend_amount_;
-  CullingMode cull_mode_;
-  bool depth_test;
+  RenderState render_state_;
 
  private:
   // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
@@ -279,11 +269,14 @@ class Renderer {
 
   /// @brief Set to compare fragment against Z-buffer before writing, or not.
   ///
-  /// @param on Should depth testing be enabled.
+  /// @param depth_func The depth function to use.
   /// @param render_context Pointer to the render context
-  void DepthTest(bool on, RenderContext *render_context);
-  /// @overload DepthTest(bool on)
-  void DepthTest(bool on) { DepthTest(on, default_render_context_); }
+  void SetDepthFunction(DepthFunction depth_func,
+                        RenderContext *render_context);
+  /// @overload SetDepthFunction(DepthFunction depth_func)
+  void SetDepthFunction(DepthFunction depth_func) {
+    SetDepthFunction(depth_func, default_render_context_);
+  }
 
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
