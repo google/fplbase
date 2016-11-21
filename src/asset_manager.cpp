@@ -167,7 +167,7 @@ bool AssetManager::ReloadShaderWithGlobalDefinesIfDirty(Shader *shader) {
 }
 
 void AssetManager::ForEachShaderWithDefine(const char *define,
-                                           std::function<void(Shader *)> func) {
+    const std::function<void(Shader *)> &func) {
   // Use a simple for loop to visit all shaders with 'define' specified, since
   // we only have limited shaders currently. TODO(yifengh): optimize this if
   // there is a growing number of shaders.

@@ -187,6 +187,21 @@ int32_t LoadPreference(const char *key, int32_t initial_value);
 /// @param[in] value The value to save for the preference.
 bool SavePreference(const char *key, int32_t value);
 
+/// @brief Map a file into memory and returns its contents via pointer.
+/// @details In contrast to `LoadFile()`, this method calls mmap API to map the
+/// whole or a part of the file.
+/// @param[in] filename A UTF-8 C-string representing the file to load.
+/// @param[in] offset An offset of the file contents to map.
+/// @param[in/out] size A size to map. A size of 0 indicates to map whole file.
+/// returns a mapped size of the file.
+/// @return Returns a mapped pointer. nullptr when failed to map the file.
+const void *MapFile(const char *filename, int32_t offset, int32_t *size);
+
+/// @brief Unmap a pointer that is mapped via MapFile() API.
+/// @param[in] file A pointer to the file, returned via MapFile API.
+/// @param[in] size A size to unmap.
+void UnmapFile(const void *file, int32_t size);
+
 /// @brief Search and change to a given directory.
 /// @param binary_dir A C-string corresponding to the current directory
 /// to start searching from.

@@ -14,6 +14,7 @@
 
 #include "precompiled.h"  // NOLINT
 
+#include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
@@ -64,7 +65,7 @@ void Renderer::AdvanceFrame(bool minimized, double time) {
 
   auto viewport_size = environment_.GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
-  DepthTest(true);
+  SetDepthFunction(kDepthFunctionLess);
 }
 
 void Renderer::BeginRendering(RenderContext *) {}
@@ -143,22 +144,22 @@ void Renderer::ClearDepthBuffer(RenderContext *) {
 }
 
 GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
-                               const GLchar *source) {
+                               const GLchar *csource) {
+  assert(max_vertex_uniform_components_);
+
+  const std::string max_components =
+      "MAX_VERTEX_UNIFORM_COMPONENTS " +
+      flatbuffers::NumToString(max_vertex_uniform_components_);
+  const char *defines[] = {max_components.c_str(), nullptr};
+
+  const char *source = csource;
   if (!is_vertex_shader && override_pixel_shader_.length())
     source = override_pixel_shader_.c_str();
-  GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
-  std::string platform_source =
-#ifdef PLATFORM_MOBILE
-      "#ifdef GL_ES\nprecision highp float;\n#endif\n";
-#else
-      "#version 120\n#define lowp\n#define mediump\n#define highp\n";
-#endif
-  assert(max_vertex_uniform_components_);
-  platform_source += "#define MAX_VERTEX_UNIFORM_COMPONENTS ";
-  platform_source += flatbuffers::NumToString(max_vertex_uniform_components_);
-  platform_source += "\n";
-  platform_source += source;
+  std::string platform_source;
+  PlatformSanitizeShaderSource(source, defines, &platform_source);
   const char *platform_source_ptr = platform_source.c_str();
+
+  const GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
   auto shader_obj = glCreateShader(stage);
   GL_CALL(glShaderSource(shader_obj, 1, &platform_source_ptr, nullptr));
   GL_CALL(glCompileShader(shader_obj));
@@ -238,14 +239,63 @@ Shader *Renderer::RecompileShader(const char *vs_source, const char *ps_source,
   return CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
-void Renderer::DepthTest(bool on, RenderContext *render_context) {
-  if (on) {
-    GL_CALL(glEnable(GL_DEPTH_TEST));
-    render_context->depth_test = true;
-  } else {
-    GL_CALL(glDisable(GL_DEPTH_TEST));
-    render_context->depth_test = false;
+void Renderer::SetDepthFunction(DepthFunction depth_func,
+                                RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
+  if (depth_func == render_state.depth_function) {
+    return;
   }
+
+  if (render_state.depth_function == kDepthFunctionDisabled) {
+    // The depth test is currently disabled, enable it before setting the
+    // appropriate depth function.
+    GL_CALL(glEnable(GL_DEPTH_TEST));
+  }
+
+  switch (depth_func) {
+    case kDepthFunctionDisabled:
+      GL_CALL(glDisable(GL_DEPTH_TEST));
+      break;
+
+    case kDepthFunctionNever:
+      GL_CALL(glDepthFunc(GL_NEVER));
+      break;
+
+    case kDepthFunctionAlways:
+      GL_CALL(glDepthFunc(GL_ALWAYS));
+      break;
+
+    case kDepthFunctionLess:
+      GL_CALL(glDepthFunc(GL_LESS));
+      break;
+
+    case kDepthFunctionLessEqual:
+      GL_CALL(glDepthFunc(GL_LEQUAL));
+      break;
+
+    case kDepthFunctionGreater:
+      GL_CALL(glDepthFunc(GL_GREATER));
+      break;
+
+    case kDepthFunctionGreaterEqual:
+      GL_CALL(glDepthFunc(GL_GEQUAL));
+      break;
+
+    case kDepthFunctionEqual:
+      GL_CALL(glDepthFunc(GL_EQUAL));
+      break;
+
+    case kDepthFunctionNotEqual:
+      GL_CALL(glDepthFunc(GL_NOTEQUAL));
+      break;
+
+    default:
+      assert(false);  // Invalid depth function.
+      break;
+  }
+
+  render_state.depth_function = depth_func;
 }
 
 void Renderer::SetBlendMode(BlendMode blend_mode,
@@ -255,13 +305,15 @@ void Renderer::SetBlendMode(BlendMode blend_mode,
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
                             RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
   (void)amount;
-  if (blend_mode == render_context->blend_mode_) return;
+  if (blend_mode == render_state.blend_mode) return;
 
   if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
 
   // Disable current blend mode.
-  switch (render_context->blend_mode_) {
+  switch (render_state.blend_mode) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
@@ -317,10 +369,16 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
   }
 
   // Remember new mode as the current mode.
-  render_context->blend_mode_ = blend_mode;
+  render_state.blend_mode = blend_mode;
 }
 
 void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
+  RenderState &render_state = render_context->render_state_;
+
+  if (mode == render_state.cull_mode) {
+    return;
+  }
+
   if (mode == kCullingModeNone) {
     GL_CALL(glDisable(GL_CULL_FACE));
   } else {
@@ -340,7 +398,7 @@ void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
         assert(false);
     }
   }
-  render_context->cull_mode_ = mode;
+  render_state.cull_mode = mode;
 }
 
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {

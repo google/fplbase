@@ -15,30 +15,10 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fplbase_test)
 
-# TODO: This should be replaced with a call to `set_common_build_variables` in
-# fplutil/buildutil/cmake_common.txt. Currently that script is hard coded to
-# only work from within top level directory.
-if(NOT DEFINED third_party_root)
-  get_filename_component(third_party_root
-    "${fpl_root}/../../../external" REALPATH)
-endif()
-
-# If the dependencies directory exists, assume this is the root directory
-# for all libraries required by this project.
-if(NOT DEFINED dependencies_root)
-  set(dependencies_root "${fpl_root}/fplbase/dependencies")
-  if(EXISTS "$dependencies_root}")
-    set(third_party_root "${dependencies_root}")
-  endif()
-endif()
-
-#TODO: Remove this once the `dependencies_gtest_dir` is updated in the other
-# libraries to use the new `external/googletest` path.
-set(dependencies_gtest_dir ${third_party_root}/googletest)
-
-if(EXISTS ${dependencies_gtest_dir}/googletest)
-  set(dependencies_gtest_dir ${third_party_root}/googletest/googletest)
-endif()
+# Call fplutil to get locations of dependencies and set common build settings.
+include("../cmake/find_fplutil.cmake")
+include("${fplutil_dir}/buildutil/cmake_common.txt")
+set_common_build_variables()
 
 # gtest seems to prefer the non-DLL runtime on Windows, which conflicts with
 # everything else.
@@ -49,17 +29,23 @@ option(
 
 # Import gtest if it's not already present.
 if(NOT TARGET gtest)
+  set_compiler_flags_for_external_libraries()
   add_subdirectory(${dependencies_gtest_dir} ${tmp_dir}/googletest)
+  restore_compiler_flags()
 endif()
 
 # Set some variables describing file locations.
 set(GUNIT_INCDIR "${dependencies_gtest_dir}/include")
+if(EXISTS "${dependencies_gtest_dir}/../../third_party")
+  set(GUNIT_HACK_INCDIR "${dependencies_gtest_dir}/../..")
+endif()
 set(GTEST_LIBDIR "${dependencies_gtest_dir}")
 
 # This is the directory into which the executables are built.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../bin")
 
 include_directories(${GUNIT_INCDIR}
+                    ${GUNIT_HACK_INCDIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}
                     ${fpl_root/fplbase}
                     ${fpl_root}/mathfu/include)

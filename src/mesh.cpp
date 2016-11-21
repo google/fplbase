@@ -328,7 +328,7 @@ void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
   if (meshdef->vertices() && meshdef->vertices()->size() &&
       meshdef->attributes() && meshdef->attributes()->size()) {
     // Interleaved.
-    for (size_t i = 0; i < meshdef->attributes()->size(); i++) {
+    for (flatbuffers::uoffset_t i = 0; i < meshdef->attributes()->size(); i++) {
       ivd->format.push_back(
             static_cast<Attribute>(meshdef->attributes()->Get(i)));
     }

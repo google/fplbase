@@ -14,10 +14,9 @@
 
 #include "fplbase/preprocessor.h"
 #include <string>
-#include <unordered_set>
 #include "gtest/gtest.h"
 
-static const std::unordered_set<std::string> kEmptyDefines;
+static const std::set<std::string> kEmptyDefines;
 
 class PreprocessorTests : public ::testing::Test {
  protected:
@@ -26,7 +25,7 @@ class PreprocessorTests : public ::testing::Test {
 
   std::string error_message_;
   std::set<std::string> all_includes_;
-  std::unordered_set<std::string> all_define_;
+  std::set<std::string> all_define_;
 
   std::string file_;
 };
@@ -68,7 +67,7 @@ TEST_F(PreprocessorTests, EmptyDefineList) {
 
 // #defines passed-in should be inserted into the file. Try with just one.
 TEST_F(PreprocessorTests, OneDefinePassedIn) {
-  std::unordered_set<std::string> defines;
+  std::set<std::string> defines;
   defines.insert("foo");
   bool result =
       fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
@@ -78,7 +77,7 @@ TEST_F(PreprocessorTests, OneDefinePassedIn) {
 
 // #defines passed-in should be inserted into the file. Try with multiple.
 TEST_F(PreprocessorTests, MultipleDefinesPassedIn) {
-  std::unordered_set<std::string> defines;
+  std::set<std::string> defines;
   defines.insert("foo");
   defines.insert("foo2");
   defines.insert("foo3");
@@ -101,7 +100,7 @@ TEST_F(PreprocessorTests, DefineSameIdTwice) {
 
 // #defines with a value should be passed through.
 TEST_F(PreprocessorTests, ValuePassedIn) {
-  std::unordered_set<std::string> defines;
+  std::set<std::string> defines;
   defines.insert("foo 1");
   bool result =
       fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
@@ -116,6 +115,92 @@ TEST_F(PreprocessorTests, ValuePassthrough) {
                                                 &error_message_);
   EXPECT_TRUE(result);
   EXPECT_EQ(file_, std::string(file));
+}
+
+TEST_F(PreprocessorTests, SanitizeCheckPrefix) {
+  const char* file = "";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+
+#ifdef PLATFORM_MOBILE
+  EXPECT_EQ(result, "#ifdef GL_ES\nprecision highp float;\n#endif\n");
+#else
+  EXPECT_EQ(result,
+            "#version 120\n#define lowp\n#define mediump\n#define highp\n");
+#endif
+}
+
+TEST_F(PreprocessorTests, SanitizeVersionIsFirstLine) {
+  const char* file = "#define foo 1\n#version 100\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  EXPECT_TRUE(result.compare(0, 12, "#version 100"));
+}
+
+TEST_F(PreprocessorTests, SanitizeVersionConversion) {
+  struct ConversionTest {
+    const char* file;
+    const char* desktop_result;
+    const char* mobile_result;
+  };
+  const ConversionTest kTests[] = {
+    // Known conversions.
+    { "#version 110\n",    "#version 110\n", "#version 100 es\n" },
+    { "#version 100 es\n", "#version 110\n", "#version 100 es\n" },
+    { "#version 330\n",    "#version 330\n", "#version 300 es\n" },
+    { "#version 300 es\n", "#version 330\n", "#version 300 es\n" },
+
+    // Unknown versions: preserve across platforms.
+    { "#version 500\n",    "#version 500\n", "#version 500 es\n" },
+  };
+  const size_t kNumTests = sizeof(kTests) / sizeof(kTests[0]);
+
+  std::string result;
+  for (size_t i = 0; i < kNumTests; ++i) {
+    fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr, &result);
+
+#ifdef PLATFORM_MOBILE
+    const std::string& expected = kTests[i].mobile_result;
+#else
+    const std::string& expected = kTests[i].desktop_result;
+#endif
+
+    EXPECT_EQ(result.compare(0, expected.length(), expected), 0);
+  }
+}
+
+TEST_F(PreprocessorTests, SanitizeExtensionsMoved) {
+  const char* file =
+      "#define foo 1\n"
+      "#extension GL_OES_standard_derivatives : enable\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t define_pos = result.find("#define");
+  const size_t extension_pos = result.find("#extension");
+  EXPECT_LT(extension_pos, define_pos);
+}
+
+TEST_F(PreprocessorTests, SanitizeMultiPartLinesPreserved) {
+  const char* file = "#define foo(arg) \\\n    arg\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t pos = result.find("#define foo");
+  EXPECT_NE(pos, std::string::npos);
+  EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
+}
+
+TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
+  const char*file =
+      "#define foo 1\n"
+      "// #version 100\n"
+      "#define baz 0\n"
+      "// #extension GL_FOO_BAZ : enable\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t pos = result.find("#define foo");
+  EXPECT_NE(pos, std::string::npos);
+  EXPECT_NE(pos, 0);
+  EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
 }
 
 extern "C" int FPL_main(int argc, char *argv[]) {

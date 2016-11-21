@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "precompiled.h"
+
+#include <iterator>
 #include <vector>
 
 #include "fplbase/preprocessor.h"

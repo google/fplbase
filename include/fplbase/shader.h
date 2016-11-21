@@ -15,7 +15,7 @@
 #ifndef FPLBASE_SHADER_H
 #define FPLBASE_SHADER_H
 
-#include <unordered_set>
+#include <set>
 
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/async_loader.h"
@@ -206,7 +206,7 @@ class Shader : public AsyncAsset {
   // Original defines set by Init() or Reload().
   std::vector<std::string> original_defines_;
   // Defines that are actually enabled for this shader.
-  std::unordered_set<std::string> enabled_defines_;
+  std::set<std::string> enabled_defines_;
   // If true, means this shader needs to be reloaded.
   bool dirty_;
 };

@@ -126,9 +126,13 @@
   GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced, true)         \
   GLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays, true)                     \
   GLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays, true)               \
-  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)                     \
-  GLEXT(PFNGLPUSHDEBUGGROUPPROC, glPushDebugGroup, false)                      \
-  GLEXT(PFNGLPOPDEBUGGROUPPROC, glPopDebugGroup, false)
+  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)
+
+// TODO(jsanmiya): Get this compiling for all versions of OpenGL. Currently only
+//                 valid when GL_VERSION_4_3 is defined.
+//   GLEXT(PFNGLPUSHDEBUGGROUPPROC, glPushDebugGroup, false)
+//   GLEXT(PFNGLPOPDEBUGGROUPPROC, glPopDebugGroup, false)
+
 #define GLEXT(type, name, required) extern type name;
 GLBASEEXTS
 GLEXTS
@@ -138,18 +142,21 @@ GLEXTS
 #endif  // !defined(__APPLE__)
 
 #ifdef PLATFORM_MOBILE
+// TODO(jsanmiya): Get this compiling for all versions of iOS. Currently only
+//                 valid with __OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_5_0)
 // OpenGL ES extensions function pointers.
-typedef void (*PFNGLPUSHGROUPMARKEREXTPROC)(GLsizei length, const GLchar* message);
-typedef void (*PFNPOPGROUPMARKEREXTPROC)(void);
-#define glPushGroupMarker glPushGroupMarkerEXT
-#define glPopGroupMarker glPopGroupMarkerEXT
-#define GLESEXTS                                                               \
-      GLEXT(PFNGLPUSHGROUPMARKEREXTPROC, glPushGroupMarkerEXT, false)          \
-      GLEXT(PFNPOPGROUPMARKEREXTPROC, glPopGroupMarkerEXT, false)
-
-#define GLEXT(type, name, required) extern type name;
-GLESEXTS
-#undef GLEXT
+// typedef void (*PFNGLPUSHGROUPMARKEREXTPROC)(GLsizei length, const GLchar* message);
+// typedef void (*PFNPOPGROUPMARKEREXTPROC)(void);
+// #define glPushGroupMarker glPushGroupMarkerEXT
+// #define glPopGroupMarker glPopGroupMarkerEXT
+// #define GLESEXTS                                                               \
+//       GLEXT(PFNGLPUSHGROUPMARKEREXTPROC, glPushGroupMarkerEXT, false)          \
+//       GLEXT(PFNPOPGROUPMARKEREXTPROC, glPopGroupMarkerEXT, false)
+//
+// #define GLEXT(type, name, required) extern type name;
+// GLESEXTS
+// #undef GLEXT
+#define GLESEXTS
 #endif  // PLATFORM_MOBILE
 
 #ifdef PLATFORM_OSX

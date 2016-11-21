@@ -62,16 +62,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 
-# Configurable locations of dependencies of this project.
-if(NOT DEFINED fpl_root)
-  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs"
-       REALPATH)
-  if(NOT EXISTS "${fpl_root}")
-    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-  endif ()
-endif()
-
-include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
+# Call fplutil to get locations of dependencies and set common build settings.
+include("cmake/find_fplutil.cmake")
+include("${fplutil_dir}/buildutil/cmake_common.txt")
 set_common_build_variables()
 
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
@@ -210,6 +203,7 @@ set(fplbase_common_SRCS
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
+  include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/texture.h

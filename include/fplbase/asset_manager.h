@@ -21,7 +21,6 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
-#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/fpl_common.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture_atlas.h"
@@ -324,7 +323,7 @@ class AssetManager {
 
   /// @brief Foreach shader with a specific define.
   void ForEachShaderWithDefine(const char *define,
-                               std::function<void(Shader *)> func);
+                               const std::function<void(Shader *)> &func);
 
  private:
   Shader *LoadShaderHelper(const char *basename,

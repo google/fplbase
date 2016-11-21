@@ -21,6 +21,15 @@
 #include <string>
 #endif  // defined(__ANDROID__)
 
+// Header files for mmap API.
+#ifdef _WIN32
+#else
+// Platforms with POSIX
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#endif  // _WIN32
+
 #if defined(FPL_BASE_BACKEND_STDLIB)
 #if !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE
@@ -140,6 +149,49 @@ bool LoadFileRaw(const char *filename, std::string *dest) {
 #else
 #error Please define a backend implementation for LoadFile.
 #endif
+
+const void *MapFile(const char *filename, int32_t offset, int32_t *size) {
+#ifdef _WIN32
+  (void)filename;
+  (void)offset;
+  (void)size;
+  LogError(kError, "MapFile unimplemented on Win32.");
+  return nullptr;
+#else
+  // POSIX implementation.
+  auto fd = open(filename, O_RDONLY);
+  if (fd == -1) {
+    LogError("Can't open the file for mmap: %s\n", filename);
+    return nullptr;
+  }
+  struct stat sb;
+  if (fstat(fd, &sb) == -1) {
+    close(fd);
+    return nullptr;
+  }
+  auto s = *size ? *size : sb.st_size;
+  auto p = mmap(0, s, PROT_READ, MAP_SHARED, fd, offset);
+  if (p == MAP_FAILED) {
+    LogError("Can't map the file: %s\n", filename);
+    close(fd);
+    return nullptr;
+  }
+  // Now we can close the file.
+  close(fd);
+  *size = sb.st_size;
+  return p;
+#endif // _WIN32
+}
+
+void UnmapFile(const void *file, int32_t size) {
+#ifdef _WIN32
+  (void)file;
+  (void)size;
+  LogError(kError, "UnmapFile unimplemented on Win32.");
+#else
+  munmap(const_cast<void *>(file), size);
+#endif // _WIN32
+}
 
 #if defined(__ANDROID__)
 static jobject GetSharedPreference(JNIEnv *env, jobject activity) {

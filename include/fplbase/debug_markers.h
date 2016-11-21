@@ -35,13 +35,14 @@ inline void PushDebugMarker(const char *marker,
   (void)length;
 #ifdef FPLBASE_ENABLE_DEBUG_MARKERS
 #if defined(PLATFORM_MOBILE) || defined(PLATFORM_OSX)
-  if (glPushGroupMarker) {
-    GL_CALL(glPushGroupMarker(length, marker));
-  }
+// TODO(jsanmiya): Get glPushGroupMarker working for all iOS builds
+//   if (glPushGroupMarker) {
+//     GL_CALL(glPushGroupMarker(length, marker));
+//   }
 #else
-  if (glPushDebugGroup) {
-    GL_CALL(glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, length, marker));
-  }
+//   if (glPushDebugGroup) {
+//     GL_CALL(glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, length, marker));
+//   }
 #endif  // PLATFORM_MOBILE || PLATFORM_OSX
 #endif  // FPLBASE_ENABLE_DEBUG_MARKERS
 }
@@ -56,13 +57,14 @@ inline void PushDebugMarker(const std::string& marker) {
 inline void PopDebugMarker() {
 #ifdef FPLBASE_ENABLE_DEBUG_MARKERS
 #if defined(PLATFORM_MOBILE) || defined(PLATFORM_OSX)
-  if (glPopGroupMarker) {
-    GL_CALL(glPopGroupMarker());
-  }
+// TODO(jsanmiya): Get glPushGroupMarker working for all iOS builds
+//   if (glPopGroupMarker) {
+//     GL_CALL(glPopGroupMarker());
+//   }
 #else
-  if (glPopDebugGroup) {
-    GL_CALL(glPopDebugGroup());
-  }
+//   if (glPopDebugGroup) {
+//     GL_CALL(glPopDebugGroup());
+//   }
 #endif  // PLATFORM_MOBILE || PLATFORM_OSX
 #endif  // FPLBASE_ENABLE_DEBUG_MARKERS
 }
