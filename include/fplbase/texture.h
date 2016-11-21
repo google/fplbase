@@ -120,7 +120,11 @@ class Texture : public AsyncAsset {
                               TextureFormat texture_format);
 
   /// @brief Creates a Texture from `data_` and stores the handle in `id_`.
-  virtual void Finalize();
+  virtual bool Finalize();
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  bool IsValid() { return id_ != 0; }
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.

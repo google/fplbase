@@ -40,11 +40,14 @@ void FileAsset::Load() {
   }
 }
 
-void FileAsset::Finalize() {
+bool FileAsset::Finalize() {
   // Since the asset was already "created", this is all we have to do here.
   data_ = nullptr;
   CallFinalizeCallback();
+  return true;
 }
+
+bool FileAsset::IsValid() { return true; }
 
 static_assert(
     kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
@@ -109,9 +112,10 @@ Shader *AssetManager::FindShader(const char *basename) {
 }
 
 Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const char *const *defines,
-                                       bool should_reload, bool async) {
-  auto shader = FindShader(basename);
+                                       const std::vector<std::string> &defines,
+                                       const char *alias, bool should_reload,
+                                       bool async) {
+  auto shader = FindShader(alias != nullptr ? alias : basename);
   if (!should_reload && shader)
     return shader;
   if (shader) {
@@ -120,24 +124,59 @@ Shader *AssetManager::LoadShaderHelper(const char *basename,
     return shader;
   } else {
     shader = new Shader(basename, defines, &renderer_);
-    return LoadOrQueue(shader, shader_map_, async);
+    return LoadOrQueue(shader, shader_map_, async, alias);
   }
 }
 
 Shader *AssetManager::LoadShader(const char *basename,
-                                 const char *const *defines, bool async) {
-  return LoadShaderHelper(basename, defines, false, async);
+                                 const std::vector<std::string> &defines,
+                                 bool async, const char *alias) {
+  return LoadShaderHelper(basename, defines, alias, false /* should_reload */,
+                          async);
 }
 
-Shader *AssetManager::LoadShader(const char *basename, bool async) {
-  static const char * const *defines = {nullptr};
-  return LoadShader(basename, defines, async);
+Shader *AssetManager::LoadShader(const char *basename, bool async,
+                                 const char *alias) {
+  static const std::vector<std::string> empty_defines;
+  return LoadShader(basename, empty_defines, async, alias);
 }
 
 Shader *AssetManager::ReloadShader(const char *basename,
-                                   const char * const *defines) {
-  return LoadShaderHelper(basename, defines, true /* should_reload */,
+                                   const std::vector<std::string> &defines,
+                                   const char *alias) {
+  return LoadShaderHelper(basename, defines, alias, true /* should_reload */,
                           false /* async */);
+}
+
+void AssetManager::ResetGlobalShaderDefines(
+    const std::vector<std::string> &defines_to_add,
+    const std::vector<std::string> &defines_to_omit) {
+  defines_to_add_ = defines_to_add;
+  defines_to_omit_ = defines_to_omit;
+  for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
+    iter->second->SetDirty();
+  }
+}
+
+bool AssetManager::ReloadShaderWithGlobalDefinesIfDirty(Shader *shader) {
+  if (shader->IsDirty()) {
+    shader->ReloadDefines(defines_to_add_, defines_to_omit_);
+    return true;
+  }
+  return false;
+}
+
+void AssetManager::ForEachShaderWithDefine(const char *define,
+    const std::function<void(Shader *)> &func) {
+  // Use a simple for loop to visit all shaders with 'define' specified, since
+  // we only have limited shaders currently. TODO(yifengh): optimize this if
+  // there is a growing number of shaders.
+  for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
+    Shader *shader = iter->second;
+    if (shader->program() > 0 && shader->HasDefine(define)) {
+      func(shader);
+    }
+  }
 }
 
 Shader *AssetManager::LoadShaderDef(const char *filename) {
@@ -195,7 +234,8 @@ Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
   auto tex = FindTexture(filename);
   if (tex) return tex;
   tex = new Texture(filename, format, flags);
-  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0);
+  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0,
+                     nullptr /* alias */);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
@@ -239,8 +279,11 @@ Material *AssetManager::LoadMaterial(const char *filename) {
               (matdef->wrapmode() == matdef::TextureWrap_CLAMP
                    ? kTextureFlagsClampToEdge
                    : kTextureFlagsNone));
+      if (!tex) {
+        delete mat;
+        return nullptr;
+      }
       mat->textures().push_back(tex);
-
       auto original_size =
           matdef->original_size() && index < matdef->original_size()->size()
               ? LoadVec2i(matdef->original_size()->Get(index))
@@ -276,7 +319,7 @@ Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
   mesh = new Mesh(filename, [this](const char *filename) {
     return LoadMaterial(filename);
   });
-  return LoadOrQueue(mesh, mesh_map_, async);
+  return LoadOrQueue(mesh, mesh_map_, async, nullptr /* alias */);
 }
 
 void AssetManager::UnloadMesh(const char *filename) {

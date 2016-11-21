@@ -35,7 +35,8 @@ namespace fplbase {
 /// @brief A generic asset whose contents the AssetManager doesn't care about.
 class FileAsset : public AsyncAsset {
   virtual void Load();
-  virtual void Finalize();
+  virtual bool Finalize();
+  virtual bool IsValid();
  public:
   std::string contents;
 };
@@ -79,26 +80,28 @@ class AssetManager {
   /// @param basename The name of the shader.
   /// @param async A boolean to indicate whether to load asynchronously or not.
   /// @return Returns the loaded shader, or nullptr if there was an error.
-  Shader *LoadShader(const char *basename, bool async = false);
+  Shader *LoadShader(const char *basename, bool async = false,
+                     const char *alias = nullptr);
 
   /// @brief Loads and returns a shader object with pre-defined identifiers.
   ///
   /// Works like LoadShader (above), but takes in a set of \#define variables.
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to \#define, or
-  /// nullptr if there are no initial \#define variables.
+  /// @param defines A vector of defines.
   /// @param async A boolean to indicate whether to load asynchronously or not.
-  /// @note An example of how to create such an array:
-  ///       static const char *kMyDefines[] = {
+  /// @note An example of how to call this function:
+  ///       const std::vector<std::string> defines[] = {
   ///         USE_SHADOWS,
   ///         USE_THE_FORCE,
   ///         USE_SOMEBODY,
   ///         nullptr
   ///       };
+  ///       LoadShader("source_file", defines, false, nullptr);
   /// @return Returns the loaded shader, or nullptr if there was an error.
-  Shader *LoadShader(const char *basename, const char *const *defines,
-                     bool async = false);
+  Shader *LoadShader(const char *basename,
+                     const std::vector<std::string> &defines,
+                     bool async = false, const char *alias = nullptr);
 
   /// @brief Force a shader to reload.
   ///
@@ -107,12 +110,13 @@ class AssetManager {
   /// Otherwise works like LoadShader (above).
   ///
   /// @param basename The name of the shader.
-  /// @param defines A null-terminated array of variables to \#define, or
-  /// nullptr if there are no initial \#define variables.
+  /// @param defines A vector of defines.
   /// @return Returns the loaded shader, or nullptr if there was an error.
   /// @note If this function doesn't return nullptr, the pointer will be equal
   /// to any previous (Re)LoadShader calls.
-  Shader *ReloadShader(const char *basename, const char * const *defines);
+  Shader *ReloadShader(const char *basename,
+                       const std::vector<std::string> &defines,
+                       const char *alias = nullptr);
 
   /// @brief Load a shader built by shader_pipeline.
   ///
@@ -162,13 +166,14 @@ class AssetManager {
   /// loading of all files, and decompression.
   void StartLoadingTextures();
 
-  /// @brief Check for the status of async loading textures.
+  /// @brief Check for the status of async loading resources.
   ///
-  /// Call this repeatedly until it returns true, which signals all textures
-  /// will have loaded, and turned into OpenGL textures.
-  /// Textures with a 0 id will have failed to load.
+  /// Call this repeatedly until it returns true, which signals all resources
+  /// will have loaded, and turned into OpenGL resources.
+  /// Call IsValid() on a resource to see if there were problems in loading /
+  /// finalizing.
   ///
-  /// @return Returns true when all textures have been loaded.
+  /// @return Returns true when all resources have been loaded & finalized.
   bool TryFinalize();
 
   /// @brief Deletes the previously loaded texture.
@@ -302,18 +307,38 @@ class AssetManager {
   /// on low RAM devices.
   void SetTextureScale(const mathfu::vec2 &scale) { texture_scale_ = scale; }
 
+  /// @brief Reset global defines and set dirty flags of all shaders.
+  ///
+  /// This will cause all shaders be reloaded in the next frame it is being
+  /// used.
+  void ResetGlobalShaderDefines(
+      const std::vector<std::string> &defines_to_add,
+      const std::vector<std::string> &defines_to_omit);
+
+  /// @brief Reload the defines of a shader with the new global defines if it's
+  /// marked as dirty.
+  ///
+  /// Called on the main thread only.
+  bool ReloadShaderWithGlobalDefinesIfDirty(Shader *shader);
+
+  /// @brief Foreach shader with a specific define.
+  void ForEachShaderWithDefine(const char *define,
+                               const std::function<void(Shader *)> &func);
+
  private:
-  Shader *LoadShaderHelper(const char *basename, const char *const *defines,
-                           bool should_reload, bool async);
+  Shader *LoadShaderHelper(const char *basename,
+                           const std::vector<std::string> &defines,
+                           const char *alias, bool should_reload, bool async);
   FPL_DISALLOW_COPY_AND_ASSIGN(AssetManager);
 
   // This implements the mechanism for each asset to be both loadable
   // sync or async.
   // It gets passed a blank asset that we take ownership of, and the map it
   // should go into if all succeeds.
-  template<typename T> T *LoadOrQueue(T *asset,
-                                      std::map<std::string, T *> &asset_map,
-                                      bool async) {
+  template <typename T>
+  T *LoadOrQueue(T *asset, std::map<std::string, T *> &asset_map, bool async,
+                 const char *alias) {
+    asset_map[alias != nullptr ? alias : asset->filename()] = asset;
     if (async) {
       loader_.QueueJob(asset);
     } else {
@@ -323,7 +348,6 @@ class AssetManager {
         return nullptr;
       }
     }
-    asset_map[asset->filename()] = asset;
     return asset;
   }
 
@@ -336,6 +360,9 @@ class AssetManager {
   std::map<std::string, FileAsset *> file_map_;
   AsyncLoader loader_;
   mathfu::vec2 texture_scale_;
+
+  std::vector<std::string> defines_to_add_;
+  std::vector<std::string> defines_to_omit_;
 };
 
 /// @}

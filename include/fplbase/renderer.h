@@ -209,13 +209,14 @@ class Renderer {
   /// @brief Like CompileAndLinkShader, but pass in an old shader to replace.
   ///
   /// Use `placement new` to use the same memory for the new shader.
+  /// Returns nullptr upon error, with a descriptive message in glsl_error().
   /// @note Only call this at the start of the frame.
   ///
   /// @param shader The old shader to replace with the recompiled shader.
   /// @param vs_source The source code of the vertex shader.
   /// @param ps_source The source code of the fragment shader.
-  void RecompileShader(const char *vs_source, const char *ps_source,
-                       Shader *shader);
+  Shader *RecompileShader(const char *vs_source, const char *ps_source,
+                          Shader *shader);
 
   /// @brief Begin rendering commands.
   /// This must be called before any rendering commands are done

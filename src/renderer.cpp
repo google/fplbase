@@ -234,9 +234,9 @@ Shader *Renderer::CompileAndLinkShader(const char *vs_source,
   return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
 }
 
-void Renderer::RecompileShader(const char *vs_source, const char *ps_source,
-                               Shader *shader) {
-  shader = CompileAndLinkShaderHelper(vs_source, ps_source, shader);
+Shader *Renderer::RecompileShader(const char *vs_source, const char *ps_source,
+                                  Shader *shader) {
+  return CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
 void Renderer::SetDepthFunction(DepthFunction depth_func,
