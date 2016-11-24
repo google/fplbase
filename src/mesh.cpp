@@ -529,8 +529,9 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
       renderer.set_model_view_projection(mvp[i]);
       shader->Set(renderer);
 
-      auto vp = viewport[i];
-      glViewport(vp.x(), vp.y(), vp.z(), vp.w());
+      Viewport vp(vec2i(viewport[i].x(), viewport[i].y()),
+                  vec2i(viewport[i].z(), viewport[i].w()));
+      renderer.SetViewport(vp);
       DrawElement(renderer, it->count, static_cast<int32_t>(instances));
     }
   }

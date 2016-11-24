@@ -64,6 +64,7 @@ class RenderTarget {
   ///
   /// All subsequent openGL draw calls will render to this RenderTarget
   /// instead of wherever they were going before.
+  // TODO(shanee): deprecate, remove and implement Renderer::SetRenderTarget.
   void SetAsRenderTarget() const;
 
   /// @brief Binds the texture associated with this rendertarget as the active

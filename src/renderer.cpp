@@ -63,8 +63,8 @@ void Renderer::AdvanceFrame(bool minimized, double time) {
 
   environment_.AdvanceFrame(minimized);
 
-  auto viewport_size = environment_.GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  Viewport viewport(mathfu::kZeros2i, environment_.GetViewportSize());
+  SetViewport(viewport);
   SetDepthFunction(kDepthFunctionLess);
 }
 
@@ -401,12 +401,23 @@ void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
   render_state.cull_mode = mode;
 }
 
+void Renderer::SetViewport(const Viewport &viewport,
+                           RenderContext *render_context) {
+  if (viewport == render_context->render_state_.viewport) {
+    return;
+  }
+
+  GL_CALL(glViewport(viewport.position.x(), viewport.position.y(),
+                     viewport.size.x(), viewport.size.y()));
+  render_context->render_state_.viewport = viewport;
+}
+
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {
   glEnable(GL_SCISSOR_TEST);
-  auto viewport_size = environment_.GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  Viewport viewport(mathfu::kZeros2i, environment_.GetViewportSize());
+  SetViewport(viewport);
 
-  auto scaling_ratio = vec2(viewport_size) / vec2(environment_.window_size());
+  auto scaling_ratio = vec2(viewport.size) / vec2(environment_.window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
   glScissor(static_cast<GLint>(scaled_pos.x()),

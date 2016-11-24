@@ -1,6 +1,8 @@
 #ifndef FPL_RENDER_STATE_H
 #define FPL_RENDER_STATE_H
 
+#include "mathfu/glsl_mappings.h"
+
 namespace fplbase {
 
 /// @brief Specifies the blending mode used by the blend function.
@@ -50,10 +52,20 @@ enum CullingMode {
   kCullingModeFrontAndBack
 };
 
+/// @brief Specifies the region of the surface to be used for rendering.
+struct Viewport {
+  mathfu::vec2i position;
+  mathfu::vec2i size;
+
+  Viewport();
+  Viewport(const mathfu::vec2i &pos, const mathfu::vec2i &size);
+};
+
 struct RenderState {
   BlendMode blend_mode;
   CullingMode cull_mode;
   DepthFunction depth_function;
+  Viewport viewport;
 
   RenderState() {
     blend_mode = kBlendModeOff;
@@ -61,6 +73,9 @@ struct RenderState {
     depth_function = kDepthFunctionDisabled;
   }
 };
+
+bool operator==(const Viewport &vp1, const Viewport &vp2);
+bool operator!=(const Viewport &vp1, const Viewport &vp2);
 
 }  // namespace fplbase
 

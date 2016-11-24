@@ -268,6 +268,22 @@ class Renderer {
     SetCulling(mode, default_render_context_);
   }
 
+  /// @brief Sets the viewport region.
+  ///
+  /// @param viewport The viewport region to set.
+  /// @param render_context Pointer to the render context
+  void SetViewport(const Viewport &viewport, RenderContext *render_context);
+  /// @overload SetViewport(const Viewport &viewport)
+  void SetViewport(const Viewport &viewport) {
+    SetViewport(viewport, default_render_context_);
+  }
+
+  /// @brief Get the currently set viewport.
+  /// @return Returns the current viewport.
+  const Viewport &GetViewport() const {
+    return default_render_context_->render_state_.viewport;
+  }
+
   /// @brief Set to compare fragment against Z-buffer before writing, or not.
   ///
   /// @param depth_func The depth function to use.

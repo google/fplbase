@@ -114,9 +114,9 @@ void HeadMountedDisplayRenderStart(
 // Reset viewport settings, finish applying undistortion effect (if enabled)
 // and disable blending.
 void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
-  const vec2i viewport_size = renderer->GetViewportSize();
   // Reset the screen, and finish
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  Viewport viewport(mathfu::kZeros2i, renderer->GetViewportSize());
+  SetViewport(viewport);
   if (use_undistortion) {
     FinishUndistortFramebuffer();
     renderer->SetBlendMode(kBlendModeOff);
