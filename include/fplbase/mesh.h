@@ -99,9 +99,7 @@ class Mesh : public AsyncAsset {
   /// @param indices The indices to be included in the IBO.
   /// @param count The number of indices.
   /// @param mat The material associated with the IBO.
-  /// @param is_32_bit Specifies that the indices are 32bit. Default 16bit.
-  void AddIndices(const void *indices, int count, Material *mat,
-                  bool is_32_bit = false);
+  void AddIndices(const unsigned short *indices, int count, Material *mat);
 
   /// @brief Set the bones used by an animated mesh.
   ///
@@ -422,14 +420,12 @@ class Mesh : public AsyncAsset {
   void BindAttributes();
   void UnbindAttributes();
 
-  void DrawElement(Renderer &renderer, int32_t count, int32_t instances,
-                   uint32_t index_type);
+  void DrawElement(Renderer &renderer, int32_t count, int32_t instances);
 
   struct Indices {
     int count;
     BufferHandle ibo;
     Material *mat;
-    uint32_t index_type;
   };
   std::vector<Indices> indices_;
   size_t vertex_size_;

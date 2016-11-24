@@ -196,12 +196,11 @@ class AssetManager {
   ///
   /// Loads a material, which is a compiled FlatBuffer file with
   /// root Material. This loads all resources contained there-in.
-  /// Optionally, you can Q up any contained resources for async loading.
   /// If this returns nullptr, the error can be found in Renderer::last_error().
   ///
   /// @param filename The name of the material.
   /// @return Returns the loaded material, or nullptr if there was an error.
-  Material *LoadMaterial(const char *filename, bool async_resources = false);
+  Material *LoadMaterial(const char *filename);
 
   /// @brief Deletes the previously loaded material.
   ///

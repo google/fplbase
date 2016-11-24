@@ -149,11 +149,9 @@ GLEXTS
 // typedef void (*PFNPOPGROUPMARKEREXTPROC)(void);
 // #define glPushGroupMarker glPushGroupMarkerEXT
 // #define glPopGroupMarker glPopGroupMarkerEXT
-/*
-#define GLESEXTS                                                               \
-      GLEXT(PFNGLPUSHGROUPMARKEREXTPROC, glPushGroupMarkerEXT, false)          \
-      GLEXT(PFNPOPGROUPMARKEREXTPROC, glPopGroupMarkerEXT, false)
-*/
+// #define GLESEXTS                                                               \
+//       GLEXT(PFNGLPUSHGROUPMARKEREXTPROC, glPushGroupMarkerEXT, false)          \
+//       GLEXT(PFNPOPGROUPMARKEREXTPROC, glPopGroupMarkerEXT, false)
 //
 // #define GLEXT(type, name, required) extern type name;
 // GLESEXTS

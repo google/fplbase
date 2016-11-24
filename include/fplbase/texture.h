@@ -398,12 +398,6 @@ class Texture : public AsyncAsset {
   TextureFlags flags_;
 };
 
-/// @brief used by some functions to allow the texture loading mechanism to
-/// be specified by the caller.
-typedef std::function<Texture *(const char *filename, TextureFormat format,
-                                TextureFlags flags)> TextureLoaderFn;
-
-
 /// @}
 }  // namespace fplbase
 

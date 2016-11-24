@@ -20,7 +20,6 @@
 #include "fplbase/preprocessor.h"
 #include "fplbase/renderer.h"
 #include "fplbase/shader.h"
-#include "shader_generated.h"
 
 #ifdef _WIN32
 #define snprintf(buffer, count, format, ...) \
@@ -158,40 +157,6 @@ Shader::ShaderSourcePair *Shader::LoadSourceFile() {
   LogError(kError, "%s", error_message.c_str());
   renderer_->set_last_error(error_message.c_str());
   delete source_pair;
-  return nullptr;
-}
-
-Shader *Shader::LoadFromShaderDef(const char *filename) {
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(shaderdef::VerifyShaderBuffer(verifier));
-    auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
-    auto shader =
-        Renderer::Get()->CompileAndLinkShader(
-          shaderdef->vertex_shader()->c_str(),
-          shaderdef->fragment_shader()->c_str());
-    if (!shader) {
-      LogError(kError, "Shader Error: ");
-      if (shaderdef->original_sources()) {
-        for (int i = 0;
-             i < static_cast<int>(shaderdef->original_sources()->size()); ++i) {
-          const auto &source = shaderdef->original_sources()->Get(i);
-          LogError(kError, "%s", source->c_str());
-        }
-      }
-      LogError(kError, "VS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->vertex_shader()->c_str());
-      LogError(kError, "PS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
-      LogError(kError, "----------------------------------------");
-      LogError(kError, "%s", Renderer::Get()->last_error().c_str());
-    }
-    return shader;
-  }
-  LogError(kError, "Can\'t load shader file: %s", filename);
-  Renderer::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 

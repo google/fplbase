@@ -25,7 +25,8 @@
 // - fplbase::Mesh for rendering simple geometry.
 // - fplbase::InputSystem to query for exit events and elapsed time.
 
-extern "C" int FPL_main(int /*argc*/, char */*argv*/[]) {
+extern "C" int FPL_main(int /*argc*/, char* argv[]) {
+  (void)argv; // unused
   fplbase::Renderer renderer;
   fplbase::InputSystem input;
 
@@ -58,11 +59,13 @@ extern "C" int FPL_main(int /*argc*/, char */*argv*/[]) {
     const fplbase::Attribute format[] = {fplbase::kPosition3f,
                                      fplbase::kEND};
     const unsigned short indices[] = {0, 1, 2};
+    // clang-format off
     const float vertices[] = {
       -.5f, -.5f, 0.0f,
       0.0f, 0.5f, 0.0f,
       0.5f, -.5f, 0.0f
     };
+    // clang-format on
 
     fplbase::Mesh::RenderArray(fplbase::Mesh::kTriangles, 3, format,
                            sizeof(float) * 3, vertices, indices);

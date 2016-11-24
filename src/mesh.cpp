@@ -413,11 +413,8 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
   for (auto it = indices_data.begin(); it != indices_data.end(); it++) {
     auto surface = it->first;
     auto mat = it->second;
-    AddIndices(surface->indices() ? surface->indices()->Data()
-                                  : surface->indices32()->Data(),
-               surface->indices() ? surface->indices()->Length()
-                                  : surface->indices32()->Length(),
-               mat, !surface->indices());
+    AddIndices(reinterpret_cast<const uint16_t *>(surface->indices()->Data()),
+               surface->indices()->Length(), mat);
   }
 
   InterleavedVertexData ivd;
@@ -460,17 +457,15 @@ void Mesh::set_format(const Attribute *format) {
   }
 }
 
-void Mesh::AddIndices(const void *index_data, int count,
-                      Material *mat, bool is_32_bit) {
+void Mesh::AddIndices(const unsigned short *index_data, int count,
+                      Material *mat) {
   indices_.push_back(Indices());
   auto &idxs = indices_.back();
   idxs.count = count;
   GL_CALL(glGenBuffers(1, &idxs.ibo));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, idxs.ibo));
-  GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                       count * (is_32_bit ? sizeof(uint32_t): sizeof(uint16_t)),
+  GL_CALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(short),
                        index_data, GL_STATIC_DRAW));
-  idxs.index_type = (is_32_bit ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT);
   idxs.mat = mat;
 }
 
@@ -499,14 +494,13 @@ void Mesh::SetBones(const mathfu::AffineTransform *bone_transforms,
   }
 }
 
-void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances,
-                       uint32_t index_type) {
+void Mesh::DrawElement(Renderer &renderer, int32_t count, int32_t instances) {
   if (instances == 1) {
-    GL_CALL(glDrawElements(GL_TRIANGLES, count, index_type, 0));
+    GL_CALL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0));
   } else {
     (void)renderer;
     assert(renderer.feature_level() == kFeatureLevel30);
-    GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count, index_type, 0,
+    GL_CALL(glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0,
                                     instances));
   }
 }
@@ -516,8 +510,7 @@ void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
-    DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                it->index_type);
+    DrawElement(renderer, it->count, static_cast<int32_t>(instances));
   }
   UnbindAttributes();
 }
@@ -538,8 +531,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
 
       auto vp = viewport[i];
       glViewport(vp.x(), vp.y(), vp.z(), vp.w());
-      DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                  it->index_type);
+      DrawElement(renderer, it->count, static_cast<int32_t>(instances));
     }
   }
   UnbindAttributes();

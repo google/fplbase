@@ -29,9 +29,8 @@ enum MeshVersion : ushort {
 }
 
 table Surface {
-  indices:[ushort] (id: 0);  // Used when there's less than 64k indices.
-  indices32:[uint] (id: 2);  // Used when there's more than 64k indices.
-  material:string (id: 1, required);  // e.g. "materials/example.bin"
+  indices:[ushort] (required);
+  material:string (required);  // e.g. "materials/example.bin"
 }
 
 enum Attribute : ubyte {

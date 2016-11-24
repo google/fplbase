@@ -15,10 +15,14 @@
 #include "precompiled.h"
 #include "common_generated.h"
 #include "fplbase/asset_manager.h"
+#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/texture.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/utilities.h"
+#include "materials_generated.h"
 #include "mesh_generated.h"
+#include "shader_generated.h"
+#include "texture_atlas_generated.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -44,6 +48,35 @@ bool FileAsset::Finalize() {
 }
 
 bool FileAsset::IsValid() { return true; }
+
+static_assert(
+    kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
+        kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
+        kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
+        kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD) &&
+        kBlendModeAddAlpha ==
+            static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
+        kBlendModeMultiply ==
+            static_cast<BlendMode>(matdef::BlendMode_MULTIPLY) &&
+        kBlendModePreMultipliedAlpha ==
+        static_cast<BlendMode>(matdef::BlendMode_PREMULTIPLIEDALPHA),
+    "BlendMode enums in material.h and material.fbs must match.");
+static_assert(kBlendModeCount == kBlendModePreMultipliedAlpha + 1,
+              "Please update static_assert above with new enum values.");
+static_assert(
+    kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
+    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
+    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
+    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
+    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
+    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+    kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
+    kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
+    kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX) &&
+    kFormatNative == static_cast<TextureFormat>(matdef::TextureFormat_NATIVE),
+      "TextureFormat enums in material.h and material.fbs must match.");
+static_assert(kFormatCount == kFormatNative + 1,
+              "Please update static_assert above with new enum values.");
 
 template <typename T>
 T FindInMap(const std::map<std::string, T> &map, const char *name) {
@@ -149,10 +182,40 @@ void AssetManager::ForEachShaderWithDefine(const char *define,
 Shader *AssetManager::LoadShaderDef(const char *filename) {
   auto shader = FindShader(filename);
   if (shader) return shader;
-  shader = Shader::LoadFromShaderDef(filename);
-  if (!shader) return nullptr;
-  shader_map_[filename] = shader;
-  return shader;
+
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(shaderdef::VerifyShaderBuffer(verifier));
+    auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
+
+    shader =
+        renderer_.CompileAndLinkShader(shaderdef->vertex_shader()->c_str(),
+                                       shaderdef->fragment_shader()->c_str());
+    if (shader) {
+      shader_map_[filename] = shader;
+    } else {
+      LogError(kError, "Shader Error: ");
+      if (shaderdef->original_sources()) {
+        for (int i = 0;
+             i < static_cast<int>(shaderdef->original_sources()->size()); ++i) {
+          const auto &source = shaderdef->original_sources()->Get(i);
+          LogError(kError, "%s", source->c_str());
+        }
+      }
+      LogError(kError, "VS:  -----------------------------------");
+      LogError(kError, "%s", shaderdef->vertex_shader()->c_str());
+      LogError(kError, "PS:  -----------------------------------");
+      LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
+      LogError(kError, "----------------------------------------");
+      LogError(kError, "%s", renderer_.last_error().c_str());
+    }
+    return shader;
+  }
+  LogError(kError, "Can\'t load shader file: %s", filename);
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
+  return nullptr;
 }
 
 void AssetManager::UnloadShader(const char *filename) {
@@ -190,20 +253,50 @@ Material *AssetManager::FindMaterial(const char *filename) {
   return FindInMap(material_map_, filename);
 }
 
-Material *AssetManager::LoadMaterial(const char *filename,
-                                     bool async_resources) {
+Material *AssetManager::LoadMaterial(const char *filename) {
   auto mat = FindMaterial(filename);
   if (mat) return mat;
-  mat = Material::LoadFromMaterialDef(filename,
-    [&](const char *filename, TextureFormat format, TextureFlags flags) {
-      auto tex = LoadTexture(filename, format, flags |
-        (async_resources ? kTextureFlagsLoadAsync : kTextureFlagsNone));
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(matdef::VerifyMaterialBuffer(verifier));
+    auto matdef = matdef::GetMaterial(flatbuf.c_str());
+    mat = new Material();
+    mat->set_blend_mode(static_cast<BlendMode>(matdef->blendmode()));
+    for (size_t i = 0; i < matdef->texture_filenames()->size(); i++) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      auto format =
+          matdef->desired_format() && i < matdef->desired_format()->size()
+              ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
+              : kFormatAuto;
+      auto tex = LoadTexture(
+          matdef->texture_filenames()->Get(index)->c_str(), format,
+          (matdef->mipmaps() ? kTextureFlagsUseMipMaps : kTextureFlagsNone) |
+              (matdef->is_cubemap() && matdef->is_cubemap()->Get(index)
+                   ? kTextureFlagsIsCubeMap
+                   : kTextureFlagsNone) |
+              (matdef->wrapmode() == matdef::TextureWrap_CLAMP
+                   ? kTextureFlagsClampToEdge
+                   : kTextureFlagsNone));
+      if (!tex) {
+        delete mat;
+        return nullptr;
+      }
+      mat->textures().push_back(tex);
+      auto original_size =
+          matdef->original_size() && index < matdef->original_size()->size()
+              ? LoadVec2i(matdef->original_size()->Get(index))
+              : tex->size();
+      tex->set_original_size(original_size);
+
       tex->set_scale(texture_scale_);
-      return tex;
-    });
-  if (!mat) return nullptr;
-  material_map_[filename] = mat;
-  return mat;
+    }
+    material_map_[filename] = mat;
+    return mat;
+  }
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
+  return nullptr;
 }
 
 void AssetManager::UnloadMaterial(const char *filename) {
@@ -223,8 +316,8 @@ Mesh *AssetManager::FindMesh(const char *filename) {
 Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
   auto mesh = FindMesh(filename);
   if (mesh) return mesh;
-  mesh = new Mesh(filename, [&](const char *filename) {
-    return LoadMaterial(filename, async);
+  mesh = new Mesh(filename, [this](const char *filename) {
+    return LoadMaterial(filename);
   });
   return LoadOrQueue(mesh, mesh_map_, async, nullptr /* alias */);
 }
@@ -245,13 +338,30 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
                                              TextureFlags flags) {
   auto atlas = FindTextureAtlas(filename);
   if (atlas) return atlas;
-  atlas = TextureAtlas::LoadTextureAtlas(filename, format, flags,
-    [&](const char *filename, TextureFormat format, TextureFlags flags) {
-      return LoadTexture(filename, format, flags);
-    });
-  if (!atlas) return nullptr;
-  texture_atlas_map_[filename] = atlas;
-  return atlas;
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
+    auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
+    Texture *atlas_texture =
+        LoadTexture(atlasdef->texture_filename()->c_str(), format, flags);
+    atlas = new TextureAtlas();
+    atlas->set_atlas_texture(atlas_texture);
+    for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
+      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
+      atlas->index_map().insert(std::make_pair(
+          atlasdef->entries()->Get(index)->name()->str(), index));
+      vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
+      vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
+      atlas->subtexture_bounds().push_back(
+          vec4(location.x(), location.y(), size.x(), size.y()));
+    }
+    texture_atlas_map_[filename] = atlas;
+    return atlas;
+  }
+  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
+  return nullptr;
 }
 
 void AssetManager::UnloadTextureAtlas(const char *filename) {
