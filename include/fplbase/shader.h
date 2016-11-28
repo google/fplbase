@@ -170,6 +170,11 @@ class Shader : public AsyncAsset {
   bool IsDirty() const { return dirty_; }
   void SetDirty() { dirty_ = true; }
 
+  /// @brief Loads a .fplshader file from disk.
+  /// Used by the more convenient AssetManager interface, but can also be
+  /// used without it.
+  static Shader *LoadFromShaderDef(const char *filename);
+
  private:
   friend class Renderer;
 
