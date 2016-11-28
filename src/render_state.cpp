@@ -6,7 +6,7 @@ namespace fplbase {
 
 Viewport::Viewport() : position(mathfu::kZeros2i), size(mathfu::kZeros2i) {}
 
-Viewport::Viewport(float x, float y, float width, float height) {
+Viewport::Viewport(int x, int y, int width, int height) {
   position[0] = x;
   position[1] = y;
 

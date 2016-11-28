@@ -58,7 +58,7 @@ struct Viewport {
   mathfu::vec2i size;
 
   Viewport();
-  Viewport(float x, float y, float width, float height);
+  Viewport(int x, int y, int width, int height);
   Viewport(const mathfu::vec2i &pos, const mathfu::vec2i &size);
 };
 
