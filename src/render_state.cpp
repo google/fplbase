@@ -5,6 +5,15 @@
 namespace fplbase {
 
 Viewport::Viewport() : position(mathfu::kZeros2i), size(mathfu::kZeros2i) {}
+
+Viewport::Viewport(float x, float y, float width, float height) {
+  position[0] = x;
+  position[1] = y;
+
+  size[0] = width;
+  size[1] = height;
+}
+
 Viewport::Viewport(const mathfu::vec2i &pos, const mathfu::vec2i &size)
     : position(pos), size(size) {}
 
