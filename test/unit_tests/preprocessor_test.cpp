@@ -199,7 +199,7 @@ TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
   fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
   const size_t pos = result.find("#define foo");
   EXPECT_NE(pos, std::string::npos);
-  EXPECT_NE(pos, 0);
+  EXPECT_NE(pos, 0u);
   EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
 }
 
