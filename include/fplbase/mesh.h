@@ -22,6 +22,7 @@
 
 #include "fplbase/async_loader.h"
 #include "fplbase/material.h"
+#include "fplbase/render_state.h"
 #include "fplbase/shader.h"
 #include "mathfu/constants.h"
 
@@ -164,7 +165,7 @@ class Mesh : public AsyncAsset {
   /// @param ignore_material Whether to ignore the meshes defined material.
   /// @param instances The number of instances to be rendered.
   void RenderStereo(Renderer &renderer, const Shader *shader,
-                    const mathfu::vec4i *viewport, const mathfu::mat4 *mvp,
+                    const Viewport *viewport, const mathfu::mat4 *mvp,
                     const mathfu::vec3 *camera_position,
                     bool ignore_material = false, size_t instances = 1);
 

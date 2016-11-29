@@ -516,7 +516,7 @@ void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
 }
 
 void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
-                        const vec4i *viewport, const mat4 *mvp,
+                        const Viewport *viewport, const mat4 *mvp,
                         const vec3 *camera_position, bool ignore_material,
                         size_t instances) {
   BindAttributes();
@@ -527,11 +527,10 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
     for (auto i = 0; i < 2; ++i) {
       renderer.set_camera_pos(camera_position[i]);
       renderer.set_model_view_projection(mvp[i]);
+      renderer.SetViewport(viewport[i]);
+
       shader->Set(renderer);
 
-      Viewport vp(vec2i(viewport[i].x(), viewport[i].y()),
-                  vec2i(viewport[i].z(), viewport[i].w()));
-      renderer.SetViewport(vp);
       DrawElement(renderer, it->count, static_cast<int32_t>(instances));
     }
   }
