@@ -96,7 +96,7 @@ void HeadMountedDisplayRenderStart(
   if (use_undistortion) BeginUndistortFramebuffer();
   renderer->ClearFrameBuffer(clear_color);
   renderer->set_color(mathfu::kOnes4f);
-  renderer->DepthTest(true);
+  renderer->SetDepthFunction(fplbase::kDepthFunctionLess);
 
   const mathfu::vec2i viewport_size = renderer->GetViewportSize();
   int window_width = viewport_size.x();
