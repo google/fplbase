@@ -393,7 +393,7 @@ class FlatMesh {
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
-      matdef::BlendMode blend_mode, bool interleaved) const {
+      matdef::BlendMode blend_mode, bool interleaved, bool force32) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = fplutil::BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -419,7 +419,7 @@ class FlatMesh {
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
     OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir,
-                         interleaved);
+                         interleaved, force32);
 
     // Log summary
     log_.Log(kLogImportant, "  %s (%d vertices, %d triangles)\n",
@@ -706,7 +706,7 @@ class FlatMesh {
   void OutputMeshFlatBuffer(const std::string& mesh_name,
                             const std::string& assets_base_dir,
                             const std::string& assets_sub_dir,
-                            bool interleaved) const {
+                            bool interleaved, bool force32) const {
     const std::string rel_mesh_file_name =
         assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
     const std::string full_mesh_file_name =
@@ -758,26 +758,26 @@ class FlatMesh {
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
       const IndexBuffer& index_buf = it->second;
-
-      TruncateIndexBuf(index_buf, &index_buf_compact);
       const std::string material_file_name =
           HasTexture(textures)
               ? MaterialFileName(mesh_name, surface_idx, assets_sub_dir)
               : std::string("");
       auto material_fb = fbb.CreateString(material_file_name);
-      auto indices_fb = fbb.CreateVector(index_buf_compact);
-      auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb);
-      surfaces_fb.push_back(surface_fb);
-
       log_.Log(kLogInfo, "  Surface %d (%s) has %d triangles\n", surface_idx,
                material_file_name.length() == 0 ? "unnamed"
                                                 : material_file_name.c_str(),
                index_buf.size() / 3);
-      const size_t num_triangles_omitted =
-          index_buf.size() - index_buf_compact.size();
-      if (num_triangles_omitted > 0) {
-        log_.Log(kLogInfo, "    Omitted %d triangles\n", num_triangles_omitted);
+      flatbuffers::Offset<flatbuffers::Vector<VertIndexCompact>> indices_fb = 0;
+      flatbuffers::Offset<flatbuffers::Vector<VertIndex>> indices32_fb = 0;
+      if (!force32 && index_buf.size() <= kMaxVertexIndex) {
+        CopyIndexBuf(index_buf, &index_buf_compact);
+        indices_fb = fbb.CreateVector(index_buf_compact);
+      } else {
+        indices32_fb = fbb.CreateVector(index_buf);
       }
+      auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb,
+                                               indices32_fb);
+      surfaces_fb.push_back(surface_fb);
       surface_idx++;
     }
     auto surface_vector_fb = fbb.CreateVector(surfaces_fb);
@@ -1031,27 +1031,20 @@ class FlatMesh {
     }
   }
 
-  // Compact index_buf into truncated_buf, omiting any triangles that
-  // have indices beyond the maximum compact index.
-  static void TruncateIndexBuf(const IndexBuffer& index_buf,
-                               IndexBufferCompact* truncated_buf) {
+  // Copy 32bit indices into 16bit index buffer.
+  static void CopyIndexBuf(const IndexBuffer& index_buf,
+                           IndexBufferCompact* index_buf16) {
     // Indices are output in groups of three, since we only output triangles.
     assert(index_buf.size() % 3 == 0);
 
-    // The truncated_buf may be smaller than index_buf, but not bigger.
-    truncated_buf->clear();
-    truncated_buf->reserve(index_buf.size());
+    index_buf16->clear();
+    index_buf16->reserve(index_buf.size());
 
-    // Remove any triangles that have indices above the maximum.
+    // Copy triangles.
     for (size_t i = 0; i < index_buf.size(); i += 3) {
-      const bool valid_tri = index_buf[i] <= kMaxVertexIndex &&
-                             index_buf[i + 1] <= kMaxVertexIndex &&
-                             index_buf[i + 2] <= kMaxVertexIndex;
-      if (valid_tri) {
-        truncated_buf->push_back(index_buf[i]);
-        truncated_buf->push_back(index_buf[i + 1]);
-        truncated_buf->push_back(index_buf[i + 2]);
-      }
+      index_buf16->push_back(index_buf[i]);
+      index_buf16->push_back(index_buf[i + 1]);
+      index_buf16->push_back(index_buf[i + 2]);
     }
   }
 
@@ -1713,6 +1706,7 @@ struct MeshPipelineArgs {
         distance_unit_scale(-1.0f),
         recenter(false),
         interleaved(true),
+        force32(false),
         vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
         log_level(kLogWarning) {}
 
@@ -1726,6 +1720,7 @@ struct MeshPipelineArgs {
   float distance_unit_scale;
   bool recenter;     /// Translate geometry to origin.
   bool interleaved;  /// Write vertex attributes interleaved.
+  bool force32;      /// Force 32bit indices.
   VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   LogLevel log_level;  /// Amount of logging to dump during conversion.
 };
@@ -1864,6 +1859,9 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
       // -l switch
     } else if (arg == "-l" || arg == "--non-interleaved") {
       args->interleaved = false;
+
+    } else if (arg == "--force-32-bit-indices") {
+      args->force32 = true;
 
       // -f switch
     } else if (arg == "-f" || arg == "--texture-formats") {
@@ -2050,6 +2048,9 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
         "  -l, --non-interleaved\n"
         "                Write out vextex attributes in non-interleaved\n"
         "                format (per-attribute arrays).\n"
+        "  --force-32-bit-indices\n"
+        "                By default, decides to use 16 or 32 bit indices\n"
+        "                on index count. This makes it always use 32 bit.\n"
         "  -v, --verbose output all informative messages\n"
         "  -d, --details output important informative messages\n"
         "  -i, --info    output more than details, less than verbose\n");
@@ -2086,7 +2087,7 @@ int main(int argc, char** argv) {
   const bool output_status = mesh.OutputFlatBuffer(
       args.fbx_file, args.asset_base_dir, args.asset_rel_dir,
       args.texture_extension, args.texture_formats, args.blend_mode,
-      args.interleaved);
+      args.interleaved, args.force32);
   if (!output_status) return 1;
 
   // Success.
