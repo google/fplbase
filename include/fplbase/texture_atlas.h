@@ -113,6 +113,12 @@ class TextureAtlas : public Asset {
   /// @ref subtexture_bounds().
   std::map<std::string, size_t> &index_map() { return index_map_; }
 
+  /// @brief Load a texture atlas file. Used by the more convenient AssetManager
+  /// interface, but can be used without it.
+  static TextureAtlas *LoadTextureAtlas(const char *filename,
+                                        TextureFormat format,
+                                        TextureFlags flags,
+                                        const TextureLoaderFn &tlf);
  private:
   // Texture being used by this atlas.
   Texture *atlas_texture_;
