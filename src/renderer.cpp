@@ -407,8 +407,8 @@ void Renderer::SetViewport(const Viewport &viewport,
     return;
   }
 
-  GL_CALL(glViewport(viewport.position.x(), viewport.position.y(),
-                     viewport.size.x(), viewport.size.y()));
+  GL_CALL(glViewport(viewport.pos.x(), viewport.pos.y(), viewport.size.x(),
+                     viewport.size.y()));
   render_context->render_state_.viewport = viewport;
 }
 

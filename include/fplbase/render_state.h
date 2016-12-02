@@ -53,14 +53,7 @@ enum CullingMode {
 };
 
 /// @brief Specifies the region of the surface to be used for rendering.
-struct Viewport {
-  mathfu::vec2i position;
-  mathfu::vec2i size;
-
-  Viewport();
-  Viewport(int x, int y, int width, int height);
-  Viewport(const mathfu::vec2i &pos, const mathfu::vec2i &size);
-};
+typedef mathfu::recti Viewport;
 
 struct RenderState {
   BlendMode blend_mode;
@@ -74,9 +67,6 @@ struct RenderState {
     depth_function = kDepthFunctionDisabled;
   }
 };
-
-bool operator==(const Viewport &vp1, const Viewport &vp2);
-bool operator!=(const Viewport &vp1, const Viewport &vp2);
 
 }  // namespace fplbase
 

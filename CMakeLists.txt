@@ -218,7 +218,6 @@ set(fplbase_common_SRCS
   src/precompiled.h
   src/preprocessor.cpp
   src/renderer.cpp
-  src/render_state.cpp
   src/render_target.cpp
   src/shader.cpp
   src/texture.cpp
