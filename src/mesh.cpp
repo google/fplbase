@@ -264,7 +264,7 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, count * vertex_size, vertex_data,
                        GL_STATIC_DRAW));
 
-  if (Renderer::Get()->feature_level() >= kFeatureLevel30) {
+  if (RendererBase::Get()->feature_level() >= kFeatureLevel30) {
     glGenVertexArrays(1, &vao_);
     glBindVertexArray(vao_);
     SetAttributes(vbo_, format_, static_cast<int>(vertex_size_), nullptr);

@@ -24,123 +24,51 @@
 #include "fplbase/shader.h"
 #include "fplbase/texture.h"
 #include "fplbase/version.h"
+#include "fplutil/mutex.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fplbase {
 
-class RenderTarget;
+class Renderer;
 
 /// @file
 /// @addtogroup fplbase_renderer
 /// @{
 
-/// @class RenderContext
-/// @brief Render context keeps graphics context specific data.
-///
-/// For graphics APIs that support multi-threading, like Vulkan,
-/// the RenderContext class is a place for keeping data specific
-/// to a render thread.
-class RenderContext {
- public:
-  // Render Context Class
-  RenderContext()
-      : model_view_projection_(mathfu::mat4::Identity()),
-        model_(mathfu::mat4::Identity()),
-        color_(mathfu::kOnes4f),
-        light_pos_(mathfu::kZeros3f),
-        camera_pos_(mathfu::kZeros3f),
-        bone_transforms_(nullptr),
-        num_bones_(0) {}
-
-  /// @brief Shader uniform: model_view_projection
-  /// @return Returns the current model view projection being used.
-  const mathfu::mat4 &model_view_projection() const {
-    return model_view_projection_;
-  }
-  /// @brief Sets the shader uniform model_view_projection
-  /// @param mvp The model view projection to be passed to the shader.
-  void set_model_view_projection(const mathfu::mat4 &mvp) {
-    model_view_projection_ = mvp;
-  }
-
-  /// @brief Shader uniform: model (object to world transform only)
-  /// @return Returns the current model transform being used.
-  const mathfu::mat4 &model() const { return model_; }
-  /// @brief Sets the shader uniform model transform.
-  /// @param model The model transform to be passed to the shader.
-  void set_model(const mathfu::mat4 &model) { model_ = model; }
-
-  /// @brief Shader uniform: color
-  /// @return Returns the current color being used.
-  const mathfu::vec4 &color() const { return color_; }
-  /// @brief Sets the shader uniform color.
-  /// @param color The color to be passed to the shader.
-  void set_color(const mathfu::vec4 &color) { color_ = color; }
-
-  /// @brief Shader uniform: light_pos
-  /// @return Returns the current light position being used.
-  const mathfu::vec3 &light_pos() const { return light_pos_; }
-  /// @brief Sets the shader uniform light position.
-  /// @param light_pos The light position to be passed to the shader.
-  void set_light_pos(const mathfu::vec3 &light_pos) { light_pos_ = light_pos; }
-
-  /// @brief Shader uniform: camera_pos
-  /// @return Returns the current camera position being used.
-  const mathfu::vec3 &camera_pos() const { return camera_pos_; }
-  /// @brief Sets the shader uniform camera position.
-  /// @param camera_pos The camera position to be passed to the shader.
-  void set_camera_pos(const mathfu::vec3 &camera_pos) {
-    camera_pos_ = camera_pos;
-  }
-
-  /// @brief Shader uniform: bone_transforms
-  /// @return Returns the current array of bone transforms being used.
-  const mathfu::AffineTransform *bone_transforms() const {
-    return bone_transforms_;
-  }
-  /// @brief The number of bones in the bone_transforms() array.
-  /// @return Returns the length of the bone_transforms() array.
-  int num_bones() const { return num_bones_; }
-  /// @brief Sets the shader uniform bone transforms.
-  /// @param bone_transforms The bone transforms to be passed to the shader.
-  /// @param num_bones The length of the bone_transforms array provided.
-  void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
-                         int num_bones) {
-    bone_transforms_ = bone_transforms;
-    num_bones_ = num_bones;
-  }
-
-  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
-
-  // other render state
-  Shader *shader_;
-  RenderState render_state_;
-
- private:
-  // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
-  // to conveniently change the camera.
-  mathfu::mat4 model_view_projection_;
-  mathfu::mat4 model_;
-  mathfu::vec4 color_;
-  mathfu::vec3 light_pos_;
-  mathfu::vec3 camera_pos_;
-  const mathfu::AffineTransform *bone_transforms_;
-  int num_bones_;
-};
-
-/// @class Renderer
+/// @class RendererBase
 /// @brief Manages the rendering system, handling the window and resources.
 ///
 /// The core of the rendering system. Deals with setting up and shutting down
 /// the window + OpenGL context, and creating/using resources
 /// such as shaders, textures, and geometry.
-class Renderer {
+///
+/// This is a singleton that has shared ownership amongst all Renderer classes.
+/// When the first Renderer class is created, this RendererBase class is also
+/// created. When the last Renderer class is destroyed, this RendererBase
+/// class is also destroyed.
+///
+/// Users should instantiate one or more Renderer classes. Users should *not*
+/// instantiate RendererBase.
+///
+/// Users can call a subset of Renderer functionality via the RendererBase
+/// singleton. For example,
+/// @code{.cpp}
+///    if (RendererBase::Get()->feature_level() >= kFeatureLevel30) {
+///       // Go ahead and use VAOs (vertex array objects).
+///    }
+/// @endcode
+/// But all of the RendererBase functionality is also in Renderer,
+/// and using it may (potentially) be faster since each thread has its own
+/// Renderer and there is only one shared RendererBase. So prefer using
+/// Renderer over the RendererBase singleton, when you have a Renderer around.
+class RendererBase {
  public:
-  Renderer();
-  ~Renderer();
-
-  // Get current singleton instance.
-  static Renderer *Get() { return the_renderer_; }
+  // Construction and destruction cannot be private since we use
+  // std::shared_ptr in Renderer (friend-ing is insufficient), but you should
+  // not create your own RendererBase.
+  // RendererBase should only be constructed internally.
+  RendererBase();
+  ~RendererBase();
 
   /// @brief Initializes the renderer by initializing the Environment object.
   ///
@@ -176,24 +104,6 @@ class Renderer {
   void SetWindowSize(const mathfu::vec2i &window_size) {
     environment_.SetWindowSize(window_size);
   }
-  /// @brief Clears the framebuffer.
-  ///
-  /// Call this after AdvanceFrame if desired.
-  ///
-  /// @param color The color to clear the buffer to.
-  /// @param render_context Pointer to the render context
-  void ClearFrameBuffer(const mathfu::vec4 &color,
-                        RenderContext *render_context);
-  /// @overload void ClearFrameBuffer(const mathfu::vec4 &color)
-  void ClearFrameBuffer(const mathfu::vec4 &color) {
-    ClearFrameBuffer(color, default_render_context_);
-  }
-
-  /// @brief Clears the depthbuffer. Leaves the colorbuffer untouched.
-  /// @param render_context Pointer to the render context
-  void ClearDepthBuffer(RenderContext *render_context);
-  /// @overload void ClearDepthBuffer()
-  void ClearDepthBuffer() { ClearDepthBuffer(default_render_context_); }
 
   /// @brief Create a shader object from two strings containing glsl code.
   ///
@@ -218,99 +128,9 @@ class Renderer {
   Shader *RecompileShader(const char *vs_source, const char *ps_source,
                           Shader *shader);
 
-  /// @brief Begin rendering commands.
-  /// This must be called before any rendering commands are done
-  /// @param render_context Pointer to a render context object
-  void BeginRendering(RenderContext *render_context);
-  /// @overload void BeginRendering()
-  void BeginRendering() { BeginRendering(default_render_context_); }
-
-  /// @brief End rendering commands.
-  /// This is called after all of the rendering commands are done
-  /// @param render_context Pointer to a render context object
-  void EndRendering(RenderContext *render_context);
-  /// @overload void EndRendering()
-  void EndRendering() { EndRendering(default_render_context_); }
-
   /// @brief Checks for multithreading API.
   /// Returns true if the graphics API allows multi-threading
   bool AllowMultiThreading();
-
-  /// @brief Sets the blend mode used by the renderer.
-  ///
-  /// Set alpha test (cull pixels with alpha below amount) vs alpha blend
-  /// (blend with framebuffer pixel regardedless).
-  ///
-  /// @param blend_mode The type of blend mode, see materials.h for valid enum
-  ///                   values.
-  /// @param amount The value used with kBlendModeTest, defaults to 0.5f.
-  /// @param render_context Pointer to the render context
-  void SetBlendMode(BlendMode blend_mode, float amount,
-                    RenderContext *render_context);
-  /// @overload void SetBlendMode(BlendMode blend_mode, float amount)
-  void SetBlendMode(BlendMode blend_mode, float amount) {
-    SetBlendMode(blend_mode, amount, default_render_context_);
-  }
-  /// @overload void SetBlendMode(BlendMode, RenderContext*)
-  void SetBlendMode(BlendMode blend_mode, RenderContext *render_context);
-  /// @overload void SetBlendMode(BlendMode blend_mode)
-  void SetBlendMode(BlendMode blend_mode) {
-    SetBlendMode(blend_mode, default_render_context_);
-  }
-
-  /// @brief Sets the culling mode. By default, no culling happens.
-  ///
-  /// @param mode The type of culling mode to use.
-  /// @param render_context Pointer to the render context
-  void SetCulling(CullingMode mode, RenderContext *render_context);
-  /// @overload SetCulling(CullingMode mode)
-  void SetCulling(CullingMode mode) {
-    SetCulling(mode, default_render_context_);
-  }
-
-  /// @brief Sets the viewport region.
-  ///
-  /// @param viewport The viewport region to set.
-  /// @param render_context Pointer to the render context
-  void SetViewport(const Viewport &viewport, RenderContext *render_context);
-  /// @overload SetViewport(const Viewport &viewport)
-  void SetViewport(const Viewport &viewport) {
-    SetViewport(viewport, default_render_context_);
-  }
-
-  /// @brief Get the currently set viewport.
-  /// @return Returns the current viewport.
-  const Viewport &GetViewport() const {
-    return default_render_context_->render_state_.viewport;
-  }
-
-  /// @brief Set to compare fragment against Z-buffer before writing, or not.
-  ///
-  /// @param depth_func The depth function to use.
-  /// @param render_context Pointer to the render context
-  void SetDepthFunction(DepthFunction depth_func,
-                        RenderContext *render_context);
-  /// @overload SetDepthFunction(DepthFunction depth_func)
-  void SetDepthFunction(DepthFunction depth_func) {
-    SetDepthFunction(depth_func, default_render_context_);
-  }
-
-  /// @brief Turn on a scissor region. Arguments are in screen pixels.
-  ///
-  /// @param pos The lower left corner of the scissor box.
-  /// @param size The width and height of the scissor box.s
-  /// @param render_context Pointer to the render context
-  void ScissorOn(const mathfu::vec2i &pos, const mathfu::vec2i &size,
-                 RenderContext *render_context);
-  /// @overload void ScissorOn(const mathfu::vec2i&, const mathfu::vec2i&)
-  void ScissorOn(const mathfu::vec2i &ops, const mathfu::vec2i &size) {
-    ScissorOn(ops, size, default_render_context_);
-  }
-  /// @brief Turn off the scissor region.
-  /// @param render_context Pointer to the render context
-  void ScissorOff(RenderContext *render_context);
-  /// @overload void ScissorOff()
-  void ScissorOff() { ScissorOff(default_render_context_); }
 
   /// @brief Set bone transforms in vertex shader uniforms.
   ///
@@ -320,145 +140,6 @@ class Renderer {
   /// @param num_bones The length of the provided array.
   void SetAnimation(const mathfu::AffineTransform *bone_transforms,
                     int num_bones);
-
-  /// @brief Shader uniform: model_view_projection
-  /// @return Returns the current model view projection being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::mat4 &model_view_projection(
-      RenderContext *render_context) const {
-    return render_context->model_view_projection();
-  }
-  /// @overload const mathfu::mat4 &model_view_projection() const
-  const mathfu::mat4 &model_view_projection() const {
-    return model_view_projection(default_render_context_);
-  }
-  /// @brief Sets the shader uniform model_view_projection
-  /// @param mvp The model view projection to be passed to the shader.
-  /// @param render_context Pointer to the render context
-  void set_model_view_projection(const mathfu::mat4 &mvp,
-                                 RenderContext *render_context) {
-    render_context->set_model_view_projection(mvp);
-  }
-  /// @overload void set_model_view_projection(const mathfu::mat4 &mvp)
-  void set_model_view_projection(const mathfu::mat4 &mvp) {
-    set_model_view_projection(mvp, default_render_context_);
-  }
-
-  /// @brief Shader uniform: model (object to world transform only)
-  /// @return Returns the current model transform being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::mat4 &model(RenderContext *render_context) const {
-    return render_context->model();
-  }
-  /// @overload const mathfu::mat4 &model()
-  const mathfu::mat4 &model() const { return model(default_render_context_); }
-  /// @brief Sets the shader uniform model transform.
-  /// @param model The model transform to be passed to the shader.
-  /// @param render_context Pointer to the render context
-  void set_model(const mathfu::mat4 &model, RenderContext *render_context) {
-    render_context->set_model(model);
-  }
-  /// @overload void set_model(const mathfu::mat4 &model)
-  void set_model(const mathfu::mat4 &model) {
-    set_model(model, default_render_context_);
-  }
-
-  /// @brief Shader uniform: color
-  /// @return Returns the current color being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::vec4 &color(RenderContext *render_context) const {
-    return render_context->color();
-  }
-  /// @overload const mathfu::vec4 &color()
-  const mathfu::vec4 &color() const { return color(default_render_context_); }
-
-  /// @brief Sets the shader uniform color.
-  /// @param color The color to be passed to the shader.
-  /// @param render_context Pointer to the render context
-  void set_color(const mathfu::vec4 &color, RenderContext *render_context) {
-    render_context->set_color(color);
-  }
-  /// @overload set_color(const mathfu::vec4 &color)
-  void set_color(const mathfu::vec4 &color) {
-    set_color(color, default_render_context_);
-  }
-
-  /// @brief Shader uniform: light_pos
-  /// @return Returns the current light position being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::vec3 &light_pos(RenderContext *render_context) const {
-    return render_context->light_pos();
-  }
-  /// @overload const mathfu::vec3 &light_pos()
-  const mathfu::vec3 &light_pos() const {
-    return light_pos(default_render_context_);
-  }
-  /// @brief Sets the shader uniform light position.
-  /// @param light_pos The light position to be passed to the shader.
-  /// @param render_context Pointer to the render context
-  void set_light_pos(const mathfu::vec3 &light_pos,
-                     RenderContext *render_context) {
-    render_context->set_light_pos(light_pos);
-  }
-  /// @overload void set_light_pos(const mathfu::vec3 &light_pos)
-  void set_light_pos(const mathfu::vec3 &light_pos) {
-    set_light_pos(light_pos, default_render_context_);
-  }
-
-  /// @brief Shader uniform: camera_pos
-  /// @return Returns the current camera position being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::vec3 &camera_pos(RenderContext *render_context) const {
-    return render_context->camera_pos();
-  }
-  /// @overload const mathfu::vec3 &camera_pos()
-  const mathfu::vec3 &camera_pos() const {
-    return camera_pos(default_render_context_);
-  }
-  /// @brief Sets the shader uniform camera position.
-  /// @param camera_pos The camera position to be passed to the shader.
-  /// @param render_context Pointer to the render context
-  void set_camera_pos(const mathfu::vec3 &camera_pos,
-                      RenderContext *render_context) {
-    render_context->set_camera_pos(camera_pos);
-  }
-  /// @overload void set_camera_pos(const mathfu::vec3 &camera_pos)
-  void set_camera_pos(const mathfu::vec3 &camera_pos) {
-    set_camera_pos(camera_pos, default_render_context_);
-  }
-
-  /// @brief Shader uniform: bone_transforms
-  /// @return Returns the current array of bone transforms being used.
-  /// @param render_context Pointer to the render context
-  const mathfu::AffineTransform *bone_transforms(
-      RenderContext *render_context) const {
-    return render_context->bone_transforms();
-  }
-  /// @overload const mathfu::AffineTransform *bone_transforms() const
-  const mathfu::AffineTransform *bone_transforms() const {
-    return bone_transforms(default_render_context_);
-  }
-  /// @brief The number of bones in the bone_transforms() array.
-  /// @return Returns the length of the bone_transforms() array.
-  /// @param render_context Pointer to the render context
-  int num_bones(RenderContext *render_context) const {
-    return render_context->num_bones();
-  }
-  /// @overload int num_bones() const
-  int num_bones() const { return num_bones(default_render_context_); }
-  /// @brief Sets the shader uniform bone transforms.
-  /// @param bone_transforms The bone transforms to be passed to the shader.
-  /// @param num_bones The length of the bone_transforms array provided.
-  /// @param render_context Pointer to the render context
-  void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
-                         int num_bones, RenderContext *render_context) {
-    render_context->SetBoneTransforms(bone_transforms, num_bones);
-  }
-  /// @overload void SetBoneTransforms(const mathfu::AffineTransform*,int)
-  void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
-                         int num_bones) {
-    SetBoneTransforms(bone_transforms, num_bones, default_render_context_);
-  }
 
   /// @brief Contains the last error that occurred, if there is one.
   ///
@@ -530,16 +211,6 @@ class Renderer {
     override_pixel_shader_ = ps;
   }
 
-  /// @brief Sets the texture to be used for the next draw call
-  ///
-  /// @param unit The texture unit to set the texture
-  /// @param texture Pointer to the texture object
-  /// @param render_context Pointer to the texture object
-  void SetTexture(unsigned unit, Texture *texture,
-                  RenderContext *render_context) {
-    texture->Set(unit, render_context);
-  }
-
   /// @brief Get the max number of uniforms components (i.e. individual floats,
   ///        so a mat4 needs 16 of them).
   ///
@@ -561,13 +232,19 @@ class Renderer {
   /// see: https://www.opengl.org/wiki/NPOT_Texture
   bool SupportsTextureNpot() const;
 
+  // Get current singleton instance.
+  static RendererBase *Get() {
+    assert(!the_base_weak_.expired());
+    return the_base_raw_;
+  }
+
  private:
+  friend class Renderer;
+
   ShaderHandle CompileShader(bool is_vertex_shader, ShaderHandle program,
                              const char *source);
   Shader *CompileAndLinkShaderHelper(const char *vs_source,
                                      const char *ps_source, Shader *shader);
-
-  RenderContext *default_render_context() { return default_render_context_; }
 
   // Initialize OpenGL parameters like uniform limits, supported texture formats
   // etc.
@@ -576,8 +253,6 @@ class Renderer {
   double time_;
 
   std::string last_error_;
-
-  RenderContext *default_render_context_;
 
   Environment environment_;
 
@@ -595,7 +270,283 @@ class Renderer {
   const FplBaseVersion *version_;
 
   // Singleton instance.
-  static Renderer *the_renderer_;
+  // Ownership is shared amongst the Renderer classes.
+  // Singleton is created when the first Renderer is created, and destroyed
+  // when the last Renderer is destroyed.
+  static std::weak_ptr<RendererBase> the_base_weak_;
+
+  // There is no way to get the raw pointer from the weak_ptr above, so store it
+  // unsafely here. This is necessary to support the Get() call.
+  static RendererBase* the_base_raw_;
+
+  // Ensure creation and deletion of singleton is atomic.
+  static fplutil::Mutex the_base_mutex_;
+};
+
+/// @class Renderer
+/// @brief Renderer is the main API class for rendering commands.
+///
+/// Graphics APIs that support multi-threading (e.g. Vulkan) can have multiple
+/// Renderer classes, one for each thread. Non-multi-threaded APIs (e.g. OpenGL)
+/// should avoid using two Renderer classes at the same time, though it's
+/// valid for more than one to exist.
+class Renderer {
+ public:
+  Renderer();
+  ~Renderer();
+
+  /// @brief Shader uniform: model_view_projection
+  /// @return Returns the current model view projection being used.
+  const mathfu::mat4 &model_view_projection() const {
+    return model_view_projection_;
+  }
+  /// @brief Sets the shader uniform model_view_projection
+  /// @param mvp The model view projection to be passed to the shader.
+  void set_model_view_projection(const mathfu::mat4 &mvp) {
+    model_view_projection_ = mvp;
+  }
+
+  /// @brief Shader uniform: model (object to world transform only)
+  /// @return Returns the current model transform being used.
+  const mathfu::mat4 &model() const { return model_; }
+  /// @brief Sets the shader uniform model transform.
+  /// @param model The model transform to be passed to the shader.
+  void set_model(const mathfu::mat4 &model) { model_ = model; }
+
+  /// @brief Shader uniform: color
+  /// @return Returns the current color being used.
+  const mathfu::vec4 &color() const { return color_; }
+  /// @brief Sets the shader uniform color.
+  /// @param color The color to be passed to the shader.
+  void set_color(const mathfu::vec4 &color) { color_ = color; }
+
+  /// @brief Shader uniform: light_pos
+  /// @return Returns the current light position being used.
+  const mathfu::vec3 &light_pos() const { return light_pos_; }
+  /// @brief Sets the shader uniform light position.
+  /// @param light_pos The light position to be passed to the shader.
+  void set_light_pos(const mathfu::vec3 &light_pos) { light_pos_ = light_pos; }
+
+  /// @brief Shader uniform: camera_pos
+  /// @return Returns the current camera position being used.
+  const mathfu::vec3 &camera_pos() const { return camera_pos_; }
+  /// @brief Sets the shader uniform camera position.
+  /// @param camera_pos The camera position to be passed to the shader.
+  void set_camera_pos(const mathfu::vec3 &camera_pos) {
+    camera_pos_ = camera_pos;
+  }
+
+  /// @brief Shader uniform: bone_transforms
+  /// @return Returns the current array of bone transforms being used.
+  const mathfu::AffineTransform *bone_transforms() const {
+    return bone_transforms_;
+  }
+  /// @brief The number of bones in the bone_transforms() array.
+  /// @return Returns the length of the bone_transforms() array.
+  int num_bones() const { return num_bones_; }
+  /// @brief Sets the shader uniform bone transforms.
+  /// @param bone_transforms The bone transforms to be passed to the shader.
+  /// @param num_bones The length of the bone_transforms array provided.
+  void SetBoneTransforms(const mathfu::AffineTransform *bone_transforms,
+                         int num_bones) {
+    bone_transforms_ = bone_transforms;
+    num_bones_ = num_bones;
+  }
+
+  /// @brief Clears the framebuffer.
+  ///
+  /// Call this after AdvanceFrame if desired.
+  ///
+  /// @param color The color to clear the buffer to.
+  void ClearFrameBuffer(const mathfu::vec4 &color);
+
+  /// @brief Clears the depthbuffer. Leaves the colorbuffer untouched.
+  /// @param render_context Pointer to the render context
+  void ClearDepthBuffer();
+
+  /// @brief Begin rendering commands.
+  /// This must be called before any rendering commands are done
+  void BeginRendering();
+
+  /// @brief End rendering commands.
+  /// This is called after all of the rendering commands are done
+  void EndRendering();
+
+  /// @brief Sets the blend mode used by the renderer.
+  ///
+  /// Set alpha test (cull pixels with alpha below amount) vs alpha blend
+  /// (blend with framebuffer pixel regardedless).
+  ///
+  /// @param blend_mode The type of blend mode, see materials.h for valid enum
+  ///                   values.
+  /// @param amount The value used with kBlendModeTest, defaults to 0.5f.
+  void SetBlendMode(BlendMode blend_mode, float amount);
+  /// @overload void SetBlendMode(BlendMode blend_mode)
+  void SetBlendMode(BlendMode blend_mode);
+
+  /// @brief Sets the culling mode. By default, no culling happens.
+  ///
+  /// @param mode The type of culling mode to use.
+  void SetCulling(CullingMode mode);
+
+  /// @brief Sets the viewport region.
+  ///
+  /// @param viewport The viewport region to set.
+  void SetViewport(const Viewport &viewport);
+
+  /// @brief Set to compare fragment against Z-buffer before writing, or not.
+  ///
+  /// @param depth_func The depth function to use.
+  void SetDepthFunction(DepthFunction depth_func);
+
+  /// @brief Turn on a scissor region. Arguments are in screen pixels.
+  ///
+  /// @param pos The lower left corner of the scissor box.
+  /// @param size The width and height of the scissor box.s
+  void ScissorOn(const mathfu::vec2i &ops, const mathfu::vec2i &size);
+  /// @brief Turn off the scissor region.
+  void ScissorOff();
+
+  /// @brief Sets the texture to be used for the next draw call
+  ///
+  /// @param unit The texture unit to set the texture
+  /// @param texture Pointer to the texture object
+  void SetTexture(unsigned unit, Texture *texture);
+
+  // Forwarded methods from the RendererBase class
+
+  /// @brief Initializes the renderer by initializing the Environment object.
+  bool Initialize(const mathfu::vec2i &window_size, const char *window_title) {
+    return base_->Initialize(window_size, window_title);
+  }
+
+  /// @brief Swaps frames. Call this once per frame inside your main loop.
+  void AdvanceFrame(bool minimized, double time) {
+    base_->AdvanceFrame(minimized, time);
+    SetDepthFunction(kDepthFunctionLess);
+  }
+
+  /// @brief Cleans up the resources initialized by the renderer.
+  void ShutDown() { base_->ShutDown(); }
+
+  /// @brief Sets the window size, for when window is not owned by the renderer.
+  void SetWindowSize(const mathfu::vec2i &window_size) {
+    base_->SetWindowSize(window_size);
+  }
+
+  /// @brief Create a shader object from two strings containing glsl code.
+  Shader *CompileAndLinkShader(const char *vs_source, const char *ps_source) {
+    return base_->CompileAndLinkShader(vs_source, ps_source);
+  }
+
+  /// @brief Like CompileAndLinkShader, but pass in an old shader to replace.
+  Shader *RecompileShader(const char *vs_source, const char *ps_source,
+                          Shader *shader) {
+    return base_->RecompileShader(vs_source, ps_source, shader);
+  }
+
+  /// @brief Checks for multithreading API.
+  bool AllowMultiThreading() {
+    return (base_->AllowMultiThreading());
+  }
+
+  /// @brief Set bone transforms in vertex shader uniforms.
+  void SetAnimation(const mathfu::AffineTransform *bone_transforms,
+                    int num_bones) {
+    base_->SetAnimation(bone_transforms, num_bones);
+  }
+
+  /// @brief Contains the last error that occurred, if there is one.
+  const std::string &last_error() const {
+    return base_->last_error();
+  }
+  void set_last_error(const std::string &last_error) {
+    base_->set_last_error(last_error);
+  }
+
+  /// @brief The device's current framebuffer size.
+  const mathfu::vec2i &window_size() const {
+    return base_->window_size();
+  }
+  /// @overload mathfu::vec2i &window_size()
+  mathfu::vec2i &window_size() { return base_->window_size(); }
+
+  /// @brief Sets the window size
+  void set_window_size(const mathfu::vec2i &ws) {
+    base_->set_window_size(ws);
+  }
+
+  /// @brief Get the size of the viewport.
+
+  mathfu::vec2i GetViewportSize() {
+    return base_->GetViewportSize();
+  }
+
+  Environment &environment() { return base_->environment(); }
+
+  /// @brief Time in seconds since program start.
+  double time() const { return base_->time(); }
+
+  /// @brief The supported OpenGL ES feature level.
+  FeatureLevel feature_level() const {
+    return base_->feature_level();
+  }
+
+  /// @brief The blend that will be used for all draw calls.
+  BlendMode force_blend_mode() const {
+    return base_->force_blend_mode();
+  }
+  /// @brief Set to override the blend mode used for all draw calls.
+  void set_force_blend_mode(BlendMode bm) {
+    base_->set_force_blend_mode(bm);
+  }
+
+  /// @brief Set this force any shader that gets loaded to use this pixel shader
+  void set_override_pixel_shader(const std::string &ps) {
+    base_->set_override_pixel_shader(ps);
+  }
+
+  /// @brief Get the max number of uniforms components
+  int max_vertex_uniform_components() {
+    return base_->max_vertex_uniform_components();
+  }
+
+  /// @brief Returns the version of the FPL Base Library.
+  const FplBaseVersion *GetFplBaseVersion() const {
+    return base_->GetFplBaseVersion();
+  }
+
+  /// @brief Returns if a texture format is supported by the hardware.
+  bool SupportsTextureFormat(TextureFormat texture_format) const {
+    return base_->SupportsTextureFormat(texture_format);
+  }
+
+  /// @brief Returns if a NPOT textures are supported by the hardware.
+  bool SupportsTextureNpot() const {
+    return base_->SupportsTextureNpot();
+  }
+
+  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
+
+  // other render state
+  // TODO: move this to private
+  Shader *shader_;
+  RenderState render_state_;
+
+ private:
+  // Shared pointer ensures RendererBase gets deleted once all Renderers are
+  // deleted. That is, ownership of RendererBase is shared amongst Renderers.
+  std::shared_ptr<fplbase::RendererBase> base_;
+
+  // The mvp. Use the Ortho() and Perspective() methods in mathfu::Matrix
+  // to conveniently change the camera.
+  mathfu::mat4 model_view_projection_;
+  mathfu::mat4 model_;
+  mathfu::vec4 color_;
+  mathfu::vec3 light_pos_;
+  mathfu::vec3 camera_pos_;
+  const mathfu::AffineTransform *bone_transforms_;
+  int num_bones_;
 };
 
 /// @}

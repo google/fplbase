@@ -205,7 +205,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
   }
 
-  if (!Renderer::Get()->SupportsTextureNpot()) {
+  if (!RendererBase::Get()->SupportsTextureNpot()) {
     // Npot textures are supported in ES 2.0 if you use GL_CLAMP_TO_EDGE and no
     // mipmaps. See Section 3.8.2 of ES2.0 spec:
     // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
@@ -443,8 +443,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         // Guard against extra mip levels in the ktx.
         if (cur_size.x() == 0 && cur_size.y() == 0) {
-          LogError("KTX file has too many mips: %dx%d, %d mips",
-                   tex_size.x(), tex_size.y(), header.mip_levels);
+          LogError("KTX file has too many mips: %dx%d, %d mips", tex_size.x(),
+                   tex_size.y(), header.mip_levels);
           break;
         }
         auto data_size = *(reinterpret_cast<const int32_t *>(data));
@@ -453,7 +453,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
         // to 0, but maintain a min size of 1.  This is needed to get non-square
         // mip chains to work using ETC2 (eg a 256x512 needs 10 mips defined).
         gl_tex_image(data, vec2i::Max(mathfu::kOnes2i, cur_size), i,
-            data_size / tex_num_faces, true);
+                     data_size / tex_num_faces, true);
         cur_size /= 2;
         data += data_size;
         // If the file has mips but the caller doesn't want them, stop here.
@@ -482,6 +482,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
     GL_CALL(glGenerateMipmap(tex_type));
   } else if (have_mips && IsCompressed(texture_format)) {
+#ifndef __ANDROID__
     // At least on Linux, there appears to be a bug with uploading pre-made
     // compressed mipmaps that makes the texture not show up if
     // glGenerateMipmap isn't called, even though glGenerateMipmap can't
@@ -490,7 +491,6 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // TODO(wvo): is this a driver bug, or what is the root cause of this?
     // On android/adreno, this goes generate a GL_INVALID_OPERATION and isn't
     // needed.
-#ifndef __ANDROID__
     GL_CALL(glGenerateMipmap(tex_type));
 #endif
   }
@@ -717,7 +717,7 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
 
   // Try to load ASTC, but default to WebP if not available or not supported.
   if (ext == "astc") {
-    if (Renderer::Get()->SupportsTextureFormat(kFormatASTC) &&
+    if (RendererBase::Get()->SupportsTextureFormat(kFormatASTC) &&
         LoadFile(filename, &file)) {
       auto buf = UnpackASTC(file.c_str(), file.length(), flags, dimensions,
                             texture_format);
@@ -730,7 +730,7 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
 
   // Try to load PKM, but default to WebP if not available or not supported.
   if (ext == "pkm") {
-    if (Renderer::Get()->SupportsTextureFormat(kFormatPKM) &&
+    if (RendererBase::Get()->SupportsTextureFormat(kFormatPKM) &&
         LoadFile(filename, &file)) {
       auto buf = UnpackPKM(file.c_str(), file.length(), flags, dimensions,
                            texture_format);
@@ -743,7 +743,7 @@ uint8_t *Texture::LoadAndUnpackTexture(const char *filename, const vec2 &scale,
 
   // Try to load KTX, but default to WebP if not available or not supported.
   if (ext == "ktx") {
-    if (Renderer::Get()->SupportsTextureFormat(kFormatKTX) &&
+    if (RendererBase::Get()->SupportsTextureFormat(kFormatKTX) &&
         LoadFile(filename, &file)) {
       auto buf = UnpackKTX(file.c_str(), file.length(), flags, dimensions,
                            texture_format);
@@ -804,7 +804,7 @@ TextureAtlas *TextureAtlas::LoadTextureAtlas(const char *filename,
     }
     return atlas;
   }
-  Renderer::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 

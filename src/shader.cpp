@@ -169,7 +169,7 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
     assert(shaderdef::VerifyShaderBuffer(verifier));
     auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
     auto shader =
-        Renderer::Get()->CompileAndLinkShader(
+        RendererBase::Get()->CompileAndLinkShader(
           shaderdef->vertex_shader()->c_str(),
           shaderdef->fragment_shader()->c_str());
     if (!shader) {
@@ -186,12 +186,12 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
       LogError(kError, "PS:  -----------------------------------");
       LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
       LogError(kError, "----------------------------------------");
-      LogError(kError, "%s", Renderer::Get()->last_error().c_str());
+      LogError(kError, "%s", RendererBase::Get()->last_error().c_str());
     }
     return shader;
   }
   LogError(kError, "Can\'t load shader file: %s", filename);
-  Renderer::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
   return nullptr;
 }
 

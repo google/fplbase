@@ -96,7 +96,8 @@ Material *Material::LoadFromMaterialDef(const char *filename,
     }
     return mat;
   }
-  Renderer::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ")
+                                      + filename);
   return nullptr;
 }
 

@@ -28,28 +28,66 @@ using mathfu::vec4;
 
 namespace fplbase {
 
-Renderer *Renderer::the_renderer_ = nullptr;
+// static member variables
+std::weak_ptr<RendererBase> RendererBase::the_base_weak_;
+RendererBase* RendererBase::the_base_raw_;
+fplutil::Mutex RendererBase::the_base_mutex_;
 
-Renderer::Renderer()
+RendererBase::RendererBase()
     : time_(0),
-      default_render_context_(nullptr),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
       force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
       version_(&Version()) {
-  assert(!the_renderer_);
-  the_renderer_ = this;
+  assert(the_base_raw_ == nullptr);
 }
 
-Renderer::~Renderer() {
-  the_renderer_ = nullptr;
-  delete default_render_context_;
+RendererBase::~RendererBase() {
+  assert(the_base_raw_ != nullptr);
   ShutDown();
 }
 
-bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
+Renderer::Renderer()
+    : model_view_projection_(mathfu::mat4::Identity()),
+      model_(mathfu::mat4::Identity()),
+      color_(mathfu::kOnes4f),
+      light_pos_(mathfu::kZeros3f),
+      camera_pos_(mathfu::kZeros3f),
+      bone_transforms_(nullptr),
+      num_bones_(0) {
+  // This is the only place that the RendererBase singleton can be created,
+  // so ensure it's guarded by the mutex.
+  fplutil::MutexLock lock(RendererBase::the_base_mutex_);
+
+  if (RendererBase::the_base_weak_.expired()) {
+    // Create a new Renderer if one doesn't exist.
+    base_ = std::make_shared<RendererBase>();
+    RendererBase::the_base_weak_ = base_;
+    RendererBase::the_base_raw_ = base_.get();
+  } else {
+    // Make this Renderer one of the shared owners of the singleton.
+    base_ = RendererBase::the_base_weak_.lock();
+  }
+}
+
+Renderer::~Renderer() {
+  // This is the only place that the RenderBase singleton can be destroyed,
+  // so ensure it's guarded by the mutex.
+  fplutil::MutexLock lock(RendererBase::the_base_mutex_);
+  assert(!RendererBase::the_base_weak_.expired() &&
+         RendererBase::the_base_raw_ != nullptr);
+  base_.reset();
+
+  // Manually keep the_base_raw_ in sync with the_base_weak_.
+  if (RendererBase::the_base_weak_.expired()) {
+    RendererBase::the_base_raw_ = nullptr;
+  }
+}
+
+bool RendererBase::Initialize(const vec2i &window_size,
+                              const char *window_title) {
   if (!environment_.Initialize(window_size, window_title)) {
     last_error_ = environment_.last_error();
     return false;
@@ -58,29 +96,28 @@ bool Renderer::Initialize(const vec2i &window_size, const char *window_title) {
   return InitializeRenderingState();
 }
 
-void Renderer::AdvanceFrame(bool minimized, double time) {
+void RendererBase::AdvanceFrame(bool minimized, double time) {
   time_ = time;
 
   environment_.AdvanceFrame(minimized);
 
-  Viewport viewport(mathfu::kZeros2i, environment_.GetViewportSize());
-  SetViewport(viewport);
-  SetDepthFunction(kDepthFunctionLess);
+  auto viewport_size = environment_.GetViewportSize();
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
 }
 
-void Renderer::BeginRendering(RenderContext *) {}
+void Renderer::BeginRendering() {}
 
-void Renderer::EndRendering(RenderContext *) {}
+void Renderer::EndRendering() {}
 
-bool Renderer::SupportsTextureFormat(TextureFormat texture_format) const {
+bool RendererBase::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;
 }
 
-bool Renderer::SupportsTextureNpot() const { return supports_texture_npot_; }
+bool RendererBase::SupportsTextureNpot() const {
+  return supports_texture_npot_;
+}
 
-bool Renderer::InitializeRenderingState() {
-  default_render_context_ = new RenderContext();
-
+bool RendererBase::InitializeRenderingState() {
   auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
 
   auto HasGLExt = [&exts](const char *ext) -> bool {
@@ -134,17 +171,15 @@ bool Renderer::InitializeRenderingState() {
   return true;
 }
 
-void Renderer::ClearFrameBuffer(const vec4 &color, RenderContext *) {
+void Renderer::ClearFrameBuffer(const vec4 &color) {
   GL_CALL(glClearColor(color.x(), color.y(), color.z(), color.w()));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
-void Renderer::ClearDepthBuffer(RenderContext *) {
-  GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
-}
+void Renderer::ClearDepthBuffer() { GL_CALL(glClear(GL_DEPTH_BUFFER_BIT)); }
 
-GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
-                               const GLchar *csource) {
+GLuint RendererBase::CompileShader(bool is_vertex_shader, GLuint program,
+                                   const GLchar *csource) {
   assert(max_vertex_uniform_components_);
 
   const std::string max_components =
@@ -178,9 +213,9 @@ GLuint Renderer::CompileShader(bool is_vertex_shader, GLuint program,
   }
 }
 
-Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
-                                             const char *ps_source,
-                                             Shader *shader) {
+Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
+                                                 const char *ps_source,
+                                                 Shader *shader) {
   auto program = glCreateProgram();
   auto vs = CompileShader(true, program, vs_source);
   if (vs) {
@@ -229,25 +264,22 @@ Shader *Renderer::CompileAndLinkShaderHelper(const char *vs_source,
   return nullptr;
 }
 
-Shader *Renderer::CompileAndLinkShader(const char *vs_source,
-                                       const char *ps_source) {
+Shader *RendererBase::CompileAndLinkShader(const char *vs_source,
+                                           const char *ps_source) {
   return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
 }
 
-Shader *Renderer::RecompileShader(const char *vs_source, const char *ps_source,
-                                  Shader *shader) {
+Shader *RendererBase::RecompileShader(const char *vs_source,
+                                      const char *ps_source, Shader *shader) {
   return CompileAndLinkShaderHelper(vs_source, ps_source, shader);
 }
 
-void Renderer::SetDepthFunction(DepthFunction depth_func,
-                                RenderContext *render_context) {
-  RenderState &render_state = render_context->render_state_;
-
-  if (depth_func == render_state.depth_function) {
+void Renderer::SetDepthFunction(DepthFunction depth_func) {
+  if (depth_func == render_state_.depth_function) {
     return;
   }
 
-  if (render_state.depth_function == kDepthFunctionDisabled) {
+  if (render_state_.depth_function == kDepthFunctionDisabled) {
     // The depth test is currently disabled, enable it before setting the
     // appropriate depth function.
     GL_CALL(glEnable(GL_DEPTH_TEST));
@@ -295,25 +327,22 @@ void Renderer::SetDepthFunction(DepthFunction depth_func,
       break;
   }
 
-  render_state.depth_function = depth_func;
+  render_state_.depth_function = depth_func;
 }
 
-void Renderer::SetBlendMode(BlendMode blend_mode,
-                            RenderContext *render_context) {
-  SetBlendMode(blend_mode, 0.5f, render_context);
+void Renderer::SetBlendMode(BlendMode blend_mode) {
+  SetBlendMode(blend_mode, 0.5f);
 }
 
-void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
-                            RenderContext *render_context) {
-  RenderState &render_state = render_context->render_state_;
-
+void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   (void)amount;
-  if (blend_mode == render_state.blend_mode) return;
+  if (blend_mode == render_state_.blend_mode) return;
 
-  if (force_blend_mode_ != kBlendModeCount) blend_mode = force_blend_mode_;
+  if (base_->force_blend_mode() != kBlendModeCount)
+    blend_mode = base_->force_blend_mode();
 
   // Disable current blend mode.
-  switch (render_state.blend_mode) {
+  switch (render_state_.blend_mode) {
     case kBlendModeOff:
       break;
     case kBlendModeTest:
@@ -369,13 +398,11 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount,
   }
 
   // Remember new mode as the current mode.
-  render_state.blend_mode = blend_mode;
+  render_state_.blend_mode = blend_mode;
 }
 
-void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
-  RenderState &render_state = render_context->render_state_;
-
-  if (mode == render_state.cull_mode) {
+void Renderer::SetCulling(CullingMode mode) {
+  if (mode == render_state_.cull_mode) {
     return;
   }
 
@@ -398,26 +425,26 @@ void Renderer::SetCulling(CullingMode mode, RenderContext *render_context) {
         assert(false);
     }
   }
-  render_state.cull_mode = mode;
+  render_state_.cull_mode = mode;
 }
 
-void Renderer::SetViewport(const Viewport &viewport,
-                           RenderContext *render_context) {
-  if (viewport == render_context->render_state_.viewport) {
+void Renderer::SetViewport(const Viewport &viewport) {
+  if (viewport == render_state_.viewport) {
     return;
   }
 
   GL_CALL(glViewport(viewport.pos.x(), viewport.pos.y(), viewport.size.x(),
                      viewport.size.y()));
-  render_context->render_state_.viewport = viewport;
+  render_state_.viewport = viewport;
 }
 
-void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {
+void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   glEnable(GL_SCISSOR_TEST);
-  Viewport viewport(mathfu::kZeros2i, environment_.GetViewportSize());
-  SetViewport(viewport);
+  auto viewport_size = base_->GetViewportSize();
+  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
 
-  auto scaling_ratio = vec2(viewport.size) / vec2(environment_.window_size());
+  auto scaling_ratio =
+      vec2(viewport_size) / vec2(base_->window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
   glScissor(static_cast<GLint>(scaled_pos.x()),
@@ -426,7 +453,7 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size, RenderContext *) {
             static_cast<GLsizei>(scaled_size.y()));
 }
 
-void Renderer::ScissorOff(RenderContext *) { glDisable(GL_SCISSOR_TEST); }
+void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
 
 }  // namespace fplbase
 

@@ -176,7 +176,7 @@ class Shader : public AsyncAsset {
   static Shader *LoadFromShaderDef(const char *filename);
 
  private:
-  friend class Renderer;
+  friend class RendererBase;
 
   // Holds the source code of vertex shader and fragment shader.
   struct ShaderSourcePair {
