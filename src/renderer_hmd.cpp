@@ -93,7 +93,10 @@ void HeadMountedDisplayRenderStart(
     const HeadMountedDisplayInput& head_mounted_display_input,
     Renderer* renderer, const mathfu::vec4& clear_color, bool use_undistortion,
     HeadMountedDisplayViewSettings* view_settings) {
-  if (use_undistortion) BeginUndistortFramebuffer();
+  if (use_undistortion) {
+    BeginUndistortFramebuffer();
+    renderer->SetRenderState(RenderState());
+  }
   renderer->ClearFrameBuffer(clear_color);
   renderer->set_color(mathfu::kOnes4f);
   renderer->SetDepthFunction(fplbase::kDepthFunctionLess);
@@ -116,9 +119,10 @@ void HeadMountedDisplayRenderStart(
 void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
   // Reset the screen, and finish
   Viewport viewport(mathfu::kZeros2i, renderer->GetViewportSize());
-  SetViewport(viewport);
+  renderer->SetViewport(viewport);
   if (use_undistortion) {
     FinishUndistortFramebuffer();
+    renderer->SetRenderState(RenderState());
     renderer->SetBlendMode(kBlendModeOff);
   }
 }

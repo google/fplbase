@@ -455,6 +455,13 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
 
+void Renderer::SetRenderState(const RenderState &state) {
+  SetBlendMode(state.blend_mode);
+  SetCulling(state.cull_mode);
+  SetDepthFunction(state.depth_function);
+  SetViewport(state.viewport);
+}
+
 }  // namespace fplbase
 
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION

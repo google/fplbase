@@ -526,6 +526,11 @@ class Renderer {
     return base_->SupportsTextureNpot();
   }
 
+  /// @brief Sets the render state to the given state.
+  ///
+  /// @param state The new render state to use.
+  void SetRenderState(const RenderState &state);
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
   // other render state
