@@ -192,21 +192,18 @@ static inline mat4 Mat4FromFbx(const FbxAMatrix& m) {
 }
 
 static inline Vec4 FlatBufferVec4(const vec4& v) {
-  return Vec4(v.x(), v.y(), v.z(), v.w());
+  return Vec4(v.x, v.y, v.z, v.w);
 }
 
-static inline Vec3 FlatBufferVec3(const vec3& v) {
-  return Vec3(v.x(), v.y(), v.z());
-}
+static inline Vec3 FlatBufferVec3(const vec3& v) { return Vec3(v.x, v.y, v.z); }
 
-static inline Vec2 FlatBufferVec2(const vec2& v) { return Vec2(v.x(), v.y()); }
+static inline Vec2 FlatBufferVec2(const vec2& v) { return Vec2(v.x, v.y); }
 
 static inline Vec4ub FlatBufferVec4ub(const vec4& v) {
   const vec4 scaled =
       static_cast<float>(std::numeric_limits<uint8_t>::max()) * v;
-  return Vec4ub(
-      static_cast<uint8_t>(scaled.x()), static_cast<uint8_t>(scaled.y()),
-      static_cast<uint8_t>(scaled.z()), static_cast<uint8_t>(scaled.w()));
+  return Vec4ub(static_cast<uint8_t>(scaled.x), static_cast<uint8_t>(scaled.y),
+                static_cast<uint8_t>(scaled.z), static_cast<uint8_t>(scaled.w));
 }
 
 static inline Mat3x4 FlatBufferMat3x4(const mat4& matrix) {
@@ -358,28 +355,27 @@ class FlatMesh {
         const VertexAttributeBitmask attributes =
             vertex_attributes_ & mesh_vertex_attributes_;
         if (attributes & kVertexAttributeBit_Position) {
-          log_.Log(kLogVerbose, ", vertex (%.3f, %.3f, %.3f)", vertex.x(),
-                   vertex.y(), vertex.z());
+          log_.Log(kLogVerbose, ", vertex (%.3f, %.3f, %.3f)", vertex.x,
+                   vertex.y, vertex.z);
         }
         if (attributes & kVertexAttributeBit_Normal) {
-          log_.Log(kLogVerbose, ", normal (%.3f, %.3f, %.3f)", normal.x(),
-                   normal.y(), normal.z());
+          log_.Log(kLogVerbose, ", normal (%.3f, %.3f, %.3f)", normal.x,
+                   normal.y, normal.z);
         }
         if (attributes & kVertexAttributeBit_Tangent) {
           log_.Log(kLogVerbose,
                    ", tangent (%.3f, %.3f, %.3f) binormal-handedness %.0f",
-                   tangent.x(), tangent.y(), tangent.z(), tangent.w());
+                   tangent.x, tangent.y, tangent.z, tangent.w);
         }
         if (attributes & kVertexAttributeBit_Uv) {
-          log_.Log(kLogVerbose, ", uv (%.3f, %.3f)", uv.x(), uv.y());
+          log_.Log(kLogVerbose, ", uv (%.3f, %.3f)", uv.x, uv.y);
         }
         if (attributes & kVertexAttributeBit_UvAlt) {
-          log_.Log(kLogVerbose, ", uv-alt (%.3f, %.3f)", uv_alt.x(),
-                   uv_alt.y());
+          log_.Log(kLogVerbose, ", uv-alt (%.3f, %.3f)", uv_alt.x, uv_alt.y);
         }
         if (attributes & kVertexAttributeBit_Color) {
-          log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x(),
-                   color.y(), color.z(), color.w());
+          log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x,
+                   color.y, color.z, color.w);
         }
       }
       log_.Log(kLogVerbose, "\n");

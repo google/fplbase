@@ -362,7 +362,7 @@ class Texture : public AsyncAsset {
   /// @param[in] size A `mathfu::vec2i` containing the original Texture
   /// `x` and `y` sizes.
   void SetOriginalSizeIfNotYetSet(const mathfu::vec2i &size) {
-    if (original_size_.x() == 0 && original_size_.y() == 0) {
+    if (original_size_.x == 0 && original_size_.y == 0) {
       original_size_ = size;
     }
   }

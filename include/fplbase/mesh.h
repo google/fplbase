@@ -293,9 +293,9 @@ class Mesh : public AsyncAsset {
       // Similarly create uv space vectors:
       auto uv1 = mathfu::vec2(v1.tc) - mathfu::vec2(v0.tc);
       auto uv2 = mathfu::vec2(v2.tc) - mathfu::vec2(v0.tc);
-      float m = 1 / (uv1.x() * uv2.y() - uv2.x() * uv1.y());
-      auto tangent = mathfu::vec4((uv2.y() * q1 - uv1.y() * q2) * m, 0);
-      auto binorm = (uv1.x() * q2 - uv2.x() * q1) * m;
+      float m = 1 / (uv1.x * uv2.y - uv2.x * uv1.y);
+      auto tangent = mathfu::vec4((uv2.y * q1 - uv1.y * q2) * m, 0);
+      auto binorm = (uv1.x * q2 - uv2.x * q1) * m;
       v0.tangent = mathfu::vec4(v0.tangent) + tangent;
       v1.tangent = mathfu::vec4(v1.tangent) + tangent;
       v2.tangent = mathfu::vec4(v2.tangent) + tangent;

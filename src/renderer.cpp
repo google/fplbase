@@ -102,7 +102,7 @@ void RendererBase::AdvanceFrame(bool minimized, double time) {
   environment_.AdvanceFrame(minimized);
 
   auto viewport_size = environment_.GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
 }
 
 void Renderer::BeginRendering() {}
@@ -172,7 +172,7 @@ bool RendererBase::InitializeRenderingState() {
 }
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {
-  GL_CALL(glClearColor(color.x(), color.y(), color.z(), color.w()));
+  GL_CALL(glClearColor(color.x, color.y, color.z, color.w));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
@@ -433,24 +433,23 @@ void Renderer::SetViewport(const Viewport &viewport) {
     return;
   }
 
-  GL_CALL(glViewport(viewport.pos.x(), viewport.pos.y(), viewport.size.x(),
-                     viewport.size.y()));
+  GL_CALL(glViewport(viewport.pos.x, viewport.pos.y, viewport.size.x,
+                     viewport.size.y));
   render_state_.viewport = viewport;
 }
 
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   glEnable(GL_SCISSOR_TEST);
   auto viewport_size = base_->GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
 
   auto scaling_ratio =
       vec2(viewport_size) / vec2(base_->window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
-  glScissor(static_cast<GLint>(scaled_pos.x()),
-            static_cast<GLint>(scaled_pos.y()),
-            static_cast<GLsizei>(scaled_size.x()),
-            static_cast<GLsizei>(scaled_size.y()));
+  glScissor(static_cast<GLint>(scaled_pos.x), static_cast<GLint>(scaled_pos.y),
+            static_cast<GLsizei>(scaled_size.x),
+            static_cast<GLsizei>(scaled_size.y));
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }

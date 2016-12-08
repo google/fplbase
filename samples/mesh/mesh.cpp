@@ -70,8 +70,8 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     auto time = static_cast<float>(input.Time());
     auto roty = mathfu::mat3::RotationY(std::sin(time) * 3);
     auto zoom = mathfu::kOnes3f * 0.15f;
-    auto aspect = static_cast<float>(renderer.window_size().y()) /
-                  renderer.window_size().x();
+    auto aspect =
+        static_cast<float>(renderer.window_size().y) / renderer.window_size().x;
     auto mvp = mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
                mathfu::mat4::FromRotationMatrix(roty) *
                mathfu::mat4::FromScaleVector(zoom);

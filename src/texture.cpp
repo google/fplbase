@@ -163,8 +163,8 @@ void Texture::Delete() {
 }
 
 uint16_t *Texture::Convert8888To5551(const uint8_t *buffer, const vec2i &size) {
-  auto buffer16 = new uint16_t[size.x() * size.y()];
-  for (int i = 0; i < size.x() * size.y(); i++) {
+  auto buffer16 = new uint16_t[size.x * size.y];
+  for (int i = 0; i < size.x * size.y; i++) {
     auto c = &buffer[i * 4];
     buffer16[i] = ((c[0] >> 3) << 11) | ((c[1] >> 3) << 6) |
                   ((c[2] >> 3) << 1) | ((c[3] >> 7) << 0);
@@ -173,8 +173,8 @@ uint16_t *Texture::Convert8888To5551(const uint8_t *buffer, const vec2i &size) {
 }
 
 uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
-  auto buffer16 = new uint16_t[size.x() * size.y()];
-  for (int i = 0; i < size.x() * size.y(); i++) {
+  auto buffer16 = new uint16_t[size.x * size.y];
+  for (int i = 0; i < size.x * size.y; i++) {
     auto c = &buffer[i * 3];
     buffer16[i] = ((c[0] >> 3) << 11) | ((c[1] >> 2) << 5) | ((c[2] >> 3) << 0);
   }
@@ -199,9 +199,9 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     tex_imagetype = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
     tex_num_faces = 6;
     tex_size = size / vec2i(1, tex_num_faces);
-    if (tex_size.x() != tex_size.y()) {
+    if (tex_size.x != tex_size.y) {
       LogError(kError, "CreateTexture: cubemap not in 1x6 format: (%d,%d)",
-               size.x(), size.y());
+               size.x, size.y);
     }
   }
 
@@ -211,10 +211,10 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // https://www.khronos.org/registry/gles/specs/2.0/es_full_spec_2.0.25.pdf
     if (flags & kTextureFlagsUseMipMaps ||
         !(flags & kTextureFlagsClampToEdge)) {
-      int area = tex_size.x() * tex_size.y();
+      int area = tex_size.x * tex_size.y;
       if (area & (area - 1)) {
         LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
-                 tex_size.x(), tex_size.y());
+                 tex_size.x, tex_size.y);
         return 0;
       }
     }
@@ -273,17 +273,17 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     for (int i = 0; i < tex_num_faces; i++) {
       if (compressed) {
         GL_CALL(glCompressedTexImage2D(tex_imagetype + i, mip_level, format,
-                                       mip_size.x(), mip_size.y(), 0, buf_size,
+                                       mip_size.x, mip_size.y, 0, buf_size,
                                        buf));
       } else {
-        GL_CALL(glTexImage2D(tex_imagetype + i, mip_level, format, mip_size.x(),
-                             mip_size.y(), 0, format, type, buf));
+        GL_CALL(glTexImage2D(tex_imagetype + i, mip_level, format, mip_size.x,
+                             mip_size.y, 0, format, type, buf));
       }
       if (buf) buf += buf_size;
     }
   };
 
-  int num_pixels = tex_size.x() * tex_size.y();
+  int num_pixels = tex_size.x * tex_size.y;
 
   switch (desired) {
     case kFormat5551: {
@@ -358,8 +358,8 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     case kFormatASTC: {
       assert(texture_format == kFormatASTC);
       auto &header = *reinterpret_cast<const ASTCHeader *>(buffer);
-      auto xblocks = (size.x() + header.blockdim_x - 1) / header.blockdim_x;
-      auto yblocks = (size.y() + header.blockdim_y - 1) / header.blockdim_y;
+      auto xblocks = (size.x + header.blockdim_x - 1) / header.blockdim_x;
+      auto yblocks = (size.y + header.blockdim_y - 1) / header.blockdim_y;
       auto zblocks = (1 + header.blockdim_z - 1) / header.blockdim_z;
       auto data_size = xblocks * yblocks * zblocks << 4;
       // Convert the block dimensions into the correct GL constant.
@@ -442,9 +442,9 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       auto cur_size = tex_size;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         // Guard against extra mip levels in the ktx.
-        if (cur_size.x() == 0 && cur_size.y() == 0) {
-          LogError("KTX file has too many mips: %dx%d, %d mips", tex_size.x(),
-                   tex_size.y(), header.mip_levels);
+        if (cur_size.x == 0 && cur_size.y == 0) {
+          LogError("KTX file has too many mips: %dx%d, %d mips", tex_size.x,
+                   tex_size.y, header.mip_levels);
           break;
         }
         auto data_size = *(reinterpret_cast<const int32_t *>(data));
@@ -471,8 +471,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // render into later), and wants mipmapping, and is on a phone requiring
     // this workaround, the client will need to do this preallocation
     // workaround themselves.
-    auto min_dimension =
-        static_cast<float>(std::min(tex_size.x(), tex_size.y()));
+    auto min_dimension = static_cast<float>(std::min(tex_size.x, tex_size.y));
     auto levels = ceil(log(min_dimension) / log(2.0f));
     auto mip_size = tex_size / 2;
     for (auto i = 1; i < levels; ++i) {
@@ -554,12 +553,12 @@ uint8_t *Texture::UnpackWebP(const void *webp_buf, size_t size,
   if (status != VP8_STATUS_OK) return nullptr;
 
   // Apply scaling.
-  if (scale.x() != 1.0f || scale.y() != 1.0f) {
+  if (scale.x != 1.0f || scale.y != 1.0f) {
     config.options.use_scaling = true;
     config.options.scaled_width =
-        static_cast<int>(config.input.width * scale.x());
+        static_cast<int>(config.input.width * scale.x);
     config.options.scaled_height =
-        static_cast<int>(config.input.height * scale.y());
+        static_cast<int>(config.input.height * scale.y);
   }
 
   if (config.input.has_alpha) {
@@ -675,10 +674,10 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
                                 static_cast<int>(size), &width, &height,
                                 &channels, 0);
 
-  if (image && (scale.x() != 1.0f || scale.y() != 1.0f)) {
+  if (image && (scale.x != 1.0f || scale.y != 1.0f)) {
     // Scale the image.
-    int32_t new_width = static_cast<int32_t>(width * scale.x());
-    int32_t new_height = static_cast<int32_t>(height * scale.y());
+    int32_t new_width = static_cast<int32_t>(width * scale.x);
+    int32_t new_height = static_cast<int32_t>(height * scale.y);
     uint8_t *new_image =
         static_cast<uint8_t *>(malloc(new_width * new_height * channels));
     stbir_resize_uint8(image, width, height, 0, new_image, new_width,
@@ -800,7 +799,7 @@ TextureAtlas *TextureAtlas::LoadTextureAtlas(const char *filename,
       vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
       vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
       atlas->subtexture_bounds().push_back(
-          vec4(location.x(), location.y(), size.x(), size.y()));
+          vec4(location.x, location.y, size.x, size.y));
     }
     return atlas;
   }

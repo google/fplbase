@@ -48,8 +48,8 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
   // Give an empty image to OpenGL.  (It will allocate memory, but not bother
   // to populate it.  Which is fine, since we're going to render into it.)
-  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x(),
-                       dimensions.y(), 0, GL_RGBA, format, nullptr));
+  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0,
+                       GL_RGBA, format, nullptr));
 
   // Define texture properties:
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -69,7 +69,7 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
     // Bind renderbuffer and set it as the depth buffer:
     GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id_));
     GL_CALL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
-                                  dimensions_.x(), dimensions_.y()));
+                                  dimensions_.x, dimensions_.y));
 
     // Attach renderbuffer as our depth attachment.
     GL_CALL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
@@ -107,7 +107,7 @@ void RenderTarget::SetAsRenderTarget() const {
   // Calling SetAsRenderTarget on uninitialized rendertargets is bad.
   assert(initialized_);
   GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id_));
-  GL_CALL(glViewport(0, 0, dimensions_.x(), dimensions_.y()));
+  GL_CALL(glViewport(0, 0, dimensions_.x, dimensions_.y));
 }
 
 void RenderTarget::BindAsTexture(int texture_number) const {

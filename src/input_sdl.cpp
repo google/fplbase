@@ -367,10 +367,10 @@ void InputSystem::StopTextInput() { SDL_StopTextInput(); }
 void InputSystem::SetTextInputRect(const mathfu::vec4 &input_rect) {
   SDL_Rect rect;
   mathfu::vec4i r(input_rect);
-  rect.x = r.x();
-  rect.y = r.y();
-  rect.w = r.z();
-  rect.h = r.w();
+  rect.x = r.x;
+  rect.y = r.y;
+  rect.w = r.z;
+  rect.h = r.w;
   SDL_SetTextInputRect(&rect);
 }
 

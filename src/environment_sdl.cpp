@@ -66,13 +66,14 @@ bool Environment::Initialize(const vec2i &window_size,
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
 
   // Create the window:
-  auto window = SDL_CreateWindow(
-      window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-      window_size.x(), window_size.y(), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
+  auto window =
+      SDL_CreateWindow(window_title, SDL_WINDOWPOS_CENTERED,
+                       SDL_WINDOWPOS_CENTERED, window_size.x, window_size.y,
+                       SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
 #ifdef PLATFORM_MOBILE
-                                            SDL_WINDOW_BORDERLESS);
+                           SDL_WINDOW_BORDERLESS);
 #else
-                                            SDL_WINDOW_RESIZABLE);
+                           SDL_WINDOW_RESIZABLE);
 #endif
   if (!window) {
     last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
@@ -81,7 +82,7 @@ bool Environment::Initialize(const vec2i &window_size,
 
   // Get the size we actually got, which typically is native res for
   // any fullscreen display:
-  SDL_GetWindowSize(window, &window_size_.x(), &window_size_.y());
+  SDL_GetWindowSize(window, &window_size_.x, &window_size_.y);
 
   // Create the OpenGL context:
   // Try to get OpenGL ES 3 on mobile.
@@ -171,14 +172,14 @@ void Environment::AdvanceFrame(bool minimized) {
     SDL_GL_SwapWindow(handles->window_);
   }
   // Get window size again, just in case it has changed.
-  SDL_GetWindowSize(handles->window_, &window_size_.x(), &window_size_.y());
+  SDL_GetWindowSize(handles->window_, &window_size_.x, &window_size_.y);
 }
 
 vec2i Environment::GetViewportSize() const {
 #if defined(__ANDROID__)
   // Check HW scaler setting and change a viewport size if they are set.
   vec2i scaled_size = fplbase::AndroidGetScalerResolution();
-  if (scaled_size.x() && scaled_size.y()) return scaled_size;
+  if (scaled_size.x && scaled_size.y) return scaled_size;
 #endif
   return window_size();
 }
