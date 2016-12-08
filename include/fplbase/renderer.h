@@ -531,12 +531,16 @@ class Renderer {
   /// @param state The new render state to use.
   void SetRenderState(const RenderState &state);
 
-  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
+  /// @brief Returns the current render state.
+  const RenderState &GetRenderState() const { return render_state_; }
 
-  // other render state
-  // TODO: move this to private
-  Shader *shader_;
-  RenderState render_state_;
+  /// @brief Returns the active shader, or nullptr if no active shader.
+  const Shader *GetActiveShader() const { return shader_; }
+
+  /// @brief Returns the active shader, or nullptr if no active shader.
+  Shader *GetActiveShader() { return shader_; }
+
+  MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
   // Shared pointer ensures RendererBase gets deleted once all Renderers are
@@ -552,6 +556,9 @@ class Renderer {
   mathfu::vec3 camera_pos_;
   const mathfu::AffineTransform *bone_transforms_;
   int num_bones_;
+
+  Shader *shader_;
+  RenderState render_state_;
 };
 
 /// @}
