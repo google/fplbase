@@ -25,7 +25,7 @@
 // - fplbase::Mesh for rendering simple geometry.
 // - fplbase::InputSystem to query for exit events and elapsed time.
 
-extern "C" int FPL_main(int /*argc*/, char */*argv*/[]) {
+extern "C" int FPL_main(int /*argc*/, char * /*argv*/[]) {
   fplbase::Renderer renderer;
   fplbase::InputSystem input;
 

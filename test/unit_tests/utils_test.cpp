@@ -119,9 +119,9 @@ TEST_F(UtilsTests, LoadAffine) {
 }
 
 TEST_F(UtilsTests, LoadAxis) {
-  EXPECT_EQ(fplbase::LoadAxis(fplbase::Axis_X), mathfu::kAxisX3f);
-  EXPECT_EQ(fplbase::LoadAxis(fplbase::Axis_Y), mathfu::kAxisY3f);
-  EXPECT_EQ(fplbase::LoadAxis(fplbase::Axis_Z), mathfu::kAxisZ3f);
+  EXPECT_TRUE(fplbase::LoadAxis(fplbase::Axis_X) == mathfu::kAxisX3f);
+  EXPECT_TRUE(fplbase::LoadAxis(fplbase::Axis_Y) == mathfu::kAxisY3f);
+  EXPECT_TRUE(fplbase::LoadAxis(fplbase::Axis_Z) == mathfu::kAxisZ3f);
 }
 
 extern "C" int FPL_main(int argc, char *argv[]) {
