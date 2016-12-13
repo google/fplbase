@@ -437,7 +437,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
 
 #if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
   (void)binary_dir;
-  // Get the target directory from the Bundle instead of using the directory
+  // Get the root of the target directory from the Bundle instead of using the directory
   // specified by the client.
   {
     CFBundleRef main_bundle = CFBundleGetMainBundle();
@@ -449,8 +449,11 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
       return false;
     }
     CFRelease(resources_url);
-    int success = chdir(path);
-    return (success == 0);
+    int retval = chdir(path);
+    if (retval == 0) {
+      retval = chdir(target_dir);
+    }
+    return (retval == 0);
   }
 #elif !defined(__ANDROID__)
   {
