@@ -70,13 +70,13 @@ FPLBASE_SCHEMA_FILES := \
 FPLBASE_COMMON_EXPORT_C_INCLUDES := \
   $(FPLBASE_DIR)/include \
   $(FPLBASE_GENERATED_OUTPUT_DIR) \
+  $(DEPENDENCIES_FPLUTIL_DIR)/libfplutil/include \
   $(NDK_ROOT)/sources/android/ndk_helper
 
 FPLBASE_COMMON_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES) \
   $(FPLBASE_DIR)/src \
   $(DEPENDENCIES_FLATBUFFERS_DIR)/include \
-  $(DEPENDENCIES_FPLUTIL_DIR)/include \
   $(DEPENDENCIES_WEBP_DIR)/src \
   $(DEPENDENCIES_STB_DIR)
 
@@ -188,6 +188,6 @@ $(call import-add-path,$(FPLBASE_DIR)/..)
 $(call import-module,flatbuffers/android/jni)
 $(call import-module,mathfu/jni)
 $(call import-module,android/cpufeatures)
-$(call import-module,webp)
+$(call import-module,$(notdir $(DEPENDENCIES_WEBP_DIR)))
 # NOTE: We're including $(FPLBASE_DIR)/jni/SDL/Android.mk here.
 $(call import-module,fplbase/jni/sdl)
