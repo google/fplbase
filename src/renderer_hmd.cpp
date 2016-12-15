@@ -102,8 +102,8 @@ void HeadMountedDisplayRenderStart(
   renderer->SetDepthFunction(fplbase::kDepthFunctionLess);
 
   const mathfu::vec2i viewport_size = renderer->GetViewportSize();
-  int window_width = viewport_size.x();
-  int window_height = viewport_size.y();
+  int window_width = viewport_size.x;
+  int window_height = viewport_size.y;
   int half_width = window_width / 2;
   // Calculate settings for each viewport.
   mathfu::vec4i* viewport_extents = view_settings->viewport_extents;

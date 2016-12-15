@@ -53,8 +53,8 @@ void AndroidSetScalerResolution(const vec2i& resolution) {
   jintArray size = (jintArray)env->CallObjectMethod(activity, get_size);
   jint* size_ints = env->GetIntArrayElements(size, NULL);
 
-  int width = std::min(size_ints[0], resolution.x());
-  int height = std::min(size_ints[1], resolution.y());
+  int width = std::min(size_ints[0], resolution.x);
+  int height = std::min(size_ints[1], resolution.y);
   g_android_scaler_resolution = vec2i(width, height);
 
   // Update the underlying activity with the scaled resolution
@@ -77,8 +77,8 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
                            EGLNativeWindowType win, const EGLint* attrib_list) {
   // Apply scaler setting
   ANativeWindow* window = Android_JNI_GetNativeWindow();
-  ANativeWindow_setBuffersGeometry(window, g_android_scaler_resolution.x(),
-                                   g_android_scaler_resolution.y(), 0);
+  ANativeWindow_setBuffersGeometry(window, g_android_scaler_resolution.x,
+                                   g_android_scaler_resolution.y, 0);
 
   auto surface = eglCreateWindowSurface(dpy, config, win, attrib_list);
   // Check surface size if the HW scaler setting was successful.
@@ -86,19 +86,19 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   int32_t height;
   eglQuerySurface(dpy, surface, EGL_WIDTH, &width);
   eglQuerySurface(dpy, surface, EGL_HEIGHT, &height);
-  if (width != g_android_scaler_resolution.x() ||
-      height != g_android_scaler_resolution.y()) {
+  if (width != g_android_scaler_resolution.x ||
+      height != g_android_scaler_resolution.y) {
     LogError("Failed to initialize HW scaler.");
     // Reset scaler resolution.
-    g_android_scaler_resolution.x() = width;
-    g_android_scaler_resolution.y() = height;
+    g_android_scaler_resolution.x = width;
+    g_android_scaler_resolution.y = height;
   }
   return surface;
 }
 
 void AndroidPreCreateWindow() {
   // Apply scaler setting prior creating surface
-  if (g_android_scaler_resolution.x() && g_android_scaler_resolution.y()) {
+  if (g_android_scaler_resolution.x && g_android_scaler_resolution.y) {
     // Initialize OpenGL function pointers inside SDL
     if (SDL_GL_LoadLibrary(NULL) < 0) {
       LogError(kError, "couldn't initialize OpenGL library\n");
