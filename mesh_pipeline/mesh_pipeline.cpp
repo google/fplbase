@@ -726,19 +726,6 @@ class FlatMesh {
                bones_.size(), kMaxBoneIndex, kMaxBoneIndex);
     }
 
-    // If there are too many points then indices can't fit in 16-bits.
-    // In this case, we remove any triangles with big indices, and only output
-    // the first 2^16 points. Essentially, we truncate the mesh.
-    const bool point_overflow = points_.size() > kMaxNumPoints;
-    const size_t num_points = point_overflow ? kMaxNumPoints : points_.size();
-    if (point_overflow) {
-      log_.Log(kLogError,
-               "Vertex count %d exceeds maximum %d. "
-               "Omitting some triangles. "
-               "Try limitting vertex attributes with --attrib.\n",
-               kMaxNumPoints, points_.size());
-    }
-
     // Get the mapping from mesh bones (i.e. all bones in the model)
     // to shader bones (i.e. bones that have verts weighted to them).
     std::vector<BoneIndex> mesh_to_shader_bones;
@@ -809,6 +796,7 @@ class FlatMesh {
     vec3 max_position;
     CalculateMinMaxPosition(&min_position, &max_position);
 
+    const size_t num_points = points_.size();
     auto max_fb = FlatBufferVec3(max_position);
     auto min_fb = FlatBufferVec3(min_position);
     auto bone_names_fb = fbb.CreateVector(bone_names);
@@ -1135,10 +1123,6 @@ class FbxMeshParser {
       log_.Log(kLogError, "init, %s\n\n", init_status.GetErrorString());
       return false;
     }
-    if (!importer->IsFBX()) {
-      log_.Log(kLogError, "Not an FBX file\n\n");
-      return false;
-    }
 
     // Import the scene.
     const bool import_success = importer->Import(scene_);
@@ -1349,10 +1333,16 @@ class FbxMeshParser {
     const bool valid_indices = mesh->GetMaterialIndices(&material_indices);
     if (!valid_indices) return nullptr;
 
+    // Gather the unique materials attached to this mesh.
+    std::unordered_set<int> unique_material_indices;
     for (int j = 0; j < material_indices->GetCount(); ++j) {
-      // Check every material attached to this mesh.
       const int material_index = (*material_indices)[j];
-      const FbxSurfaceMaterial* material = node->GetMaterial(material_index);
+      unique_material_indices.insert(material_index);
+    }
+
+    for (auto it = unique_material_indices.begin();
+         it != unique_material_indices.end(); ++it) {
+      const FbxSurfaceMaterial* material = node->GetMaterial(*it);
       if (material == nullptr) continue;
 
       // Textures are properties of the material.
