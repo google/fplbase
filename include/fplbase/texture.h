@@ -317,7 +317,8 @@ class Texture : public AsyncAsset {
                                    const mathfu::vec2i &size);
 
   /// @brief Set texture target and id directly for textures that have been
-  /// created outside of this class.
+  /// created outside of this class.  The creator is responsible for deleting
+  /// the texture id.
   /// @param[in] target Texture target to use when binding texture to context.
   /// @param[in] id Texture handle ID.
   void SetTextureId(TextureTarget target, TextureHandle id);
@@ -396,6 +397,7 @@ class Texture : public AsyncAsset {
   TextureTarget target_;
   TextureFormat desired_;
   TextureFlags flags_;
+  bool is_external_;
 };
 
 /// @brief used by some functions to allow the texture loading mechanism to

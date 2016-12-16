@@ -116,7 +116,8 @@ Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
       target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP
                                              : GL_TEXTURE_2D),
       desired_(format),
-      flags_(flags) {}
+      flags_(flags),
+      is_external_(false) {}
 
 void Texture::Load() {
   data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, flags_, &size_,
@@ -130,11 +131,13 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
   id_ = CreateTexture(data, size_, texture_format_, desired_, flags_);
+  is_external_ = false;
 }
 
 bool Texture::Finalize() {
   if (data_) {
     id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_);
+    is_external_ = false;
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
   }
@@ -157,7 +160,9 @@ void Texture::Set(size_t unit) const { const_cast<Texture *>(this)->Set(unit); }
 
 void Texture::Delete() {
   if (id_) {
-    GL_CALL(glDeleteTextures(1, &id_));
+    if (!is_external_) {
+      GL_CALL(glDeleteTextures(1, &id_));
+    }
     id_ = 0;
   }
 }
@@ -184,6 +189,7 @@ uint16_t *Texture::Convert888To565(const uint8_t *buffer, const vec2i &size) {
 void Texture::SetTextureId(TextureTarget target, TextureHandle id) {
   target_ = target;
   id_ = id;
+  is_external_ = true;
 }
 
 GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
