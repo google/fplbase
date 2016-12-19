@@ -214,13 +214,13 @@ set(fplbase_common_SRCS
   src/asset_manager.cpp
   src/input.cpp
   src/material.cpp
-  src/mesh.cpp
+  src/mesh_gl.cpp
   src/precompiled.h
   src/preprocessor.cpp
-  src/renderer.cpp
-  src/render_target.cpp
-  src/shader.cpp
-  src/texture.cpp
+  src/renderer_gl.cpp
+  src/render_target_gl.cpp
+  src/shader_gl.cpp
+  src/texture_gl.cpp
   src/utilities.cpp
   src/version.cpp)
 
