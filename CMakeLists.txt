@@ -174,7 +174,10 @@ build_flatbuffers("${FPLBASE_FLATBUFFERS_SCHEMAS}"
                   ""
                   "")
 
-if(APPLE)
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
+  set(OPENGL_LIBRARIES "GL")
+
+elseif(APPLE)
   if(IOS)
     set(OPENGL_LIBRARIES "-framework OpenGLES")
     set(SYSTEM_LIBRARIES "-framework AudioToolbox"
