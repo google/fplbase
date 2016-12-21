@@ -20,6 +20,7 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
+#include "fplbase/wrapper.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
@@ -86,11 +87,6 @@ inline bool IsCompressed(TextureFormat format) {
       return false;
   }
 }
-
-/// @brief These typedefs are compatible with OpenGL equivalents, but don't
-/// require this header to depend on OpenGL.
-typedef unsigned int TextureHandle;
-typedef unsigned int TextureTarget;
 
 /// @class Texture
 /// @brief Abstraction for a texture object loaded on the GPU.
@@ -404,7 +400,6 @@ class Texture : public AsyncAsset {
 /// be specified by the caller.
 typedef std::function<Texture *(const char *filename, TextureFormat format,
                                 TextureFlags flags)> TextureLoaderFn;
-
 
 /// @}
 }  // namespace fplbase

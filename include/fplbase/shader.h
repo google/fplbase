@@ -18,8 +18,9 @@
 #include <set>
 
 #include "fplbase/config.h"  // Must come first.
-#include "fplbase/async_loader.h"
 
+#include "fplbase/async_loader.h"
+#include "fplbase/wrapper.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fplbase {
@@ -31,11 +32,6 @@ class Renderer;
 
 static const int kMaxTexturesPerShader = 8;
 static const int kNumVec4sInAffineTransform = 3;
-
-// These typedefs compatible with their OpenGL equivalents, but don't require
-// this header to depend on OpenGL.
-typedef unsigned int ShaderHandle;
-typedef int UniformHandle;
 
 /// @class Shader
 /// @brief Represents a shader consisting of a vertex and pixel shader.

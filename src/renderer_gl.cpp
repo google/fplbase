@@ -28,74 +28,6 @@ using mathfu::vec4;
 
 namespace fplbase {
 
-// static member variables
-std::weak_ptr<RendererBase> RendererBase::the_base_weak_;
-RendererBase* RendererBase::the_base_raw_;
-fplutil::Mutex RendererBase::the_base_mutex_;
-
-RendererBase::RendererBase()
-    : time_(0),
-      supports_texture_format_(-1),
-      supports_texture_npot_(false),
-      force_shader_(nullptr),
-      force_blend_mode_(kBlendModeCount),
-      max_vertex_uniform_components_(0),
-      version_(&Version()) {
-  assert(the_base_raw_ == nullptr);
-}
-
-RendererBase::~RendererBase() {
-  assert(the_base_raw_ != nullptr);
-  ShutDown();
-}
-
-Renderer::Renderer()
-    : model_view_projection_(mathfu::mat4::Identity()),
-      model_(mathfu::mat4::Identity()),
-      color_(mathfu::kOnes4f),
-      light_pos_(mathfu::kZeros3f),
-      camera_pos_(mathfu::kZeros3f),
-      bone_transforms_(nullptr),
-      num_bones_(0) {
-  // This is the only place that the RendererBase singleton can be created,
-  // so ensure it's guarded by the mutex.
-  fplutil::MutexLock lock(RendererBase::the_base_mutex_);
-
-  if (RendererBase::the_base_weak_.expired()) {
-    // Create a new Renderer if one doesn't exist.
-    base_ = std::make_shared<RendererBase>();
-    RendererBase::the_base_weak_ = base_;
-    RendererBase::the_base_raw_ = base_.get();
-  } else {
-    // Make this Renderer one of the shared owners of the singleton.
-    base_ = RendererBase::the_base_weak_.lock();
-  }
-}
-
-Renderer::~Renderer() {
-  // This is the only place that the RenderBase singleton can be destroyed,
-  // so ensure it's guarded by the mutex.
-  fplutil::MutexLock lock(RendererBase::the_base_mutex_);
-  assert(!RendererBase::the_base_weak_.expired() &&
-         RendererBase::the_base_raw_ != nullptr);
-  base_.reset();
-
-  // Manually keep the_base_raw_ in sync with the_base_weak_.
-  if (RendererBase::the_base_weak_.expired()) {
-    RendererBase::the_base_raw_ = nullptr;
-  }
-}
-
-bool RendererBase::Initialize(const vec2i &window_size,
-                              const char *window_title) {
-  if (!environment_.Initialize(window_size, window_title)) {
-    last_error_ = environment_.last_error();
-    return false;
-  }
-  // Non-environment-specific initialization continues here:
-  return InitializeRenderingState();
-}
-
 void RendererBase::AdvanceFrame(bool minimized, double time) {
   time_ = time;
 
@@ -103,18 +35,6 @@ void RendererBase::AdvanceFrame(bool minimized, double time) {
 
   auto viewport_size = environment_.GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
-}
-
-void Renderer::BeginRendering() {}
-
-void Renderer::EndRendering() {}
-
-bool RendererBase::SupportsTextureFormat(TextureFormat texture_format) const {
-  return (supports_texture_format_ & (1LL << texture_format)) != 0;
-}
-
-bool RendererBase::SupportsTextureNpot() const {
-  return supports_texture_npot_;
 }
 
 bool RendererBase::InitializeRenderingState() {
@@ -264,16 +184,6 @@ Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
   return nullptr;
 }
 
-Shader *RendererBase::CompileAndLinkShader(const char *vs_source,
-                                           const char *ps_source) {
-  return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
-}
-
-Shader *RendererBase::RecompileShader(const char *vs_source,
-                                      const char *ps_source, Shader *shader) {
-  return CompileAndLinkShaderHelper(vs_source, ps_source, shader);
-}
-
 void Renderer::SetDepthFunction(DepthFunction depth_func) {
   if (depth_func == render_state_.depth_function) {
     return;
@@ -328,10 +238,6 @@ void Renderer::SetDepthFunction(DepthFunction depth_func) {
   }
 
   render_state_.depth_function = depth_func;
-}
-
-void Renderer::SetBlendMode(BlendMode blend_mode) {
-  SetBlendMode(blend_mode, 0.5f);
 }
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
@@ -453,13 +359,6 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
 }
 
 void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
-
-void Renderer::SetRenderState(const RenderState &state) {
-  SetBlendMode(state.blend_mode);
-  SetCulling(state.cull_mode);
-  SetDepthFunction(state.depth_function);
-  SetViewport(state.viewport);
-}
 
 }  // namespace fplbase
 

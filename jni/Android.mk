@@ -27,13 +27,18 @@ FPLBASE_COMMON_SRC_FILES := \
   src/asset_manager.cpp \
   src/input.cpp \
   src/material.cpp \
+  src/mesh_common.cpp \
   src/mesh_gl.cpp \
   src/precompiled.cpp \
   src/preprocessor.cpp \
+  src/render_target_common.cpp \
   src/render_target_gl.cpp \
+  src/renderer_common.cpp \
   src/renderer_gl.cpp \
   src/renderer_hmd_gl.cpp \
+  src/shader_common.cpp \
   src/shader_gl.cpp \
+  src/texture_common.cpp \
   src/texture_gl.cpp \
   src/utilities.cpp \
   src/version.cpp \
@@ -42,6 +47,7 @@ FPLBASE_COMMON_SRC_FILES := \
 FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11
 
 FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
+                           -DFPLBASE_OPENGL \
                            -Wno-literal-suffix -Wno-unused-function
 
 FPLBASE_COMMON_LIBRARIES := \
@@ -147,7 +153,9 @@ LOCAL_ARM_MODE := arm
 LOCAL_STATIC_LIBRARIES := \
   $(FPLBASE_COMMON_LIBRARIES)
 
-LOCAL_CPPFLAGS := $(FPLBASE_COMMON_CPPFLAGS) -DFPL_BASE_BACKEND_STDLIB
+LOCAL_CPPFLAGS := \
+  $(FPLBASE_COMMON_CPPFLAGS) \
+  -DFPL_BASE_BACKEND_STDLIB \
 
 LOCAL_EXPORT_C_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES)

@@ -17,7 +17,6 @@
 
 #if !defined(FPL_BASE_BACKEND_STDLIB)
 #define FPL_BASE_BACKEND_SDL
-#define FPL_BASE_RENDERER_BACKEND_SDL
 #endif
 
 #endif  // FPLBASE_CONFIG_H

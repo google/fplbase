@@ -213,17 +213,24 @@ set(fplbase_common_SRCS
   include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
+  include/fplbase/wrapper.h
   schemas
   src/asset_manager.cpp
   src/input.cpp
   src/material.cpp
+  src/mesh_common.cpp
   src/mesh_gl.cpp
   src/precompiled.h
   src/preprocessor.cpp
+  src/renderer_common.cpp
   src/renderer_gl.cpp
+  src/render_target_common.cpp
   src/render_target_gl.cpp
+  src/shader_common.cpp
   src/shader_gl.cpp
+  src/texture_common.cpp
   src/texture_gl.cpp
+  src/texture_headers.h
   src/utilities.cpp
   src/version.cpp)
 
@@ -286,6 +293,7 @@ function(fplbase_common_config target)
   # Dependencies for the executable target.
   add_dependencies(${target} fplbase_generated_includes)
   target_link_libraries(${target} ${OPENGL_LIBRARIES} ${SYSTEM_LIBRARIES} webp)
+  target_compile_definitions(${target} PUBLIC FPLBASE_OPENGL)
 endfunction()
 
 # The stdlib backend requires <mutex> and <thread> headers that were only

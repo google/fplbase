@@ -13,18 +13,10 @@
 // limitations under the License.
 
 #include "precompiled.h"
+
 #include "fplbase/render_target.h"
-#include "fplbase/utilities.h"
-
-#include "webp/decode.h"
-
-using mathfu::vec2i;
 
 namespace fplbase {
-
-void RenderTarget::Initialize(mathfu::vec2i dimensions) {
-  Initialize(dimensions, GL_UNSIGNED_BYTE, true);
-}
 
 void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
                               bool create_depth_buffer) {
@@ -116,16 +108,5 @@ void RenderTarget::BindAsTexture(int texture_number) const {
   GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id_));
 }
 
-// Generates a render target that represents the screen.
-RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
-  RenderTarget screen_render_target = RenderTarget();
-  screen_render_target.framebuffer_id_ = 0;
-  screen_render_target.rendered_texture_id_ = 0;
-  screen_render_target.depth_buffer_id_ = 0;
-  mathfu::vec2i window_size = renderer.environment().GetViewportSize();
-  screen_render_target.dimensions_ = window_size;
-  screen_render_target.initialized_ = true;
-  return screen_render_target;
-}
 
 }  // namespace fplbase

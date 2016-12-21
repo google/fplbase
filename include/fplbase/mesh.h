@@ -18,12 +18,13 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
-#include "fplbase/asset.h"
 
+#include "fplbase/asset.h"
 #include "fplbase/async_loader.h"
 #include "fplbase/material.h"
 #include "fplbase/render_state.h"
 #include "fplbase/shader.h"
+#include "fplbase/wrapper.h"
 #include "mathfu/constants.h"
 
 namespace fplbase {
@@ -33,6 +34,7 @@ namespace fplbase {
 /// @{
 
 class Renderer;
+struct MeshImpl;
 
 /// @brief An array of these enums defines the format of vertex data.
 enum Attribute {
@@ -91,7 +93,7 @@ class Mesh : public AsyncAsset {
 
   /// @brief Whether this object loaded and finalized correctly. Call after
   /// Finalize has been called (by AssetManager::TryFinalize).
-  bool IsValid() { return vbo_ != 0; }
+  bool IsValid();
 
   /// @brief Add an index buffer object to be part of this mesh
   ///
@@ -227,12 +229,10 @@ class Mesh : public AsyncAsset {
   /// @param top_right The bottom left coordinate of the Quad.
   /// @param tex_bottom_left The texture coordinates at the bottom left.
   /// @param tex_top_right The texture coordinates at the top right.
-  static void RenderAAQuadAlongX(const mathfu::vec3 &bottom_left,
-                                 const mathfu::vec3 &top_right,
-                                 const mathfu::vec2 &tex_bottom_left =
-                                     mathfu::vec2(0, 0),
-                                 const mathfu::vec2 &tex_top_right =
-                                     mathfu::vec2(1, 1));
+  static void RenderAAQuadAlongX(
+      const mathfu::vec3 &bottom_left, const mathfu::vec3 &top_right,
+      const mathfu::vec2 &tex_bottom_left = mathfu::vec2(0, 0),
+      const mathfu::vec2 &tex_top_right = mathfu::vec2(1, 1));
 
   /// @brief Convenience method for rendering a Quad with nine patch settings.
   ///
@@ -389,7 +389,7 @@ class Mesh : public AsyncAsset {
     bool has_skinning;
 
     InterleavedVertexData()
-      : vertex_data(nullptr), count(0), vertex_size(0), has_skinning(false) {}
+        : vertex_data(nullptr), count(0), vertex_size(0), has_skinning(false) {}
   };
 
   /// @brief: Load vertex data from a FlatBuffer into CPU memory first.
@@ -410,34 +410,26 @@ class Mesh : public AsyncAsset {
   // Init mesh from MeshDef FlatBuffer.
   bool InitFromMeshDef(const void *meshdef_buffer);
 
-  // This typedef is compatible with its OpenGL equivalent, but doesn't require
-  // this header to depend on OpenGL.
-  typedef unsigned int BufferHandle;
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific MeshImpl structs.
+  static MeshImpl *CreateMeshImpl();
+  static void DestroyMeshImpl(MeshImpl *impl);
 
   static const int kMaxAttributes = 9;
 
-  static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
-                            int vertex_size, const char *buffer);
-  static void UnSetAttributes(const Attribute *attributes);
-
-  void BindAttributes();
-  void UnbindAttributes();
-
-  void DrawElement(Renderer &renderer, int32_t count, int32_t instances,
-                   uint32_t index_type);
-
   struct Indices {
+    Indices() : count(0), ibo(0), mat(nullptr), index_type(0) {}
     int count;
     BufferHandle ibo;
     Material *mat;
     uint32_t index_type;
   };
+
+  MeshImpl *impl_;
   std::vector<Indices> indices_;
   size_t vertex_size_;
   size_t num_vertices_;
   Attribute format_[kMaxAttributes];
-  BufferHandle vbo_;
-  BufferHandle vao_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
 
