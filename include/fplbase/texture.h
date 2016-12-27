@@ -342,8 +342,8 @@ class Texture : public AsyncAsset {
   TextureFlags flags() const { return flags_; }
 
   /// @brief Get the original size of the Texture.
-  /// @return Returns a const `mathfu::vec2` reference to the scale of the
-  /// Texture.
+  /// @return Returns a const `mathfu::vec2i` reference to the original size of
+  /// the Texture.
   const mathfu::vec2i &original_size() const { return original_size_; }
 
   /// @brief Set the original size of the Texture.
