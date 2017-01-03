@@ -41,12 +41,14 @@ static_assert(
     kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
     kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
     kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
+    kFormatLuminanceAlpha ==
+        static_cast<TextureFormat>(matdef::TextureFormat_F_88) &&
     kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
     kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
     kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX) &&
     kFormatNative == static_cast<TextureFormat>(matdef::TextureFormat_NATIVE),
-      "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatNative + 1,
+      "TextureFormat enums in material.h and materials.fbs must match.");
+static_assert(kFormatCount == kFormatLuminanceAlpha + 1,
               "Please update static_assert above with new enum values.");
 
 void Material::Set(Renderer &renderer) {

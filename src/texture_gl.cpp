@@ -217,6 +217,12 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       gl_tex_image(buffer, tex_size, 0, num_pixels, false);
       break;
     }
+    case kFormatLuminanceAlpha: {
+      assert(texture_format == kFormatLuminanceAlpha);
+      format = GL_LUMINANCE_ALPHA;
+      gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
+      break;
+    }
     case kFormatASTC: {
       assert(texture_format == kFormatASTC);
       auto &header = *reinterpret_cast<const ASTCHeader *>(buffer);

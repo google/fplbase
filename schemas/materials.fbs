@@ -39,6 +39,7 @@ enum TextureFormat:ubyte {
   PKM,   // https://en.wikipedia.org/wiki/Ericsson_Texture_Compression
   KTX,   // https://www.khronos.org/opengles/sdk/tools/KTX/
   NATIVE,  // Uses the same format as the source file.
+  F_88,
 }
 
 enum TextureWrap:ubyte {
