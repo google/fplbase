@@ -58,6 +58,7 @@ class Mesh : public AsyncAsset {
   enum Primitive {
     kTriangles,
     kTriangleStrip,
+    kTriangleFan,
     kLines,
     kPoints,
   };

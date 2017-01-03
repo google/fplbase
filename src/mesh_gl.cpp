@@ -56,6 +56,8 @@ GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
       return GL_POINTS;
     case Mesh::kTriangleStrip:
       return GL_TRIANGLE_STRIP;
+    case Mesh::kTriangleFan:
+      return GL_TRIANGLE_FAN;
     default:
       return GL_TRIANGLES;
   }
