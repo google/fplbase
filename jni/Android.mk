@@ -44,10 +44,10 @@ FPLBASE_COMMON_SRC_FILES := \
   src/version.cpp \
   $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
 
-FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11
+FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11 \
+                                  -DFPLBASE_OPENGL
 
 FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
-                           -DFPLBASE_OPENGL \
                            -Wno-literal-suffix -Wno-unused-function
 
 FPLBASE_COMMON_LIBRARIES := \
