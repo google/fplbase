@@ -32,9 +32,6 @@ void RendererBase::AdvanceFrame(bool minimized, double time) {
   time_ = time;
 
   environment_.AdvanceFrame(minimized);
-
-  auto viewport_size = environment_.GetViewportSize();
-  GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
 }
 
 bool RendererBase::InitializeRenderingState() {
@@ -89,6 +86,14 @@ bool RendererBase::InitializeRenderingState() {
 #endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
 
   return true;
+}
+
+void Renderer::AdvanceFrame(bool minimized, double time) {
+  base_->AdvanceFrame(minimized, time);
+  SetDepthFunction(kDepthFunctionLess);
+
+  auto viewport_size = environment().GetViewportSize();
+  SetViewport(Viewport(0, 0, viewport_size.x, viewport_size.y));
 }
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {

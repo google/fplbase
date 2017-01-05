@@ -421,10 +421,7 @@ class Renderer {
   }
 
   /// @brief Swaps frames. Call this once per frame inside your main loop.
-  void AdvanceFrame(bool minimized, double time) {
-    base_->AdvanceFrame(minimized, time);
-    SetDepthFunction(kDepthFunctionLess);
-  }
+  void AdvanceFrame(bool minimized, double time);
 
   /// @brief Cleans up the resources initialized by the renderer.
   void ShutDown() { base_->ShutDown(); }
