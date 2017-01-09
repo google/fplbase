@@ -70,6 +70,19 @@ static bool HasWebpHeader(const std::string &file) {
          file.substr(8, 4) == "WEBP";
 }
 
+static void MultiplyRgbByAlpha(uint8_t *rgba_ptr, int width, int height) {
+  const int num_pixels = width * height;
+  for (int i = 0; i < num_pixels; ++i, rgba_ptr += 4) {
+    const auto alpha = static_cast<uint16_t>(rgba_ptr[3]);
+    rgba_ptr[0] = static_cast<uint8_t>(
+        (static_cast<uint16_t>(rgba_ptr[0]) * alpha) / 255);
+    rgba_ptr[1] = static_cast<uint8_t>(
+        (static_cast<uint16_t>(rgba_ptr[1]) * alpha) / 255);
+    rgba_ptr[2] = static_cast<uint8_t>(
+        (static_cast<uint16_t>(rgba_ptr[2]) * alpha) / 255);
+  }
+}
+
 Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
     : AsyncAsset(filename ? filename : ""),
       id_(0),
@@ -144,9 +157,6 @@ void Texture::SetTextureId(TextureTarget target, TextureHandle id) {
 
 uint8_t *Texture::UnpackTGA(const void *tga_buf, TextureFlags flags,
                             vec2i *dimensions, TextureFormat *texture_format) {
-  if (flags & kTextureFlagsPremultiplyAlpha) {
-    LogError(kApplication, "Premultipled alpha not supported for TGA\n");
-  }
   struct TGA {
     uint8_t id_len, color_map_type, image_type, color_map_data[5];
     uint16_t x_origin, y_origin, width, height;
@@ -278,9 +288,6 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
                               const vec2 &scale, TextureFlags flags,
                               vec2i *dimensions,
                               TextureFormat *texture_format) {
-  if (flags & kTextureFlagsPremultiplyAlpha) {
-    LogError(kApplication, "Premultipled alpha not supported for this image");
-  }
   uint8_t *image = nullptr;
   int width = 0;
   int height = 0;
@@ -307,6 +314,10 @@ uint8_t *Texture::UnpackImage(const void *img_buf, size_t size,
 
   *dimensions = vec2i(width, height);
   if (channels == 4) {
+    if (flags & kTextureFlagsPremultiplyAlpha) {
+      MultiplyRgbByAlpha(image, width, height);
+    }
+
     *texture_format = kFormat8888;
   } else if (channels == 3) {
     *texture_format = kFormat888;
