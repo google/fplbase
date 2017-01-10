@@ -57,10 +57,14 @@ void AndroidSetScalerResolution(const vec2i& resolution) {
   int height = std::min(size_ints[1], resolution.y);
   g_android_scaler_resolution = vec2i(width, height);
 
+#if ANDROID_HMD
   // Update the underlying activity with the scaled resolution
+  // TODO(wvo): Create FPLVRActivity that derives from FPLActivity and
+  // implements this function and those in renderer_hmn.h (b/29940321).
   jmethodID set_resolution =
       env->GetMethodID(fpl_class, "SetHeadMountedDisplayResolution", "(II)V");
   env->CallVoidMethod(activity, set_resolution, width, height);
+#endif  // ANDROID_HMD
 
   env->ReleaseIntArrayElements(size, size_ints, JNI_ABORT);
   env->DeleteLocalRef(size);

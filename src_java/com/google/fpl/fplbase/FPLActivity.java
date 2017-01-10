@@ -26,95 +26,83 @@ import android.app.UiModeManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
-import android.nfc.NdefMessage;
 import android.os.Bundle;
-import android.text.Html;
-import android.text.method.LinkMovementMethod;
-import android.text.util.Linkify;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Choreographer;
-import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.OrientationEventListener;
-import android.view.View;
-import android.view.ViewGroup.LayoutParams;
-import android.view.WindowManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ScrollView;
-import android.widget.TextView;
-import com.google.vr.cardboard.UiLayer;
-import com.google.vrtoolkit.cardboard.CardboardDeviceParams;
-import com.google.vrtoolkit.cardboard.CardboardView;
-import com.google.vrtoolkit.cardboard.Eye;
-import com.google.vrtoolkit.cardboard.HeadTransform;
-import com.google.vrtoolkit.cardboard.PhoneParams;
-import com.google.vrtoolkit.cardboard.proto.Phone;
-import com.google.vrtoolkit.cardboard.ScreenParams;
-import com.google.vrtoolkit.cardboard.sensors.MagnetSensor;
-import com.google.vrtoolkit.cardboard.sensors.NfcSensor;
 import org.libsdl.app.SDLActivity;
 
 public class FPLActivity extends SDLActivity implements
-    MagnetSensor.OnCardboardTriggerListener, NfcSensor.OnCardboardNfcListener,
     Choreographer.FrameCallback {
 
   private static final float METERS_PER_INCH = 0.0254f;
   private final Instrumentation instrumentation = new Instrumentation();
 
-  // Fields used in order to interact with a Cardboard device
-  private CardboardView cardboardView;
-  private MagnetSensor magnetSensor;
-  private NfcSensor nfcSensor;
-  private HeadTransform headTransform;
-  private Eye leftEye;
-  private Eye rightEye;
-  private Eye monocularEye;
-  private Eye leftEyeNoDistortion;
-  private Eye rightEyeNoDistortion;
-  private UiLayer uiLayer;
-  private OrientationEventListener orientationListener;
-  private int cachedDeviceRotation;
+  private String getMetaData(String name, PackageItemInfo info) {
+    if (info == null || info.metaData == null) return null;
+    return info.metaData.getString(name);
+  }
+
+  // Looks for 'name' in the <meta-data> tags of AndroidManifest.xml.
+  // We look at <meta-data> tags in the relevant <activity> </activity> section
+  // first. If 'name' isn't found there, we look at the meta-data in the
+  // <application> </application> tags.
+  // Returns meta-data value, if found, or null, if not found.
+  private String getMetaData(String name) {
+    Context context = getBaseContext();
+
+    // Look in our Activity's metadata, first.
+    try {
+      ActivityInfo activityInfo = context.getPackageManager().getActivityInfo(
+        getComponentName(), PackageManager.GET_META_DATA);
+      String activityValue = getMetaData(name, activityInfo);
+      if (activityValue != null) return activityValue;
+    } catch (PackageManager.NameNotFoundException e) {}
+
+    // If not found, then look into the Application's metadata.
+    try {
+      ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(
+        context.getPackageName(), PackageManager.GET_META_DATA);
+      return getMetaData(name, appInfo);
+    } catch (PackageManager.NameNotFoundException e) {}
+
+    return null;
+  }
+
+  @Override
+  protected String[] getLibraries() {
+    // Search the metadata for the app name in the same way as NativeActivity.
+    // Your AndroidManifest.xml should have a meta-data tag like this:
+    // <activity ...>
+    //   <meta-data android:name="android.app.lib_name" android:value="mesh" />
+    //   ...
+    // </activity>
+    String app_library_name = getMetaData("android.app.lib_name");
+    if (app_library_name == null) {
+      Log.i("FPL", "Cannot find android.app.lib_name in AndroidManifest.xml.");
+      app_library_name = "main";
+    }
+    return new String[] { app_library_name };
+  }
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     nativeInitVsync();
-    // Instantiate fields used by Cardboard, if we support HMDs.
-    if (InitializeHeadMountedDisplayOnStart()) {
-      cardboardView = new CardboardView(this);
-      if (cardboardView != null) {
-        headTransform = new HeadTransform();
-        leftEye = new Eye(Eye.Type.LEFT);
-        rightEye = new Eye(Eye.Type.RIGHT);
-        monocularEye = new Eye(Eye.Type.MONOCULAR);
-        leftEyeNoDistortion = new Eye(Eye.Type.LEFT);
-        rightEyeNoDistortion = new Eye(Eye.Type.RIGHT);
-        magnetSensor = new MagnetSensor(this);
-        magnetSensor.setOnCardboardTriggerListener(this);
-        nfcSensor = NfcSensor.getInstance(this);
-        nfcSensor.addOnCardboardNfcListener(this);
-        NdefMessage tagContents = nfcSensor.getTagContents();
-        if (tagContents != null) {
-          updateCardboardDeviceParams(CardboardDeviceParams.createFromNfcContents(tagContents));
-        }
-        orientationListener = CreateOrientationListener();
-      } else {
-        Log.w("SDL", "Failed to create CardboardView");
-      }
-    }
   }
 
   @Override
@@ -126,12 +114,6 @@ public class FPLActivity extends SDLActivity implements
   @Override
   public void onResume() {
     super.onResume();
-    if (cardboardView != null) {
-      cardboardView.onResume();
-      magnetSensor.start();
-      nfcSensor.onResume(this);
-      orientationListener.enable();
-    }
     Choreographer.getInstance().postFrameCallback(this);
 
     // Request audio focus for playback.
@@ -147,12 +129,6 @@ public class FPLActivity extends SDLActivity implements
   @Override
   public void onPause() {
     super.onPause();
-    if (cardboardView != null) {
-      cardboardView.onPause();
-      magnetSensor.stop();
-      nfcSensor.onPause(this);
-      orientationListener.disable();
-    }
     Choreographer.getInstance().removeFrameCallback(this);
 
     Context context = getBaseContext();
@@ -163,6 +139,7 @@ public class FPLActivity extends SDLActivity implements
   // GPG's GUIs need activity lifecycle events to function properly, but
   // they don't have access to them. This code is here to route these events
   // back to GPG through our C++ code.
+  @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
     nativeOnActivityResult(this, requestCode, resultCode, data);
@@ -220,6 +197,7 @@ public class FPLActivity extends SDLActivity implements
       }
     }
 
+    @Override
     public void run() {
       try {
         textDialogOpen = true;
@@ -257,25 +235,35 @@ public class FPLActivity extends SDLActivity implements
       this.no = no;
     }
 
+    @Override
     public void run() {
       try {
         queryResponse = -1;
         textDialogOpen = true;
 
-        AlertDialog alert = new AlertDialog.Builder(activity, AlertDialog.THEME_DEVICE_DEFAULT_LIGHT)
-            .setTitle(title)
-            .setMessage(question)
-            .setNegativeButton(no, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog,int id) {
-                  queryResponse = 0;
-                  textDialogOpen = false;
-                }})
-            .setPositiveButton(yes, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog,int id) {
-                  queryResponse = 1;
-                  textDialogOpen = false;
-                }})
-            .create();
+        AlertDialog alert =
+            new AlertDialog.Builder(activity, AlertDialog.THEME_DEVICE_DEFAULT_LIGHT)
+                .setTitle(title)
+                .setMessage(question)
+                .setNegativeButton(
+                    no,
+                    new DialogInterface.OnClickListener() {
+                      @Override
+                      public void onClick(DialogInterface dialog, int id) {
+                        queryResponse = 0;
+                        textDialogOpen = false;
+                      }
+                    })
+                .setPositiveButton(
+                    yes,
+                    new DialogInterface.OnClickListener() {
+                      @Override
+                      public void onClick(DialogInterface dialog, int id) {
+                        queryResponse = 1;
+                        textDialogOpen = false;
+                      }
+                    })
+                .create();
         alert.show();
       } catch (Exception e) {
         textDialogOpen = false;
@@ -295,7 +283,8 @@ public class FPLActivity extends SDLActivity implements
        float axisY = event.getAxisValue(MotionEvent.AXIS_Y);
        float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
        float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
-       float finalX, finalY;
+      float finalX;
+      float finalY;
        // Decide which values to send, based on magnitude.  Hat values, or analog/axis values?
        if (Math.abs(axisX) + Math.abs(axisY) > Math.abs(hatX) + Math.abs(hatY)) {
          finalX = axisX;
@@ -320,19 +309,6 @@ public class FPLActivity extends SDLActivity implements
         (InputDevice.SOURCE_JOYSTICK | InputDevice.SOURCE_GAMEPAD)) != 0) {
       nativeOnGamepadInput(event.getDeviceId(), event.getAction(),
                            event.getKeyCode(), 0.0f, 0.0f);
-    }
-    int keyCode = event.getKeyCode();
-    // Disable the volume keys while in a cardboard
-    if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-      if (nfcSensor != null && nfcSensor.isDeviceInCardboard()) {
-        return true;
-      }
-      int action = event.getAction();
-      if (action == KeyEvent.ACTION_DOWN) {
-        changingVolume = true;
-      } else if (action == KeyEvent.ACTION_UP) {
-        changingVolume = false;
-      }
     }
     return super.dispatchKeyEvent(event);
   }
@@ -382,128 +358,16 @@ public class FPLActivity extends SDLActivity implements
     return new int[] { Math.max(size.x, size.y), Math.min(size.x, size.y) };
   }
 
-  public void SetHeadMountedDisplayResolution(int width, int height) {
-    // If hardware scaling is used, the width x height will be less than the
-    // displays natural resolution, so the PPI (pixels per inch) will also
-    // be different. So, we use this trick to recalculate the ScreenParam's PPI
-    // values (which are normally just read from the display).
-    try {
-      if (cardboardView == null) return;
-      Display display = getWindowManager().getDefaultDisplay();
-      ScreenParams sp = new ScreenParams(display);
-      Phone.PhoneParams pp = new Phone.PhoneParams();
-      pp.setXPpi(width / sp.getWidthMeters() * METERS_PER_INCH);
-      pp.setYPpi(height / sp.getHeightMeters() * METERS_PER_INCH);
-      sp = ScreenParams.fromProto(display, pp);
-      sp.setWidth(width);
-      sp.setHeight(height);
-      cardboardView.updateScreenParams(sp);
-    } catch (Exception e) {
-      Log.e("SDL", "exception", e);
-    }
-  }
-
   protected boolean InitializeHeadMountedDisplayOnStart() {
     SensorManager sensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
     return sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null &&
            sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null;
   }
 
-  public boolean SupportsHeadMountedDisplay() {
-    // Only supports head mounted display if the SDK initialized correctly.
-    return cardboardView != null;
-  }
-
-  @Override
-  public void onCardboardTrigger() {
-    nativeOnCardboardTrigger();
-  }
-
-  @Override
-  public void onInsertedIntoCardboard(CardboardDeviceParams cardboardDeviceParams) {
-    updateCardboardDeviceParams(cardboardDeviceParams);
-    nativeSetDeviceInCardboard(true);
-  }
-
-  @Override
-  public void onRemovedFromCardboard() {
-    nativeSetDeviceInCardboard(false);
-  }
-
-  protected void updateCardboardDeviceParams(CardboardDeviceParams newParams) {
-    cardboardView.updateCardboardDeviceParams(newParams);
-  }
-
   // Returns true if the current device is a TV device, false otherwise.
   public boolean IsTvDevice() {
     UiModeManager uiModeManager = (UiModeManager)getSystemService(UI_MODE_SERVICE);
     return uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-  }
-
-  // Function to access the transforms of the eyes, which includes head tracking
-  public void GetEyeViews(float[] headView, float[] leftTransform, float[] rightTransform) {
-    if (cardboardView == null) return;
-    cardboardView.getCurrentEyeParams(headTransform,
-                                      leftEye,
-                                      rightEye,
-                                      monocularEye,
-                                      leftEyeNoDistortion,
-                                      rightEyeNoDistortion);
-    if (headView != null && headView.length >= 16) {
-      headTransform.getHeadView(headView, 0);
-    }
-    if (leftTransform != null && leftTransform.length >= 16) {
-      float[] leftView = leftEye.getEyeView();
-      System.arraycopy(leftView, 0, leftTransform, 0, 16);
-    }
-    if (rightTransform != null && rightTransform.length >= 16) {
-      float[] rightView = rightEye.getEyeView();
-      System.arraycopy(rightView, 0, rightTransform, 0, 16);
-    }
-  }
-
-  // Reset the head tracker to the current heading, called from input class
-  public void ResetHeadTracker() {
-    if (cardboardView != null) {
-      cardboardView.resetHeadTracker();
-    }
-  }
-
-  // Undistort and render the provided texture, called from renderer class
-  public void UndistortTexture(int textureId) {
-    try {
-      cardboardView.undistortTexture(textureId);
-    } catch (Exception e) {
-      Log.e("SDL", "exception", e);
-    }
-  }
-
-  // Set whether the Cardboard button (gear icon) is enabled and rendering.
-  public void SetCardboardButtonEnabled(boolean enabled) {
-    if (uiLayer != null) {
-      uiLayer.setButtonEnabled(enabled);
-    } else if (enabled) {
-      uiLayer = new UiLayer(this, GetCardboardButtonDrawable());
-      uiLayer.attachUiLayer(null);
-    }
-  }
-
-  // The drawable used by the Cardboard setting button. null uses the default gear.
-  protected Drawable GetCardboardButtonDrawable() {
-    return null;
-  }
-
-  private OrientationEventListener CreateOrientationListener() {
-    return new OrientationEventListener(this) {
-        @Override
-        public void onOrientationChanged(int orientation) {
-          int rotation = getWindowManager().getDefaultDisplay().getRotation();
-          if (rotation != cachedDeviceRotation) {
-            cachedDeviceRotation = rotation;
-            nativeOnDisplayRotationChanged(rotation);
-          }
-        }
-      };
   }
 
   // Sends a keypress event to the Android system.
@@ -524,6 +388,7 @@ public class FPLActivity extends SDLActivity implements
     }
   }
 
+  @Override
   public void doFrame(long frameTimeNanos) {
     // Respond to event:
     nativeOnVsync();
@@ -565,14 +430,5 @@ public class FPLActivity extends SDLActivity implements
       int controlCode,
       float x,
       float y);
-
-  // Implemented in C++. (input.cpp)
-  private static native void nativeOnCardboardTrigger();
-
-  // Implemented in C++. (input.cpp)
-  private static native void nativeSetDeviceInCardboard(boolean inCardboard);
-
-  // Implemented in C++. (input.cpp)
-  private static native void nativeOnDisplayRotationChanged(int rotation);
 
 }
