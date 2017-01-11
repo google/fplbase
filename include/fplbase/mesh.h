@@ -104,8 +104,9 @@ class Mesh : public AsyncAsset {
   /// @param count The number of indices.
   /// @param mat The material associated with the IBO.
   /// @param is_32_bit Specifies that the indices are 32bit. Default 16bit.
+  /// @param primitive How the triangles are assembled from the indices.
   void AddIndices(const void *indices, int count, Material *mat,
-                  bool is_32_bit = false);
+                  bool is_32_bit = false, Primitive primitive = kTriangles);
 
   /// @brief Set the bones used by an animated mesh.
   ///
@@ -424,6 +425,7 @@ class Mesh : public AsyncAsset {
     BufferHandle ibo;
     Material *mat;
     uint32_t index_type;
+    uint32_t primitive;
   };
 
   MeshImpl *impl_;

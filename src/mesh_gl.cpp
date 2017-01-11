@@ -178,14 +178,14 @@ void UnbindAttributes(BufferHandle vao, const Attribute *attributes) {
 }
 
 void DrawElement(Renderer &renderer, int32_t count, int32_t instances,
-                 uint32_t index_type) {
+                 uint32_t index_type, GLenum gl_primitive) {
   if (instances == 1) {
-    GL_CALL(glDrawElements(GL_TRIANGLES, count, index_type, 0));
+    GL_CALL(glDrawElements(gl_primitive, count, index_type, 0));
   } else {
     (void)renderer;
     assert(renderer.feature_level() == kFeatureLevel30);
     GL_CALL(
-        glDrawElementsInstanced(GL_TRIANGLES, count, index_type, 0, instances));
+        glDrawElementsInstanced(gl_primitive, count, index_type, 0, instances));
   }
 }
 
@@ -260,7 +260,7 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
 }
 
 void Mesh::AddIndices(const void *index_data, int count, Material *mat,
-                      bool is_32_bit) {
+                      bool is_32_bit, Primitive primitive) {
   indices_.push_back(Indices());
   auto &idxs = indices_.back();
   idxs.count = count;
@@ -272,6 +272,7 @@ void Mesh::AddIndices(const void *index_data, int count, Material *mat,
                    index_data, GL_STATIC_DRAW));
   idxs.index_type = (is_32_bit ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT);
   idxs.mat = mat;
+  idxs.primitive = GetGlPrimitiveType(primitive);
 }
 
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
@@ -280,7 +281,7 @@ void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
     if (!ignore_material) it->mat->Set(renderer);
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
     DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                it->index_type);
+                it->index_type, it->primitive);
   }
   UnbindAttributes(impl_->vao, format_);
 }
@@ -299,7 +300,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
       renderer.SetViewport(viewport[i]);
       shader->Set(renderer);
       DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                  it->index_type);
+                  it->index_type, it->primitive);
     }
   }
   UnbindAttributes(impl_->vao, format_);
