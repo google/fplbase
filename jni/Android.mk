@@ -48,7 +48,9 @@ FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11 \
                                   -DFPLBASE_OPENGL
 
 FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
-                           -Wno-literal-suffix -Wno-unused-function
+                           -Wno-literal-suffix -Wno-unused-function \
+                           -DSTB_IMAGE_IMPLEMENTATION \
+                           -DSTB_IMAGE_RESIZE_IMPLEMENTATION
 
 FPLBASE_COMMON_LIBRARIES := \
   libwebp \

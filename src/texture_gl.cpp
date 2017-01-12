@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPL_BASE_BACKEND_STDLIB
-// Definitions to instantiate STB functions here.
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
-#endif  // FPL_BASE_BACKEND_STDLIB
-
 #include "precompiled.h"
 
 #include "fplbase/texture.h"

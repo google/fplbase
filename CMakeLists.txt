@@ -247,6 +247,10 @@ set(fplbase_stdlib_SRCS
   src/environment_stdlib.cpp
   src/input_stdlib.cpp)
 
+set(fplbase_stb_defines
+    STB_IMAGE_IMPLEMENTATION
+    STB_IMAGE_RESIZE_IMPLEMENTATION)
+
 # Includes for this project.
 include_directories(src)
 include_directories(include)
@@ -311,11 +315,13 @@ if(fplbase_build_library)
   add_library(fplbase ${fplbase_SRCS})
   fplbase_common_config(fplbase)
   target_link_libraries(fplbase ${SDL_LIBRARIES})
+  target_compile_definitions(fplbase PRIVATE ${fplbase_stb_defines})
 
   if(compiler_supports_threading)
     add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
     fplbase_common_config(fplbase_stdlib)
     target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+    target_compile_definitions(fplbase_stdlib PRIVATE ${fplbase_stb_defines})
   endif()
 
   # Setup iOS custom build target.
