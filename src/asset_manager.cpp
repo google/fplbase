@@ -140,7 +140,7 @@ void AssetManager::ForEachShaderWithDefine(const char *define,
   // there is a growing number of shaders.
   for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
     Shader *shader = iter->second;
-    if (shader->program() > 0 && shader->HasDefine(define)) {
+    if (ValidShaderHandle(shader->program()) && shader->HasDefine(define)) {
       func(shader);
     }
   }

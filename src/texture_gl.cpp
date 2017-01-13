@@ -14,15 +14,16 @@
 
 #include "precompiled.h"
 
+#include "fplbase/flatbuffer_utils.h"
+#include "fplbase/internal/handle_conversions.h"
+#include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/texture_atlas.h"
-#include "fplbase/renderer.h"
-#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
+#include "texture_atlas_generated.h"
 #include "texture_headers.h"
 #include "webp/decode.h"
-#include "texture_atlas_generated.h"
 
 using mathfu::vec2i;
 
@@ -30,21 +31,23 @@ namespace fplbase {
 
 void Texture::Set(size_t unit, RenderContext *) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
-  GL_CALL(glBindTexture(target_, id_));
+  GL_CALL(glBindTexture(GlTextureTarget(target_), GlTextureHandle(id_)));
 }
 
 void Texture::Delete() {
-  if (id_) {
+  if (ValidTextureHandle(id_)) {
     if (!is_external_) {
-      GL_CALL(glDeleteTextures(1, &id_));
+      auto id = GlTextureHandle(id_);
+      GL_CALL(glDeleteTextures(1, &id));
     }
-    id_ = 0;
+    id_ = InvalidTextureHandle();
   }
 }
 
-GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
-                              TextureFormat texture_format,
-                              TextureFormat desired, TextureFlags flags) {
+TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
+                                     TextureFormat texture_format,
+                                     TextureFormat desired,
+                                     TextureFlags flags) {
   GLenum tex_type = GL_TEXTURE_2D;
   GLenum tex_imagetype = GL_TEXTURE_2D;
   int tex_num_faces = 1;
@@ -71,7 +74,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       if (area & (area - 1)) {
         LogError(kError, "CreateTexture: not power of two in size: (%d,%d)",
                  tex_size.x, tex_size.y);
-        return 0;
+        return InvalidTextureHandle();
       }
     }
   }
@@ -355,7 +358,7 @@ GLuint Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     GL_CALL(glGenerateMipmap(tex_type));
 #endif
   }
-  return texture_id;
+  return TextureHandleFromGl(texture_id);
 }
 
 void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
@@ -385,6 +388,12 @@ void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
   }
   GL_CALL(glTexSubImage2D(GL_TEXTURE_2D, 0, xoffset, yoffset, width, height,
                           texture_format, pixel_format, data));
+}
+
+// static
+TextureTarget Texture::TextureTargetFromFlags(TextureFlags flags) {
+  return TextureTargetFromGl(
+      flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D);
 }
 
 }  // namespace fplbase

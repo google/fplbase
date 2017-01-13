@@ -20,7 +20,7 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
-#include "fplbase/wrapper.h"
+#include "fplbase/handles.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
@@ -54,7 +54,7 @@ enum TextureFlags {
   kTextureFlagsIsCubeMap = 1 << 2,    // Data represents a 1x6 cubemap.
   kTextureFlagsLoadAsync = 1 << 3,    // Load texture asynchronously.
   kTextureFlagsPremultiplyAlpha = 1 << 4,  // Premultiply by alpha on
-      // load.  For now only webp is supported.
+  // load.  For now only webp is supported.
 };
 
 inline TextureFlags operator|(TextureFlags a, TextureFlags b) {
@@ -121,7 +121,7 @@ class Texture : public AsyncAsset {
 
   /// @brief Whether this object loaded and finalized correctly. Call after
   /// Finalize has been called (by AssetManager::TryFinalize).
-  bool IsValid() { return id_ != 0; }
+  bool IsValid() { return ValidTextureHandle(id_); }
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
@@ -386,6 +386,9 @@ class Texture : public AsyncAsset {
                               mathfu::vec2i *dimensions,
                               TextureFormat *texture_format);
 
+  /// @brief Backend specific conversion of flags to TextureTarget.
+  static TextureTarget TextureTargetFromFlags(TextureFlags flags);
+
   TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;
@@ -400,7 +403,8 @@ class Texture : public AsyncAsset {
 /// @brief used by some functions to allow the texture loading mechanism to
 /// be specified by the caller.
 typedef std::function<Texture *(const char *filename, TextureFormat format,
-                                TextureFlags flags)> TextureLoaderFn;
+                                TextureFlags flags)>
+    TextureLoaderFn;
 
 /// @}
 }  // namespace fplbase

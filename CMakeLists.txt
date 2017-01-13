@@ -199,7 +199,9 @@ set(fplbase_common_SRCS
   include/fplbase/environment.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
+  include/fplbase/handles.h
   include/fplbase/input.h
+  include/fplbase/internal/handle_conversions.h
   include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
   include/fplbase/mesh.h
@@ -213,7 +215,6 @@ set(fplbase_common_SRCS
   include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
-  include/fplbase/wrapper.h
   schemas
   src/asset_manager.cpp
   src/input.cpp
@@ -297,7 +298,6 @@ function(fplbase_common_config target)
   # Dependencies for the executable target.
   add_dependencies(${target} fplbase_generated_includes)
   target_link_libraries(${target} ${OPENGL_LIBRARIES} ${SYSTEM_LIBRARIES} webp)
-  target_compile_definitions(${target} PUBLIC FPLBASE_OPENGL)
 endfunction()
 
 # The stdlib backend requires <mutex> and <thread> headers that were only

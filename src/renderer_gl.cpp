@@ -14,6 +14,7 @@
 
 #include "precompiled.h"  // NOLINT
 
+#include "fplbase/internal/handle_conversions.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
@@ -27,6 +28,28 @@ using mathfu::vec3;
 using mathfu::vec4;
 
 namespace fplbase {
+
+TextureHandle InvalidTextureHandle() { return TextureHandleFromGl(0); }
+TextureTarget InvalidTextureTarget() { return TextureTargetFromGl(0); }
+ShaderHandle InvalidShaderHandle() { return ShaderHandleFromGl(0); }
+UniformHandle InvalidUniformHandle() { return UniformHandleFromGl(-1); }
+BufferHandle InvalidBufferHandle() { return BufferHandleFromGl(0); }
+
+bool ValidTextureHandle(TextureHandle handle) {
+  return GlTextureHandle(handle) != 0;
+}
+bool ValidTextureTarget(TextureTarget target) {
+  return GlTextureTarget(target) != 0;
+}
+bool ValidShaderHandle(ShaderHandle handle) {
+  return GlShaderHandle(handle) != 0;
+}
+bool ValidUniformHandle(UniformHandle handle) {
+  return GlUniformHandle(handle) >= 0;
+}
+bool ValidBufferHandle(BufferHandle handle) {
+  return GlBufferHandle(handle) != 0;
+}
 
 void RendererBase::AdvanceFrame(bool minimized, double time) {
   time_ = time;
@@ -103,8 +126,9 @@ void Renderer::ClearFrameBuffer(const vec4 &color) {
 
 void Renderer::ClearDepthBuffer() { GL_CALL(glClear(GL_DEPTH_BUFFER_BIT)); }
 
-GLuint RendererBase::CompileShader(bool is_vertex_shader, GLuint program,
-                                   const GLchar *csource) {
+ShaderHandle RendererBase::CompileShader(bool is_vertex_shader,
+                                         ShaderHandle program,
+                                         const char *csource) {
   assert(max_vertex_uniform_components_);
 
   const std::string max_components =
@@ -120,51 +144,52 @@ GLuint RendererBase::CompileShader(bool is_vertex_shader, GLuint program,
   const char *platform_source_ptr = platform_source.c_str();
 
   const GLenum stage = is_vertex_shader ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
-  auto shader_obj = glCreateShader(stage);
+  const GLuint shader_obj = glCreateShader(stage);
   GL_CALL(glShaderSource(shader_obj, 1, &platform_source_ptr, nullptr));
   GL_CALL(glCompileShader(shader_obj));
   GLint success;
   GL_CALL(glGetShaderiv(shader_obj, GL_COMPILE_STATUS, &success));
   if (success) {
-    GL_CALL(glAttachShader(program, shader_obj));
-    return shader_obj;
+    GL_CALL(glAttachShader(GlShaderHandle(program), shader_obj));
+    return ShaderHandleFromGl(shader_obj);
   } else {
     GLint length = 0;
     GL_CALL(glGetShaderiv(shader_obj, GL_INFO_LOG_LENGTH, &length));
     last_error_.assign(length, '\0');
     GL_CALL(glGetShaderInfoLog(shader_obj, length, &length, &last_error_[0]));
     GL_CALL(glDeleteShader(shader_obj));
-    return 0;
+    return InvalidShaderHandle();
   }
 }
 
 Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
                                                  const char *ps_source,
                                                  Shader *shader) {
-  auto program = glCreateProgram();
+  auto program_gl = glCreateProgram();
+  ShaderHandle program = ShaderHandleFromGl(program_gl);
   auto vs = CompileShader(true, program, vs_source);
-  if (vs) {
+  if (ValidShaderHandle(vs)) {
     auto ps = CompileShader(false, program, ps_source);
-    if (ps) {
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributePosition,
+    if (ValidShaderHandle(ps)) {
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributePosition,
                                    "aPosition"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeNormal,
-                                   "aNormal"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTangent,
+      GL_CALL(
+          glBindAttribLocation(program_gl, Mesh::kAttributeNormal, "aNormal"));
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTangent,
                                    "aTangent"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoord,
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoord,
                                    "aTexCoord"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeTexCoordAlt,
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoordAlt,
                                    "aTexCoordAlt"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeColor,
-                                   "aColor"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneIndices,
+      GL_CALL(
+          glBindAttribLocation(program_gl, Mesh::kAttributeColor, "aColor"));
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeBoneIndices,
                                    "aBoneIndices"));
-      GL_CALL(glBindAttribLocation(program, Mesh::kAttributeBoneWeights,
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeBoneWeights,
                                    "aBoneWeights"));
-      GL_CALL(glLinkProgram(program));
+      GL_CALL(glLinkProgram(program_gl));
       GLint status;
-      GL_CALL(glGetProgramiv(program, GL_LINK_STATUS, &status));
+      GL_CALL(glGetProgramiv(program_gl, GL_LINK_STATUS, &status));
       if (status == GL_TRUE) {
         if (shader == nullptr) {
           // Load a new shader.
@@ -173,19 +198,20 @@ Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
           // Reset the old shader with the recompiled shader.
           shader->Reset(program, vs, ps);
         }
-        GL_CALL(glUseProgram(program));
+        GL_CALL(glUseProgram(program_gl));
         shader->InitializeUniforms();
         return shader;
       }
       GLint length = 0;
-      GL_CALL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length));
+      GL_CALL(glGetProgramiv(program_gl, GL_INFO_LOG_LENGTH, &length));
       last_error_.assign(length, '\0');
-      GL_CALL(glGetProgramInfoLog(program, length, &length, &last_error_[0]));
-      GL_CALL(glDeleteShader(ps));
+      GL_CALL(
+          glGetProgramInfoLog(program_gl, length, &length, &last_error_[0]));
+      GL_CALL(glDeleteShader(GlShaderHandle(ps)));
     }
-    GL_CALL(glDeleteShader(vs));
+    GL_CALL(glDeleteShader(GlShaderHandle(vs)));
   }
-  GL_CALL(glDeleteProgram(program));
+  GL_CALL(glDeleteProgram(program_gl));
   return nullptr;
 }
 
@@ -354,8 +380,7 @@ void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   auto viewport_size = base_->GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
 
-  auto scaling_ratio =
-      vec2(viewport_size) / vec2(base_->window_size());
+  auto scaling_ratio = vec2(viewport_size) / vec2(base_->window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
   glScissor(static_cast<GLint>(scaled_pos.x), static_cast<GLint>(scaled_pos.y),
@@ -407,5 +432,5 @@ GLBASEEXTS GLEXTS
 
 #ifdef PLATFORM_MOBILE
 #define GLEXT(type, name, required) type name = nullptr;
-  GLESEXTS
+    GLESEXTS
 #endif  // PLATFORM_MOBILE

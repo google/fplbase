@@ -21,10 +21,10 @@
 
 #include "fplbase/asset.h"
 #include "fplbase/async_loader.h"
+#include "fplbase/handles.h"
 #include "fplbase/material.h"
 #include "fplbase/render_state.h"
 #include "fplbase/shader.h"
-#include "fplbase/wrapper.h"
 #include "mathfu/constants.h"
 
 namespace fplbase {
@@ -420,7 +420,8 @@ class Mesh : public AsyncAsset {
   static const int kMaxAttributes = 9;
 
   struct Indices {
-    Indices() : count(0), ibo(0), mat(nullptr), index_type(0) {}
+    Indices()
+        : count(0), ibo(InvalidBufferHandle()), mat(nullptr), index_type(0) {}
     int count;
     BufferHandle ibo;
     Material *mat;

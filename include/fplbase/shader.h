@@ -20,7 +20,7 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
-#include "fplbase/wrapper.h"
+#include "fplbase/handles.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fplbase {
@@ -43,7 +43,9 @@ class Shader : public AsyncAsset {
   Shader(const char *filename, const std::vector<std::string> &defines,
          Renderer *renderer)
       : AsyncAsset(filename ? filename : "") {
-    Init(0 /* program */, 0 /* vs */, 0 /* ps */, defines, renderer);
+    const ShaderHandle invalid = InvalidShaderHandle();
+    Init(invalid /* program */, invalid /* vs */, invalid /* ps */, defines,
+         renderer);
   }
 
   Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
@@ -72,7 +74,7 @@ class Shader : public AsyncAsset {
 
   /// @brief Whether this object loaded and finalized correctly. Call after
   /// Finalize has been called (by AssetManager::TryFinalize).
-  bool IsValid() { return program_ != 0; }
+  bool IsValid() { return ValidShaderHandle(program_); }
 
   /// @brief Activate this shader for subsequent draw calls.
   ///
@@ -122,7 +124,7 @@ class Shader : public AsyncAsset {
   bool SetUniform(const char *uniform_name,
                   const mathfu::Vector<float, N> &value) {
     auto loc = FindUniform(uniform_name);
-    if (loc < 0) return false;
+    if (!ValidUniformHandle(loc)) return false;
     SetUniform(loc, &value[0], N);
     return true;
   }
@@ -136,7 +138,7 @@ class Shader : public AsyncAsset {
   /// @return Returns true if the uniform was found and set, false otherwise.
   bool SetUniform(const char *uniform_name, float value) {
     auto loc = FindUniform(uniform_name);
-    if (loc < 0) return false;
+    if (!ValidUniformHandle(loc)) return false;
     SetUniform(loc, &value, 1);
     return true;
   }
@@ -150,7 +152,7 @@ class Shader : public AsyncAsset {
   /// @return Returns true if the uniform was found and set, false otherwise.
   bool SetUniform(const char *uniform_name, const mathfu::mat4 &value) {
     auto loc = FindUniform(uniform_name);
-    if (loc < 0) return false;
+    if (!ValidUniformHandle(loc)) return false;
     SetUniform(loc, &value[0], sizeof(value) / sizeof(float));
     return true;
   }

@@ -30,13 +30,14 @@ void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
   program_ = program;
   vs_ = vs;
   ps_ = ps;
-  uniform_model_view_projection_ = -1;
-  uniform_model_ = -1;
-  uniform_color_ = -1;
-  uniform_light_pos_ = -1;
-  uniform_camera_pos_ = -1;
-  uniform_time_ = -1;
-  uniform_bone_transforms_ = -1;
+  const UniformHandle invalid = InvalidUniformHandle();
+  uniform_model_view_projection_ = invalid;
+  uniform_model_ = invalid;
+  uniform_color_ = invalid;
+  uniform_light_pos_ = invalid;
+  uniform_camera_pos_ = invalid;
+  uniform_time_ = invalid;
+  uniform_bone_transforms_ = invalid;
   renderer_ = renderer;
 
   original_defines_ = defines;
@@ -77,9 +78,9 @@ bool Shader::ReloadDefines(const std::vector<std::string> &defines_to_add,
 bool Shader::ReloadInternal() {
   ShaderSourcePair *source_pair = LoadSourceFile();
   if (source_pair != nullptr) {
-    auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                                         source_pair->fragment_shader.c_str(),
-                                         this);
+    auto sh =
+        renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                                   source_pair->fragment_shader.c_str(), this);
     delete source_pair;
     return sh != nullptr;
   } else {
@@ -110,9 +111,9 @@ bool Shader::Finalize() {
       reinterpret_cast<const ShaderSourcePair *>(data_);
   // This funciton will call Shader::Reset() -> Shader::Clear() to clear
   // 'data_'.
-  auto sh = renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                                       source_pair->fragment_shader.c_str(),
-                                       this);
+  auto sh =
+      renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                                 source_pair->fragment_shader.c_str(), this);
   CallFinalizeCallback();
   return sh != nullptr;
 }
@@ -143,10 +144,9 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
         reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
     assert(shaderdef::VerifyShaderBuffer(verifier));
     auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
-    auto shader =
-        RendererBase::Get()->CompileAndLinkShader(
-          shaderdef->vertex_shader()->c_str(),
-          shaderdef->fragment_shader()->c_str());
+    auto shader = RendererBase::Get()->CompileAndLinkShader(
+        shaderdef->vertex_shader()->c_str(),
+        shaderdef->fragment_shader()->c_str());
     if (!shader) {
       LogError(kError, "Shader Error: ");
       if (shaderdef->original_sources()) {
@@ -166,9 +166,9 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
     return shader;
   }
   LogError(kError, "Can\'t load shader file: %s", filename);
-  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") +
+                                      filename);
   return nullptr;
 }
 
 }  // namespace fplbase
-

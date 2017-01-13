@@ -18,6 +18,7 @@
 
 #include "fplbase/environment.h"
 #include "fplbase/flatbuffer_utils.h"
+#include "fplbase/internal/handle_conversions.h"
 #include "fplbase/mesh.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"
@@ -34,7 +35,7 @@ using mathfu::vec4i;
 namespace fplbase {
 
 struct MeshImpl {
-  MeshImpl() : vbo(0), vao(0) {}
+  MeshImpl() : vbo(InvalidBufferHandle()), vao(InvalidBufferHandle()) {}
 
   BufferHandle vbo;
   BufferHandle vao;
@@ -162,15 +163,16 @@ void UnSetAttributes(const Attribute *attributes) {
 
 void BindAttributes(BufferHandle vao, BufferHandle vbo,
                     const Attribute *attributes, size_t vertex_size) {
-  if (vao) {
-    glBindVertexArray(vao);
+  if (ValidBufferHandle(vao)) {
+    glBindVertexArray(GlBufferHandle(vao));
   } else {
-    SetAttributes(vbo, attributes, static_cast<int>(vertex_size), nullptr);
+    SetAttributes(GlBufferHandle(vbo), attributes,
+                  static_cast<int>(vertex_size), nullptr);
   }
 }
 
 void UnbindAttributes(BufferHandle vao, const Attribute *attributes) {
-  if (vao) {
+  if (ValidBufferHandle(vao)) {
     glBindVertexArray(0);  // TODO(wvo): could probably omit this?
   } else {
     UnSetAttributes(attributes);
@@ -191,19 +193,22 @@ void DrawElement(Renderer &renderer, int32_t count, int32_t instances,
 
 }  // namespace
 
-bool Mesh::IsValid() { return impl_->vbo != 0; }
+bool Mesh::IsValid() { return ValidBufferHandle(impl_->vbo); }
 
 void Mesh::Clear() {
-  if (impl_->vbo) {
-    GL_CALL(glDeleteBuffers(1, &impl_->vbo));
-    impl_->vbo = 0;
+  if (ValidBufferHandle(impl_->vbo)) {
+    auto vbo = GlBufferHandle(impl_->vbo);
+    GL_CALL(glDeleteBuffers(1, &vbo));
+    impl_->vbo = InvalidBufferHandle();
   }
-  if (impl_->vao) {
-    GL_CALL(glDeleteVertexArrays(1, &impl_->vao));
-    impl_->vao = 0;
+  if (ValidBufferHandle(impl_->vao)) {
+    auto vao = GlBufferHandle(impl_->vao);
+    GL_CALL(glDeleteVertexArrays(1, &vao));
+    impl_->vao = InvalidBufferHandle();
   }
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
-    GL_CALL(glDeleteBuffers(1, &it->ibo));
+    auto ibo = GlBufferHandle(it->ibo);
+    GL_CALL(glDeleteBuffers(1, &ibo));
   }
   indices_.clear();
 
@@ -228,15 +233,19 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
   default_bone_transform_inverses_ = nullptr;
 
   set_format(format);
-  GL_CALL(glGenBuffers(1, &impl_->vbo));
-  GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, impl_->vbo));
+  GLuint vbo = 0;
+  GL_CALL(glGenBuffers(1, &vbo));
+  impl_->vbo = BufferHandleFromGl(vbo);
+  GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo));
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, count * vertex_size, vertex_data,
                        GL_STATIC_DRAW));
 
   if (RendererBase::Get()->feature_level() >= kFeatureLevel30) {
-    glGenVertexArrays(1, &impl_->vao);
-    glBindVertexArray(impl_->vao);
-    SetAttributes(impl_->vbo, format_, static_cast<int>(vertex_size_), nullptr);
+    GLuint vao = 0;
+    glGenVertexArrays(1, &vao);
+    impl_->vao = BufferHandleFromGl(vao);
+    glBindVertexArray(vao);
+    SetAttributes(vbo, format_, static_cast<int>(vertex_size_), nullptr);
     glBindVertexArray(0);
   }
 
@@ -264,8 +273,10 @@ void Mesh::AddIndices(const void *index_data, int count, Material *mat,
   indices_.push_back(Indices());
   auto &idxs = indices_.back();
   idxs.count = count;
-  GL_CALL(glGenBuffers(1, &idxs.ibo));
-  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, idxs.ibo));
+  GLuint ibo = 0;
+  GL_CALL(glGenBuffers(1, &ibo));
+  idxs.ibo = BufferHandleFromGl(ibo);
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
   GL_CALL(
       glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                    count * (is_32_bit ? sizeof(uint32_t) : sizeof(uint16_t)),
@@ -279,7 +290,7 @@ void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   BindAttributes(impl_->vao, impl_->vbo, format_, vertex_size_);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
-    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
+    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
     DrawElement(renderer, it->count, static_cast<int32_t>(instances),
                 it->index_type, it->primitive);
   }
@@ -293,7 +304,7 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
   BindAttributes(impl_->vao, impl_->vbo, format_, vertex_size_);
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     if (!ignore_material) it->mat->Set(renderer);
-    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, it->ibo));
+    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
     for (auto i = 0; i < 2; ++i) {
       renderer.set_camera_pos(camera_position[i]);
       renderer.set_model_view_projection(mvp[i]);

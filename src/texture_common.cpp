@@ -14,15 +14,15 @@
 
 #include "precompiled.h"
 
+#include "fplbase/flatbuffer_utils.h"
+#include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/texture_atlas.h"
-#include "fplbase/renderer.h"
-#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/utilities.h"
 #include "mathfu/glsl_mappings.h"
+#include "texture_atlas_generated.h"
 #include "texture_headers.h"
 #include "webp/decode.h"
-#include "texture_atlas_generated.h"
 
 // STB_image to resize PNG/JPG images.
 // Disable warnings in STB_image_resize.
@@ -79,13 +79,12 @@ static void MultiplyRgbByAlpha(uint8_t *rgba_ptr, int width, int height) {
 
 Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
     : AsyncAsset(filename ? filename : ""),
-      id_(0),
+      id_(InvalidTextureHandle()),
       size_(mathfu::kZeros2i),
       original_size_(mathfu::kZeros2i),
       scale_(mathfu::kOnes2f),
       texture_format_(kFormat888),
-      target_(flags & kTextureFlagsIsCubeMap ? GL_TEXTURE_CUBE_MAP
-                                             : GL_TEXTURE_2D),
+      target_(TextureTargetFromFlags(flags)),
       desired_(format),
       flags_(flags),
       is_external_(false) {}
@@ -113,7 +112,7 @@ bool Texture::Finalize() {
     data_ = nullptr;
   }
   CallFinalizeCallback();
-  return id_ != 0;
+  return ValidTextureHandle(id_);
 }
 
 void Texture::Set(size_t unit) { Set(unit, nullptr); }
@@ -425,7 +424,8 @@ TextureAtlas *TextureAtlas::LoadTextureAtlas(const char *filename,
     }
     return atlas;
   }
-  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") + filename);
+  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ") +
+                                      filename);
   return nullptr;
 }
 
