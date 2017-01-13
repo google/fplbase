@@ -1,0 +1,204 @@
+// Copyright 2017 Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef FPLBASE_DETAILED_RENDER_STATE_H
+#define FPLBASE_DETAILED_RENDER_STATE_H
+
+#include "fplbase/renderer_common.h"
+
+namespace fplbase {
+
+enum RenderFunction {
+  kRenderAlways,        // Corresponds to GL_ALWAYS.
+  kRenderEqual,         // Corresponds to GL_EQUAL.
+  kRenderGreater,       // Corresponds to GL_GREATER.
+  kRenderGreaterEqual,  // Corresponds to GL_GEQUAL.
+  kRenderLess,          // Corresponds to GL_LESS.
+  kRenderLessEqual,     // Corresponds to GL_LEQUAL.
+  kRenderNever,         // Corresponds to GL_NEVER.
+  kRenderNotEqual,      // Corresponds to GL_NOTEQUAL.
+  kRenderCount
+};
+
+struct AlphaTestState {
+  bool enabled;
+  RenderFunction function;
+  float ref;
+
+  AlphaTestState() : enabled(false), function(kRenderAlways), ref(0.0f) {}
+};
+
+struct BlendState {
+  enum BlendFactor {
+    kZero,                   // Corresponds to GL_ZERO.
+    kOne,                    // Corresponds to GL_ONE.
+    kSrcColor,               // Corresponds to GL_SRC_COLOR.
+    kOneMinusSrcColor,       // Corresponds to GL_ONE_MINUS_SRC_COLOR.
+    kDstColor,               // Corresponds to GL_DST_COLOR.
+    kOneMinusDstColor,       // Corresponds to GL_ONE_MINUS_DST_COLOR.
+    kSrcAlpha,               // Corresponds to GL_SRC_ALPHA.
+    kOneMinusSrcAlpha,       // Corresponds to GL_ONE_MINUS_SRC_ALPHA.
+    kDstAlpha,               // Corresponds to GL_DST_ALPHA.
+    kOneMinusDstAlpha,       // Corresponds to GL_ONE_MINUS_DST_ALPHA.
+    kConstantColor,          // Corresponds to GL_CONSTANT_COLOR.
+    kOneMinusConstantColor,  // Corresponds to GL_ONE_MINUS_CONSTANT_COLOR.
+    kConstantAlpha,          // Corresponds to GL_CONSTANT_ALPHA.
+    kOneMinusConstantAlpha,  // Corresponds to GL_ONE_MINUS_CONSTANT_ALPHA.
+    kCount
+  };
+
+  bool enabled;
+  BlendFactor src;
+  BlendFactor dst;
+
+  BlendState() : enabled(false), src(kOne), dst(kZero) {}
+};
+
+struct CullState {
+  enum CullFace { kFront, kBack, kFrontAndBack, kCount };
+  CullFace face;
+  bool enabled;
+
+  CullState() : face(kBack), enabled(false) {}
+};
+
+struct DepthState {
+  RenderFunction function;
+  bool enabled;
+
+  DepthState() : function(kRenderAlways), enabled(false) {}
+};
+
+struct StencilFunction {
+  RenderFunction function;
+  int ref;
+  unsigned int mask;
+
+  StencilFunction() : function(kRenderAlways), ref(0), mask(1) {}
+};
+
+struct StencilOperation {
+  enum StencilOperations {
+    kKeep,              // Corresponds to GL_KEEP.
+    kZero,              // Corresponds to GL_ZERO.
+    kReplace,           // Corresponds to GL_REPLACE.
+    kIncrement,         // Corresponds to GL_INCR.
+    kIncrementAndWrap,  // Corresponds to GL_INCR_WRAP.
+    kDecrement,         // Corresponds to GL_DECR.
+    kDecrementAndWrap,  // Corresponds to GL_DECR_WRAP.
+    kInvert,            // Corresponds to GL_INVERT.
+    kCount
+  };
+
+  // Specifies the action to take when the stencil test fails.
+  StencilOperations stencil_fail;
+  // Specifies the stencil action when the stencil test passes, but the depth
+  // test fails.
+  StencilOperations depth_fail;
+  // Specifies the stencil action when both the stencil test and the depth test
+  // pass, or when the stencil test passes and either there is no depth buffer
+  // or depth testing is not enabled.
+  StencilOperations pass;
+
+  StencilOperation() : stencil_fail(kKeep), depth_fail(kKeep), pass(kKeep) {}
+};
+
+struct StencilState {
+  bool enabled;
+
+  StencilFunction back_function;
+  StencilOperation back_op;
+  StencilFunction front_function;
+  StencilOperation front_op;
+
+  StencilState() : enabled(false) {}
+};
+
+struct ScissorState {
+  bool enabled;
+
+  ScissorState() : enabled(false) {}
+};
+
+struct RenderState {
+  AlphaTestState alpha_test_state;
+  BlendState blend_state;
+  CullState cull_state;
+  DepthState depth_state;
+  ScissorState scissor_state;
+  StencilState stencil_state;
+
+  Viewport viewport;
+
+  RenderState() {}
+};
+
+inline bool operator==(const ScissorState &lhs, const ScissorState &rhs) {
+  return (lhs.enabled == rhs.enabled);
+}
+
+inline bool operator!=(const ScissorState &lhs, const ScissorState &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(const StencilOperation &lhs,
+                       const StencilOperation &rhs) {
+  return (lhs.stencil_fail == rhs.stencil_fail &&
+          lhs.depth_fail == rhs.depth_fail && lhs.pass == rhs.pass);
+}
+
+inline bool operator!=(const StencilOperation &lhs,
+                       const StencilOperation &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(const StencilFunction &lhs, const StencilFunction &rhs) {
+  return (lhs.function == rhs.function && lhs.ref == rhs.ref &&
+          lhs.mask == rhs.mask);
+}
+
+inline bool operator!=(const StencilFunction &lhs, const StencilFunction &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(const StencilState &lhs, const StencilState &rhs) {
+  return lhs.enabled == rhs.enabled && lhs.back_function == rhs.back_function &&
+         lhs.back_op == rhs.back_op &&
+         lhs.front_function == rhs.front_function &&
+         lhs.front_op == rhs.front_op;
+}
+
+inline bool operator!=(const StencilState &lhs, const StencilState &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(const DepthState &lhs, const DepthState &rhs) {
+  return lhs.enabled == rhs.enabled && lhs.function == rhs.function;
+}
+
+inline bool operator!=(const DepthState &lhs, const DepthState &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(const CullState &lhs, const CullState &rhs) {
+  return lhs.enabled == rhs.enabled && lhs.face == rhs.face;
+}
+
+inline bool operator!=(const CullState &lhs, const CullState &rhs) {
+  return !(lhs == rhs);
+}
+
+}  // namespace fplbase
+
+#endif  // FPLBASE_INTERNAL_RENDER_STATE_H

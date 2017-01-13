@@ -122,11 +122,4 @@ void Renderer::SetBlendMode(BlendMode blend_mode) {
   SetBlendMode(blend_mode, 0.5f);
 }
 
-void Renderer::SetRenderState(const RenderState &state) {
-  SetBlendMode(state.blend_mode);
-  SetCulling(state.cull_mode);
-  SetDepthFunction(state.depth_function);
-  SetViewport(state.viewport);
-}
-
 }  // namespace fplbase

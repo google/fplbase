@@ -20,6 +20,7 @@
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/utilities.h"
+#include "type_conversions_gl.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -215,52 +216,56 @@ Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
   return nullptr;
 }
 
-void Renderer::SetDepthFunction(DepthFunction depth_func) {
-  if (depth_func == render_state_.depth_function) {
+void Renderer::SetDepthFunction(DepthFunction func) {
+  if (func == depth_function_) {
     return;
   }
 
-  if (render_state_.depth_function == kDepthFunctionDisabled) {
-    // The depth test is currently disabled, enable it before setting the
-    // appropriate depth function.
-    GL_CALL(glEnable(GL_DEPTH_TEST));
-  }
+  DepthState depth_state = render_state_.depth_state;
 
-  switch (depth_func) {
+  switch (func) {
     case kDepthFunctionDisabled:
-      GL_CALL(glDisable(GL_DEPTH_TEST));
+      depth_state.enabled = false;
       break;
 
     case kDepthFunctionNever:
-      GL_CALL(glDepthFunc(GL_NEVER));
+      depth_state.enabled = true;
+      depth_state.function = kRenderNever;
       break;
 
     case kDepthFunctionAlways:
-      GL_CALL(glDepthFunc(GL_ALWAYS));
+      depth_state.enabled = true;
+      depth_state.function = kRenderAlways;
       break;
 
     case kDepthFunctionLess:
-      GL_CALL(glDepthFunc(GL_LESS));
+      depth_state.enabled = true;
+      depth_state.function = kRenderLess;
       break;
 
     case kDepthFunctionLessEqual:
-      GL_CALL(glDepthFunc(GL_LEQUAL));
+      depth_state.enabled = true;
+      depth_state.function = kRenderLessEqual;
       break;
 
     case kDepthFunctionGreater:
-      GL_CALL(glDepthFunc(GL_GREATER));
+      depth_state.enabled = true;
+      depth_state.function = kRenderGreater;
       break;
 
     case kDepthFunctionGreaterEqual:
-      GL_CALL(glDepthFunc(GL_GEQUAL));
+      depth_state.enabled = true;
+      depth_state.function = kRenderGreaterEqual;
       break;
 
     case kDepthFunctionEqual:
-      GL_CALL(glDepthFunc(GL_EQUAL));
+      depth_state.enabled = true;
+      depth_state.function = kRenderEqual;
       break;
 
     case kDepthFunctionNotEqual:
-      GL_CALL(glDepthFunc(GL_NOTEQUAL));
+      depth_state.enabled = true;
+      depth_state.function = kRenderNotEqual;
       break;
 
     default:
@@ -268,101 +273,255 @@ void Renderer::SetDepthFunction(DepthFunction depth_func) {
       break;
   }
 
-  render_state_.depth_function = depth_func;
+  if (depth_state.enabled != render_state_.depth_state.enabled) {
+    if (depth_state.enabled) {
+      glEnable(GL_DEPTH_TEST);
+    } else {
+      glDisable(GL_DEPTH_TEST);
+    }
+  }
+
+  if (depth_state.function != render_state_.depth_state.function) {
+    const GLenum depth_func = RenderFunctionToGlFunction(depth_state.function);
+    GL_CALL(glDepthFunc(depth_func));
+  }
+
+  depth_function_ = func;
+  render_state_.depth_state = depth_state;
 }
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
   (void)amount;
-  if (blend_mode == render_state_.blend_mode) return;
 
-  if (base_->force_blend_mode() != kBlendModeCount)
-    blend_mode = base_->force_blend_mode();
-
-  // Disable current blend mode.
-  switch (render_state_.blend_mode) {
-    case kBlendModeOff:
-      break;
-    case kBlendModeTest:
-#ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
-      GL_CALL(glDisable(GL_ALPHA_TEST));
-      break;
-#endif
-    case kBlendModeAlpha:
-    case kBlendModeAdd:
-    case kBlendModeAddAlpha:
-    case kBlendModeMultiply:
-    case kBlendModePreMultipliedAlpha:
-      GL_CALL(glDisable(GL_BLEND));
-      break;
-    default:
-      assert(false);  // Not yet implemented
-      break;
+  if (blend_mode == blend_mode_ &&
+      !(blend_mode == kBlendModeTest &&
+        amount != render_state_.alpha_test_state.ref)) {
+    return;
   }
 
-  // Enable new blend mode.
+  AlphaTestState alpha_test_state = render_state_.alpha_test_state;
+  BlendState blend_state = render_state_.blend_state;
+
   switch (blend_mode) {
     case kBlendModeOff:
+      alpha_test_state.enabled = false;
+      blend_state.enabled = false;
       break;
+
     case kBlendModeTest:
-#ifndef PLATFORM_MOBILE
-      GL_CALL(glEnable(GL_ALPHA_TEST));
-      GL_CALL(glAlphaFunc(GL_GREATER, amount));
+      alpha_test_state.enabled = true;
+      alpha_test_state.function = kRenderGreater;
+      alpha_test_state.ref = amount;
+      blend_state.enabled = false;
       break;
-#endif
+
     case kBlendModeAlpha:
-      GL_CALL(glEnable(GL_BLEND));
-      GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+      alpha_test_state.enabled = false;
+      blend_state.enabled = true;
+      blend_state.src = BlendState::kSrcAlpha;
+      blend_state.dst = BlendState::kOneMinusSrcAlpha;
       break;
+
     case kBlendModeAdd:
-      GL_CALL(glEnable(GL_BLEND));
-      GL_CALL(glBlendFunc(GL_ONE, GL_ONE));
+      alpha_test_state.enabled = false;
+      blend_state.enabled = true;
+      blend_state.src = BlendState::kOne;
+      blend_state.dst = BlendState::kOne;
       break;
+
     case kBlendModeAddAlpha:
-      GL_CALL(glEnable(GL_BLEND));
-      GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
+      alpha_test_state.enabled = false;
+      blend_state.enabled = true;
+      blend_state.src = BlendState::kSrcAlpha;
+      blend_state.dst = BlendState::kOne;
       break;
+
     case kBlendModeMultiply:
-      GL_CALL(glEnable(GL_BLEND));
-      GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
+      alpha_test_state.enabled = false;
+      blend_state.enabled = true;
+      blend_state.src = BlendState::kDstColor;
+      blend_state.dst = BlendState::kZero;
       break;
+
     case kBlendModePreMultipliedAlpha:
-      GL_CALL(glEnable(GL_BLEND));
-      GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
+      alpha_test_state.enabled = false;
+      blend_state.enabled = true;
+      blend_state.src = BlendState::kOne;
+      blend_state.dst = BlendState::kOneMinusSrcAlpha;
       break;
+
     default:
       assert(false);  // Not yet implemented.
       break;
   }
 
-  // Remember new mode as the current mode.
-  render_state_.blend_mode = blend_mode;
+  if (blend_state.enabled != render_state_.blend_state.enabled) {
+    if (blend_state.enabled) {
+      GL_CALL(glEnable(GL_BLEND));
+    } else {
+      GL_CALL(glDisable(GL_BLEND));
+    }
+  }
+
+  if (blend_state.src != render_state_.blend_state.src ||
+      blend_state.dst != render_state_.blend_state.dst) {
+    const GLenum src_factor = BlendStateFactorToGl(blend_state.src);
+    const GLenum dst_factor = BlendStateFactorToGl(blend_state.dst);
+
+    GL_CALL(glBlendFunc(src_factor, dst_factor));
+  }
+
+#ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
+  if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
+    if (alpha_test_state.enabled) {
+      GL_CALL(glEnable(GL_ALPHA_TEST));
+    } else {
+      GL_CALL(glDisable(GL_ALPHA_TEST));
+    }
+  }
+
+  if (alpha_test_state.ref != render_state_.alpha_test_state.ref ||
+      alpha_test_state.function != render_state_.alpha_test_state.function) {
+    const GLenum gl_func =
+        RenderFunctionToGlFunction(alpha_test_state.function);
+    GL_CALL(glAlphaFunc(gl_func, alpha_test_state.ref));
+  }
+#endif
+
+  blend_mode_ = blend_mode;
+  render_state_.alpha_test_state = alpha_test_state;
+  render_state_.blend_state = blend_state;
 }
 
-void Renderer::SetCulling(CullingMode mode) {
-  if (mode == render_state_.cull_mode) {
+static void SetStencilOp(GLenum face, const StencilOperation &set_op,
+                         const StencilOperation &current_op) {
+  if (set_op == current_op) {
     return;
   }
 
-  if (mode == kCullingModeNone) {
-    GL_CALL(glDisable(GL_CULL_FACE));
-  } else {
-    GL_CALL(glEnable(GL_CULL_FACE));
-    switch (mode) {
-      case kCullingModeBack:
-        GL_CALL(glCullFace(GL_BACK));
-        break;
-      case kCullingModeFront:
-        GL_CALL(glCullFace(GL_FRONT));
-        break;
-      case kCullingModeFrontAndBack:
-        GL_CALL(glCullFace(GL_FRONT_AND_BACK));
-        break;
-      default:
-        // Unknown culling mode.
-        assert(false);
+  const GLenum sfail = StencilOpToGlOp(set_op.stencil_fail);
+  const GLenum dpfail = StencilOpToGlOp(set_op.depth_fail);
+  const GLenum dppass = StencilOpToGlOp(set_op.pass);
+  GL_CALL(glStencilOpSeparate(face, sfail, dpfail, dppass));
+}
+
+static void SetStencilFunction(GLenum face, const StencilFunction &set_func,
+                               const StencilFunction &current_func) {
+  if (set_func == current_func) {
+    return;
+  }
+
+  const GLenum gl_func = RenderFunctionToGlFunction(set_func.function);
+  GL_CALL(glStencilFuncSeparate(face, gl_func, set_func.ref, set_func.mask));
+}
+
+void Renderer::SetStencilMode(StencilMode mode, int ref, uint32_t mask) {
+  if (mode == stencil_mode_) {
+    return;
+  }
+
+  StencilState stencil_state = render_state_.stencil_state;
+  switch (mode) {
+    case kStencilDisabled:
+      stencil_state.enabled = false;
+      break;
+
+    case kStencilCompareEqual:
+      stencil_state.enabled = true;
+
+      stencil_state.front_function.function = kRenderEqual;
+      stencil_state.front_function.ref = ref;
+      stencil_state.front_function.mask = mask;
+      stencil_state.back_function = stencil_state.front_function;
+
+      stencil_state.front_op.stencil_fail = StencilOperation::kKeep;
+      stencil_state.front_op.depth_fail = StencilOperation::kKeep;
+      stencil_state.front_op.pass = StencilOperation::kKeep;
+      stencil_state.back_op = stencil_state.front_op;
+      break;
+
+    case kStencilWrite:
+      stencil_state.enabled = true;
+
+      stencil_state.front_function.function = kRenderAlways;
+      stencil_state.front_function.ref = ref;
+      stencil_state.front_function.mask = mask;
+      stencil_state.back_function = stencil_state.front_function;
+
+      stencil_state.front_op.stencil_fail = StencilOperation::kKeep;
+      stencil_state.front_op.depth_fail = StencilOperation::kKeep;
+      stencil_state.front_op.pass = StencilOperation::kReplace;
+      stencil_state.back_op = stencil_state.front_op;
+      break;
+
+    default:
+      assert(false);
+  }
+
+  if (stencil_state.enabled != render_state_.stencil_state.enabled) {
+    if (stencil_state.enabled) {
+      GL_CALL(glEnable(GL_STENCIL_TEST));
+    } else {
+      GL_CALL(glDisable(GL_STENCIL_TEST));
     }
   }
-  render_state_.cull_mode = mode;
+
+  SetStencilFunction(GL_BACK, stencil_state.back_function,
+                     render_state_.stencil_state.back_function);
+  SetStencilFunction(GL_FRONT, stencil_state.front_function,
+                     render_state_.stencil_state.front_function);
+
+  SetStencilOp(GL_FRONT, stencil_state.front_op,
+               render_state_.stencil_state.front_op);
+  SetStencilOp(GL_BACK, stencil_state.back_op,
+               render_state_.stencil_state.back_op);
+
+  render_state_.stencil_state = stencil_state;
+  stencil_mode_ = mode;
+}
+
+void Renderer::SetCulling(CullingMode mode) {
+  if (mode == cull_mode_) {
+    return;
+  }
+
+  CullState cull_state = render_state_.cull_state;
+  switch (mode) {
+    case kCullingModeNone:
+      cull_state.enabled = false;
+      break;
+    case kCullingModeBack:
+      cull_state.enabled = true;
+      cull_state.face = CullState::kBack;
+      break;
+    case kCullingModeFront:
+      cull_state.enabled = true;
+      cull_state.face = CullState::kFront;
+      break;
+    case kCullingModeFrontAndBack:
+      cull_state.enabled = true;
+      cull_state.face = CullState::kFrontAndBack;
+      break;
+    default:
+      // Unknown culling mode.
+      assert(false);
+  }
+
+  if (cull_state.enabled != render_state_.cull_state.enabled) {
+    if (cull_state.enabled) {
+      GL_CALL(glEnable(GL_CULL_FACE));
+    } else {
+      GL_CALL(glDisable(GL_CULL_FACE));
+    }
+  }
+
+  if (cull_state.face != render_state_.cull_state.face) {
+    const GLenum cull_face = CullFaceToGl(cull_state.face);
+    GL_CALL(glCullFace(cull_face));
+  }
+
+  cull_mode_ = mode;
+  render_state_.cull_state = cull_state;
 }
 
 void Renderer::SetViewport(const Viewport &viewport) {
@@ -376,19 +535,31 @@ void Renderer::SetViewport(const Viewport &viewport) {
 }
 
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
-  glEnable(GL_SCISSOR_TEST);
+  if (!render_state_.scissor_state.enabled) {
+    GL_CALL(glEnable(GL_SCISSOR_TEST));
+    render_state_.scissor_state.enabled = true;
+  }
+
   auto viewport_size = base_->GetViewportSize();
   GL_CALL(glViewport(0, 0, viewport_size.x, viewport_size.y));
 
   auto scaling_ratio = vec2(viewport_size) / vec2(base_->window_size());
   auto scaled_pos = vec2(pos) * scaling_ratio;
   auto scaled_size = vec2(size) * scaling_ratio;
-  glScissor(static_cast<GLint>(scaled_pos.x), static_cast<GLint>(scaled_pos.y),
-            static_cast<GLsizei>(scaled_size.x),
-            static_cast<GLsizei>(scaled_size.y));
+  GL_CALL(glScissor(static_cast<GLint>(scaled_pos.x),
+                    static_cast<GLint>(scaled_pos.y),
+                    static_cast<GLsizei>(scaled_size.x),
+                    static_cast<GLsizei>(scaled_size.y)));
 }
 
-void Renderer::ScissorOff() { glDisable(GL_SCISSOR_TEST); }
+void Renderer::ScissorOff() {
+  if (!render_state_.scissor_state.enabled) {
+    return;
+  }
+
+  GL_CALL(glDisable(GL_SCISSOR_TEST));
+  render_state_.scissor_state.enabled = false;
+}
 
 }  // namespace fplbase
 

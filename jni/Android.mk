@@ -40,6 +40,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/shader_gl.cpp \
   src/texture_common.cpp \
   src/texture_gl.cpp \
+  src/type_conversions_gl.cpp \
   src/utilities.cpp \
   src/version.cpp \
   $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c

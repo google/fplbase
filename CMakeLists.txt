@@ -202,12 +202,14 @@ set(fplbase_common_SRCS
   include/fplbase/handles.h
   include/fplbase/input.h
   include/fplbase/internal/handle_conversions.h
+  include/fplbase/internal/detailed_render_state.h
   include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
   include/fplbase/mesh.h
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
+  include/fplbase/renderer_common.h
   include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/shader.h
@@ -232,6 +234,8 @@ set(fplbase_common_SRCS
   src/texture_common.cpp
   src/texture_gl.cpp
   src/texture_headers.h
+  src/type_conversions_gl.cpp
+  src/type_conversions_gl.h
   src/utilities.cpp
   src/version.cpp)
 

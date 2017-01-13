@@ -384,6 +384,14 @@ class Renderer {
   /// @overload void SetBlendMode(BlendMode blend_mode)
   void SetBlendMode(BlendMode blend_mode);
 
+  /// @brief Sets the stencil mode. By default, the stencil test is off.
+  ///
+  /// @param mode The stencil mode to use.
+  /// @param ref The reference value to test against or write.
+  /// @param mask Value that is ANDed with both the ref value and the stored
+  ///             stencil value when the test is done.
+  void SetStencilMode(StencilMode mode, int ref, StencilMask mask);
+
   /// @brief Sets the culling mode. By default, no culling happens.
   ///
   /// @param mode The type of culling mode to use.
@@ -394,10 +402,10 @@ class Renderer {
   /// @param viewport The viewport region to set.
   void SetViewport(const Viewport &viewport);
 
-  /// @brief Set to compare fragment against Z-buffer before writing, or not.
+  /// @brief Set function used for the depth test.
   ///
   /// @param depth_func The depth function to use.
-  void SetDepthFunction(DepthFunction depth_func);
+  void SetDepthFunction(DepthFunction func);
 
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
@@ -523,11 +531,6 @@ class Renderer {
     return base_->SupportsTextureNpot();
   }
 
-  /// @brief Sets the render state to the given state.
-  ///
-  /// @param state The new render state to use.
-  void SetRenderState(const RenderState &state);
-
   /// @brief Returns the current render state.
   const RenderState &GetRenderState() const { return render_state_; }
 
@@ -556,6 +559,11 @@ class Renderer {
 
   Shader *shader_;
   RenderState render_state_;
+
+  BlendMode blend_mode_;
+  CullingMode cull_mode_;
+  DepthFunction depth_function_;
+  StencilMode stencil_mode_;
 };
 
 /// @}

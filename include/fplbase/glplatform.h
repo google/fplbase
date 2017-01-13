@@ -100,6 +100,8 @@
   GLEXT(PFNGLUSEPROGRAMPROC, glUseProgram, true)                               \
   GLEXT(PFNGLCREATESHADERPROC, glCreateShader, true)                           \
   GLEXT(PFNGLSHADERSOURCEPROC, glShaderSource, true)                           \
+  GLEXT(PFNGLSTENCILFUNCSEPARATEPROC, glStencilFuncSeparate, true)             \
+  GLEXT(PFNGLSTENCILOPSEPARATEPROC, glStencilOpSeparate, true)                 \
   GLEXT(PFNGLCOMPILESHADERPROC, glCompileShader, true)                         \
   GLEXT(PFNGLGETPROGRAMIVARBPROC, glGetProgramiv, true)                        \
   GLEXT(PFNGLGETSHADERIVPROC, glGetShaderiv, true)                             \
