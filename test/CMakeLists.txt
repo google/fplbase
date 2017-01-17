@@ -42,7 +42,7 @@ endif()
 set(GTEST_LIBDIR "${dependencies_gtest_dir}")
 
 # This is the directory into which the executables are built.
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../bin")
 
 include_directories(${GUNIT_INCDIR}
                     ${GUNIT_HACK_INCDIR}
@@ -62,53 +62,7 @@ if(NOT MSVC)
   find_package(Threads)
 endif()
 
-set(COMMON_LIBS "gtest;fplbase;${CMAKE_THREAD_LIBS_INIT}")
-
-set(fplbase_common_SRCS
-  ../include/fplbase/asset.h
-  ../include/fplbase/asset_manager.h
-  ../include/fplbase/async_loader.h
-  ../include/fplbase/fpl_common.h
-  ../include/fplbase/glplatform.h
-  ../include/fplbase/input.h
-  ../include/fplbase/keyboard_keycodes.h
-  ../include/fplbase/material.h
-  ../include/fplbase/mesh.h
-  ../include/fplbase/preprocessor.h
-  ../include/fplbase/renderer.h
-  ../include/fplbase/renderer_android.h
-  ../include/fplbase/render_target.h
-  ../include/fplbase/shader.h
-  ../include/fplbase/texture.h
-  ../include/fplbase/texture_atlas.h
-  ../include/fplbase/utilities.h
-  ../include/fplbase/version.h
-  ../include/fplbase/wrapper.h
-  ../schemas
-  ../src/input.cpp
-  ../src/asset_manager.cpp
-  ../src/material.cpp
-  ../src/mesh_common.cpp
-  ../src/mesh_gl.cpp
-  ../src/precompiled.h
-  ../src/preprocessor.cpp
-  ../src/renderer_common.cpp
-  ../src/renderer_gl.cpp
-  ../src/render_target_common.cpp
-  ../src/render_target_gl.cpp
-  ../src/shader_common.cpp
-  ../src/shader_gl.cpp
-  ../src/texture_common.cpp
-  ../src/texture_gl.cpp
-  ../src/texture_headers.h
-  ../src/utilities.cpp
-  ../src/version.cpp)
-
-set(fplbase_SRCS
-  ${fplbase_common_SRCS}
-  ../src/async_loader.cpp
-  ../src/input_sdl.cpp
-  ../src/main.cpp)
+set(fplbase_test_libs "gtest;fplbase;${CMAKE_THREAD_LIBS_INIT}")
 
 # PUT ADDITIONAL UNIT TEST BINARIES BELOW!
 # The commands should be of the form:
@@ -121,8 +75,8 @@ set(fplbase_SRCS
 # CallbackTests.cpp along with any files specified by the SUPPORT_SRCS variable.
 
 function(test_executable name)
-  cxx_executable_with_flags(${name}_test "${cxx_default}" "${COMMON_LIBS}"
-      ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests/${name}_test.cpp ${fplbase_SRCS}
+  cxx_executable_with_flags(${name}_test "${cxx_default}" "${fplbase_test_libs}"
+      ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests/${name}_test.cpp
       ${ARGN})
   mathfu_configure_flags(${name}_test)
 endfunction()
