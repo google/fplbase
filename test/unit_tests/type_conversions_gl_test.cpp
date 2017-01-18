@@ -57,6 +57,8 @@ TEST_F(TypeConversationsGlTests, BlendStateFactorToGl) {
             GL_CONSTANT_ALPHA);
   EXPECT_EQ(BlendStateFactorToGl(BlendState::kOneMinusConstantAlpha),
             GL_ONE_MINUS_CONSTANT_ALPHA);
+  EXPECT_EQ(BlendStateFactorToGl(BlendState::kSrcAlphaSaturate),
+            GL_SRC_ALPHA_SATURATE);
 }
 
 TEST_F(TypeConversationsGlTests, StencilOpToGlOp) {

@@ -55,14 +55,22 @@ struct BlendState {
     kOneMinusConstantColor,  // Corresponds to GL_ONE_MINUS_CONSTANT_COLOR.
     kConstantAlpha,          // Corresponds to GL_CONSTANT_ALPHA.
     kOneMinusConstantAlpha,  // Corresponds to GL_ONE_MINUS_CONSTANT_ALPHA.
+    kSrcAlphaSaturate,       // Corresponds to GL_SRC_ALPHA_SATURATE.
     kCount
   };
 
   bool enabled;
-  BlendFactor src;
-  BlendFactor dst;
+  BlendFactor src_alpha;
+  BlendFactor src_color;
+  BlendFactor dst_alpha;
+  BlendFactor dst_color;
 
-  BlendState() : enabled(false), src(kOne), dst(kZero) {}
+  BlendState()
+      : enabled(false),
+        src_alpha(kOne),
+        src_color(kOne),
+        dst_alpha(kZero),
+        dst_color(kZero) {}
 };
 
 struct CullState {

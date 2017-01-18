@@ -320,36 +320,46 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     case kBlendModeAlpha:
       alpha_test_state.enabled = false;
       blend_state.enabled = true;
-      blend_state.src = BlendState::kSrcAlpha;
-      blend_state.dst = BlendState::kOneMinusSrcAlpha;
+      blend_state.src_alpha = BlendState::kSrcAlpha;
+      blend_state.src_color = BlendState::kSrcAlpha;
+      blend_state.dst_alpha = BlendState::kOneMinusSrcAlpha;
+      blend_state.dst_color = BlendState::kOneMinusSrcAlpha;
       break;
 
     case kBlendModeAdd:
       alpha_test_state.enabled = false;
       blend_state.enabled = true;
-      blend_state.src = BlendState::kOne;
-      blend_state.dst = BlendState::kOne;
+      blend_state.src_alpha = BlendState::kOne;
+      blend_state.src_color = BlendState::kOne;
+      blend_state.dst_alpha = BlendState::kOne;
+      blend_state.dst_color = BlendState::kOne;
       break;
 
     case kBlendModeAddAlpha:
       alpha_test_state.enabled = false;
       blend_state.enabled = true;
-      blend_state.src = BlendState::kSrcAlpha;
-      blend_state.dst = BlendState::kOne;
+      blend_state.src_alpha = BlendState::kSrcAlpha;
+      blend_state.src_color = BlendState::kSrcAlpha;
+      blend_state.dst_alpha = BlendState::kOne;
+      blend_state.dst_color = BlendState::kOne;
       break;
 
     case kBlendModeMultiply:
       alpha_test_state.enabled = false;
       blend_state.enabled = true;
-      blend_state.src = BlendState::kDstColor;
-      blend_state.dst = BlendState::kZero;
+      blend_state.src_alpha = BlendState::kDstColor;
+      blend_state.src_color = BlendState::kDstColor;
+      blend_state.dst_alpha = BlendState::kZero;
+      blend_state.dst_color = BlendState::kZero;
       break;
 
     case kBlendModePreMultipliedAlpha:
       alpha_test_state.enabled = false;
       blend_state.enabled = true;
-      blend_state.src = BlendState::kOne;
-      blend_state.dst = BlendState::kOneMinusSrcAlpha;
+      blend_state.src_alpha = BlendState::kOne;
+      blend_state.src_color = BlendState::kOne;
+      blend_state.dst_alpha = BlendState::kOneMinusSrcAlpha;
+      blend_state.dst_color = BlendState::kOneMinusSrcAlpha;
       break;
 
     default:
@@ -365,10 +375,12 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     }
   }
 
-  if (blend_state.src != render_state_.blend_state.src ||
-      blend_state.dst != render_state_.blend_state.dst) {
-    const GLenum src_factor = BlendStateFactorToGl(blend_state.src);
-    const GLenum dst_factor = BlendStateFactorToGl(blend_state.dst);
+  if (blend_state.src_alpha != render_state_.blend_state.src_alpha ||
+      blend_state.src_color != render_state_.blend_state.src_color ||
+      blend_state.dst_alpha != render_state_.blend_state.dst_alpha ||
+      blend_state.dst_color != render_state_.blend_state.dst_color) {
+    const GLenum src_factor = BlendStateFactorToGl(blend_state.src_alpha);
+    const GLenum dst_factor = BlendStateFactorToGl(blend_state.dst_alpha);
 
     GL_CALL(glBlendFunc(src_factor, dst_factor));
   }
