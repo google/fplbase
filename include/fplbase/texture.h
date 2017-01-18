@@ -143,25 +143,17 @@ class Texture : public AsyncAsset {
   /// @brief Delete the Texture stored in `id_`, and reset `id_` to `0`.
   void Delete();
 
-  /// @brief Create a texture from a memory buffer containing `xsize` * `ysize`
-  /// RGBA pixels.
-  /// @param[in] buffer The data to create the Texture from.
-  /// @param[in] size A const `mathfu::vec2i` reference to the original
-  /// Texture size `x` and `y` components.
-  /// @param[in] texture_format The format of `buffer`.
-  /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
-  /// @param[in] flags Options for the texture.
-  /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
-  /// power of two in size.
-  static TextureHandle CreateTexture(
-      const uint8_t *buffer, const mathfu::vec2i &size,
-      TextureFormat texture_format, TextureFormat desired = kFormatAuto,
-      TextureFlags flags = kTextureFlagsUseMipMaps);
-
   /// @brief Update (part of) the current texture with new pixel data.
-  /// For now, must always update at least entire rows.
-  static void UpdateTexture(TextureFormat format, int xoffset, int yoffset,
-                            int width, int height, const void *data);
+  /// For now, must always update at least entire row.
+  /// @param[in] unit Specifies which texture unit to do the update with.
+  /// @param[in] texture_format The format of `data`.
+  /// @param[in] xoffset Lowest x-pixel coordinate to update.
+  /// @param[in] yoffset Lowest y-pixel coordinate to update.
+  /// @param[in] width Number of pixels along x-axis to update.
+  /// @param[in] hegiht Number of pixels along y-axis to update.
+  /// @param[in] data The Texture data in memory to load from.
+  void UpdateTexture(size_t unit, TextureFormat format, int xoffset,
+                     int yoffset, int width, int height, const void *data);
 
   /// @brief Unpacks a memory buffer containing a TGA format file.
   /// @note May only be uncompressed RGB or RGBA data, Y-flipped or not.
@@ -376,6 +368,21 @@ class Texture : public AsyncAsset {
   // on the platform-specific MeshImpl structs.
   static TextureImpl *CreateTextureImpl();
   static void DestroyTextureImpl(TextureImpl *impl);
+
+  /// @brief Create a texture from a memory buffer containing `xsize` * `ysize`
+  /// RGBA pixels.
+  /// @param[in] buffer The data to create the Texture from.
+  /// @param[in] size A const `mathfu::vec2i` reference to the original
+  /// Texture size `x` and `y` components.
+  /// @param[in] texture_format The format of `buffer`.
+  /// @param[in] desired The desired TextureFormat.
+  /// @param[in] flags Options for the texture.
+  /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
+  /// power of two in size.
+  static TextureHandle CreateTexture(
+      const uint8_t *buffer, const mathfu::vec2i &size,
+      TextureFormat texture_format, TextureFormat desired,
+      TextureFlags flags, TextureImpl *impl);
 
   /// @brief Unpacks a memory buffer containing a PNG/JPEG/TGA format file.
   /// @param[in] img_buf The PNG/JPEG/TGA image data including an image header.

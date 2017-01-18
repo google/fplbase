@@ -50,10 +50,12 @@ void Texture::Delete() {
   }
 }
 
+// static
 TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                      TextureFormat texture_format,
                                      TextureFormat desired,
-                                     TextureFlags flags) {
+                                     TextureFlags flags, TextureImpl *impl) {
+  (void)impl;
   GLenum tex_type = GL_TEXTURE_2D;
   GLenum tex_imagetype = GL_TEXTURE_2D;
   int tex_num_faces = 1;
@@ -367,8 +369,11 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
   return TextureHandleFromGl(texture_id);
 }
 
-void Texture::UpdateTexture(TextureFormat format, int xoffset, int yoffset,
-                            int width, int height, const void *data) {
+void Texture::UpdateTexture(size_t unit, TextureFormat format, int xoffset,
+                            int yoffset, int width, int height,
+                            const void *data) {
+  Set(unit);
+
   // In OpenGL ES2.0, width and pitch of the src buffer needs to match. So
   // that we are updating entire row at once.
   // TODO(wvo): Optimize glTexSubImage2D call in ES3.0 capable platform.

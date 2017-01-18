@@ -106,13 +106,13 @@ void Texture::LoadFromMemory(const uint8_t *data, const vec2i &size,
   size_ = size;
   SetOriginalSizeIfNotYetSet(size_);
   texture_format_ = texture_format;
-  id_ = CreateTexture(data, size_, texture_format_, desired_, flags_);
+  id_ = CreateTexture(data, size_, texture_format_, desired_, flags_, impl_);
   is_external_ = false;
 }
 
 bool Texture::Finalize() {
   if (data_) {
-    id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_);
+    id_ = CreateTexture(data_, size_, texture_format_, desired_, flags_, impl_);
     is_external_ = false;
     free(const_cast<uint8_t *>(data_));
     data_ = nullptr;
