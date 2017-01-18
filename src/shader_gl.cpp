@@ -27,6 +27,12 @@
 
 namespace fplbase {
 
+//static
+ShaderImpl *Shader::CreateShaderImpl() { return nullptr; }
+
+// static
+void Shader::DestroyShaderImpl(ShaderImpl *impl) { (void)impl; }
+
 void Shader::Clear() {
   if (ValidShaderHandle(vs_)) {
     GL_CALL(glDeleteShader(GlShaderHandle(vs_)));

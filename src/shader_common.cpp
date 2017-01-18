@@ -23,7 +23,10 @@
 
 namespace fplbase {
 
-Shader::~Shader() { Clear(); }
+Shader::~Shader() {
+  Clear();
+  DestroyShaderImpl(impl_);
+}
 
 void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
                   const std::vector<std::string> &defines, Renderer *renderer) {

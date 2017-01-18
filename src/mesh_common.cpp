@@ -392,4 +392,21 @@ size_t Mesh::CalculateTotalNumberOfIndices() const {
   return static_cast<size_t>(total);
 }
 
+void Mesh::Clear() {
+  ClearPlatformDependent();
+
+  indices_.clear();
+
+  delete[] default_bone_transform_inverses_;
+  default_bone_transform_inverses_ = nullptr;
+  bone_parents_.clear();
+  bone_names_.clear();
+  shader_bone_indices_.clear();
+
+  if (data_ != nullptr) {
+    delete reinterpret_cast<const std::string *>(data_);
+    data_ = nullptr;
+  }
+}
+
 }  // namespace fplbase

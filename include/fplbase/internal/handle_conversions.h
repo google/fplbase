@@ -37,7 +37,7 @@ union HandleUnion {
 
   // Vulkan handles.
   uint64_t vk;
-  uint32_t vk32;
+  int32_t vk32;
 };
 
 // Call from OpenGL code to convert between GL and external API handles.
@@ -98,13 +98,17 @@ inline ShaderHandle ShaderHandleFromVk(uint64_t vk) {
   return HandleUnion(vk).handle;
 }
 
-inline UniformHandle UniformHandleFromVk(uint32_t vk32) {
+inline UniformHandle UniformHandleFromVk(int32_t vk32) {
   HandleUnion u;
   u.vk32 = vk32;
   return u.handle;
 }
 
 inline BufferHandle BufferHandleFromVk(uint64_t vk) {
+  return HandleUnion(vk).handle;
+}
+
+inline DeviceMemoryHandle DeviceMemoryHandleFromVk(uint64_t vk) {
   return HandleUnion(vk).handle;
 }
 
@@ -120,13 +124,17 @@ inline uint64_t VkShaderHandle(ShaderHandle handle) {
   return HandleUnion(handle).vk;
 }
 
-inline uint32_t VkUniformHandle(UniformHandle handle) {
+inline int32_t VkUniformHandle(UniformHandle handle) {
   HandleUnion u;
   u.handle = handle;
   return u.vk32;
 }
 
 inline uint64_t VkBufferHandle(BufferHandle handle) {
+  return HandleUnion(handle).vk;
+}
+
+inline uint64_t VkDeviceMemoryHandle(DeviceMemoryHandle handle) {
   return HandleUnion(handle).vk;
 }
 

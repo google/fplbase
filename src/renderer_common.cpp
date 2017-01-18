@@ -34,7 +34,8 @@ RendererBase* RendererBase::the_base_raw_;
 fplutil::Mutex RendererBase::the_base_mutex_;
 
 RendererBase::RendererBase()
-    : time_(0),
+    : impl_(CreateRendererBaseImpl()),
+      time_(0),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
       force_shader_(nullptr),
@@ -47,10 +48,14 @@ RendererBase::RendererBase()
 RendererBase::~RendererBase() {
   assert(the_base_raw_ != nullptr);
   ShutDown();
+
+  // Delete platform dependent data.
+  DestroyRendererBaseImpl(impl_);
 }
 
 Renderer::Renderer()
-    : model_view_projection_(mathfu::mat4::Identity()),
+    : impl_(CreateRendererImpl()),
+      model_view_projection_(mathfu::mat4::Identity()),
       model_(mathfu::mat4::Identity()),
       color_(mathfu::kOnes4f),
       light_pos_(mathfu::kZeros3f),
@@ -84,6 +89,9 @@ Renderer::~Renderer() {
   if (RendererBase::the_base_weak_.expired()) {
     RendererBase::the_base_raw_ = nullptr;
   }
+
+  // Delete platform dependent data.
+  DestroyRendererImpl(impl_);
 }
 
 bool RendererBase::Initialize(const vec2i &window_size,
@@ -120,6 +128,14 @@ Shader *RendererBase::RecompileShader(const char *vs_source,
 
 void Renderer::SetBlendMode(BlendMode blend_mode) {
   SetBlendMode(blend_mode, 0.5f);
+}
+
+void Renderer::AdvanceFrame(bool minimized, double time) {
+  base_->AdvanceFrame(minimized, time);
+  SetDepthFunction(kDepthFunctionLess);
+
+  auto viewport_size = environment().GetViewportSize();
+  SetViewport(Viewport(0, 0, viewport_size.x, viewport_size.y));
 }
 
 }  // namespace fplbase

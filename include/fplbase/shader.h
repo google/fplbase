@@ -25,6 +25,7 @@
 
 namespace fplbase {
 class Renderer;
+struct ShaderImpl;
 
 /// @file
 /// @addtogroup fplbase_shader
@@ -42,13 +43,14 @@ class Shader : public AsyncAsset {
  public:
   Shader(const char *filename, const std::vector<std::string> &defines,
          Renderer *renderer)
-      : AsyncAsset(filename ? filename : "") {
+      : AsyncAsset(filename ? filename : ""), impl_(CreateShaderImpl()) {
     const ShaderHandle invalid = InvalidShaderHandle();
     Init(invalid /* program */, invalid /* vs */, invalid /* ps */, defines,
          renderer);
   }
 
-  Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
+  Shader(ShaderHandle program, ShaderHandle vs, ShaderHandle ps)
+      : impl_(CreateShaderImpl()) {
     static const std::vector<std::string> empty_defines;
     Init(program, vs, ps, empty_defines, nullptr /* renderer */);
   }
@@ -168,6 +170,9 @@ class Shader : public AsyncAsset {
   bool IsDirty() const { return dirty_; }
   void SetDirty() { dirty_ = true; }
 
+  // For internal use.
+  ShaderImpl *impl() { return impl_; }
+
   /// @brief Loads a .fplshader file from disk.
   /// Used by the more convenient AssetManager interface, but can also be
   /// used without it.
@@ -195,7 +200,16 @@ class Shader : public AsyncAsset {
 
   ShaderSourcePair *LoadSourceFile();
 
-  ShaderHandle program_, vs_, ps_;
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific impl structs.
+  static ShaderImpl *CreateShaderImpl();
+  static void DestroyShaderImpl(ShaderImpl *impl);
+
+  ShaderImpl *impl_;
+
+  ShaderHandle program_;
+  ShaderHandle vs_;
+  ShaderHandle ps_;
 
   UniformHandle uniform_model_view_projection_;
   UniformHandle uniform_model_;

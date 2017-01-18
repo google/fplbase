@@ -195,7 +195,7 @@ void DrawElement(Renderer &renderer, int32_t count, int32_t instances,
 
 bool Mesh::IsValid() { return ValidBufferHandle(impl_->vbo); }
 
-void Mesh::Clear() {
+void Mesh::ClearPlatformDependent() {
   if (ValidBufferHandle(impl_->vbo)) {
     auto vbo = GlBufferHandle(impl_->vbo);
     GL_CALL(glDeleteBuffers(1, &vbo));
@@ -209,18 +209,6 @@ void Mesh::Clear() {
   for (auto it = indices_.begin(); it != indices_.end(); ++it) {
     auto ibo = GlBufferHandle(it->ibo);
     GL_CALL(glDeleteBuffers(1, &ibo));
-  }
-  indices_.clear();
-
-  delete[] default_bone_transform_inverses_;
-  default_bone_transform_inverses_ = nullptr;
-  bone_parents_.clear();
-  bone_names_.clear();
-  shader_bone_indices_.clear();
-
-  if (data_ != nullptr) {
-    delete reinterpret_cast<const std::string *>(data_);
-    data_ = nullptr;
   }
 }
 

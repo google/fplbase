@@ -79,6 +79,7 @@ static void MultiplyRgbByAlpha(uint8_t *rgba_ptr, int width, int height) {
 
 Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
     : AsyncAsset(filename ? filename : ""),
+      impl_(CreateTextureImpl()),
       id_(InvalidTextureHandle()),
       size_(mathfu::kZeros2i),
       original_size_(mathfu::kZeros2i),
@@ -88,6 +89,11 @@ Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
       desired_(format),
       flags_(flags),
       is_external_(false) {}
+
+Texture::~Texture() {
+  Delete();
+  DestroyTextureImpl(impl_);
+}
 
 void Texture::Load() {
   data_ = LoadAndUnpackTexture(filename_.c_str(), scale_, flags_, &size_,
@@ -117,7 +123,7 @@ bool Texture::Finalize() {
 
 void Texture::Set(size_t unit) { Set(unit, nullptr); }
 
-void Texture::Set(size_t unit, RenderContext *) const {
+void Texture::Set(size_t unit, Renderer *) const {
   const_cast<Texture *>(this)->Set(unit);
 }
 

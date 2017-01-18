@@ -29,7 +29,13 @@ using mathfu::vec2i;
 
 namespace fplbase {
 
-void Texture::Set(size_t unit, RenderContext *) {
+// static
+TextureImpl *Texture::CreateTextureImpl() { return nullptr; }
+
+// static
+void Texture::DestroyTextureImpl(TextureImpl *impl) { (void)impl; }
+
+void Texture::Set(size_t unit, Renderer *) {
   GL_CALL(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(unit)));
   GL_CALL(glBindTexture(GlTextureTarget(target_), GlTextureHandle(id_)));
 }

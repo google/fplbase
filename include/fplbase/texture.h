@@ -26,11 +26,12 @@
 
 namespace fplbase {
 
+class Renderer;
+struct TextureImpl;
+
 /// @file
 /// @addtogroup fplbase_texture
 /// @{
-
-class RenderContext;
 
 enum TextureFormat {
   kFormatAuto = 0,  ///< @brief The default, picks based on loaded data.
@@ -102,7 +103,7 @@ class Texture : public AsyncAsset {
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
-  virtual ~Texture() { Delete(); }
+  virtual ~Texture();
 
   /// @brief Loads and unpacks the Texture from `filename_` into `data_`. It
   /// also sets the original size, if it has not yet been set.
@@ -125,17 +126,17 @@ class Texture : public AsyncAsset {
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
-  /// @param[in] render_context Pointer to the RenderContext object
+  /// @param[in] renderer Pointer to the Renderer
   /// @note Modifies global OpenGL state.
-  void Set(size_t unit, RenderContext *render_context);
+  void Set(size_t unit, Renderer *renderer);
   /// @overload void Set(size_t unit)
   void Set(size_t unit);
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
-  /// @param[in] render_context Pointer to the RenderContext object
+  /// @param[in] renderer Pointer to the Renderer
   /// @note Modifies global OpenGL state.
-  void Set(size_t unit, RenderContext *render_context) const;
+  void Set(size_t unit, Renderer *renderer) const;
   /// @overload void Set(size_t unit) const
   void Set(size_t unit) const;
 
@@ -365,9 +366,17 @@ class Texture : public AsyncAsset {
     }
   }
 
+  // For internal use only.
+  TextureImpl *impl() { return impl_; }
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific MeshImpl structs.
+  static TextureImpl *CreateTextureImpl();
+  static void DestroyTextureImpl(TextureImpl *impl);
+
   /// @brief Unpacks a memory buffer containing a PNG/JPEG/TGA format file.
   /// @param[in] img_buf The PNG/JPEG/TGA image data including an image header.
   /// @param[in] size The size of the memory block pointed to by `data`.
@@ -389,6 +398,7 @@ class Texture : public AsyncAsset {
   /// @brief Backend specific conversion of flags to TextureTarget.
   static TextureTarget TextureTargetFromFlags(TextureFlags flags);
 
+  TextureImpl *impl_;
   TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;

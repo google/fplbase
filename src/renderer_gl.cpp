@@ -35,6 +35,7 @@ TextureTarget InvalidTextureTarget() { return TextureTargetFromGl(0); }
 ShaderHandle InvalidShaderHandle() { return ShaderHandleFromGl(0); }
 UniformHandle InvalidUniformHandle() { return UniformHandleFromGl(-1); }
 BufferHandle InvalidBufferHandle() { return BufferHandleFromGl(0); }
+DeviceMemoryHandle InvalidDeviceMemoryHandle() { return HandleUnion().handle; }
 
 bool ValidTextureHandle(TextureHandle handle) {
   return GlTextureHandle(handle) != 0;
@@ -51,6 +52,15 @@ bool ValidUniformHandle(UniformHandle handle) {
 bool ValidBufferHandle(BufferHandle handle) {
   return GlBufferHandle(handle) != 0;
 }
+bool ValidDeviceMemoryHandle(DeviceMemoryHandle /*handle*/) { return false; }
+
+RendererBaseImpl *RendererBase::CreateRendererBaseImpl() { return nullptr; }
+void RendererBase::DestroyRendererBaseImpl(RendererBaseImpl *impl) {
+  (void)impl;
+}
+
+RendererImpl *Renderer::CreateRendererImpl() { return nullptr; }
+void Renderer::DestroyRendererImpl(RendererImpl *impl) { (void)impl; }
 
 void RendererBase::AdvanceFrame(bool minimized, double time) {
   time_ = time;
@@ -110,14 +120,6 @@ bool RendererBase::InitializeRenderingState() {
 #endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
 
   return true;
-}
-
-void Renderer::AdvanceFrame(bool minimized, double time) {
-  base_->AdvanceFrame(minimized, time);
-  SetDepthFunction(kDepthFunctionLess);
-
-  auto viewport_size = environment().GetViewportSize();
-  SetViewport(Viewport(0, 0, viewport_size.x, viewport_size.y));
 }
 
 void Renderer::ClearFrameBuffer(const vec4 &color) {

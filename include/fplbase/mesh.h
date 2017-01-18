@@ -407,7 +407,13 @@ class Mesh : public AsyncAsset {
   Mesh(const Mesh &);
   Mesh &operator=(const Mesh &);
 
+  // Free all resources in the platform-independent data (i.e. everything
+  // outside of the impl_ class). Implemented in mesh_common.cc.
   void Clear();
+
+  // Free all resources in the platform-dependent data (i.e. everything in the
+  // impl_ class). Implemented in platform-dependent code.
+  void ClearPlatformDependent();
 
   // Init mesh from MeshDef FlatBuffer.
   bool InitFromMeshDef(const void *meshdef_buffer);
@@ -421,12 +427,18 @@ class Mesh : public AsyncAsset {
 
   struct Indices {
     Indices()
-        : count(0), ibo(InvalidBufferHandle()), mat(nullptr), index_type(0) {}
+        : count(0),
+          ibo(InvalidBufferHandle()),
+          mat(nullptr),
+          index_type(0),
+          primitive(0),
+          indexBufferMem(InvalidDeviceMemoryHandle()) {}
     int count;
     BufferHandle ibo;
     Material *mat;
     uint32_t index_type;
     uint32_t primitive;
+    DeviceMemoryHandle indexBufferMem;
   };
 
   MeshImpl *impl_;

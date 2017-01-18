@@ -43,6 +43,7 @@ typedef internal::OpaqueHandle TextureTarget;
 typedef internal::OpaqueHandle ShaderHandle;
 typedef internal::OpaqueHandle UniformHandle;
 typedef internal::OpaqueHandle BufferHandle;
+typedef internal::OpaqueHandle DeviceMemoryHandle;
 
 // The following functions are backend agnostic.
 // Call from any code to get an invalid handle from the current backend.
@@ -51,6 +52,7 @@ TextureTarget InvalidTextureTarget();
 ShaderHandle InvalidShaderHandle();
 UniformHandle InvalidUniformHandle();
 BufferHandle InvalidBufferHandle();
+DeviceMemoryHandle InvalidDeviceMemoryHandle();
 
 // The following functions are backend agnostic.
 // Call from any code to check the validity of a target.
@@ -59,6 +61,7 @@ bool ValidTextureTarget(TextureTarget target);
 bool ValidShaderHandle(ShaderHandle handle);
 bool ValidUniformHandle(UniformHandle handle);
 bool ValidBufferHandle(BufferHandle handle);
+bool ValidDeviceMemoryHandle(DeviceMemoryHandle handle);
 
 }  // namespace fplbase
 

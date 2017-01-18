@@ -29,6 +29,8 @@
 
 namespace fplbase {
 
+struct RendererBaseImpl;
+struct RendererImpl;
 class Renderer;
 
 /// @file
@@ -232,6 +234,9 @@ class RendererBase {
   /// see: https://www.opengl.org/wiki/NPOT_Texture
   bool SupportsTextureNpot() const;
 
+  // For internal use only.
+  RendererBaseImpl* impl() { return impl_; }
+
   // Get current singleton instance.
   static RendererBase *Get() {
     assert(!the_base_weak_.expired());
@@ -246,8 +251,16 @@ class RendererBase {
   Shader *CompileAndLinkShaderHelper(const char *vs_source,
                                      const char *ps_source, Shader *shader);
 
-  // Initialize OpenGL parameters like uniform limits, supported texture formats
-  // etc.
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific impl structs.
+  static RendererBaseImpl *CreateRendererBaseImpl();
+  static void DestroyRendererBaseImpl(RendererBaseImpl *impl);
+
+  // Platform-dependent data.
+  RendererBaseImpl* impl_;
+
+  // Initialize rendering platform parameters like uniform limits,
+  // supported texture formats, etc.
   bool InitializeRenderingState();
 
   double time_;
@@ -415,12 +428,6 @@ class Renderer {
   /// @brief Turn off the scissor region.
   void ScissorOff();
 
-  /// @brief Sets the texture to be used for the next draw call
-  ///
-  /// @param unit The texture unit to set the texture
-  /// @param texture Pointer to the texture object
-  void SetTexture(unsigned unit, Texture *texture);
-
   // Forwarded methods from the RendererBase class
 
   /// @brief Initializes the renderer by initializing the Environment object.
@@ -540,9 +547,20 @@ class Renderer {
   /// @brief Returns the active shader, or nullptr if no active shader.
   Shader *GetActiveShader() { return shader_; }
 
+  // For internal use only.
+  RendererImpl* impl() { return impl_; }
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific impl structs.
+  static RendererImpl *CreateRendererImpl();
+  static void DestroyRendererImpl(RendererImpl *impl);
+
+  // Platform-dependent data.
+  RendererImpl* impl_;
+
   // Shared pointer ensures RendererBase gets deleted once all Renderers are
   // deleted. That is, ownership of RendererBase is shared amongst Renderers.
   std::shared_ptr<fplbase::RendererBase> base_;
