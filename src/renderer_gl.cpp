@@ -14,7 +14,7 @@
 
 #include "precompiled.h"  // NOLINT
 
-#include "fplbase/internal/handle_conversions.h"
+#include "fplbase/internal/handle_conversions_gl.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
@@ -35,7 +35,7 @@ TextureTarget InvalidTextureTarget() { return TextureTargetFromGl(0); }
 ShaderHandle InvalidShaderHandle() { return ShaderHandleFromGl(0); }
 UniformHandle InvalidUniformHandle() { return UniformHandleFromGl(-1); }
 BufferHandle InvalidBufferHandle() { return BufferHandleFromGl(0); }
-DeviceMemoryHandle InvalidDeviceMemoryHandle() { return HandleUnion().handle; }
+DeviceMemoryHandle InvalidDeviceMemoryHandle() { return DeviceMemoryHandle(); }
 
 bool ValidTextureHandle(TextureHandle handle) {
   return GlTextureHandle(handle) != 0;

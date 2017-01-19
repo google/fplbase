@@ -14,7 +14,7 @@
 
 #include "precompiled.h"
 
-#include "fplbase/internal/handle_conversions.h"
+#include "fplbase/internal/handle_conversions_gl.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/renderer.h"
 #include "fplbase/shader.h"
