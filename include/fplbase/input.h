@@ -40,14 +40,6 @@
 #include "pthread.h"
 #endif  // !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
 
-#if !defined(ANDROID_HMD) && defined(__ANDROID__) && \
-    !defined(FPL_BASE_BACKEND_STDLIB)
-// Enable the android head mounted display (cardboard) code.  It receives
-// events about Cardboard from java, via JNI, and creates a local
-// representation of the state to be used.
-#define ANDROID_HMD 1
-#endif  //  !defined(ANDROID_HMD) && defined(__ANDROID__)
-
 namespace fplbase {
 
 /// @file
