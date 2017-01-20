@@ -907,7 +907,7 @@ int GetVsyncFrameId() {
 #if defined(FPL_BASE_BACKEND_SDL)
 // Checks whether Head Mounted Displays are supported by the system.
 bool SupportsHeadMountedDisplay() {
-#ifdef __ANDROID__
+#if ANDROID_HMD
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
@@ -919,7 +919,7 @@ bool SupportsHeadMountedDisplay() {
   return result;
 #else
   return false;
-#endif  // __ANDROID
+#endif  // ANDROID_HMD
 }
 #endif
 
