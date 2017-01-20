@@ -13,6 +13,14 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 2.8.12)
 
+# Newer versions of webp have Cmake support.
+# Their Cmake options and targets are a superset of the ones we specify below,
+# so are compatible.
+if(EXISTS "${dependencies_webp_distr_dir}/CMakeLists.txt")
+  add_subdirectory(${dependencies_webp_distr_dir} ${tmp_dir}/libwebp)
+  return()
+endif()
+
 include(CheckIncludeFiles)
 
 set(webp_dir ${dependencies_webp_distr_dir})
@@ -47,170 +55,7 @@ if(webp_build_cwebp OR webp_build_dwebp)
     ${CMAKE_CURRENT_BINARY_DIR}/include/webp/config.h)
 endif()
 
-# Webp source files.
-set(webp_0_5_1_SRCS
-    ${webp_dir}/src/dec/alpha.c
-    ${webp_dir}/src/dec/alphai.h
-    ${webp_dir}/src/dec/buffer.c
-    ${webp_dir}/src/dec/common.h
-    ${webp_dir}/src/dec/decode_vp8.h
-    ${webp_dir}/src/dec/frame.c
-    ${webp_dir}/src/dec/idec.c
-    ${webp_dir}/src/dec/io.c
-    ${webp_dir}/src/dec/quant.c
-    ${webp_dir}/src/dec/tree.c
-    ${webp_dir}/src/dec/vp8.c
-    ${webp_dir}/src/dec/vp8i.h
-    ${webp_dir}/src/dec/vp8l.c
-    ${webp_dir}/src/dec/vp8li.h
-    ${webp_dir}/src/dec/webp.c
-    ${webp_dir}/src/dec/webpi.h
-    ${webp_dir}/src/demux/anim_decode.c
-    ${webp_dir}/src/demux/demux.c
-    ${webp_dir}/src/dsp/alpha_processing.c
-    ${webp_dir}/src/dsp/alpha_processing_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/alpha_processing_sse2.c
-    ${webp_dir}/src/dsp/alpha_processing_sse41.c
-    ${webp_dir}/src/dsp/argb.c
-    ${webp_dir}/src/dsp/argb_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/argb_sse2.c
-    ${webp_dir}/src/dsp/common_sse2.h
-    ${webp_dir}/src/dsp/cost.c
-    ${webp_dir}/src/dsp/cost_mips32.c
-    ${webp_dir}/src/dsp/cost_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/cost_sse2.c
-    ${webp_dir}/src/dsp/cpu.c
-    ${webp_dir}/src/dsp/csp.c
-    ${webp_dir}/src/dsp/csp_sse2.c
-    ${webp_dir}/src/dsp/dec.c
-    ${webp_dir}/src/dsp/dec_clip_tables.c
-    ${webp_dir}/src/dsp/dec_mips32.c
-    ${webp_dir}/src/dsp/dec_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/dec_msa.c
-    ${webp_dir}/src/dsp/dec_neon.c
-    ${webp_dir}/src/dsp/dec_sse2.c
-    ${webp_dir}/src/dsp/dec_sse41.c
-    ${webp_dir}/src/dsp/dsp.h
-    ${webp_dir}/src/dsp/enc.c
-    ${webp_dir}/src/dsp/enc_avx2.c
-    ${webp_dir}/src/dsp/enc_mips32.c
-    ${webp_dir}/src/dsp/enc_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/enc_msa.c
-    ${webp_dir}/src/dsp/enc_neon.c
-    ${webp_dir}/src/dsp/enc_sse2.c
-    ${webp_dir}/src/dsp/enc_sse41.c
-    ${webp_dir}/src/dsp/filters.c
-    ${webp_dir}/src/dsp/filters_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/filters_msa.c
-    ${webp_dir}/src/dsp/filters_sse2.c
-    ${webp_dir}/src/dsp/lossless.c
-    ${webp_dir}/src/dsp/lossless.h
-    ${webp_dir}/src/dsp/lossless_common.h
-    ${webp_dir}/src/dsp/lossless_enc.c
-    ${webp_dir}/src/dsp/lossless_enc_mips32.c
-    ${webp_dir}/src/dsp/lossless_enc_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/lossless_enc_msa.c
-    ${webp_dir}/src/dsp/lossless_enc_neon.c
-    ${webp_dir}/src/dsp/lossless_enc_sse2.c
-    ${webp_dir}/src/dsp/lossless_enc_sse41.c
-    ${webp_dir}/src/dsp/lossless_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/lossless_msa.c
-    ${webp_dir}/src/dsp/lossless_neon.c
-    ${webp_dir}/src/dsp/lossless_sse2.c
-    ${webp_dir}/src/dsp/mips_macro.h
-    ${webp_dir}/src/dsp/msa_macro.h
-    ${webp_dir}/src/dsp/neon.h
-    ${webp_dir}/src/dsp/rescaler.c
-    ${webp_dir}/src/dsp/rescaler_mips32.c
-    ${webp_dir}/src/dsp/rescaler_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/rescaler_msa.c
-    ${webp_dir}/src/dsp/rescaler_neon.c
-    ${webp_dir}/src/dsp/rescaler_sse2.c
-    ${webp_dir}/src/dsp/upsampling.c
-    ${webp_dir}/src/dsp/upsampling_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/upsampling_msa.c
-    ${webp_dir}/src/dsp/upsampling_neon.c
-    ${webp_dir}/src/dsp/upsampling_sse2.c
-    ${webp_dir}/src/dsp/yuv.c
-    ${webp_dir}/src/dsp/yuv.h
-    ${webp_dir}/src/dsp/yuv_mips32.c
-    ${webp_dir}/src/dsp/yuv_mips_dsp_r2.c
-    ${webp_dir}/src/dsp/yuv_sse2.c
-    ${webp_dir}/src/enc/alpha.c
-    ${webp_dir}/src/enc/analysis.c
-    ${webp_dir}/src/enc/backward_references.c
-    ${webp_dir}/src/enc/backward_references.h
-    ${webp_dir}/src/enc/config.c
-    ${webp_dir}/src/enc/cost.c
-    ${webp_dir}/src/enc/cost.h
-    ${webp_dir}/src/enc/delta_palettization.c
-    ${webp_dir}/src/enc/delta_palettization.h
-    ${webp_dir}/src/enc/filter.c
-    ${webp_dir}/src/enc/frame.c
-    ${webp_dir}/src/enc/histogram.c
-    ${webp_dir}/src/enc/histogram.h
-    ${webp_dir}/src/enc/iterator.c
-    ${webp_dir}/src/enc/near_lossless.c
-    ${webp_dir}/src/enc/picture.c
-    ${webp_dir}/src/enc/picture_csp.c
-    ${webp_dir}/src/enc/picture_psnr.c
-    ${webp_dir}/src/enc/picture_rescale.c
-    ${webp_dir}/src/enc/picture_tools.c
-    ${webp_dir}/src/enc/predictor.c
-    ${webp_dir}/src/enc/quant.c
-    ${webp_dir}/src/enc/syntax.c
-    ${webp_dir}/src/enc/token.c
-    ${webp_dir}/src/enc/tree.c
-    ${webp_dir}/src/enc/vp8enci.h
-    ${webp_dir}/src/enc/vp8l.c
-    ${webp_dir}/src/enc/vp8li.h
-    ${webp_dir}/src/enc/webpenc.c
-    ${webp_dir}/src/experimental/tcoder.c
-    ${webp_dir}/src/experimental/tcoder.h
-    ${webp_dir}/src/experimental/tcoderi.h
-    ${webp_dir}/src/mux/anim_encode.c
-    ${webp_dir}/src/mux/animi.h
-    ${webp_dir}/src/mux/muxedit.c
-    ${webp_dir}/src/mux/muxi.h
-    ${webp_dir}/src/mux/muxinternal.c
-    ${webp_dir}/src/mux/muxread.c
-    ${webp_dir}/src/utils/ans.c
-    ${webp_dir}/src/utils/ans.h
-    ${webp_dir}/src/utils/bit_reader.c
-    ${webp_dir}/src/utils/bit_reader.h
-    ${webp_dir}/src/utils/bit_reader_inl.h
-    ${webp_dir}/src/utils/bit_writer.c
-    ${webp_dir}/src/utils/bit_writer.h
-    ${webp_dir}/src/utils/color_cache.c
-    ${webp_dir}/src/utils/color_cache.h
-    ${webp_dir}/src/utils/endian_inl.h
-    ${webp_dir}/src/utils/filters.c
-    ${webp_dir}/src/utils/filters.h
-    ${webp_dir}/src/utils/huffman.c
-    ${webp_dir}/src/utils/huffman.h
-    ${webp_dir}/src/utils/huffman_encode.c
-    ${webp_dir}/src/utils/huffman_encode.h
-    ${webp_dir}/src/utils/quant_levels.c
-    ${webp_dir}/src/utils/quant_levels.h
-    ${webp_dir}/src/utils/quant_levels_dec.c
-    ${webp_dir}/src/utils/quant_levels_dec.h
-    ${webp_dir}/src/utils/random.c
-    ${webp_dir}/src/utils/random.h
-    ${webp_dir}/src/utils/rescaler.c
-    ${webp_dir}/src/utils/rescaler.h
-    ${webp_dir}/src/utils/thread.c
-    ${webp_dir}/src/utils/thread.h
-    ${webp_dir}/src/utils/utils.c
-    ${webp_dir}/src/utils/utils.h
-    ${webp_dir}/src/webp/decode.h
-    ${webp_dir}/src/webp/demux.h
-    ${webp_dir}/src/webp/encode.h
-    ${webp_dir}/src/webp/format_constants.h
-    ${webp_dir}/src/webp/mux.h
-    ${webp_dir}/src/webp/mux_types.h
-    ${webp_dir}/src/webp/types.h)
-
-set(webp_0_4_1_SRCS
+set(webp_SRCS
     ${webp_dir}/src/demux/demux.c
     ${webp_dir}/src/dec/tree.c
     ${webp_dir}/src/dec/quant.c
@@ -305,12 +150,6 @@ set(webp_0_4_1_SRCS
     ${webp_dir}/src/dsp/upsampling_neon.c
     ${webp_dir}/src/dsp/alpha_processing.c
     ${webp_dir}/src/dsp/upsampling_sse2.c)
-
-if (EXISTS "${webp_dir}/src/dsp/lossless_mips32.c")
-  set(webp_SRCS ${webp_0_4_1_SRCS})
-else()
-  set(webp_SRCS ${webp_0_5_1_SRCS})
-endif()
 
 # Includes for this project.
 include_directories(${webp_dir}/src)

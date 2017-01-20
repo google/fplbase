@@ -201,7 +201,7 @@ set(fplbase_common_SRCS
   include/fplbase/glplatform.h
   include/fplbase/handles.h
   include/fplbase/input.h
-  include/fplbase/internal/handle_conversions.h
+  include/fplbase/internal/handle_conversions_gl.h
   include/fplbase/internal/detailed_render_state.h
   include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
