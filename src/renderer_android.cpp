@@ -49,7 +49,7 @@ void AndroidSetScalerResolution(const vec2i& resolution) {
   JNIEnv* env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID get_size = env->GetMethodID(fpl_class, "GetLandscapedSize", "()[I");
+  jmethodID get_size = env->GetMethodID(fpl_class, "GetDisplaySize", "()[I");
   jintArray size = (jintArray)env->CallObjectMethod(activity, get_size);
   jint* size_ints = env->GetIntArrayElements(size, NULL);
 
