@@ -15,7 +15,7 @@
 #include "precompiled.h"
 
 #include "fplbase/flatbuffer_utils.h"
-#include "fplbase/internal/handle_conversions_gl.h"
+#include "fplbase/internal/type_conversions_gl.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/texture_atlas.h"

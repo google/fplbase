@@ -18,7 +18,7 @@
 
 #include "fplbase/environment.h"
 #include "fplbase/flatbuffer_utils.h"
-#include "fplbase/internal/handle_conversions_gl.h"
+#include "fplbase/internal/type_conversions_gl.h"
 #include "fplbase/mesh.h"
 #include "fplbase/renderer.h"
 #include "fplbase/utilities.h"

@@ -14,13 +14,12 @@
 
 #include "precompiled.h"  // NOLINT
 
-#include "fplbase/internal/handle_conversions_gl.h"
+#include "fplbase/internal/type_conversions_gl.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/utilities.h"
-#include "type_conversions_gl.h"
 
 using mathfu::mat4;
 using mathfu::vec2;

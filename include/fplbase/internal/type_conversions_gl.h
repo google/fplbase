@@ -12,18 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPLBASE_INTERNAL_HANDLE_CONVERSIONS_GL_H
-#define FPLBASE_INTERNAL_HANDLE_CONVERSIONS_GL_H
+#ifndef FPLBASE_TYPE_CONVERSIONS_GL_H
+#define FPLBASE_TYPE_CONVERSIONS_GL_H
 
 #include "fplbase/handles.h"
+#include "fplbase/internal/detailed_render_state.h"
 
 namespace fplbase {
+
+/// @brief Converts FPL render function value to equivalent GL enum value.
+///
+/// @param func The render function value to convert.
+unsigned int RenderFunctionToGlFunction(RenderFunction func);
+
+/// @brief Converts FPL blend state factor to equivalent GL enum value.
+///
+/// @param factor The blend state factor to convert.
+unsigned int BlendStateFactorToGl(BlendState::BlendFactor factor);
+
+/// @brief Converts FPL stencil operation value to equivalent GL enum value.
+///
+/// @param op The stencil operation to convert.
+unsigned int StencilOpToGlOp(StencilOperation::StencilOperations op);
+
+/// @brief Converts FPL cull face value to equivalent GL enum value.
+///
+/// @param face The cull face value to convert.
+unsigned int CullFaceToGl(CullState::CullFace face);
 
 union HandleUnionGl {
   HandleUnionGl() { handle.handle = 0; }
   explicit HandleUnionGl(internal::OpaqueHandle handle) : handle(handle) {}
   explicit HandleUnionGl(unsigned int gl_param) {
-    handle.handle = 0; // Clear all the memory first.
+    handle.handle = 0;  // Clear all the memory first.
     gl = gl_param;
   }
 
@@ -82,4 +103,4 @@ inline unsigned int GlBufferHandle(BufferHandle handle) {
 
 }  // namespace fplbase
 
-#endif  // FPLBASE_INTERNAL_HANDLE_CONVERSIONS_GL_H
+#endif  // FPLBASE_TYPE_CONVERSIONS_GL_H

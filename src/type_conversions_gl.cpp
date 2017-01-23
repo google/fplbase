@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "type_conversions_gl.h"
+#include "fplbase/internal/type_conversions_gl.h"
 
 #include "fplbase/fpl_common.h"
+#include "fplbase/glplatform.h"
 
 namespace fplbase {
 
-GLenum RenderFunctionToGlFunction(RenderFunction func) {
+unsigned int RenderFunctionToGlFunction(RenderFunction func) {
   static const GLenum kRenderFunctionToGlFunctionTable[] = {
       GL_ALWAYS, GL_EQUAL,  GL_GREATER, GL_GEQUAL,
       GL_LESS,   GL_LEQUAL, GL_NEVER,   GL_NOTEQUAL};
@@ -30,7 +31,7 @@ GLenum RenderFunctionToGlFunction(RenderFunction func) {
   return kRenderFunctionToGlFunctionTable[func];
 }
 
-GLenum BlendStateFactorToGl(BlendState::BlendFactor factor) {
+unsigned int BlendStateFactorToGl(BlendState::BlendFactor factor) {
   static const GLenum kBlendStateFactorToGlTable[] = {
       GL_ZERO,
       GL_ONE,
@@ -55,7 +56,7 @@ GLenum BlendStateFactorToGl(BlendState::BlendFactor factor) {
   return kBlendStateFactorToGlTable[factor];
 }
 
-GLenum StencilOpToGlOp(StencilOperation::StencilOperations op) {
+unsigned int StencilOpToGlOp(StencilOperation::StencilOperations op) {
   static const GLenum kStencilOpToGlTable[] = {
       GL_KEEP,      GL_ZERO, GL_REPLACE,   GL_INCR,
       GL_INCR_WRAP, GL_DECR, GL_DECR_WRAP, GL_INVERT};
@@ -66,7 +67,7 @@ GLenum StencilOpToGlOp(StencilOperation::StencilOperations op) {
   return kStencilOpToGlTable[op];
 }
 
-GLenum CullFaceToGl(CullState::CullFace face) {
+unsigned int CullFaceToGl(CullState::CullFace face) {
   static const GLenum kCullFaceToGlTable[] = {GL_FRONT, GL_BACK,
                                               GL_FRONT_AND_BACK};
 

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/type_conversions_gl.h"
+#include "fplbase/internal/type_conversions_gl.h"
+#include "fplbase/glplatform.h"
 #include "gtest/gtest.h"
 
 using namespace fplbase;
