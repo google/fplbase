@@ -160,7 +160,7 @@ endif()
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
+    ${CMAKE_CURRENT_BINARY_DIR}/include)
 file(GLOB_RECURSE FPLBASE_FLATBUFFERS_SCHEMAS
                   ${CMAKE_CURRENT_LIST_DIR}/schemas/*.fbs)
 
