@@ -95,8 +95,9 @@ Renderer::~Renderer() {
 }
 
 bool RendererBase::Initialize(const vec2i &window_size,
-                              const char *window_title) {
-  if (!environment_.Initialize(window_size, window_title)) {
+                              const char *window_title,
+                              WindowMode window_mode) {
+  if (!environment_.Initialize(window_size, window_title, window_mode)) {
     last_error_ = environment_.last_error();
     return false;
   }

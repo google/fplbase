@@ -39,8 +39,23 @@ struct SDLHandles : EnvironmentHandles {
   SDL_GLContext context_;
 };
 
-bool Environment::Initialize(const vec2i &window_size,
-                             const char *window_title) {
+static WindowMode AdjustWindowModeForPlatform(WindowMode window_mode) {
+#ifdef PLATFORM_MOBILE
+  // If on a mobile platform and a windowed desktop mode was selected, switch
+  // it to the corresponding fullscreen version of that mode, as mobile
+  // platforms do not use windows.
+  return window_mode == kWindowModeWindowedNative
+             ? kWindowModeFullscreenNative
+             : window_mode == kWindowModeWindowedScaled
+                   ? kWindowModeFullscreenScaled
+                   : window_mode;
+#else
+  return window_mode;
+#endif
+}
+
+bool Environment::Initialize(const vec2i &window_size, const char *window_title,
+                             WindowMode window_mode) {
   // Basic SDL initialization, does not actually initialize a Window or OpenGL,
   // typically should not fail.
   SDL_SetMainReady();
@@ -51,9 +66,14 @@ bool Environment::Initialize(const vec2i &window_size,
 
   SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
 
+  // Get the correct window mode for current device.
+  WindowMode curr_window_mode = AdjustWindowModeForPlatform(window_mode);
+
 #ifdef __ANDROID__
-  // Setup HW scaler in Android
-  AndroidSetScalerResolution(window_size);
+  if (curr_window_mode != kWindowModeFullscreenNative) {
+    // Setup HW scaler in Android.
+    AndroidSetScalerResolution(window_size);
+  }
   AndroidPreCreateWindow();
 #endif
 
@@ -66,15 +86,20 @@ bool Environment::Initialize(const vec2i &window_size,
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
 
   // Create the window:
+  const bool full_screen = curr_window_mode == kWindowModeFullscreenScaled ||
+                           curr_window_mode == kWindowModeFullscreenNative;
+#ifdef PLATFORM_MOBILE
+  const uint32_t screen_flags =
+      SDL_WINDOW_BORDERLESS | (full_screen ? SDL_WINDOW_FULLSCREEN : 0);
+#else
+  const uint32_t screen_flags =
+      full_screen ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_RESIZABLE;
+#endif
   auto window =
       SDL_CreateWindow(window_title, SDL_WINDOWPOS_CENTERED,
                        SDL_WINDOWPOS_CENTERED, window_size.x, window_size.y,
-                       SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
-#ifdef PLATFORM_MOBILE
-                           SDL_WINDOW_BORDERLESS);
-#else
-                           SDL_WINDOW_RESIZABLE);
-#endif
+                       SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | screen_flags);
+
   if (!window) {
     last_error_ = std::string("SDL_CreateWindow fail: ") + SDL_GetError();
     return false;

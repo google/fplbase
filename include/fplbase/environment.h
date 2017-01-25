@@ -29,6 +29,23 @@ enum FeatureLevel {
   kFeatureLevel30,  // 3.0: We request this by default.
 };
 
+enum WindowMode {
+  // Doesn't use all of the screen, typically not available on mobile. If used
+  // on a device that has no windows (mobile), will do the same as
+  // kWindowModeFullscreenNative.
+  kWindowModeWindowedNative,
+  // Doesn't use all of the screen, typically not available on mobile. If used
+  // on a device that has no windows (mobile), it will do the same thing as
+  // kWindowModeFullscreenScaled.
+  kWindowModeWindowedScaled,
+  // Uses all of the display at the native resolution of the device. Any size
+  // supplied is ignored.
+  kWindowModeFullscreenNative,
+  // Uses all of the display, tries to scale from supplied size as best as
+  // possible.
+  kWindowModeFullscreenScaled,
+};
+
 // Any backend stores its data in an object inherited from this.
 struct EnvironmentHandles {
   virtual ~EnvironmentHandles() {}
@@ -45,7 +62,8 @@ class Environment {
 
   // The following functions are implemented differently for each rendering
   // backend.
-  bool Initialize(const mathfu::vec2i &window_size, const char *window_title);
+  bool Initialize(const mathfu::vec2i &window_size, const char *window_title,
+                  WindowMode window_mode = kWindowModeWindowedScaled);
   void ShutDown();
   void AdvanceFrame(bool minimized);
 

@@ -83,8 +83,12 @@ class RendererBase {
   ///
   /// @param window_size The default size to initialize the window to.
   /// @param window_title The title of the created window.
+  /// @param window_mode Determines whether the window will use the window size,
+  /// enter fullscreen mode, or enter fullscreen mode with the HW scaler
+  /// disabled.
   /// @return Returns true on success, false if there was an error.
-  bool Initialize(const mathfu::vec2i &window_size, const char *window_title);
+  bool Initialize(const mathfu::vec2i &window_size, const char *window_title,
+                  WindowMode window_mode = kWindowModeWindowedScaled);
 
   /// @brief Swaps frames. Call this once per frame inside your main loop.
   ///
@@ -431,8 +435,9 @@ class Renderer {
   // Forwarded methods from the RendererBase class
 
   /// @brief Initializes the renderer by initializing the Environment object.
-  bool Initialize(const mathfu::vec2i &window_size, const char *window_title) {
-    return base_->Initialize(window_size, window_title);
+  bool Initialize(const mathfu::vec2i &window_size, const char *window_title,
+                  const WindowMode window_mode = kWindowModeWindowedScaled) {
+    return base_->Initialize(window_size, window_title, window_mode);
   }
 
   /// @brief Swaps frames. Call this once per frame inside your main loop.
