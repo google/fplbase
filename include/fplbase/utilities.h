@@ -15,6 +15,7 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
+#include <functional>
 #include <string>
 #include "fplbase/config.h"  // Must come first.
 
@@ -62,7 +63,8 @@ enum LogCategory {
 #endif
 
 /// @brief Called by `LoadFile()`.
-typedef bool (*LoadFileFunction)(const char *filename, std::string *dest);
+using LoadFileFunction =
+    std::function<bool(const char *filename, std::string *dest)>;
 
 /// @brief Enum for use with the `Set/GetPerformanceMode()` functions.
 enum PerformanceMode {
