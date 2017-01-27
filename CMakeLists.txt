@@ -199,6 +199,7 @@ set(fplbase_common_SRCS
   include/fplbase/environment.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
+  include/fplbase/gpu_debug.h
   include/fplbase/handles.h
   include/fplbase/input.h
   include/fplbase/internal/type_conversions_gl.h
@@ -219,6 +220,7 @@ set(fplbase_common_SRCS
   include/fplbase/version.h
   schemas
   src/asset_manager.cpp
+  src/gpu_debug_gl.cpp
   src/input.cpp
   src/material.cpp
   src/mesh_common.cpp

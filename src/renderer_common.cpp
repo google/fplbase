@@ -14,6 +14,7 @@
 
 #include "precompiled.h"  // NOLINT
 
+#include "fplbase/gpu_debug.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
 #include "fplbase/renderer.h"
@@ -105,9 +106,17 @@ bool RendererBase::Initialize(const vec2i &window_size,
   return InitializeRenderingState();
 }
 
-void Renderer::BeginRendering() {}
+void Renderer::BeginRendering() {
+#ifdef FPLBASE_VERIFY_GPU_STATE
+  ValidateRenderState(render_state_);
+#endif  // FPLBASE_VERIFY_GPU_STATE
+}
 
-void Renderer::EndRendering() {}
+void Renderer::EndRendering() {
+#ifdef FPLBASE_VERIFY_GPU_STATE
+  ValidateRenderState(render_state_);
+#endif  // FPLBASE_VERIFY_GPU_STATE
+}
 
 bool RendererBase::SupportsTextureFormat(TextureFormat texture_format) const {
   return (supports_texture_format_ & (1LL << texture_format)) != 0;

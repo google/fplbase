@@ -25,6 +25,7 @@ FPLBASE_DIR := $(LOCAL_PATH)
 
 FPLBASE_COMMON_SRC_FILES := \
   src/asset_manager.cpp \
+  src/gpu_debug_gl.cpp \
   src/input.cpp \
   src/material.cpp \
   src/mesh_common.cpp \
