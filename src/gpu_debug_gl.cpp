@@ -24,7 +24,7 @@ bool ValidateGlBlendState(const BlendState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_CULL_FACE, &bool_value);
-  if (bool_value != state.enabled) {
+  if (static_cast<bool>(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -61,7 +61,7 @@ bool ValidateGlCullState(const CullState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_CULL_FACE, &bool_value);
-  if (bool_value != state.enabled) {
+  if (static_cast<bool>(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -80,7 +80,7 @@ bool ValidateGlDepthState(const DepthState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_DEPTH_TEST, &bool_value);
-  if (bool_value != state.enabled) {
+  if (static_cast<bool>(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -100,7 +100,7 @@ bool ValidateGlStencilState(const StencilState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_STENCIL_TEST, &bool_value);
-  if (bool_value != state.enabled) {
+  if (static_cast<bool>(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -194,7 +194,7 @@ bool ValidateGlScissorState(const ScissorState& state) {
   GLboolean bool_value;
 
   glGetBooleanv(GL_SCISSOR_TEST, &bool_value);
-  if (bool_value != state.enabled) {
+  if (static_cast<bool>(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
