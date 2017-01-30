@@ -166,6 +166,13 @@ class AssetManager {
   /// loading of all files, and decompression.
   void StartLoadingTextures();
 
+  /// @brief Stop loading previously queued textures.
+  ///
+  /// This method will block until the currently loading textures have finished
+  /// loading. You can resume loading queued textures by calling
+  /// StartLoadingTextures.
+  void StopLoadingTextures();
+
   /// @brief Check for the status of async loading resources.
   ///
   /// Call this repeatedly until it returns true, which signals all resources

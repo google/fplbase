@@ -15,10 +15,11 @@
 #ifndef FPLBASE_ASYNC_LOADER_H
 #define FPLBASE_ASYNC_LOADER_H
 
+#include <stdint.h>
+#include <deque>
 #include <functional>
 #include <string>
 #include <vector>
-#include <stdint.h>
 
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/asset.h"
@@ -152,6 +153,12 @@ class AsyncLoader {
   /// @brief Launches the loading thread for the previously queued jobs.
   void StartLoading();
 
+  /// @brief Pause the loading thread for previously queued jobs.
+  ///
+  /// Blocks until only the current job is finished loading. You can resume
+  /// loading assets by calling StartLoading().
+  void PauseLoading();
+
   /// @brief Ends the loading thread when all jobs are done.
   ///
   /// Cleans-up the background loading thread once all jobs have been completed.
@@ -185,8 +192,7 @@ class AsyncLoader {
   void LoaderWorker();
   static int LoaderThread(void *user_data);
 
-  std::vector<AsyncAsset *> queue_, done_;
-
+  std::deque<AsyncAsset *> queue_, done_;
 #ifdef FPL_BASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.

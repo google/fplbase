@@ -177,6 +177,8 @@ Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
 
+void AssetManager::StopLoadingTextures() { loader_.PauseLoading(); }
+
 bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
 
 void AssetManager::UnloadTexture(const char *filename) {
