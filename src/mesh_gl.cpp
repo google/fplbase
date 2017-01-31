@@ -47,9 +47,7 @@ struct MeshImpl {
 MeshImpl *Mesh::CreateMeshImpl() { return new MeshImpl; }
 void Mesh::DestroyMeshImpl(MeshImpl *impl) { delete impl; }
 
-namespace {
-
-GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
+uint32_t Mesh::GetPrimitiveTypeFlags(Mesh::Primitive primitive) {
   switch (primitive) {
     case Mesh::kLines:
       return GL_LINES;
@@ -63,6 +61,8 @@ GLenum GetGlPrimitiveType(Mesh::Primitive primitive) {
       return GL_TRIANGLES;
   }
 }
+
+namespace {
 
 void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                    const char *buffer) {
@@ -257,7 +257,7 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
 }
 
 void Mesh::AddIndices(const void *index_data, int count, Material *mat,
-                      bool is_32_bit, Primitive primitive) {
+                      bool is_32_bit) {
   indices_.push_back(Indices());
   auto &idxs = indices_.back();
   idxs.count = count;
@@ -271,16 +271,19 @@ void Mesh::AddIndices(const void *index_data, int count, Material *mat,
                    index_data, GL_STATIC_DRAW));
   idxs.index_type = (is_32_bit ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT);
   idxs.mat = mat;
-  idxs.primitive = GetGlPrimitiveType(primitive);
 }
 
 void Mesh::Render(Renderer &renderer, bool ignore_material, size_t instances) {
   BindAttributes(impl_->vao, impl_->vbo, format_, vertex_size_);
-  for (auto it = indices_.begin(); it != indices_.end(); ++it) {
-    if (!ignore_material) it->mat->Set(renderer);
-    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
-    DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                it->index_type, it->primitive);
+  if (!indices_.empty()) {
+    for (auto it = indices_.begin(); it != indices_.end(); ++it) {
+      if (!ignore_material) it->mat->Set(renderer);
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
+      DrawElement(renderer, it->count, static_cast<int32_t>(instances),
+                  it->index_type, primitive_);
+    }
+  } else {
+    glDrawArrays(primitive_, 0, static_cast<int32_t>(num_vertices_));
   }
   UnbindAttributes(impl_->vao, format_);
 }
@@ -290,16 +293,26 @@ void Mesh::RenderStereo(Renderer &renderer, const Shader *shader,
                         const vec3 *camera_position, bool ignore_material,
                         size_t instances) {
   BindAttributes(impl_->vao, impl_->vbo, format_, vertex_size_);
-  for (auto it = indices_.begin(); it != indices_.end(); ++it) {
-    if (!ignore_material) it->mat->Set(renderer);
-    GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
-    for (auto i = 0; i < 2; ++i) {
-      renderer.set_camera_pos(camera_position[i]);
-      renderer.set_model_view_projection(mvp[i]);
-      renderer.SetViewport(viewport[i]);
-      shader->Set(renderer);
-      DrawElement(renderer, it->count, static_cast<int32_t>(instances),
-                  it->index_type, it->primitive);
+  auto prep_stereo = [&](size_t i) {
+        renderer.set_camera_pos(camera_position[i]);
+        renderer.set_model_view_projection(mvp[i]);
+        renderer.SetViewport(viewport[i]);
+        shader->Set(renderer);
+  };
+  if (!indices_.empty()) {
+    for (auto it = indices_.begin(); it != indices_.end(); ++it) {
+      if (!ignore_material) it->mat->Set(renderer);
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
+      for (size_t i = 0; i < 2; ++i) {
+        prep_stereo(i);
+        DrawElement(renderer, it->count, static_cast<int32_t>(instances),
+                    it->index_type, primitive_);
+      }
+    }
+  } else {
+    for (size_t i = 0; i < 2; ++i) {
+      prep_stereo(i);
+      glDrawArrays(primitive_, 0, static_cast<int32_t>(num_vertices_));
     }
   }
   UnbindAttributes(impl_->vao, format_);
@@ -311,7 +324,7 @@ void Mesh::RenderArray(Primitive primitive, int index_count,
   SetAttributes(0, format, vertex_size,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-  auto gl_primitive = GetGlPrimitiveType(primitive);
+  auto gl_primitive = GetPrimitiveTypeFlags(primitive);
   GL_CALL(
       glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT, indices));
   UnSetAttributes(format);
@@ -323,7 +336,7 @@ void Mesh::RenderArray(Primitive primitive, int vertex_count,
   SetAttributes(0, format, vertex_size,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-  auto gl_primitive = GetGlPrimitiveType(primitive);
+  auto gl_primitive = GetPrimitiveTypeFlags(primitive);
   GL_CALL(glDrawArrays(gl_primitive, 0, vertex_count));
   UnSetAttributes(format);
 }

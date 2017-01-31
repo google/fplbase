@@ -71,12 +71,13 @@ class Mesh : public AsyncAsset {
   /// Otherwise, if filename is null, need to call LoadFromMemory to init
   /// manually.
   Mesh(const char *filename = nullptr,
-       MaterialLoaderFn material_loader_fn = nullptr);
+       MaterialLoaderFn material_loader_fn = nullptr,
+       Primitive primitive = kTriangles);
 
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
   Mesh(const void *vertex_data, size_t count, size_t vertex_size,
        const Attribute *format, mathfu::vec3 *max_position = nullptr,
-       mathfu::vec3 *min_position = nullptr);
+       mathfu::vec3 *min_position = nullptr, Primitive primitive = kTriangles);
 
   ~Mesh();
 
@@ -106,7 +107,7 @@ class Mesh : public AsyncAsset {
   /// @param is_32_bit Specifies that the indices are 32bit. Default 16bit.
   /// @param primitive How the triangles are assembled from the indices.
   void AddIndices(const void *indices, int count, Material *mat,
-                  bool is_32_bit = false, Primitive primitive = kTriangles);
+                  bool is_32_bit = false);
 
   /// @brief Set the bones used by an animated mesh.
   ///
@@ -423,6 +424,9 @@ class Mesh : public AsyncAsset {
   static MeshImpl *CreateMeshImpl();
   static void DestroyMeshImpl(MeshImpl *impl);
 
+  // Backend-specific way to get underlying primitive flag.
+  static uint32_t GetPrimitiveTypeFlags(Mesh::Primitive primitive);
+
   static const int kMaxAttributes = 9;
 
   struct Indices {
@@ -431,18 +435,17 @@ class Mesh : public AsyncAsset {
           ibo(InvalidBufferHandle()),
           mat(nullptr),
           index_type(0),
-          primitive(0),
           indexBufferMem(InvalidDeviceMemoryHandle()) {}
     int count;
     BufferHandle ibo;
     Material *mat;
     uint32_t index_type;
-    uint32_t primitive;
     DeviceMemoryHandle indexBufferMem;
   };
 
   MeshImpl *impl_;
   std::vector<Indices> indices_;
+  uint32_t primitive_;
   size_t vertex_size_;
   size_t num_vertices_;
   Attribute format_[kMaxAttributes];

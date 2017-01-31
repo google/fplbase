@@ -56,9 +56,11 @@ void CopyAttribute(const T *attr, uint8_t *&buf) {
 
 }  // namespace
 
-Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
+Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn,
+           Primitive primitive)
     : AsyncAsset(filename ? filename : ""),
       impl_(CreateMeshImpl()),
+      primitive_(GetPrimitiveTypeFlags(primitive)),
       vertex_size_(0),
       num_vertices_(0),
       min_position_(mathfu::kZeros3f),
@@ -67,8 +69,10 @@ Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn)
       material_loader_fn_(std::move(material_loader_fn)) {}
 
 Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
-           const Attribute *format, vec3 *max_position, vec3 *min_position)
+           const Attribute *format, vec3 *max_position, vec3 *min_position,
+           Primitive primitive)
     : impl_(CreateMeshImpl()),
+      primitive_(GetPrimitiveTypeFlags(primitive)),
       vertex_size_(0),
       num_vertices_(0),
       min_position_(mathfu::kZeros3f),
