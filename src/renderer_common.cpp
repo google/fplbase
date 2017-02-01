@@ -62,7 +62,10 @@ Renderer::Renderer()
       light_pos_(mathfu::kZeros3f),
       camera_pos_(mathfu::kZeros3f),
       bone_transforms_(nullptr),
-      num_bones_(0) {
+      num_bones_(0),
+      blend_amount_(0.0f),
+      stencil_ref_(0),
+      stencil_mask_(~0) {
   // This is the only place that the RendererBase singleton can be created,
   // so ensure it's guarded by the mutex.
   fplutil::MutexLock lock(RendererBase::the_base_mutex_);
@@ -146,6 +149,25 @@ void Renderer::AdvanceFrame(bool minimized, double time) {
 
   auto viewport_size = environment().GetViewportSize();
   SetViewport(Viewport(0, 0, viewport_size.x, viewport_size.y));
+}
+
+void Renderer::UpdateCachedRenderState(const RenderState &render_state) {
+  render_state_ = render_state;
+
+  const BlendMode prev_blend_mode = blend_mode_;
+  const CullingMode prev_cull_mode = cull_mode_;
+  const DepthFunction prev_depth_function = depth_function_;
+  const StencilMode prev_stencil_mode = stencil_mode_;
+
+  blend_mode_ = kBlendModeUnknown;
+  cull_mode_ = kCullingModeUnknown;
+  depth_function_ = kDepthFunctionUnknown;
+  stencil_mode_ = kStencilUnknown;
+
+  SetBlendMode(prev_blend_mode, blend_amount_);
+  SetCulling(prev_cull_mode);
+  SetDepthFunction(prev_depth_function);
+  SetStencilMode(prev_stencil_mode, stencil_ref_, stencil_mask_);
 }
 
 }  // namespace fplbase

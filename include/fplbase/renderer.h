@@ -546,6 +546,15 @@ class Renderer {
   /// @brief Returns the current render state.
   const RenderState &GetRenderState() const { return render_state_; }
 
+  /// @brief Updates the cached render state with the given render state.
+  ///
+  /// This should be used to avoid mismatch between the expected render state
+  /// and the actual state of the graphics API. The situation tends to happen
+  /// when using the graphics API directly outside of the renderer.
+  /// (Note that no operations will be called in here, only the cached state
+  /// will be updated.)
+  void UpdateCachedRenderState(const RenderState &render_state);
+
   /// @brief Returns the active shader, or nullptr if no active shader.
   const Shader *GetActiveShader() const { return shader_; }
 
@@ -584,9 +593,12 @@ class Renderer {
   RenderState render_state_;
 
   BlendMode blend_mode_;
+  float blend_amount_;
   CullingMode cull_mode_;
   DepthFunction depth_function_;
   StencilMode stencil_mode_;
+  int stencil_ref_;
+  uint32_t stencil_mask_;
 };
 
 /// @}

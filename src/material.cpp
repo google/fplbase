@@ -31,7 +31,7 @@ static_assert(
     kBlendModePreMultipliedAlpha ==
         static_cast<BlendMode>(matdef::BlendMode_PREMULTIPLIEDALPHA),
     "BlendMode enums in material.h and material.fbs must match.");
-static_assert(kBlendModeCount == kBlendModePreMultipliedAlpha + 1,
+static_assert(kBlendModeCount == kBlendModePreMultipliedAlpha + 2,
               "Please update static_assert above with new enum values.");
 
 static_assert(

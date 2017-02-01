@@ -29,8 +29,10 @@ enum StencilMode {
   kStencilCompareEqual, /**< Compare the that reference written reference and
                            given reference are equal, if they are, write to the
                            pixel buffer. */
-  kStencilWrite, /**< Always pass the test and write to the pixel and stencil
-                    buffers. */
+  kStencilWrite,   /**< Always pass the test and write to the pixel and stencil
+                      buffers. */
+  kStencilUnknown, /**< An unknown mode, usually happens when accessing the
+                      graphics API directly.  */
   kStencilModeCount
 };
 
@@ -53,7 +55,9 @@ enum BlendMode {
                                      are assumed to have already been multiplied
                                      by the alpha, so the blend function doesn't
                                      touch them. */
-  kBlendModeCount /** Used at the end of the enum as sentinel value. */
+  kBlendModeUnknown, /**< An unknown mode, usually happens when accessing the
+                        graphics API directly.  */
+  kBlendModeCount    /** Used at the end of the enum as sentinel value. */
 };
 
 /// @brief Specifies the depth function used for rendering.
@@ -67,6 +71,8 @@ enum DepthFunction {
   kDepthFunctionGreaterEqual,
   kDepthFunctionEqual,
   kDepthFunctionNotEqual,
+  kDepthFunctionUnknown, /**< An unknown mode, usually happens when accessing
+                            the graphics API directly.  */
   kDepthFunctionCount
 };
 
@@ -75,7 +81,9 @@ enum CullingMode {
   kCullingModeNone,
   kCullingModeFront,
   kCullingModeBack,
-  kCullingModeFrontAndBack
+  kCullingModeFrontAndBack,
+  kCullingModeUnknown /**< An unknown mode, usually happens when accessing the
+                       graphics API directly.  */
 };
 
 }  // namespace fplbase

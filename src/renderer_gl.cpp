@@ -269,6 +269,10 @@ void Renderer::SetDepthFunction(DepthFunction func) {
       depth_state.function = kRenderNotEqual;
       break;
 
+    case kDepthFunctionUnknown:
+      // Do nothing.
+      break;
+
     default:
       assert(false);  // Invalid depth function.
       break;
@@ -361,6 +365,10 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
       blend_state.dst_color = BlendState::kOneMinusSrcAlpha;
       break;
 
+    case kBlendModeUnknown:
+      // Do nothing.
+      break;
+
     default:
       assert(false);  // Not yet implemented.
       break;
@@ -402,6 +410,7 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
 #endif
 
   blend_mode_ = blend_mode;
+  blend_amount_ = amount;
   render_state_.alpha_test_state = alpha_test_state;
   render_state_.blend_state = blend_state;
 }
@@ -429,7 +438,7 @@ static void SetStencilFunction(GLenum face, const StencilFunction &set_func,
 }
 
 void Renderer::SetStencilMode(StencilMode mode, int ref, uint32_t mask) {
-  if (mode == stencil_mode_) {
+  if (mode == stencil_mode_ && ref == stencil_ref_ && mask == stencil_mask_) {
     return;
   }
 
@@ -467,6 +476,10 @@ void Renderer::SetStencilMode(StencilMode mode, int ref, uint32_t mask) {
       stencil_state.back_op = stencil_state.front_op;
       break;
 
+    case kStencilUnknown:
+      // Do nothing.
+      break;
+
     default:
       assert(false);
   }
@@ -491,6 +504,8 @@ void Renderer::SetStencilMode(StencilMode mode, int ref, uint32_t mask) {
 
   render_state_.stencil_state = stencil_state;
   stencil_mode_ = mode;
+  stencil_ref_ = ref;
+  stencil_mask_ = mask;
 }
 
 void Renderer::SetCulling(CullingMode mode) {
@@ -514,6 +529,9 @@ void Renderer::SetCulling(CullingMode mode) {
     case kCullingModeFrontAndBack:
       cull_state.enabled = true;
       cull_state.face = CullState::kFrontAndBack;
+      break;
+    case kCullingModeUnknown:
+      // Do nothing.
       break;
     default:
       // Unknown culling mode.
