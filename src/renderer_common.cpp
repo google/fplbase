@@ -63,7 +63,11 @@ Renderer::Renderer()
       camera_pos_(mathfu::kZeros3f),
       bone_transforms_(nullptr),
       num_bones_(0),
+      blend_mode_(kBlendModeUnknown),
       blend_amount_(0.0f),
+      cull_mode_(kCullingModeUnknown),
+      depth_function_(kDepthFunctionUnknown),
+      stencil_mode_(kStencilUnknown),
       stencil_ref_(0),
       stencil_mask_(~0) {
   // This is the only place that the RendererBase singleton can be created,
