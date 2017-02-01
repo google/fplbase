@@ -227,6 +227,236 @@ static void LogVertexAttributes(VertexAttributeBitmask attributes,
   log->Log(level, "\n");
 }
 
+// Utility function to get the name of a mesh, or the name of the node that owns
+// it if the mesh attribute is unnamed (which it commonly is).
+static const char* GetMeshOrNodeName(const FbxMesh* mesh) {
+  const char* const mesh_name = mesh->GetName();
+  if (mesh_name && mesh_name[0]) return mesh_name;
+  const FbxNode* const node = mesh->GetNode();
+  return node ? node->GetName() : nullptr;
+}
+
+// Used for skinning, this maps a vertex to a weighted set of bones.
+class SkinBinding {
+ public:
+  typedef uint16_t BoneIndex;
+  typedef uint8_t PackedBoneIndex;
+  typedef uint8_t PackedWeight;
+  static const unsigned int kInfluenceMax = 4;
+  static const BoneIndex kNoBoneIndex = 0xffff;
+  static const BoneIndex kBoneIndexMax = 0xfffe;
+  static const PackedBoneIndex kPackedBoneIndexMax = 0xff;
+  static const PackedWeight kPackedWeightOne = 0xff;
+
+  SkinBinding() { Clear(); }
+
+  const BoneIndex* GetBoneIndices() const { return bone_indices_; }
+  const float* GetBoneWeights() const { return bone_weights_; }
+
+  void Clear() {
+    for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+         ++influence_index) {
+      bone_indices_[influence_index] = kNoBoneIndex;
+    }
+    for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+         ++influence_index) {
+      bone_weights_[influence_index] = 0.0f;
+    }
+  }
+
+  bool HasInfluences() const { return bone_indices_[0] != kNoBoneIndex; }
+
+  unsigned int CountInfluences() const {
+    for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+         ++influence_index) {
+      if (bone_indices_[influence_index] == kNoBoneIndex)
+        return influence_index;
+    }
+    return kInfluenceMax;
+  }
+
+  void AppendInfluence(unsigned int bone_index, float bone_weight, Logger& log,
+                       const FbxMesh* log_mesh, unsigned int log_vertex_index) {
+    unsigned int influence_count = CountInfluences();
+
+    // Discard the smallest influence if we reach capacity.
+    if (influence_count == kInfluenceMax) {
+      const unsigned int smallest_influence_index =
+          FindSmallestInfluence(influence_count);
+      const float smallest_bone_weight =
+          bone_weights_[smallest_influence_index];
+      if (smallest_bone_weight < bone_weight) {
+        // Existing influence is the smallest.
+        const BoneIndex smallest_bone_index =
+            bone_indices_[smallest_influence_index];
+        EraseInfluence(influence_count, smallest_influence_index);
+        --influence_count;
+        log.Log(kLogWarning,
+                "Too many skin influences (max=%u) for mesh %s vertex %u."
+                " Discarding the smallest influence (%f) to bone %u.\n",
+                kInfluenceMax, GetMeshOrNodeName(log_mesh), log_vertex_index,
+                smallest_bone_weight, smallest_bone_index);
+      } else {
+        // New influence is the smallest.
+        log.Log(kLogWarning,
+                "Too many skin influences (max=%u) for mesh %s vertex %u."
+                " Discarding the smallest influence (%f) to bone %u.\n",
+                kInfluenceMax, GetMeshOrNodeName(log_mesh), log_vertex_index,
+                bone_weight, bone_index);
+        return;
+      }
+    }
+
+    // Append the influence.
+    assert(bone_index <= kBoneIndexMax);
+    bone_indices_[influence_count] = static_cast<BoneIndex>(bone_index);
+    bone_weights_[influence_count] = bone_weight;
+  }
+
+  // Set the vertex to single-bone rigid binding.
+  void BindRigid(BoneIndex bone_index) {
+    Clear();
+    bone_indices_[0] = bone_index;
+    bone_weights_[0] = 1.0f;
+  }
+
+  // Normalize weights to sum to 1.0.
+  void NormalizeBoneWeights() {
+    unsigned int influence_count = 0;
+    float bone_weight_sum = 0.0f;
+    for (; influence_count != kInfluenceMax; ++influence_count) {
+      if (bone_indices_[influence_count] == kNoBoneIndex) break;
+      bone_weight_sum += bone_weights_[influence_count];
+    }
+
+    if (influence_count == 0) {
+      // Vertex not weighted to any bone.  Set full weighting to the origin.
+      bone_weights_[0] = 1.0f;
+    } else if (bone_weight_sum == 0.0f) {
+      // Weights sum to 0.  Probably shouldn't happen, but if it does just
+      // evenly distribute weights.
+      const float bone_weight = 1.0f / static_cast<float>(influence_count);
+      for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+           ++influence_index) {
+        bone_weights_[influence_index] = bone_weight;
+      }
+    } else {
+      // Scale weights so they sum to 1.0.
+      const float scale = 1.0f / bone_weight_sum;
+      for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+           ++influence_index) {
+        bone_weights_[influence_index] *= scale;
+      }
+    }
+  }
+
+  // Pack indices and weights to 8-bit components, remapping indices with
+  // src_to_dst_index_map.
+  void Pack(const BoneIndex* src_to_dst_index_map, size_t src_bone_count,
+            Logger& log, const char* log_mesh_name,
+            unsigned int log_vertex_index, Vec4ub* out_packed_indices,
+            Vec4ub* out_packed_weights) const {
+    PackedBoneIndex packed_indices[4] = {0, 0, 0, 0};
+    PackedWeight packed_weights[4] = {0, 0, 0, 0};
+
+    const float src_to_dst_scale = static_cast<float>(kPackedWeightOne);
+    unsigned int dst_weight_remain = kPackedWeightOne;
+    for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+         ++influence_index) {
+      const BoneIndex src_index = bone_indices_[influence_index];
+      if (src_index == kNoBoneIndex) {
+        break;
+      }
+      assert(src_index < src_bone_count);
+
+      // This bone is referenced, so it shouldn't have been pruned.
+      const BoneIndex dst_index = src_to_dst_index_map[src_index];
+      assert(dst_index != kNoBoneIndex);
+
+      if (dst_index > kPackedBoneIndexMax) {
+        log.Log(kLogWarning,
+                "Bone index %u exceeds %u."
+                " Discarding skin weight for mesh %s vertex %u.\n",
+                dst_index, kPackedBoneIndexMax, log_mesh_name,
+                log_vertex_index);
+        break;
+      }
+
+      // Pack weight, quantizing from float to byte.  The weight is rounded, and
+      // we keep track of the total weight remaining so we can distribute
+      // quantization error between weights at the end.
+      const float src_weight = bone_weights_[influence_index];
+      const float dst_weight = src_weight * src_to_dst_scale;
+      const unsigned int dst_weight_rounded = std::min(
+          static_cast<unsigned int>(dst_weight + 0.5f), dst_weight_remain);
+      dst_weight_remain -= dst_weight_rounded;
+
+      packed_indices[influence_index] = static_cast<PackedBoneIndex>(dst_index);
+      packed_weights[influence_index] =
+          static_cast<PackedWeight>(dst_weight_rounded);
+    }
+
+    // Distribute quantization error between weights, so they sum to 255.
+    for (; dst_weight_remain; --dst_weight_remain) {
+      // Choose the weight to which adding 1 minimizes error.
+      unsigned int best_influence_index = 0;
+      float diff_min = FLT_MAX;
+      for (unsigned int influence_index = 0; influence_index != kInfluenceMax;
+           ++influence_index) {
+        if (bone_indices_[influence_index] == kNoBoneIndex) {
+          break;
+        }
+        const float src_weight = bone_weights_[influence_index];
+        const float dst_weight = packed_weights[influence_index] + 1;
+        const float diff = dst_weight - src_weight * src_to_dst_scale;
+        if (diff < diff_min) {
+          best_influence_index = influence_index;
+          diff_min = diff;
+        }
+      }
+      packed_weights[best_influence_index] += 1;
+    }
+
+    *out_packed_indices = Vec4ub(packed_indices[0], packed_indices[1],
+                                 packed_indices[2], packed_indices[3]);
+    *out_packed_weights = Vec4ub(packed_weights[0], packed_weights[1],
+                                 packed_weights[2], packed_weights[3]);
+  }
+
+ private:
+  BoneIndex bone_indices_[kInfluenceMax];
+  float bone_weights_[kInfluenceMax];
+
+  // Find the smallest influence.  If there are multiple smallest influences,
+  // this returns the one nearest the end of the array (i.e. most recently
+  // added).
+  unsigned int FindSmallestInfluence(unsigned int influence_count) const {
+    assert(influence_count > 0);
+    unsigned int smallest_influence_index = 0;
+    for (unsigned int influence_index = 1; influence_index != influence_count;
+         ++influence_index) {
+      if (bone_weights_[influence_index] <=
+          bone_weights_[smallest_influence_index]) {
+        smallest_influence_index = influence_index;
+      }
+    }
+    return smallest_influence_index;
+  }
+
+  // Erase an influence, preserving the order of the remaining influences.
+  void EraseInfluence(unsigned int influence_count,
+                      unsigned int influence_index) {
+    assert(influence_index < influence_count);
+    const unsigned int last_influence_index = influence_count - 1;
+    for (; influence_index != last_influence_index; ++influence_index) {
+      bone_indices_[influence_index] = bone_indices_[influence_index + 1];
+      bone_weights_[influence_index] = bone_weights_[influence_index + 1];
+    }
+    bone_indices_[last_influence_index] = kNoBoneIndex;
+    bone_weights_[last_influence_index] = 0.0f;
+  }
+};
+
 class FlatTextures {
  public:
   size_t Count() const { return textures_.size(); }
@@ -275,12 +505,13 @@ class FlatMesh {
     points_.clear();
   }
 
-  void AppendBone(const char* bone_name,
-                  const mat4& default_bone_transform_inverse, int depth) {
-    // Until this function is called again, all appended vertices will
-    // reference this bone.
-    bones_.push_back(Bone(bone_name, default_bone_transform_inverse, depth,
-                          points_.size()));
+  unsigned int AppendBone(const char* bone_name,
+                          const mat4& default_bone_transform_inverse,
+                          int parent_bone_index) {
+    const unsigned int bone_index = static_cast<unsigned int>(bones_.size());
+    bones_.push_back(
+        Bone(bone_name, default_bone_transform_inverse, parent_bone_index));
+    return bone_index;
   }
 
   void SetSurface(const FlatTextures& textures) {
@@ -319,7 +550,7 @@ class FlatMesh {
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
                       const vec4& tangent, const vec4& color, const vec2& uv,
-                      const vec2& uv_alt) {
+                      const vec2& uv_alt, const SkinBinding& skin_binding) {
     // The `unique_` map holds pointers into `points_`, so we cannot realloc
     // `points_`. Instead, we reserve enough memory for an upper bound on
     // its size. If this assert hits, NumVertsUpperBound() is incorrect.
@@ -327,10 +558,7 @@ class FlatMesh {
 
     // TODO: Round values before creating.
     points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent, color,
-                             uv, uv_alt,
-                             static_cast<BoneIndex>(bones_.size() - 1),
-                             static_cast<BoneWeights>(
-                               std::numeric_limits<uint8_t>::max())));
+                             uv, uv_alt, skin_binding));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -376,6 +604,14 @@ class FlatMesh {
         if (attributes & kVertexAttributeBit_Color) {
           log_.Log(kLogVerbose, ", color (%.3f, %.3f, %.3f, %.3f)", color.x,
                    color.y, color.z, color.w);
+        }
+        if (attributes & kVertexAttributeBit_Bone) {
+          const BoneIndex* const bone_indices = skin_binding.GetBoneIndices();
+          const float* const bone_weights = skin_binding.GetBoneWeights();
+          log_.Log(kLogVerbose, ", skin (%u:%.3f, %u:%.3f, %u:%.3f, %u:%.3f)",
+                   bone_indices[0], bone_weights[0], bone_indices[1],
+                   bone_weights[1], bone_indices[2], bone_weights[2],
+                   bone_indices[3], bone_weights[3]);
         }
       }
       log_.Log(kLogVerbose, "\n");
@@ -449,7 +685,7 @@ class FlatMesh {
     log_.Log(kLogInfo, "Mesh hierarchy (bone indices in brackets):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
-      std::string indent = RepeatCharacter(' ', 2 * b.depth);
+      std::string indent = RepeatCharacter(' ', 2 * BoneDepth(j));
 
       // Output bone name and index, indented to match the depth in the
       // hierarchy.
@@ -488,8 +724,7 @@ class FlatMesh {
 
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FlatMesh);
-  typedef uint32_t BoneIndex;
-  typedef uint32_t BoneWeights;
+  typedef SkinBinding::BoneIndex BoneIndex;
   typedef uint8_t BoneIndexCompact;
   typedef uint32_t VertIndex;
   typedef uint16_t VertIndexCompact;
@@ -498,9 +733,8 @@ class FlatMesh {
 
   // We use uint8_t for bone indices, and 0xFF marks invalid bones,
   // so the limit is 254.
-  static const BoneIndex kMaxBoneIndex = 0xFE;
-  static const BoneIndex kMaxNumBones = kMaxBoneIndex + 1;
-  static const BoneIndex kInvalidBoneIdx = static_cast<BoneIndex>(-1);
+  static const BoneIndex kMaxBoneIndex = SkinBinding::kPackedBoneIndexMax;
+  static const BoneIndex kInvalidBoneIdx = SkinBinding::kNoBoneIndex;
   static const BoneIndexCompact kInvalidBoneIdxCompact = 0xFF;
 
   // We use uint16_t for vertex indices. It's possible for a large mesh to have
@@ -515,26 +749,26 @@ class FlatMesh {
     vec2_packed uv;
     vec2_packed uv_alt;
     Vec4ub color;  // Use byte-format to ensure correct hashing.
-    BoneIndex bone;
-    BoneWeights weights;
+    SkinBinding skin_binding;
     Vertex() : color(0, 0, 0, 0) {
       // The Hash function operates on all the memory, so ensure everything is
       // zero'd out.
       memset(this, 0, sizeof(*this));
+      this->skin_binding = SkinBinding();
     }
     // Only record the attributes that we're asked to record. Ignore the rest.
     Vertex(VertexAttributeBitmask attribs, const vec3& p, const vec3& n,
            const vec4& t, const vec4& c, const vec2& u, const vec2& v,
-           BoneIndex bi, BoneWeights bw)
+           const SkinBinding& skin_binding)
         : vertex(attribs & kVertexAttributeBit_Position ? p : kZeros3f),
           normal(attribs & kVertexAttributeBit_Normal ? n : kZeros3f),
           tangent(attribs & kVertexAttributeBit_Tangent ? t : kZeros4f),
           uv(attribs & kVertexAttributeBit_Uv ? u : kZeros2f),
           uv_alt(attribs & kVertexAttributeBit_UvAlt ? v : kZeros2f),
           color(attribs & kVertexAttributeBit_Color ? FlatBufferVec4ub(c)
-                                                    : Vec4ub(0, 0, 0, 0)),
-          bone(attribs & kVertexAttributeBit_Bone ? bi : 0),
-          weights(attribs & kVertexAttributeBit_Bone ? bw : 0){}
+                                                    : Vec4ub(0, 0, 0, 0)) {
+      if (attribs & kVertexAttributeBit_Bone) this->skin_binding = skin_binding;
+    }
   };
 
   struct VertexRef {
@@ -569,13 +803,12 @@ class FlatMesh {
 
   struct Bone {
     std::string name;
-    int depth;
-    size_t first_vertex_index;
+    int parent_bone_index;
     vec4_packed default_bone_transform_inverse[4];
-    Bone() : depth(0), first_vertex_index(0) {}
+    Bone() : parent_bone_index(-1) {}
     Bone(const char* name, const mat4& default_bone_transform_inverse,
-         int depth, int first_vertex_index)
-        : name(name), depth(depth), first_vertex_index(first_vertex_index) {
+         int parent_bone_index)
+        : name(name), parent_bone_index(parent_bone_index) {
       default_bone_transform_inverse.Pack(
           this->default_bone_transform_inverse);
     }
@@ -869,11 +1102,10 @@ class FlatMesh {
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
         }
         if (attributes & kVertexAttributeBit_Bone) {
-          // TODO: Support bone weighting.
-          const BoneIndexCompact shader_bone_idx =
-              TruncateBoneIndex(mesh_to_shader_bones[p.bone]);
-          Vec4ub bone(shader_bone_idx, 0, 0, 0);
-          Vec4ub weights(std::numeric_limits<uint8_t>::max(), 0, 0, 0);
+          Vec4ub bone, weights;
+          p.skin_binding.Pack(mesh_to_shader_bones.data(),
+                              mesh_to_shader_bones.size(), log_,
+                              mesh_name.c_str(), i, &bone, &weights);
           auto attr = reinterpret_cast<const uint8_t *>(&bone);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
           attr = reinterpret_cast<const uint8_t *>(&weights);
@@ -915,12 +1147,13 @@ class FlatMesh {
         colors.push_back(p.color);
         uvs.push_back(FlatBufferVec2(vec2(p.uv)));
         uvs_alt.push_back(FlatBufferVec2(vec2(p.uv_alt)));
-        // TODO: Support bone weighting.
-        const BoneIndexCompact shader_bone_idx =
-            TruncateBoneIndex(mesh_to_shader_bones[p.bone]);
-        skin_indices.push_back(Vec4ub(shader_bone_idx, 0, 0, 0));
-        skin_weights.push_back(Vec4ub(std::numeric_limits<uint8_t>::max(),
-                                      0, 0, 0));
+
+        Vec4ub bone, weights;
+        p.skin_binding.Pack(mesh_to_shader_bones.data(),
+                            mesh_to_shader_bones.size(), log_,
+                            mesh_name.c_str(), i, &bone, &weights);
+        skin_indices.push_back(bone);
+        skin_weights.push_back(weights);
       }
       // Then create a FlatBuffer vector for each array that we want to export.
       auto vertices_fb = (attributes & kVertexAttributeBit_Position)
@@ -959,20 +1192,16 @@ class FlatMesh {
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
   }
 
-  int BoneParent(int i) const {
-    // Return invalid index if we're at a root.
-    const int depth = bones_[i].depth;
-    if (depth <= 0) return -1;
+  int BoneParent(int i) const { return bones_[i].parent_bone_index; }
 
-    // Advance to the parent of 'i'.
-    // `bones_` is listed in depth-first order, so we look for the previous
-    // non-sibling.
-    while (bones_[i].depth >= depth) {
-      i--;
-      assert(i >= 0);
+  unsigned int BoneDepth(int i) const {
+    unsigned int depth = 0;
+    for (;;) {
+      i = bones_[i].parent_bone_index;
+      if (i < 0) break;
+      ++depth;
     }
-    assert(bones_[i].depth == depth - 1);
-    return i;
+    return depth;
   }
 
   mat4 BoneGlobalTransform(int i) const {
@@ -987,11 +1216,24 @@ class FlatMesh {
     return m;
   }
 
-  bool BoneHasVertices(size_t bone_idx) const {
-    const size_t end_vertex_index =
-        bone_idx + 1 == bones_.size() ? points_.size()
-                                      : bones_[bone_idx + 1].first_vertex_index;
-    return end_vertex_index - bones_[bone_idx].first_vertex_index > 0;
+  // Inspect vertices to determine which bones are referenced.
+  void GetUsedBoneFlags(std::vector<bool>* out_used_bone_flags) const {
+    std::vector<bool> used_bone_flags(bones_.size());
+    const Vertex* vertex = points_.data();
+    const Vertex* const vertex_end = vertex + points_.size();
+    for (; vertex != vertex_end; ++vertex) {
+      const BoneIndex* bone_index_it = vertex->skin_binding.GetBoneIndices();
+      const BoneIndex* const bone_index_end =
+          bone_index_it + SkinBinding::kInfluenceMax;
+      for (; bone_index_it != bone_index_end; ++bone_index_it) {
+        const BoneIndex bone_index = *bone_index_it;
+        if (bone_index == SkinBinding::kNoBoneIndex) {
+          break;
+        }
+        used_bone_flags[bone_index] = true;
+      }
+    }
+    out_used_bone_flags->swap(used_bone_flags);
   }
 
   void CalculateBoneIndexMaps(
@@ -1000,12 +1242,15 @@ class FlatMesh {
     mesh_to_shader_bones->clear();
     shader_to_mesh_bones->clear();
 
-    // Only bones that have vertices weighte to them are uploaded to the
+    std::vector<bool> used_bone_flags;
+    GetUsedBoneFlags(&used_bone_flags);
+
+    // Only bones that have vertices weighted to them are uploaded to the
     // shader.
     BoneIndex shader_bone = 0;
     mesh_to_shader_bones->reserve(bones_.size());
     for (BoneIndex mesh_bone = 0; mesh_bone < bones_.size(); ++mesh_bone) {
-      if (BoneHasVertices(mesh_bone)) {
+      if (used_bone_flags[mesh_bone]) {
         mesh_to_shader_bones->push_back(shader_bone);
         shader_to_mesh_bones->push_back(mesh_bone);
         shader_bone++;
@@ -1161,11 +1406,84 @@ class FbxMeshParser {
     return 3 * NumPolysRecursive(scene_->GetRootNode());
   }
 
+  // Map FBX nodes to bone indices, used to create bone index references.
+  typedef std::unordered_map<const FbxNode*, unsigned int> NodeToBoneMap;
+
+  static int AddBoneForNode(NodeToBoneMap* node_to_bone_map, FbxNode* node,
+                            int parent_bone_index, FlatMesh* out) {
+    // The node is a bone if it was marked as one by MarkBoneNodesRecursive.
+    const auto found_it = node_to_bone_map->find(node);
+    if (found_it == node_to_bone_map->end()) {
+      return -1;
+    }
+
+    // Add the bone entry.
+    const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
+    const FbxAMatrix default_bone_transform_inverse =
+        global_transform.Inverse();
+    const char* const name = node->GetName();
+    const unsigned int bone_index = out->AppendBone(
+        name, Mat4FromFbx(default_bone_transform_inverse), parent_bone_index);
+    found_it->second = bone_index;
+    return bone_index;
+  }
+
+  bool MarkBoneNodesRecursive(NodeToBoneMap* node_to_bone_map,
+                              FbxNode* node) const {
+    // We need a bone for this node if it has a skeleton attribute or a mesh.
+    bool need_bone = (node->GetSkeleton() || node->GetMesh());
+
+    // We also need a bone for this node if it has any such child bones.
+    const int child_count = node->GetChildCount();
+    for (int child_index = 0; child_index != child_count; ++child_index) {
+      FbxNode* const child_node = node->GetChild(child_index);
+      if (MarkBoneNodesRecursive(node_to_bone_map, child_node)) {
+        need_bone = true;
+      }
+    }
+
+    // Flag the node as a bone.
+    if (need_bone) {
+      node_to_bone_map->insert(NodeToBoneMap::value_type(node, -1));
+    }
+    return need_bone;
+  }
+
+  void GatherBonesRecursive(NodeToBoneMap* node_to_bone_map, FbxNode* node,
+                            int parent_bone_index, FlatMesh* out) const {
+    const int bone_index =
+        AddBoneForNode(node_to_bone_map, node, parent_bone_index, out);
+    if (bone_index >= 0) {
+      const int child_count = node->GetChildCount();
+      for (int child_index = 0; child_index != child_count; ++child_index) {
+        FbxNode* const child_node = node->GetChild(child_index);
+        GatherBonesRecursive(node_to_bone_map, child_node, bone_index, out);
+      }
+    }
+  }
+
   // Gather converted geometry into our `FlatMesh` class.
   void GatherFlatMesh(FlatMesh* out) const {
-    // Traverse the scene and output one surface per mesh.
-    FbxNode* root_node = scene_->GetRootNode();
-    GatherFlatMeshRecursive(-1, root_node, root_node, out);
+    FbxNode* const root_node = scene_->GetRootNode();
+    const int child_count = root_node->GetChildCount();
+    NodeToBoneMap node_to_bone_map;
+
+    // First pass: determine which nodes are to be treated as bones.
+    // We skip the root node so it's not included in the bone hierarchy.
+    for (int child_index = 0; child_index != child_count; ++child_index) {
+      FbxNode* const child_node = root_node->GetChild(child_index);
+      MarkBoneNodesRecursive(&node_to_bone_map, child_node);
+    }
+
+    // Second pass: add bones.
+    // We skip the root node so it's not included in the bone hierarchy.
+    for (int child_index = 0; child_index != child_count; ++child_index) {
+      FbxNode* const child_node = root_node->GetChild(child_index);
+      GatherBonesRecursive(&node_to_bone_map, child_node, -1, out);
+    }
+
+    // Final pass: Traverse the scene and output one surface per mesh.
+    GatherFlatMeshRecursive(&node_to_bone_map, -1, root_node, root_node, out);
   }
 
  private:
@@ -1509,8 +1827,9 @@ class FbxMeshParser {
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(int depth, FbxNode* node, FbxNode* parent_node,
-                               FlatMesh* out) const {
+  void GatherFlatMeshRecursive(const NodeToBoneMap* node_to_bone_map,
+                               int parent_bone_index, FbxNode* node,
+                               FbxNode* parent_node, FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
     // have no meshes, we early out.
     if (node == nullptr || !fplutil::NodeHasMesh(node)) return;
@@ -1518,6 +1837,7 @@ class FbxMeshParser {
 
     // The root node cannot have a transform applied to it, so we do not
     // export it as a bone.
+    int bone_index = -1;
     if (node != scene_->GetRootNode()) {
       // Get the transform to this node from its parent.
       FbxAMatrix default_bone_transform_inverse;
@@ -1525,9 +1845,11 @@ class FbxMeshParser {
       Transforms(node, parent_node, &default_bone_transform_inverse,
                  &point_transform);
 
-      // Create a "bone" for this node.
-      out->AppendBone(node->GetName(),
-                      Mat4FromFbx(default_bone_transform_inverse), depth);
+      // Find the bone for this node.  It must have one, because we checked that
+      // it contained a mesh above.
+      const auto found_it = node_to_bone_map->find(node);
+      assert(found_it != node_to_bone_map->end());
+      bone_index = found_it->second;
 
       // Gather mesh data for this bone.
       // Note that there may be more than one mesh attached to a node.
@@ -1556,18 +1878,96 @@ class FbxMeshParser {
         }
 
         // Gather the verticies and indices.
-        GatherFlatSurface(mesh, point_transform, has_solid_color, solid_color,
-                          out);
+        GatherFlatSurface(mesh, bone_index, node_to_bone_map, point_transform,
+                          has_solid_color, solid_color, out);
       }
     }
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(depth + 1, node->GetChild(i), node, out);
+      GatherFlatMeshRecursive(node_to_bone_map, bone_index, node->GetChild(i),
+                              node, out);
     }
   }
 
-  void GatherFlatSurface(const FbxMesh* mesh, const FbxAMatrix& point_transform,
+  void GatherSkinBindings(const FbxMesh* mesh,
+                          SkinBinding::BoneIndex transform_bone_index,
+                          const NodeToBoneMap* node_to_bone_map,
+                          std::vector<SkinBinding>* out_skin_bindings) const {
+    const unsigned int point_count = mesh->GetControlPointsCount();
+    std::vector<SkinBinding> skin_bindings(point_count);
+
+    // Each cluster stores a mapping from a bone to all the vertices it
+    // influences.  This generates an inverse mapping from each point to all
+    // the bones influencing it.
+    const int skin_count = mesh->GetDeformerCount(FbxDeformer::eSkin);
+    for (int skin_index = 0; skin_index != skin_count; ++skin_index) {
+      const FbxSkin* const skin = static_cast<const FbxSkin*>(
+          mesh->GetDeformer(skin_index, FbxDeformer::eSkin));
+      const int cluster_count = skin->GetClusterCount();
+      for (int cluster_index = 0; cluster_index != cluster_count;
+           ++cluster_index) {
+        const FbxCluster* const cluster = skin->GetCluster(cluster_index);
+        const FbxNode* const link_node = cluster->GetLink();
+
+        // Get the bone index from the node pointer.
+        const NodeToBoneMap::const_iterator link_it =
+            node_to_bone_map->find(link_node);
+        assert(link_it != node_to_bone_map->end());
+        const int bone_index = link_it->second;
+
+        // We currently only support normalized weights.  Both eNormalize and
+        // eTotalOne can be treated as normalized, because we renormalize
+        // weights after extraction.
+        const FbxCluster::ELinkMode link_mode = cluster->GetLinkMode();
+        if (link_mode != FbxCluster::eNormalize &&
+            link_mode != FbxCluster::eTotalOne) {
+          log_.Log(kLogWarning,
+                   "Mesh %s skin %d(%s) cluster %d(%s) has"
+                   " unsupported LinkMode %d (only eNormalize(%d) and"
+                   " eTotalOne(%d) are supported).\n",
+                   GetMeshOrNodeName(mesh), skin_index, skin->GetName(),
+                   cluster_index, cluster->GetName(),
+                   static_cast<int>(link_mode),
+                   static_cast<int>(FbxCluster::eNormalize),
+                   static_cast<int>(FbxCluster::eTotalOne));
+        }
+
+        // Assign bone weights to all cluster influences.
+        const int influence_count = cluster->GetControlPointIndicesCount();
+        const int* const point_indices = cluster->GetControlPointIndices();
+        const double* const weights = cluster->GetControlPointWeights();
+        for (int influence_index = 0; influence_index != influence_count;
+             ++influence_index) {
+          const int point_index = point_indices[influence_index];
+          assert(static_cast<unsigned int>(point_index) < point_count);
+          const float weight = static_cast<float>(weights[influence_index]);
+          skin_bindings[point_index].AppendInfluence(bone_index, weight, log_,
+                                                     mesh, point_index);
+        }
+      }
+    }
+
+    // Normalize weights.
+    for (unsigned int point_index = 0; point_index != point_count;
+         ++point_index) {
+      SkinBinding* const skin_binding = &skin_bindings[point_index];
+      if (!skin_binding->HasInfluences()) {
+        // Any non-skinned vertices not bound to a deformer are implicitly bound
+        // to their parent transform.
+        skin_binding->BindRigid(transform_bone_index);
+      } else {
+        skin_binding->NormalizeBoneWeights();
+      }
+    }
+
+    out_skin_bindings->swap(skin_bindings);
+  }
+
+  void GatherFlatSurface(const FbxMesh* mesh,
+                         SkinBinding::BoneIndex transform_bone_index,
+                         const NodeToBoneMap* node_to_bone_map,
+                         const FbxAMatrix& point_transform,
                          bool has_solid_color, const FbxColor& solid_color,
                          FlatMesh* out) const {
     const FbxAMatrix& t = point_transform;
@@ -1587,6 +1987,10 @@ class FbxMeshParser {
     // http://forums.autodesk.com/t5/fbx-sdk/matrix-vector-multiplication/td-p/4245079
     FbxAMatrix vector_transform = point_transform;
     vector_transform.SetT(FbxVector4(0.0, 0.0, 0.0, 0.0));
+
+    std::vector<SkinBinding> skin_bindings;
+    GatherSkinBindings(mesh, transform_bone_index, node_to_bone_map,
+                       &skin_bindings);
 
     // Get references to various vertex elements.
     const FbxVector4* vertices = mesh->GetControlPoints();
@@ -1663,7 +2067,9 @@ class FbxMeshParser {
         const vec4 color = Vec4FromFbx(color_fbx);
         const vec2 uv = Vec2FromFbxUv(uv_fbx);
         const vec2 uv_alt = Vec2FromFbxUv(uv_alt_fbx);
-        out->AppendPolyVert(vertex, normal, tangent, color, uv, uv_alt);
+        const SkinBinding& skin_binding = skin_bindings[control_index];
+        out->AppendPolyVert(vertex, normal, tangent, color, uv, uv_alt,
+                            skin_binding);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;
