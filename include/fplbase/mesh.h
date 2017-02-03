@@ -357,6 +357,16 @@ class Mesh : public AsyncAsset {
   ///
   /// @return Returns an array of indices of each bone's parent.
   const uint8_t *bone_parents() const { return bone_parents_.data(); }
+  /// @brief Array of names for each bone.
+  ///
+  /// @return Returns the array of names for each bone, of length num_bones().
+  const std::string *bone_names() const { return bone_names_.data(); }
+  /// @brief The array of default bone transform inverses.
+  ///
+  /// @return Returns the array of default bone transform inverses.
+  const mathfu::AffineTransform *default_bone_transform_inverses() const {
+    return default_bone_transform_inverses_;
+  }
   /// @brief The number of bones in the mesh.
   ///
   /// @return Returns the number of bones.
