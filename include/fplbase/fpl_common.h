@@ -36,6 +36,16 @@ namespace fplbase {
   ((sizeof(a) / sizeof(*(a))) / \
    static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
 
+// Clang generates warnings if the fallthrough attribute is not specified.
+#if defined(__clang__) && defined(__has_warning)
+#if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
+#define FPL_FALLTHROUGH_INTENDED [[clang::fallthrough]];  // NOLINT
+#endif
+#endif
+#if !defined(FPL_FALLTHROUGH_INTENDED)
+#define FPL_FALLTHROUGH_INTENDED
+#endif
+
 }  // namespace fplbase
 
 #endif  // FPL_COMMON_H
