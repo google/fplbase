@@ -15,33 +15,42 @@
 #include "precompiled.h"
 
 #include "fplbase/render_target.h"
+#include "fplbase/fpl_common.h"
+#include "fplbase/internal/type_conversions_gl.h"
 
 namespace fplbase {
 
-void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
+void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
+                              RenderTargetFormat format,
                               bool create_depth_buffer) {
   assert(!initialized());
   dimensions_ = dimensions;
+
   // Set up the framebuffer itself:
-  framebuffer_id_ = 0;
-  depth_buffer_id_ = 0;
+  framebuffer_id_ = InvalidBufferHandle();
+  depth_buffer_id_ = InvalidBufferHandle();
 
   // Our framebuffer object:
-  GL_CALL(glGenFramebuffers(1, &framebuffer_id_));
+  GLuint framebuffer_id = 0;
+  GL_CALL(glGenFramebuffers(1, &framebuffer_id));
+  framebuffer_id_ = TextureHandleFromGl(framebuffer_id);
+  assert(ValidBufferHandle(framebuffer_id_));
 
   // The texture we're going to render to
-  GL_CALL(glGenTextures(1, &rendered_texture_id_));
+  GLuint rendered_texture_id = 0;
+  GL_CALL(glGenTextures(1, &rendered_texture_id));
+  rendered_texture_id_ = TextureHandleFromGl(rendered_texture_id);
 
   // Bind the framebuffer:
-  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id_));
+  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id));
 
   // Set up the texture:
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id_));
+  GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id));
 
   // Give an empty image to OpenGL.  (It will allocate memory, but not bother
   // to populate it.  Which is fine, since we're going to render into it.)
   GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0,
-                       GL_RGBA, format, nullptr));
+                       GL_RGBA, RenderTargetFormatToGl(format), nullptr));
 
   // Define texture properties:
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -52,28 +61,27 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
   // Attach our texture as the color attachment.
   GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                 GL_TEXTURE_2D, rendered_texture_id_, 0));
+                                 GL_TEXTURE_2D, rendered_texture_id, 0));
 
   if (create_depth_buffer) {
     // A renderbuffer, that we'll use for depth:
-    GL_CALL(glGenRenderbuffers(1, &depth_buffer_id_));
+    GLuint depth_buffer_id = 0;
+    GL_CALL(glGenRenderbuffers(1, &depth_buffer_id));
+    depth_buffer_id_ = TextureHandleFromGl(depth_buffer_id);
+    assert(ValidBufferHandle(depth_buffer_id_));
 
     // Bind renderbuffer and set it as the depth buffer:
-    GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id_));
+    GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id));
     GL_CALL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
                                   dimensions_.x, dimensions_.y));
 
     // Attach renderbuffer as our depth attachment.
     GL_CALL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                                      GL_RENDERBUFFER, depth_buffer_id_));
+                                      GL_RENDERBUFFER, depth_buffer_id));
   }
 
   // Make sure everything worked:
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    assert(false);
-  }
-  assert(framebuffer_id_ != 0);
-  assert(depth_buffer_id_ != 0);
+  assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
   // Be good citizens and clean up:
   // Bind the framebuffer:
@@ -86,9 +94,18 @@ void RenderTarget::Initialize(mathfu::vec2i dimensions, GLenum format,
 
 void RenderTarget::Delete() {
   if (initialized_) {
-    GL_CALL(glDeleteFramebuffers(1, &framebuffer_id_));
-    GL_CALL(glDeleteRenderbuffers(1, &depth_buffer_id_));
-    GL_CALL(glDeleteTextures(1, &rendered_texture_id_));
+    GLuint framebuffer_id = GlBufferHandle(framebuffer_id_);
+    GL_CALL(glDeleteFramebuffers(1, &framebuffer_id));
+    framebuffer_id_ = BufferHandleFromGl(framebuffer_id);
+
+    GLuint depth_buffer_id = GlBufferHandle(depth_buffer_id_);
+    GL_CALL(glDeleteRenderbuffers(1, &depth_buffer_id));
+    depth_buffer_id_ = BufferHandleFromGl(depth_buffer_id);
+
+    GLuint rendered_texture_id = GlBufferHandle(rendered_texture_id_);
+    GL_CALL(glDeleteTextures(1, &rendered_texture_id));
+    rendered_texture_id_ = TextureHandleFromGl(rendered_texture_id);
+
     initialized_ = false;
   }
 }
@@ -98,14 +115,14 @@ void RenderTarget::Delete() {
 void RenderTarget::SetAsRenderTarget() const {
   // Calling SetAsRenderTarget on uninitialized rendertargets is bad.
   assert(initialized_);
-  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id_));
+  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, GlBufferHandle(framebuffer_id_)));
   GL_CALL(glViewport(0, 0, dimensions_.x, dimensions_.y));
 }
 
 void RenderTarget::BindAsTexture(int texture_number) const {
   assert(initialized_);
   GL_CALL(glActiveTexture(GL_TEXTURE0 + texture_number));
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id_));
+  GL_CALL(glBindTexture(GL_TEXTURE_2D, GlTextureHandle(rendered_texture_id_)));
 }
 
 

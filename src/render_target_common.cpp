@@ -18,16 +18,16 @@
 
 namespace fplbase {
 
-void RenderTarget::Initialize(mathfu::vec2i dimensions) {
-  Initialize(dimensions, GL_UNSIGNED_BYTE, true);
+void RenderTarget::Initialize(const mathfu::vec2i& dimensions) {
+  Initialize(dimensions, kRenderTargetFormatUByte, true);
 }
 
 // Generates a render target that represents the screen.
 RenderTarget RenderTarget::ScreenRenderTarget(Renderer& renderer) {
   RenderTarget screen_render_target = RenderTarget();
-  screen_render_target.framebuffer_id_ = 0;
-  screen_render_target.rendered_texture_id_ = 0;
-  screen_render_target.depth_buffer_id_ = 0;
+  screen_render_target.framebuffer_id_ = InvalidBufferHandle();
+  screen_render_target.rendered_texture_id_ = InvalidTextureHandle();
+  screen_render_target.depth_buffer_id_ = InvalidBufferHandle();
   mathfu::vec2i window_size = renderer.environment().GetViewportSize();
   screen_render_target.dimensions_ = window_size;
   screen_render_target.initialized_ = true;

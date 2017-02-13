@@ -77,4 +77,17 @@ unsigned int CullFaceToGl(CullState::CullFace face) {
   return kCullFaceToGlTable[face];
 }
 
+unsigned int RenderTargetFormatToGl(RenderTargetFormat format) {
+  static const GLenum kRenderTargetFormatToGlTable[] = {
+    GL_UNSIGNED_BYTE,    // kRenderTargetFormatUByte,
+  };
+
+  static_assert(
+      FPL_ARRAYSIZE(kRenderTargetFormatToGlTable) == kRenderTargetFormatCount,
+      "Update kRenderTargetFormatToGlTable to match enum");
+  assert(0 <= format && format < FPL_ARRAYSIZE(kRenderTargetFormatToGlTable));
+  return kRenderTargetFormatToGlTable[format];
+}
+
+
 }  // namespace fplbase
