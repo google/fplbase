@@ -40,7 +40,7 @@
 #include "flatbuffers/util.h"
 
 #include "mathfu/matrix.h"
-#include "mathfu/vector_4.h"
+#include "mathfu/vector.h"
 #include "mathfu/glsl_mappings.h"
 #include "mathfu/quaternion.h"
 #include "mathfu/constants.h"
