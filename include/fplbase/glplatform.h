@@ -23,11 +23,11 @@
 
 #ifdef __APPLE__
 #include "TargetConditionals.h"
-#if defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #define PLATFORM_MOBILE
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
-#else  // !defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#else  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #define PLATFORM_OSX
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
@@ -35,7 +35,7 @@
 #define glBindVertexArray glBindVertexArrayAPPLE
 #define glDeleteVertexArrays glDeleteVertexArraysAPPLE
 #define glDrawElementsInstanced glDrawElementsInstancedARB
-#endif  // defined(__IOS__) || TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#endif  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 
 #else  // !defined(__APPLE__)
 #ifdef __ANDROID__
