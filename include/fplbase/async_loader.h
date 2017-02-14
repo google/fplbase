@@ -24,7 +24,7 @@
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/asset.h"
 
-#ifdef FPL_BASE_BACKEND_STDLIB
+#ifdef FPLBASE_BACKEND_STDLIB
 #include <mutex>
 #include <thread>
 #include <condition_variable>
@@ -179,7 +179,7 @@ class AsyncLoader {
   void Stop();
 
  private:
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   void Lock(const std::function<void()> &body);
   template <typename T>
   T LockReturn(const std::function<T()> &body) {
@@ -193,7 +193,7 @@ class AsyncLoader {
   static int LoaderThread(void *user_data);
 
   std::deque<AsyncAsset *> queue_, done_;
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.
   Thread worker_thread_;
@@ -203,12 +203,12 @@ class AsyncLoader {
 
   // Kick-off the worker thread when a new job arrives.
   Semaphore job_semaphore_;
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
   std::thread worker_thread_;
   std::mutex mutex_;
   std::condition_variable job_cv_;
 #else
-#error Need to define FPL_BASE_BACKEND_XXX
+#error Need to define FPLBASE_BACKEND_XXX
 #endif
 };
 

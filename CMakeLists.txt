@@ -325,7 +325,7 @@ if(fplbase_build_library)
   if(compiler_supports_threading)
     add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
     fplbase_common_config(fplbase_stdlib)
-    target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+    target_compile_definitions(fplbase_stdlib PRIVATE -DFPLBASE_BACKEND_STDLIB)
     target_compile_definitions(fplbase_stdlib PRIVATE ${fplbase_stb_defines})
   endif()
 

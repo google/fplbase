@@ -18,7 +18,7 @@
 
 // #ifdef this whole file, such that build systems can include .cpp files
 // for all backends if that's easier.
-#ifdef FPL_BASE_BACKEND_STDLIB
+#ifdef FPLBASE_BACKEND_STDLIB
 
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -114,4 +114,4 @@ int Joystick::GetNumHats() const {
 
 }  // namespace fplbase
 
-#endif  // FPL_BASE_BACKEND_STDLIB
+#endif  // FPLBASE_BACKEND_STDLIB

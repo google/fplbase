@@ -16,7 +16,7 @@
 #include "fplbase/async_loader.h"
 #include "fplbase/utilities.h"
 
-#ifndef FPL_BASE_BACKEND_SDL
+#ifndef FPLBASE_BACKEND_SDL
 #error This version of AsyncLoader depends on SDL.
 #endif
 

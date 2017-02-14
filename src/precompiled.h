@@ -46,7 +46,7 @@
 #include "mathfu/constants.h"
 #include "mathfu/utilities.h"
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 #include "SDL.h"
 #include "SDL_log.h"
 #endif

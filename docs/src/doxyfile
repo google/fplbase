@@ -2015,7 +2015,7 @@ INCLUDE_FILE_PATTERNS  =
 PREDEFINED             = DOXYGEN \
                          __ANDROID__ \
                          __attribute__(x)= \
-                         FPL_BASE_BACKEND_SDL
+                         FPLBASE_BACKEND_SDL
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

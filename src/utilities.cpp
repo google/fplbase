@@ -30,7 +30,7 @@
 #include <sys/mman.h>
 #endif  // _WIN32
 
-#if defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(FPLBASE_BACKEND_STDLIB)
 #if !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
@@ -39,9 +39,9 @@
 #include <cstdio>
 
 #if defined(__ANDROID__)
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 #include "SDL_thread.h"
-#endif  // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPLBASE_BACKEND_SDL)
 #include <android/log.h>
 namespace {
 static AAssetManager *g_asset_manager = nullptr;
@@ -55,11 +55,11 @@ static AAssetManager *g_asset_manager = nullptr;
 #endif  // defined(__APPLE__)
 // clang-format on
 
-#endif  // defined(FPL_BASE_BACKEND_STDLIB)
+#endif  // defined(FPLBASE_BACKEND_STDLIB)
 
 namespace fplbase {
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 static_assert(kApplication ==
                   static_cast<LogCategory>(SDL_LOG_CATEGORY_APPLICATION),
               "update kApplication");
@@ -77,7 +77,7 @@ static_assert(kInput == static_cast<LogCategory>(SDL_LOG_CATEGORY_INPUT),
               "update kInput");
 static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
               "update kCustom");
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 
 // Function called by LoadFile().
 static LoadFileFunction g_load_file_function = LoadFileRaw;
@@ -93,7 +93,7 @@ bool LoadFile(const char *filename, std::string *dest) {
   return g_load_file_function(filename, dest);
 }
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 bool LoadFileRaw(const char *filename, std::string *dest) {
   auto handle = SDL_RWFromFile(filename, "rb");
   if (!handle) {
@@ -107,7 +107,7 @@ bool LoadFileRaw(const char *filename, std::string *dest) {
   SDL_RWclose(handle);
   return len == rlen && len > 0;
 }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
 bool LoadFileRaw(const char *filename, std::string *dest) {
   if (!g_asset_manager) {
@@ -209,7 +209,7 @@ static jobject GetSharedPreference(JNIEnv *env, jobject activity) {
 }
 #endif
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 bool LoadPreferences(const char *filename, std::string *dest) {
 #if defined(__ANDROID__)
   // Use Android preference API to store blob as a Java String.
@@ -251,13 +251,13 @@ bool LoadPreferences(const char *filename, std::string *dest) {
   return LoadFile(filename, dest);
 #endif
 }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
 bool LoadPreferences(const char *filename, std::string *dest) {
   return LoadFile(filename, dest);
 }
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 int32_t LoadPreference(const char *key, int32_t initial_value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -285,7 +285,7 @@ int32_t LoadPreference(const char *key, int32_t initial_value) {
 }
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 bool SaveFile(const char *filename, const void *data, size_t size) {
   auto handle = SDL_RWFromFile(filename, "wb");
   if (!handle) {
@@ -296,7 +296,7 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
   SDL_RWclose(handle);
   return (wlen == size);
 }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
 bool SaveFile(const char *filename, const void *data, size_t size) {
   (void)filename;
@@ -321,7 +321,7 @@ bool SaveFile(const char *filename, const void *data, size_t size) {
 #error Please define a backend implementation for SaveFile.
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 bool SavePreferences(const char *filename, const void *data, size_t size) {
 #if defined(__ANDROID__)
   // Use Android preference API to store blob as a Java String.
@@ -371,7 +371,7 @@ bool SavePreferences(const char *filename, const void *data, size_t size) {
 }
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 bool SavePreference(const char *key, int32_t value) {
 #ifdef __ANDROID__
   // Use Android preference API to store an integer value.
@@ -435,7 +435,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
                          const char *const target_dir) {
   std::string target_dir_str(target_dir);
 
-#if defined(__APPLE__) && defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__APPLE__) && defined(FPLBASE_BACKEND_STDLIB)
   (void)binary_dir;
   // Get the root of the target directory from the Bundle instead of using the directory
   // specified by the client.
@@ -514,7 +514,7 @@ std::string FileNameFromEnumName(const char *const enum_name,
          std::string(suffix);
 }
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 bool AndroidSystemFeature(const char *feature_name) {
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
@@ -546,14 +546,14 @@ int32_t AndroidGetApiLevel() {
 #endif
 
 bool TouchScreenDevice() {
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
   return AndroidSystemFeature("android.hardware.touchscreen");
 #else
   return false;
 #endif
 }
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
   // Retrieve device name through JNI.
   JNIEnv *env = AndroidGetJNIEnv();
@@ -582,7 +582,7 @@ bool AndroidCheckDeviceList(const char *device_list[], const int num_devices) {
 #endif
 
 bool MipmapGeneration16bppSupported() {
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
   static const char *device_list[] = {"Galaxy Nexus", "Nexus S", "Nexus S 4G"};
   static bool supported = AndroidCheckDeviceList(
       device_list, sizeof(device_list) / sizeof(device_list[0]));
@@ -593,14 +593,14 @@ bool MipmapGeneration16bppSupported() {
 }
 
 int32_t GetSystemRamSize() {
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
   return SDL_GetSystemRAM();
 #else
   return 0;
 #endif
 }
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 void LogInfo(LogCategory category, const char *fmt, va_list args) {
   SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
 }
@@ -617,7 +617,7 @@ void LogError(const char *fmt, va_list args) {
   LogError(kApplication, fmt, args);
 }
 
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
 #if defined(__ANDROID__)
 void LogInfo(LogCategory category, const char *fmt, va_list args) {
   (void)category;
@@ -690,7 +690,7 @@ void LogError(const char *fmt, ...) {
 }
 
 #if defined(__ANDROID__)
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 // This function always returns a pointer to a jobject, but we are returning a
 // void* for the same reason SDL does - to avoid having to include the jni
 // libraries in this library.  Anything calling this will probably want to
@@ -761,14 +761,14 @@ void AndroidSetJavaVM(JavaVM* vm, jint jni_version) {
 JNIEnv* AndroidGetJNIEnv() {
   return AttachCurrentThread();
 }
-#endif  // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPLBASE_BACKEND_SDL)
 #endif
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_STDLIB)
 void SetAAssetManager(AAssetManager *manager) { g_asset_manager = manager; }
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 bool GetStoragePath(const char *app_name, std::string *path_string) {
 #if defined(__ANDROID__)
   auto path = SDL_AndroidGetInternalStoragePath();
@@ -781,7 +781,7 @@ bool GetStoragePath(const char *app_name, std::string *path_string) {
   *path_string = path;
   return true;
 }
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
 bool GetStoragePath(const char *app_name, std::string *path_string) {
   (void)app_name;
   *path_string = "/";
@@ -800,29 +800,29 @@ VsyncCallback RegisterVsyncCallback(VsyncCallback callback) {
   return old_callback;
 }
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 // Mutexes and ConditionVariables used for vsync synchonization:
 SDL_mutex *frame_id_mutex;
 SDL_mutex *vsync_cv_mutex;
 SDL_cond *android_vsync_cv;
 int vsync_frame_id = 0;
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 
 static void InitVsyncMutexes() {
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   frame_id_mutex = SDL_CreateMutex();
   vsync_cv_mutex = SDL_CreateMutex();
   android_vsync_cv = SDL_CreateCond();
   vsync_frame_id = 0;
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 }
 
 static void CleanupVsyncMutexes() {
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   SDL_DestroyMutex(frame_id_mutex);
   SDL_DestroyMutex(vsync_cv_mutex);
   SDL_DestroyCond(android_vsync_cv);
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 }
 
 // Initialize the Vsync mutexes.  Called by android lifecycle events.
@@ -849,7 +849,7 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeCleanupVsync(JNIEnv *env,
 
 // Blocks until the next time a VSync event occurs.
 void WaitForVsync() {
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   SDL_LockMutex(frame_id_mutex);
   int starting_id = vsync_frame_id;
   SDL_UnlockMutex(frame_id_mutex);
@@ -863,7 +863,7 @@ void WaitForVsync() {
     SDL_CondWait(android_vsync_cv, vsync_cv_mutex);
   }
   SDL_UnlockMutex(vsync_cv_mutex);
-#else  // FPL_BASE_BACKEND_SDL
+#else  // FPLBASE_BACKEND_SDL
 // TODO: Write STDLIB version
 #endif
 }
@@ -881,22 +881,22 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeOnVsync(JNIEnv *env, jobject thiz,
   if (g_vsync_callback != nullptr) {
     g_vsync_callback();
   }
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   SDL_LockMutex(frame_id_mutex);
   vsync_frame_id++;
   SDL_UnlockMutex(frame_id_mutex);
   SDL_CondBroadcast(android_vsync_cv);
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 }
 
 int GetVsyncFrameId() {
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 
   SDL_LockMutex(frame_id_mutex);
   int return_value = vsync_frame_id;
   SDL_UnlockMutex(frame_id_mutex);
   return return_value;
-#else  // FPL_BASE_BACKEND_SDL
+#else  // FPLBASE_BACKEND_SDL
   // TODO: Write STDLIB version
   return 0;
 #endif
@@ -904,10 +904,10 @@ int GetVsyncFrameId() {
 
 #endif  // __ANDROID__
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 // Checks whether Head Mounted Displays are supported by the system.
 bool SupportsHeadMountedDisplay() {
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
@@ -919,11 +919,11 @@ bool SupportsHeadMountedDisplay() {
   return result;
 #else
   return false;
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 #endif
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 // Checks whether or not the activity is running on a Android-TV device.
 bool IsTvDevice() {
 #ifdef __ANDROID__
@@ -941,7 +941,7 @@ bool IsTvDevice() {
 }
 #endif
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 // Get the name of the current activity class.
 std::string AndroidGetActivityName() {
   JNIEnv *env = AndroidGetJNIEnv();
@@ -968,9 +968,9 @@ std::string AndroidGetActivityName() {
   env->DeleteLocalRef(activity);
   return activity_name;
 }
-#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 std::string AndroidGetViewIntentData() {
   std::string view_data;
   JNIEnv *env = AndroidGetJNIEnv();
@@ -1026,13 +1026,13 @@ void RelaunchApplication() {
   env->DeleteLocalRef(fpl_class);
   env->DeleteLocalRef(activity);
 }
-#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 
 #ifdef __ANDROID__
 // Sends a keypress event to the android system.  This will show up in android
 // indistinguishable from a normal user key press
 void SendKeypressEventToAndroid(int android_key_code) {
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
   JNIEnv *env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
@@ -1068,7 +1068,7 @@ void SetPerformanceMode(PerformanceMode new_mode) {
 
 PerformanceMode GetPerformanceMode() { return performance_mode; }
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 std::string DeviceModel() {
   JNIEnv *env = fplbase::AndroidGetJNIEnv();
   jclass build_class = env->FindClass("android/os/Build");
@@ -1083,7 +1083,7 @@ std::string DeviceModel() {
   env->DeleteLocalRef(build_class);
   return result;
 }
-#endif  // defined(__ANDROID__) && defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(__ANDROID__) && defined(FPLBASE_BACKEND_SDL)
 
 }  // namespace fplbase
 

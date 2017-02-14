@@ -15,8 +15,8 @@
 #ifndef FPLBASE_CONFIG_H
 #define FPLBASE_CONFIG_H
 
-#if !defined(FPL_BASE_BACKEND_STDLIB)
-#define FPL_BASE_BACKEND_SDL
+#if !defined(FPLBASE_BACKEND_STDLIB)
+#define FPLBASE_BACKEND_SDL
 #endif
 
 #endif  // FPLBASE_CONFIG_H

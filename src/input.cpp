@@ -42,15 +42,15 @@ InputSystem::InputSystem()
       record_text_input_(false),
       touch_device_(true) {
   pointers_.assign(kMaxSimultanuousPointers, InputPointer());
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   head_mounted_display_input_.InitHMDJNIReference();
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 InputSystem::~InputSystem() {
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   head_mounted_display_input_.ClearHMDJNIReference();
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 
@@ -149,9 +149,9 @@ void InputSystem::AdvanceFrame(vec2i *window_size) {
 
   // Update the head mounted display input. Note this is after the mouse
   // input, as that can be treated as a trigger.
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   head_mounted_display_input_.AdvanceFrame();
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 double InputSystem::Time() const { return elapsed_time_; }

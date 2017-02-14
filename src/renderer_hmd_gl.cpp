@@ -86,7 +86,7 @@ void SetCardboardButtonEnabled(bool enabled) {
   env->DeleteLocalRef(activity);
 }
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
 
 // Prepare to render to a Head Mounted Display.
 void HeadMountedDisplayRenderStart(
@@ -127,6 +127,6 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
   }
 }
 
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
 }  // namespace fplbase

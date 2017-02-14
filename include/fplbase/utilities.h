@@ -23,10 +23,10 @@
 
 #if defined(__ANDROID__)
 #include <jni.h>
-#if defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(FPLBASE_BACKEND_STDLIB)
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
-#endif  // defined(FPL_BASE_BACKEND_STDLIB)
+#endif  // defined(FPLBASE_BACKEND_STDLIB)
 #endif
 
 namespace fplbase {
@@ -38,7 +38,7 @@ namespace fplbase {
 /// @{
 
 /// @brief Constants for use with LogInfo, LogError, etc.
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 enum LogCategory {
   kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
   kError = 1,        // SDL_LOG_CATEGORY_ERROR
@@ -312,7 +312,7 @@ std::string AndroidGetActivityName();
 std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_STDLIB)
 /// @brief Set an Android asset manager.
 /// @param[in] manager A pointer to an already-created instance of
 /// `AAssetManager`.

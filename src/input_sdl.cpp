@@ -23,7 +23,7 @@
 
 // #ifdef this whole file, such that build systems can include .cpp files
 // for all backends if that's easier.
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -153,11 +153,11 @@ void InputSystem::UpdateEvents(mathfu::vec2i *window_size) {
           pointers_[0].mousepos = vec2i(event.button.x, event.button.y);
         }
         pointers_[0].used = true;
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
         if (event.button.state == SDL_PRESSED) {
           head_mounted_display_input_.OnTrigger();
         }
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
         break;
       }
       case SDL_MOUSEMOTION: {
@@ -534,7 +534,7 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeOnGamepadInput(
 #endif  // ANDROID_GAMEPAD
 
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
 // When attached to a head mounted display this global is used to reference the
 // input class from JNI methods.
 static HeadMountedDisplayInput *g_head_mounted_display_input = nullptr;
@@ -661,41 +661,41 @@ void HeadMountedDisplayInput::UpdateTransforms() {
 void HeadMountedDisplayInput::EnableDeviceOrientationCorrection() {
   use_device_orientation_correction_ = true;
 }
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
 // Because these calls are present in the Activity, they should be present for
-// Android, even when ANDROID_HMD isn't defined.
+// Android, even when FPLBASE_ANDROID_VR isn't defined.
 #ifdef __ANDROID__
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fplbase_FPLActivity_nativeOnCardboardTrigger(
     JNIEnv * /*env*/) {
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   assert(g_head_mounted_display_input);
   g_head_mounted_display_input->OnTrigger();
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fplbase_FPLActivity_nativeSetDeviceInCardboard(
     JNIEnv * /*env*/, jobject /*thiz*/, jboolean in_cardboard) {
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   assert(g_head_mounted_display_input);
   g_head_mounted_display_input->set_is_in_head_mounted_display(in_cardboard);
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fplbase_FPLActivity_nativeOnDisplayRotationChanged(
     JNIEnv * /*env*/, jobject /*thiz*/, jint rotation) {
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   g_device_orientation = rotation;
   if (g_head_mounted_display_input)
     g_head_mounted_display_input->set_device_orientation(rotation);
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 }
 
 #endif  // __ANDROID__
 
 }  // namespace fplbase
 
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL

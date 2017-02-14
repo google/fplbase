@@ -16,7 +16,7 @@
 #include "fplbase/utilities.h"
 #include "precompiled.h"
 
-#ifndef FPL_BASE_BACKEND_STDLIB
+#ifndef FPLBASE_BACKEND_STDLIB
 #error This version of AsyncLoader is designed for use with the C++ library.
 #endif
 

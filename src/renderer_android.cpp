@@ -18,7 +18,7 @@
 #include "fplbase/utilities.h"
 #include "precompiled.h"
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 // Include SDL internal headers and external refs
 #define TARGET_OS_IPHONE \
   1  // This one is not to turn on 'SDL_DYNAMIC_API' defitnition
@@ -29,7 +29,7 @@ extern "C" {
 }
 // We don't need this anymore
 #undef TARGET_OS_IPHONE
-#endif  // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPLBASE_BACKEND_SDL)
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -40,7 +40,7 @@ using mathfu::vec4i;
 
 namespace fplbase {
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 // Quick hack for HW scaler setting
 static vec2i g_android_scaler_resolution;
 
@@ -57,14 +57,14 @@ void AndroidSetScalerResolution(const vec2i& resolution) {
   int height = std::min(size_ints[1], resolution.y);
   g_android_scaler_resolution = vec2i(width, height);
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   // Update the underlying activity with the scaled resolution
   // TODO(wvo): Create FPLVRActivity that derives from FPLActivity and
   // implements this function and those in renderer_hmn.h (b/29940321).
   jmethodID set_resolution =
       env->GetMethodID(fpl_class, "SetHeadMountedDisplayResolution", "(II)V");
   env->CallVoidMethod(activity, set_resolution, width, height);
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
   env->ReleaseIntArrayElements(size, size_ints, JNI_ABORT);
   env->DeleteLocalRef(size);
@@ -113,7 +113,7 @@ void AndroidPreCreateWindow() {
     device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
   }
 }
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 
 int AndroidGetContextClientVersion() {
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
