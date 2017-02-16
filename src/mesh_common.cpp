@@ -217,7 +217,8 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
   // Load materials, return error if there is any material that is failed to
   // load.
   assert(material_loader_fn_ != nullptr || meshdef->surfaces()->size() == 0);
-  std::vector<std::pair<const meshdef::Surface *, Material *>> indices_data;
+  typedef std::pair<const meshdef::Surface *, Material *> SurfaceMaterialPair;
+  std::vector<SurfaceMaterialPair> indices_data;
   for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
     flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
     auto surface = meshdef->surfaces()->Get(index);
@@ -226,7 +227,7 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
       LogError(kError, "Invalid material file: ", surface->material()->c_str());
       return false;
     }  // Error msg already set.
-    indices_data.emplace_back(surface, mat);
+    indices_data.push_back(SurfaceMaterialPair(surface, mat));
   }
 
   // Load indices from surface and material.

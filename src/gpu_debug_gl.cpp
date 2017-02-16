@@ -19,12 +19,14 @@
 
 namespace fplbase {
 
+inline bool GlToBool(GLboolean bool_value) { return bool_value == GL_TRUE; }
+
 bool ValidateGlBlendState(const BlendState& state) {
   GLboolean bool_value;
   GLint int_value;
 
   glGetBooleanv(GL_CULL_FACE, &bool_value);
-  if (static_cast<bool>(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -61,7 +63,7 @@ bool ValidateGlCullState(const CullState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_CULL_FACE, &bool_value);
-  if (static_cast<bool>(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -80,7 +82,7 @@ bool ValidateGlDepthState(const DepthState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_DEPTH_TEST, &bool_value);
-  if (static_cast<bool>(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -100,7 +102,7 @@ bool ValidateGlStencilState(const StencilState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_STENCIL_TEST, &bool_value);
-  if (static_cast<bool>(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
   }
@@ -194,7 +196,7 @@ bool ValidateGlScissorState(const ScissorState& state) {
   GLboolean bool_value;
 
   glGetBooleanv(GL_SCISSOR_TEST, &bool_value);
-  if (static_cast<bool>(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
   }

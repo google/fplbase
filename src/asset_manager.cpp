@@ -197,7 +197,8 @@ Material *AssetManager::LoadMaterial(const char *filename,
   auto mat = FindMaterial(filename);
   if (mat) return mat;
   mat = Material::LoadFromMaterialDef(filename,
-    [&](const char *filename, TextureFormat format, TextureFlags flags) {
+    [&](const char *filename, TextureFormat format,
+        TextureFlags flags) -> Texture* {
       auto tex = LoadTexture(filename, format, flags |
         (async_resources ? kTextureFlagsLoadAsync : kTextureFlagsNone));
       tex->set_scale(texture_scale_);

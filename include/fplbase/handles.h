@@ -23,7 +23,6 @@ namespace internal {
 // Internally-defined. Holds handle from OpenGL, Vulkan, etc.
 struct OpaqueHandle {
   uint64_t handle;
-  OpaqueHandle() : handle(0) {}
   bool operator==(OpaqueHandle rhs) const { return handle == rhs.handle; }
   bool operator!=(OpaqueHandle rhs) const { return !operator==(rhs); }
 };

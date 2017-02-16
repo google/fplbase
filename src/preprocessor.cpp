@@ -220,12 +220,12 @@ void PlatformSanitizeShaderSource(const char *csource,
         LogError("Invalid version identifier: %s", ptr);
       }
     } else if (strncmp(ptr, kExtensionTag, kExtensionTagLength) == 0) {
-      extensions.emplace_back(line, len);
+      extensions.push_back(Substring(line, len));
     } else if (!code.empty() && code.back().start + code.back().len == line) {
       // Merge with previous line.
       code.back().len += len;
     } else {
-      code.emplace_back(line, len);
+      code.push_back(Substring(line, len));
     }
   }
 

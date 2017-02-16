@@ -69,7 +69,7 @@ Renderer::Renderer()
       depth_function_(kDepthFunctionUnknown),
       stencil_mode_(kStencilUnknown),
       stencil_ref_(0),
-      stencil_mask_(~0) {
+      stencil_mask_(~0u) {
   // This is the only place that the RendererBase singleton can be created,
   // so ensure it's guarded by the mutex.
   fplutil::MutexLock lock(RendererBase::the_base_mutex_);

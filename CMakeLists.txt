@@ -137,6 +137,7 @@ if(NOT fplbase_use_external_sdl)
     # (e.g. CMAKE_CURRENT_SOURCE_DIR), so its check is too strict.
     # We hack the SDL CMakeLists.txt file until it is properly fixed upstream.
     file(COPY cmake/sdl/CMakeLists.txt DESTINATION ${dependencies_sdl_dir})
+    set(FORCE_STATIC_VCRT ON CACHE BOOL "")
     add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
     restore_compiler_flags()
   endif()

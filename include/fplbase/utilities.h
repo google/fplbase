@@ -63,8 +63,8 @@ enum LogCategory {
 #endif
 
 /// @brief Called by `LoadFile()`.
-using LoadFileFunction =
-    std::function<bool(const char *filename, std::string *dest)>;
+typedef std::function<bool(const char *filename, std::string *dest)>
+    LoadFileFunction;
 
 /// @brief Enum for use with the `Set/GetPerformanceMode()` functions.
 enum PerformanceMode {
