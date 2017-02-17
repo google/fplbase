@@ -219,7 +219,7 @@ static void LogVertexAttributes(VertexAttributeBitmask attributes,
   for (int i = 0; i < kVertexAttribute_Count; ++i) {
     const int i_bit = 1 << i;
     if (attributes & i_bit) {
-      const bool prev_attribute_exists = attributes & (i_bit - 1);
+      const bool prev_attribute_exists = (attributes & (i_bit - 1)) != 0;
       log->Log(level, "%s%s", prev_attribute_exists ? ", " : "",
                kVertexAttributeShortNames[i]);
     }
@@ -407,7 +407,8 @@ class SkinBinding {
           break;
         }
         const float src_weight = bone_weights_[influence_index];
-        const float dst_weight = packed_weights[influence_index] + 1;
+        const float dst_weight =
+            static_cast<float>(packed_weights[influence_index] + 1);
         const float diff = dst_weight - src_weight * src_to_dst_scale;
         if (diff < diff_min) {
           best_influence_index = influence_index;
@@ -685,7 +686,8 @@ class FlatMesh {
     log_.Log(kLogInfo, "Mesh hierarchy (bone indices in brackets):\n");
     for (size_t j = 0; j < bones_.size(); ++j) {
       const Bone& b = bones_[j];
-      std::string indent = RepeatCharacter(' ', 2 * BoneDepth(j));
+      std::string indent = RepeatCharacter(
+          ' ', 2 * BoneDepth(static_cast<int>(j)));
 
       // Output bone name and index, indented to match the depth in the
       // hierarchy.
@@ -699,7 +701,7 @@ class FlatMesh {
 
       // Output global-to-local matrix transform too.
       const mat4 t(b.default_bone_transform_inverse);
-      for (size_t k = 0; k < 3; ++k) {
+      for (int k = 0; k < 3; ++k) {
         log_.Log(kLogVerbose, "   %s  (%.3f, %.3f, %.3f, %.3f)\n",
                  indent.c_str(), t(k, 0), t(k, 1), t(k, 2), t(k, 3));
       }
@@ -1013,7 +1015,8 @@ class FlatMesh {
       bone_names.push_back(fbb.CreateString(bone.name));
       bone_transforms.push_back(
           FlatBufferMat3x4(mat4(bone.default_bone_transform_inverse)));
-      bone_parents.push_back(TruncateBoneIndex(BoneParent(i)));
+      bone_parents.push_back(
+          TruncateBoneIndex(BoneParent(static_cast<int>(i))));
     }
 
     // Compact the shader to mesh bone map.
@@ -1105,7 +1108,8 @@ class FlatMesh {
           Vec4ub bone, weights;
           p.skin_binding.Pack(mesh_to_shader_bones.data(),
                               mesh_to_shader_bones.size(), log_,
-                              mesh_name.c_str(), i, &bone, &weights);
+                              mesh_name.c_str(), static_cast<unsigned int>(i),
+                              &bone, &weights);
           auto attr = reinterpret_cast<const uint8_t *>(&bone);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(Vec4ub));
           attr = reinterpret_cast<const uint8_t *>(&weights);
@@ -1151,7 +1155,8 @@ class FlatMesh {
         Vec4ub bone, weights;
         p.skin_binding.Pack(mesh_to_shader_bones.data(),
                             mesh_to_shader_bones.size(), log_,
-                            mesh_name.c_str(), i, &bone, &weights);
+                            mesh_name.c_str(), static_cast<unsigned int>(i),
+                            &bone, &weights);
         skin_indices.push_back(bone);
         skin_weights.push_back(weights);
       }
@@ -1271,15 +1276,15 @@ class FlatMesh {
 
     // Copy triangles.
     for (size_t i = 0; i < index_buf.size(); i += 3) {
-      index_buf16->push_back(index_buf[i]);
-      index_buf16->push_back(index_buf[i + 1]);
-      index_buf16->push_back(index_buf[i + 2]);
+      index_buf16->push_back(static_cast<VertIndexCompact>(index_buf[i]));
+      index_buf16->push_back(static_cast<VertIndexCompact>(index_buf[i + 1]));
+      index_buf16->push_back(static_cast<VertIndexCompact>(index_buf[i + 2]));
     }
   }
 
   // Bones >8-bits are unindexable, so weight them to the root bone 0.
   // This will look funny but it's the best we can do.
-  static BoneIndexCompact TruncateBoneIndex(BoneIndex bone_idx) {
+  static BoneIndexCompact TruncateBoneIndex(int bone_idx) {
     return bone_idx == kInvalidBoneIdx
                ? kInvalidBoneIdxCompact
                : bone_idx > kMaxBoneIndex
@@ -1483,7 +1488,7 @@ class FbxMeshParser {
     }
 
     // Final pass: Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(&node_to_bone_map, -1, root_node, root_node, out);
+    GatherFlatMeshRecursive(&node_to_bone_map, root_node, root_node, out);
   }
 
  private:
@@ -1828,8 +1833,8 @@ class FbxMeshParser {
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
   void GatherFlatMeshRecursive(const NodeToBoneMap* node_to_bone_map,
-                               int parent_bone_index, FbxNode* node,
-                               FbxNode* parent_node, FlatMesh* out) const {
+                               FbxNode* node, FbxNode* parent_node,
+                               FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
     // have no meshes, we early out.
     if (node == nullptr || !fplutil::NodeHasMesh(node)) return;
@@ -1878,15 +1883,16 @@ class FbxMeshParser {
         }
 
         // Gather the verticies and indices.
-        GatherFlatSurface(mesh, bone_index, node_to_bone_map, point_transform,
-                          has_solid_color, solid_color, out);
+        GatherFlatSurface(
+            mesh, static_cast<SkinBinding::BoneIndex>(bone_index),
+            node_to_bone_map, point_transform, has_solid_color, solid_color,
+            out);
       }
     }
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(node_to_bone_map, bone_index, node->GetChild(i),
-                              node, out);
+      GatherFlatMeshRecursive(node_to_bone_map, node->GetChild(i), node, out);
     }
   }
 
