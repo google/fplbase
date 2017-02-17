@@ -48,14 +48,21 @@ enum TextureFormat {
   kFormatCount    // Must be at end.
 };
 
+/// Flags affecting loading and sampler modes for a texture
 enum TextureFlags {
+  /// Default behavior.
   kTextureFlagsNone = 0,
-  kTextureFlagsClampToEdge = 1 << 0,  // If not set, use repeating texcoords.
-  kTextureFlagsUseMipMaps = 1 << 1,   // Uses (or generates) mipmaps.
-  kTextureFlagsIsCubeMap = 1 << 2,    // Data represents a 1x6 cubemap.
-  kTextureFlagsLoadAsync = 1 << 3,    // Load texture asynchronously.
-  kTextureFlagsPremultiplyAlpha = 1 << 4,  // Premultiply by alpha on
-  // load.  For now only webp is supported.
+  /// If not set, use repeating texcoords.
+  kTextureFlagsClampToEdge = 1 << 0,
+  /// Uses (or generates) mipmaps.
+  kTextureFlagsUseMipMaps = 1 << 1,
+  /// Data represents a 1x6 cubemap.
+  kTextureFlagsIsCubeMap = 1 << 2,
+  /// Load texture asynchronously.
+  kTextureFlagsLoadAsync = 1 << 3,
+  /// Premultiply by alpha on load.
+  /// Not supported for ASTC, PKM, or KTX images.
+  kTextureFlagsPremultiplyAlpha = 1 << 4,
 };
 
 inline TextureFlags operator|(TextureFlags a, TextureFlags b) {
