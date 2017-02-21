@@ -78,28 +78,22 @@ Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
 
-Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const std::vector<std::string> &defines,
-                                       const char *alias, bool should_reload,
-                                       bool async) {
+Shader *AssetManager::LoadShaderHelper(
+    const char *basename, const std::vector<std::string> &local_defines,
+    const char *alias, bool async) {
   auto shader = FindShader(alias != nullptr ? alias : basename);
-  if (!should_reload && shader)
-    return shader;
-  if (shader) {
-    // should_reload must be true.
-    shader->Reload(basename, defines);
-    return shader;
-  } else {
-    shader = new Shader(basename, defines, &renderer_);
-    return LoadOrQueue(shader, shader_map_, async, alias);
+  const bool found = shader != nullptr;
+  if (!found) {
+    shader = new Shader(basename, local_defines, &renderer_);
   }
+  shader->UpdateGlobalDefines(defines_to_add_, defines_to_omit_);
+  return found ? shader : LoadOrQueue(shader, shader_map_, async, alias);
 }
 
 Shader *AssetManager::LoadShader(const char *basename,
-                                 const std::vector<std::string> &defines,
+                                 const std::vector<std::string> &local_defines,
                                  bool async, const char *alias) {
-  return LoadShaderHelper(basename, defines, alias, false /* should_reload */,
-                          async);
+  return LoadShaderHelper(basename, local_defines, alias, async);
 }
 
 Shader *AssetManager::LoadShader(const char *basename, bool async,
@@ -108,29 +102,15 @@ Shader *AssetManager::LoadShader(const char *basename, bool async,
   return LoadShader(basename, empty_defines, async, alias);
 }
 
-Shader *AssetManager::ReloadShader(const char *basename,
-                                   const std::vector<std::string> &defines,
-                                   const char *alias) {
-  return LoadShaderHelper(basename, defines, alias, true /* should_reload */,
-                          false /* async */);
-}
-
 void AssetManager::ResetGlobalShaderDefines(
     const std::vector<std::string> &defines_to_add,
     const std::vector<std::string> &defines_to_omit) {
   defines_to_add_ = defines_to_add;
   defines_to_omit_ = defines_to_omit;
   for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
-    iter->second->SetDirty();
+    Shader *shader = iter->second;
+    shader->UpdateGlobalDefines(defines_to_add_, defines_to_omit_);
   }
-}
-
-bool AssetManager::ReloadShaderWithGlobalDefinesIfDirty(Shader *shader) {
-  if (shader->IsDirty()) {
-    shader->ReloadDefines(defines_to_add_, defines_to_omit_);
-    return true;
-  }
-  return false;
 }
 
 void AssetManager::ForEachShaderWithDefine(const char *define,

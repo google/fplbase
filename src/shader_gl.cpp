@@ -108,8 +108,8 @@ void Shader::InitializeUniforms() {
 }
 
 void Shader::Set(const Renderer &renderer) const {
+  assert(!dirty_);  // Need to call ReloadIfDirty() on this shader first.
   const int kNumVec4InBoneTransform = 3;
-
   GL_CALL(glUseProgram(GlShaderHandle(program_)));
 
   if (ValidUniformHandle(uniform_model_view_projection_))

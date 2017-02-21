@@ -29,7 +29,8 @@ Shader::~Shader() {
 }
 
 void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
-                  const std::vector<std::string> &defines, Renderer *renderer) {
+                  const std::vector<std::string> &local_defines,
+                  Renderer *renderer) {
   program_ = program;
   vs_ = vs;
   ps_ = ps;
@@ -43,53 +44,63 @@ void Shader::Init(ShaderHandle program, ShaderHandle vs, ShaderHandle ps,
   uniform_bone_transforms_ = invalid;
   renderer_ = renderer;
 
-  original_defines_ = defines;
-  // All defines are enabled by default.
-  std::copy(defines.begin(), defines.end(),
+  // All local defines are enabled by default.
+  // The local defines may be modified by global defines in UpdateDefines().
+  local_defines_ = local_defines;
+  std::copy(local_defines.begin(), local_defines.end(),
             std::inserter(enabled_defines_, enabled_defines_.begin()));
-  dirty_ = false;
+
+  // If the shader has already been loaded, it's not dirty.
+  dirty_ = !ValidShaderHandle(vs);
 }
 
-bool Shader::Reload(const char *basename,
-                    const std::vector<std::string> &defines) {
-  filename_ = basename;
-  original_defines_ = defines;
-  // All defines are enabled by default.
-  enabled_defines_.clear();
-  std::copy(defines.begin(), defines.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-
-  return ReloadInternal();
-}
-
-bool Shader::ReloadDefines(const std::vector<std::string> &defines_to_add,
-                           const std::vector<std::string> &defines_to_omit) {
-  enabled_defines_.clear();
-  std::copy(original_defines_.begin(), original_defines_.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-  std::copy(defines_to_add.begin(), defines_to_add.end(),
-            std::inserter(enabled_defines_, enabled_defines_.begin()));
-  for (auto iter = defines_to_omit.begin(); iter != defines_to_omit.end();
-       ++iter) {
-    enabled_defines_.erase(*iter);
+// Returns the set of `local_defines` union `global_defines_to_add` less
+// `global_defines_to_omit`.
+static std::set<std::string> CalculateDefines(
+    const std::vector<std::string> &local_defines,
+    const std::vector<std::string> &global_defines_to_add,
+    const std::vector<std::string> &global_defines_to_omit) {
+  std::set<std::string> defines;
+  std::copy(local_defines.begin(), local_defines.end(),
+            std::inserter(defines, defines.begin()));
+  std::copy(global_defines_to_add.begin(), global_defines_to_add.end(),
+            std::inserter(defines, defines.begin()));
+  for (auto iter = global_defines_to_omit.begin();
+       iter != global_defines_to_omit.end(); ++iter) {
+    defines.erase(*iter);
   }
-  dirty_ = false;
+  return defines;
+}
 
+void Shader::UpdateGlobalDefines(
+    const std::vector<std::string> &global_defines_to_add,
+    const std::vector<std::string> &global_defines_to_omit) {
+  // Do nothing if new defines are the same as the existing defines.
+  std::set<std::string> defines = CalculateDefines(
+      local_defines_, global_defines_to_add, global_defines_to_omit);
+  if (defines == enabled_defines_) return;
+
+  // If the new defines differ from the current ones, mark as dirty.
+  enabled_defines_ = std::move(defines);
+  dirty_ = true;
+}
+
+bool Shader::ReloadIfDirty() {
+  if (!dirty_) return true;
+  dirty_ = false;
   return ReloadInternal();
 }
 
 bool Shader::ReloadInternal() {
   ShaderSourcePair *source_pair = LoadSourceFile();
-  if (source_pair != nullptr) {
-    auto sh =
-        renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
-                                   source_pair->fragment_shader.c_str(), this);
-    delete source_pair;
-    return sh != nullptr;
-  } else {
-    delete source_pair;
-    return false;
-  }
+  dirty_ = false;
+  if (source_pair == nullptr) return false;
+
+  auto sh =
+      renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
+                                 source_pair->fragment_shader.c_str(), this);
+  delete source_pair;
+  return sh != nullptr;
 }
 
 void Shader::Reset(ShaderHandle program, ShaderHandle vs, ShaderHandle ps) {
@@ -112,12 +123,18 @@ bool Shader::Finalize() {
   }
   const ShaderSourcePair *source_pair =
       reinterpret_cast<const ShaderSourcePair *>(data_);
-  // This funciton will call Shader::Reset() -> Shader::Clear() to clear
-  // 'data_'.
   auto sh =
       renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
                                  source_pair->fragment_shader.c_str(), this);
+
+  // RecompileShader() calls Shader::Reset() -> Shader::Clear() to clear
+  // 'data_'.
+  assert(data_ == nullptr);
+  source_pair = nullptr;
+
   CallFinalizeCallback();
+
+  dirty_ = false;
   return sh != nullptr;
 }
 
