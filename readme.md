@@ -1,4 +1,4 @@
-FPLBase Version 0.9.0
+FPLBase Version 1.0.0
 
 # Welcome to FPLBase!
 
