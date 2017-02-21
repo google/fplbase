@@ -7,15 +7,21 @@ This document outlines the components that make up FPLBase.
 
 # SDL {#fplbase_sdl}
 
-We use [SDL][] (Simple Directmedia Layer) as our lowest level layer. SDL is an
-Open Source cross platform layer providing OpenGL context creation, input, and
-other things a game needs to run on a platform, without having to write any
-platform specific code. It has been in development for a long time, and has
-very robust support for mobile (Android, iOS), desktop (Windows, OS X, Linux),
-and even is available for the web through asm.js.
+We (optionally) use [SDL][] (Simple Directmedia Layer) as our lowest level
+layer. SDL is an Open Source cross platform layer providing OpenGL context
+creation, input, and other things a game needs to run on a platform,
+without having to write any platform specific code. It has been in development
+for a long time, and has very robust support for mobile (Android, iOS),
+desktop (Windows, OS X, Linux), and even is available for the web through
+asm.js.
 
 SDL together with OpenGL(ES) and C++ provide an excellent basis for making great
 cross platform games.
+
+If you prefer to initialize your own OpenGL context, you can link to the
+`fplbase_stdlib` library instead of the `fplbase` library (see CMakeLists.txt).
+All the functionality of fplbase is still available: loading meshes, shaders,
+and textures, and hiding the OpenGL details from your code.
 
 # Components {#fplbase_components}
 
