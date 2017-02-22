@@ -26,5 +26,5 @@ you would leave it in.
 
   [FPLBase Google Group]: http://groups.google.com/group/fplbaselib
   [FPLBase Issues Tracker]: http://github.com/google/fplbase/issues
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplbase
   [landing page]: http://google.github.io/fplbase

@@ -92,7 +92,7 @@ upon so download the source using:
   [OS X]: http://www.apple.com/osx/
   [iOS]: http://www.apple.com/ios/
   [Windows]: http://windows.microsoft.com/
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplbase
   [FreeType]: http://www.freetype.org/
   [MathFu]: https://google.github.io/mathfu/
   [FlatBuffers]: https://google.github.io/flatbuffers/
