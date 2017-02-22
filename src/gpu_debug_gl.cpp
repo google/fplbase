@@ -25,7 +25,7 @@ bool ValidateGlBlendState(const BlendState& state) {
   GLboolean bool_value;
   GLint int_value;
 
-  glGetBooleanv(GL_CULL_FACE, &bool_value);
+  glGetBooleanv(GL_BLEND, &bool_value);
   if (GlToBool(bool_value) != state.enabled) {
     assert(false);
     return false;
