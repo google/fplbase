@@ -1,7 +1,7 @@
 var utilities_8h =
 [
-    [ "LoadFileFunction", "utilities_8h.html#gaa78a8754ff1ccf6e88abcd47b3a3270d", null ],
-    [ "VsyncCallback", "utilities_8h.html#ga2d4a887798e5616ec2597761289bdee5", null ],
+    [ "LoadFileFunction", "utilities_8h.html#ga35306d1ece6a416474fb98eadbe45018", null ],
+    [ "VsyncCallback", "utilities_8h.html#ga4c3cdff2a3dd1924df5eed46eeccca11", null ],
     [ "LogCategory", "utilities_8h.html#ga3f3eeb48c3db5058900e135c45b6753a", [
       [ "kApplication", "utilities_8h.html#gga3f3eeb48c3db5058900e135c45b6753aa8f39c07e63dad10fc232a57d437241d3", null ],
       [ "kError", "utilities_8h.html#gga3f3eeb48c3db5058900e135c45b6753aae5c9144ce28537b88d828569ac98dfab", null ],
@@ -18,6 +18,7 @@ var utilities_8h =
     ] ],
     [ "AndroidGetActivity", "utilities_8h.html#gadbdbda1cda717a8a11d21ed87ebe1fb2", null ],
     [ "AndroidGetActivityName", "utilities_8h.html#ga99c962a5d9c3138a33242c1253cdfc5e", null ],
+    [ "AndroidGetApiLevel", "utilities_8h.html#ga16e72f02a822ac8b256ef5d3980a4727", null ],
     [ "AndroidGetJNIEnv", "utilities_8h.html#ga3c0353e1fa813ceb8a66415d76536d8e", null ],
     [ "AndroidGetViewIntentData", "utilities_8h.html#ga025c5934eb1a8595aaef03ba9f764230", null ],
     [ "ChangeToUpstreamDir", "utilities_8h.html#gaceb81216a0f7f4b0b5cbcd587a9cfb75", null ],
@@ -40,6 +41,7 @@ var utilities_8h =
     [ "LogInfo", "utilities_8h.html#ga13e91a72a9794e0c32120c5192f2f2c9", null ],
     [ "LogInfo", "utilities_8h.html#ga778178a42e5378c6d91c99bb2c53b40a", null ],
     [ "LogInfo", "utilities_8h.html#ga75c566f77ea1060ae6f9ae16c41da2d0", null ],
+    [ "MapFile", "utilities_8h.html#ga212c14aecd7a722ec0b010cc5ccc572c", null ],
     [ "MipmapGeneration16bppSupported", "utilities_8h.html#ga7aa2b0dd7c6b864ce14cc5194ae0eee6", null ],
     [ "RegisterVsyncCallback", "utilities_8h.html#ga0fd3a5294ad1891d741733ba21c86ee6", null ],
     [ "RelaunchApplication", "utilities_8h.html#gaaccbca1b3d078d48f4c0f8ffbd09dc24", null ],
@@ -53,6 +55,7 @@ var utilities_8h =
     [ "SetPerformanceMode", "utilities_8h.html#gae256dd2d99a3e5a7cbaaaa908b2b4590", null ],
     [ "SupportsHeadMountedDisplay", "utilities_8h.html#ga96a05f0c2b5ecc500493c49a5ad951df", null ],
     [ "TouchScreenDevice", "utilities_8h.html#gae989bf458a8fad3cc9cbfbb9fc8223b1", null ],
+    [ "UnmapFile", "utilities_8h.html#gaac82049fdc09608af9552e3b018c6a3f", null ],
     [ "WaitForVsync", "utilities_8h.html#ga26a87421b5c489c14adbf1e2a4029093", null ],
     [ "kDefaultAndroidKeycode", "utilities_8h.html#ga92fe3e548444a22ff129ae7761ab6a42", null ],
     [ "kDefaultTimeBetweenPresses", "utilities_8h.html#ga2bff3d8d2b281f14abacabf67e4f6d8e", null ]

@@ -1,7 +1,6 @@
 var input_8h =
 [
     [ "ANDROID_GAMEPAD", "input_8h.html#ab67658e99d75ccc88ba9ab66ffaf5d88", null ],
-    [ "ANDROID_HMD", "input_8h.html#aa17d4d47bf5b38ed6a33fa78289a7390", null ],
     [ "AndroidInputDeviceId", "input_8h.html#gae4d2a837647dd9c8b376f04705771c9a", null ],
     [ "Event", "input_8h.html#ga0baeba9181857837a09679d3e9f01202", null ],
     [ "FingerId", "input_8h.html#gaea7bcf319900d83db4600f3ac17addbc", null ],

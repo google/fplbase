@@ -1,19 +1,9 @@
 var searchData=
 [
-  ['unloadfileasset',['UnloadFileAsset',['../classfplbase_1_1_asset_manager.html#afc502fb88e2a10d1993cab81d51d3fde',1,'fplbase::AssetManager']]],
-  ['unloadmaterial',['UnloadMaterial',['../classfplbase_1_1_asset_manager.html#ad35aaff069175c34f7098677cc488160',1,'fplbase::AssetManager']]],
-  ['unloadmesh',['UnloadMesh',['../classfplbase_1_1_asset_manager.html#a734c399e3160e73f6b2c3bcd22d63ebd',1,'fplbase::AssetManager']]],
-  ['unloadshader',['UnloadShader',['../classfplbase_1_1_asset_manager.html#ab8a25279dd4f29bca37729ffeb84a4c2',1,'fplbase::AssetManager']]],
-  ['unloadtexture',['UnloadTexture',['../classfplbase_1_1_asset_manager.html#a3bcff6c34a1effd91b71deca62301525',1,'fplbase::AssetManager']]],
-  ['unloadtextureatlas',['UnloadTextureAtlas',['../classfplbase_1_1_asset_manager.html#a08114d815e6f9a84e05fac37958291eb',1,'fplbase::AssetManager']]],
-  ['unpackastc',['UnpackASTC',['../classfplbase_1_1_texture.html#a4c60b231e3108caecd7c2d3cea6bcdd5',1,'fplbase::Texture']]],
-  ['unpackktx',['UnpackKTX',['../classfplbase_1_1_texture.html#a2a7d721475fadcba1e8a29342ed862f4',1,'fplbase::Texture']]],
-  ['unpackpkm',['UnpackPKM',['../classfplbase_1_1_texture.html#a25c124a3600d3cf6e50f0777f4fb1d1f',1,'fplbase::Texture']]],
-  ['unpackpng',['UnpackPng',['../classfplbase_1_1_texture.html#a2cd4b3671bb555f0852bbfd79aeeacb5',1,'fplbase::Texture']]],
-  ['unpacktga',['UnpackTGA',['../classfplbase_1_1_texture.html#ac05af0cb351361cc1f25002387ae54b0',1,'fplbase::Texture']]],
-  ['unpackwebp',['UnpackWebP',['../classfplbase_1_1_texture.html#a39be180061cc52fb37800c7c4d6c1e9d',1,'fplbase::Texture']]],
-  ['up',['up',['../classfplbase_1_1_head_mounted_display_input.html#a376723ff02b5aa2021e8ac9af9352b06',1,'fplbase::HeadMountedDisplayInput']]],
-  ['update',['Update',['../classfplbase_1_1_button.html#a914dbbac9da317020cca6d657aa8cd90',1,'fplbase::Button']]],
-  ['updateconnectedjoysticklist',['UpdateConnectedJoystickList',['../classfplbase_1_1_input_system.html#a985b02d6f4e6e8012220ab006ce9a30f',1,'fplbase::InputSystem']]],
-  ['updatetexture',['UpdateTexture',['../classfplbase_1_1_texture.html#a8a56a080e0178591049cda10cf0d29df',1,'fplbase::Texture']]]
+  ['textinputevent',['TextInputEvent',['../structfplbase_1_1_text_input_event.html#aa7e08dfeded80f1db08a1cc102664563',1,'fplbase::TextInputEvent::TextInputEvent(TextInputEventType t)'],['../structfplbase_1_1_text_input_event.html#a04a86d264620526d30a90efce0843258',1,'fplbase::TextInputEvent::TextInputEvent(TextInputEventType t, int32_t state, bool repeat, int32_t symbol, int32_t modifier)'],['../structfplbase_1_1_text_input_event.html#a7e10c6648ce68eb1643df671ebd0fbe2',1,'fplbase::TextInputEvent::TextInputEvent(TextInputEventType t, const char *str)'],['../structfplbase_1_1_text_input_event.html#af374bbc7ae8306b2186988bbce82b2b8',1,'fplbase::TextInputEvent::TextInputEvent(TextInputEventType t, const char *str, int32_t start, int32_t length)']]],
+  ['texture',['Texture',['../classfplbase_1_1_texture.html#a1bc674cb3c6f6db3a7b4835e8a9cd58e',1,'fplbase::Texture']]],
+  ['textures',['textures',['../classfplbase_1_1_material.html#aa64c56a2f326ef25ce987050f0836699',1,'fplbase::Material::textures()'],['../classfplbase_1_1_material.html#af7d8c0696e78003f9a1ece0d38566479',1,'fplbase::Material::textures() const ']]],
+  ['time',['time',['../classfplbase_1_1_renderer_base.html#ae5d9610c7f8402a942ea518ce2a89be7',1,'fplbase::RendererBase::time()'],['../classfplbase_1_1_renderer.html#a5b02164bc46eb21b35be5f61af071203',1,'fplbase::Renderer::time()'],['../classfplbase_1_1_input_system.html#a09d6972efdd5a0b2bc42b500bfca302d',1,'fplbase::InputSystem::Time()']]],
+  ['touchscreendevice',['TouchScreenDevice',['../group__fplbase__utilities.html#gae989bf458a8fad3cc9cbfbb9fc8223b1',1,'fplbase']]],
+  ['tryfinalize',['TryFinalize',['../classfplbase_1_1_asset_manager.html#ae29c7b975117946ee6c75dbb970909d6',1,'fplbase::AssetManager::TryFinalize()'],['../classfplbase_1_1_async_loader.html#a6c0d92963732baee83d321f660ba7786',1,'fplbase::AsyncLoader::TryFinalize()']]]
 ];

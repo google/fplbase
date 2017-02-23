@@ -9,6 +9,7 @@ var group__fplbase__texture__atlas =
       [ "GetBounds", "classfplbase_1_1_texture_atlas.html#ab38a4c837518b2f90c59675e6fa2c4fe", null ],
       [ "index_map", "classfplbase_1_1_texture_atlas.html#a55ff7d31c1692a1efc5b529aaef0dfa0", null ],
       [ "index_map", "classfplbase_1_1_texture_atlas.html#aa298b267cda04586302ff0f402c2d753", null ],
+      [ "LoadTextureAtlas", "classfplbase_1_1_texture_atlas.html#aa7a48c7f5a90fd4f870b90585bf873da", null ],
       [ "set_atlas_texture", "classfplbase_1_1_texture_atlas.html#a8b19ebc4f68e623b1b290c0de0f4fe37", null ],
       [ "subtexture_bounds", "classfplbase_1_1_texture_atlas.html#ac75deb1028fffaf0449fa3915a63ba66", null ],
       [ "subtexture_bounds", "classfplbase_1_1_texture_atlas.html#ae9cecc6c10a0c072b383f75dfab9d608", null ]

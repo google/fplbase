@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['usage_20page_200x07',['Usage page 0x07',['../group__page07.html',1,'']]]
+  ['key_20codes',['Key Codes',['../group__fplbase__key__codes.html',1,'']]],
+  ['keyboard_20codes',['Keyboard Codes',['../group__fplbase__keyboardcodes.html',1,'']]]
 ];

@@ -1,11 +1,11 @@
 var keyboard__keycodes_8h =
 [
-    [ "FPL_KMOD_ALT", "group__fplbase__key__codes.html#gaa80f461efd6b65e71afdf6728f58d56b", null ],
-    [ "FPL_KMOD_CTRL", "group__fplbase__key__codes.html#gae416ff2e3ceb27de39934891cc18fdd4", null ],
-    [ "FPL_KMOD_GUI", "group__fplbase__key__codes.html#ga7705fccdee0db0202ace4ca5be2e7fc7", null ],
-    [ "FPL_KMOD_SHIFT", "group__fplbase__key__codes.html#gac7eda5788edde25fb2a0b66e29e87c09", null ],
-    [ "FPL_SCANCODE_TO_KEYCODE", "group__fplbase__key__codes.html#gacde9f0c2a0da544de4499132c980288d", null ],
-    [ "FPLK_SCANCODE_MASK", "group__fplbase__key__codes.html#ga082e02695b7c951cde6ae2b0ac9fa1e4", null ],
+    [ "FPL_KMOD_ALT", "keyboard__keycodes_8h.html#gaa80f461efd6b65e71afdf6728f58d56b", null ],
+    [ "FPL_KMOD_CTRL", "keyboard__keycodes_8h.html#gae416ff2e3ceb27de39934891cc18fdd4", null ],
+    [ "FPL_KMOD_GUI", "keyboard__keycodes_8h.html#ga7705fccdee0db0202ace4ca5be2e7fc7", null ],
+    [ "FPL_KMOD_SHIFT", "keyboard__keycodes_8h.html#gac7eda5788edde25fb2a0b66e29e87c09", null ],
+    [ "FPL_SCANCODE_TO_KEYCODE", "keyboard__keycodes_8h.html#gacde9f0c2a0da544de4499132c980288d", null ],
+    [ "FPLK_SCANCODE_MASK", "keyboard__keycodes_8h.html#ga082e02695b7c951cde6ae2b0ac9fa1e4", null ],
     [ "FPL_Keycode", "keyboard__keycodes_8h.html#ga5a47f6b401664320a39544ac8f550c02", null ],
     [ "FPLK_UNKNOWN", "keyboard__keycodes_8h.html#gga453b1ec33ced903f792760269e4bc59faf06225155d191c09ad5d7c12b695fbcb", null ],
     [ "FPLK_RETURN", "keyboard__keycodes_8h.html#gga453b1ec33ced903f792760269e4bc59fa6749dd6ef5739608563e648927db28fc", null ],

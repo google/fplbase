@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['textureformat',['TextureFormat',['../group__fplbase__texture.html#ga855ebc6f288537e9ffb45bddee48fdd3',1,'fplbase']]]
+  ['logcategory',['LogCategory',['../group__fplbase__utilities.html#ga3f3eeb48c3db5058900e135c45b6753a',1,'fplbase']]]
 ];
