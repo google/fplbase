@@ -43,6 +43,9 @@ option(fplbase_build_tests "Build tests for this project." ${fplbase_standalone_
 # Option to only build flatc
 option(fplbase_only_flatc "Only build FlatBuffers compiler." OFF)
 
+# Option to enable debug markers
+option(fplbase_debug_markers "Enable OpenGL debug markers." OFF)
+
 # We're on iOS if the system root is set to "iphoneos" or some variant.
 if("${CMAKE_OSX_SYSROOT}" MATCHES "iphoneos")
   set(IOS TRUE CACHE BOOL "Target platform is iOS.")
@@ -59,16 +62,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${tmp_dir})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${tmp_dir})
 
-# Configurable locations of dependencies of this project.
-if(NOT DEFINED fpl_root)
-  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../libs"
-       REALPATH)
-  if(NOT EXISTS "${fpl_root}")
-    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-  endif ()
-endif()
-
-include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
+# Call fplutil to get locations of dependencies and set common build settings.
+include("cmake/find_fplutil.cmake")
+include("${fplutil_dir}/buildutil/cmake_common.txt")
 set_common_build_variables()
 
 set(dependencies_webp_cmake_dir "${CMAKE_MODULE_PATH}/webp"
@@ -141,6 +137,7 @@ if(NOT fplbase_use_external_sdl)
     # (e.g. CMAKE_CURRENT_SOURCE_DIR), so its check is too strict.
     # We hack the SDL CMakeLists.txt file until it is properly fixed upstream.
     file(COPY cmake/sdl/CMakeLists.txt DESTINATION ${dependencies_sdl_dir})
+    set(FORCE_STATIC_VCRT ON CACHE BOOL "")
     add_subdirectory(${dependencies_sdl_dir} ${tmp_dir}/sdl)
     restore_compiler_flags()
   endif()
@@ -157,10 +154,14 @@ if(NOT TARGET webp)
 endif()
 set(CMAKE_BUILD_TYPE ${original_build_type})
 
+if(fplbase_debug_markers)
+  add_definitions(-DFPLBASE_ENABLE_DEBUG_MARKERS)
+endif()
+
 # Generate source files for all FlatBuffers schema files under the src
 # directory.
 set(FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}${CMAKE_FILES_DIRECTORY}/include)
+    ${CMAKE_CURRENT_BINARY_DIR}/include)
 file(GLOB_RECURSE FPLBASE_FLATBUFFERS_SCHEMAS
                   ${CMAKE_CURRENT_LIST_DIR}/schemas/*.fbs)
 
@@ -174,7 +175,10 @@ build_flatbuffers("${FPLBASE_FLATBUFFERS_SCHEMAS}"
                   ""
                   "")
 
-if(APPLE)
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
+  set(OPENGL_LIBRARIES "GL")
+
+elseif(APPLE)
   if(IOS)
     set(OPENGL_LIBRARIES "-framework OpenGLES")
     set(SYSTEM_LIBRARIES "-framework AudioToolbox"
@@ -192,15 +196,23 @@ set(fplbase_common_SRCS
   include/fplbase/asset.h
   include/fplbase/asset_manager.h
   include/fplbase/async_loader.h
+  include/fplbase/debug_markers.h
+  include/fplbase/environment.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
+  include/fplbase/gpu_debug.h
+  include/fplbase/handles.h
   include/fplbase/input.h
+  include/fplbase/internal/type_conversions_gl.h
+  include/fplbase/internal/detailed_render_state.h
   include/fplbase/keyboard_keycodes.h
   include/fplbase/material.h
   include/fplbase/mesh.h
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
+  include/fplbase/renderer_common.h
+  include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/shader.h
   include/fplbase/texture.h
@@ -208,29 +220,43 @@ set(fplbase_common_SRCS
   include/fplbase/utilities.h
   include/fplbase/version.h
   schemas
-  src/input.cpp
   src/asset_manager.cpp
+  src/gpu_debug_gl.cpp
+  src/input.cpp
   src/material.cpp
-  src/mesh.cpp
+  src/mesh_common.cpp
+  src/mesh_gl.cpp
   src/precompiled.h
   src/preprocessor.cpp
-  src/renderer.cpp
-  src/render_target.cpp
-  src/shader.cpp
-  src/texture.cpp
+  src/renderer_common.cpp
+  src/renderer_gl.cpp
+  src/render_target_common.cpp
+  src/render_target_gl.cpp
+  src/shader_common.cpp
+  src/shader_gl.cpp
+  src/texture_common.cpp
+  src/texture_gl.cpp
+  src/texture_headers.h
+  src/type_conversions_gl.cpp
   src/utilities.cpp
   src/version.cpp)
 
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
   src/async_loader.cpp
+  src/environment_sdl.cpp
   src/input_sdl.cpp
   src/main.cpp)
 
 set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_stdlib.cpp
+  src/environment_stdlib.cpp
   src/input_stdlib.cpp)
+
+set(fplbase_stb_defines
+    STB_IMAGE_IMPLEMENTATION
+    STB_IMAGE_RESIZE_IMPLEMENTATION)
 
 # Includes for this project.
 include_directories(src)
@@ -256,7 +282,13 @@ else()
     add_definitions(-D_USE_MATH_DEFINES)
     set(OPENGL_LIBRARIES opengl32)
     set(SDL_LIBRARIES SDL2main ${SDL_LIBRARIES})
-    link_directories("$ENV{DXSDK_DIR}/Lib/$ENV{PROCESSOR_ARCHITECTURE}")
+
+    if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+      set(fplbase_processor_arch "x64")
+    else()
+      set(fplbase_processor_arch "x86")
+    endif()
+    link_directories("$ENV{DXSDK_DIR}/Lib/${fplbase_processor_arch}")
   endif()
 endif()
 
@@ -289,11 +321,13 @@ if(fplbase_build_library)
   add_library(fplbase ${fplbase_SRCS})
   fplbase_common_config(fplbase)
   target_link_libraries(fplbase ${SDL_LIBRARIES})
+  target_compile_definitions(fplbase PRIVATE ${fplbase_stb_defines})
 
   if(compiler_supports_threading)
     add_library(fplbase_stdlib ${fplbase_stdlib_SRCS})
     fplbase_common_config(fplbase_stdlib)
-    target_compile_definitions(fplbase_stdlib PRIVATE -DFPL_BASE_BACKEND_STDLIB)
+    target_compile_definitions(fplbase_stdlib PRIVATE -DFPLBASE_BACKEND_STDLIB)
+    target_compile_definitions(fplbase_stdlib PRIVATE ${fplbase_stb_defines})
   endif()
 
   # Setup iOS custom build target.

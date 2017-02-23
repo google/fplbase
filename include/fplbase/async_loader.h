@@ -15,15 +15,16 @@
 #ifndef FPLBASE_ASYNC_LOADER_H
 #define FPLBASE_ASYNC_LOADER_H
 
+#include <stdint.h>
+#include <deque>
 #include <functional>
 #include <string>
 #include <vector>
-#include <stdint.h>
 
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/asset.h"
 
-#ifdef FPL_BASE_BACKEND_STDLIB
+#ifdef FPLBASE_BACKEND_STDLIB
 #include <mutex>
 #include <thread>
 #include <condition_variable>
@@ -75,7 +76,11 @@ class AsyncAsset : public Asset {
   /// This should implement the behavior of turning data_ into the actual
   /// desired resource. Called on the main thread only.
   /// Should check if data_ is null.
-  virtual void Finalize() = 0;
+  virtual bool Finalize() = 0;
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  virtual bool IsValid() = 0;
 
   /// @brief Performs a synchronous load by calling Load & Finalize.
   ///
@@ -85,8 +90,7 @@ class AsyncAsset : public Asset {
     Load();
     bool ok = data_ != nullptr;
     // Call this even if data_ is null, to enforce Finalize() checking for it.
-    Finalize();
-    return ok;
+    return Finalize() && ok;
   }
 
   /// @brief Sets the filename that should be loaded.
@@ -102,7 +106,6 @@ class AsyncAsset : public Asset {
   /// @return Returns the filename.
   const std::string &filename() const { return filename_; }
 
-
   /// @brief Adds a callback to be called when the asset is finalized.
   ///
   /// Add a callback so logic can be executed when an asset is done loading.
@@ -117,8 +120,9 @@ class AsyncAsset : public Asset {
   ///
   /// This should be called by descendants as soon as they are finalized.
   void CallFinalizeCallback() {
-    for (auto& callback : finalize_callbacks_) {
-      callback();
+    for (auto it = finalize_callbacks_.begin();
+         it != finalize_callbacks_.end(); ++it) {
+      (*it)();
     }
     finalize_callbacks_.clear();
   }
@@ -150,6 +154,12 @@ class AsyncLoader {
   /// @brief Launches the loading thread for the previously queued jobs.
   void StartLoading();
 
+  /// @brief Pause the loading thread for previously queued jobs.
+  ///
+  /// Blocks until only the current job is finished loading. You can resume
+  /// loading assets by calling StartLoading().
+  void PauseLoading();
+
   /// @brief Ends the loading thread when all jobs are done.
   ///
   /// Cleans-up the background loading thread once all jobs have been completed.
@@ -170,7 +180,7 @@ class AsyncLoader {
   void Stop();
 
  private:
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
   void Lock(const std::function<void()> &body);
   template <typename T>
   T LockReturn(const std::function<T()> &body) {
@@ -183,9 +193,8 @@ class AsyncLoader {
   void LoaderWorker();
   static int LoaderThread(void *user_data);
 
-  std::vector<AsyncAsset *> queue_, done_;
-
-#ifdef FPL_BASE_BACKEND_SDL
+  std::deque<AsyncAsset *> queue_, done_;
+#ifdef FPLBASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.
   Thread worker_thread_;
@@ -195,12 +204,12 @@ class AsyncLoader {
 
   // Kick-off the worker thread when a new job arrives.
   Semaphore job_semaphore_;
-#elif defined(FPL_BASE_BACKEND_STDLIB)
+#elif defined(FPLBASE_BACKEND_STDLIB)
   std::thread worker_thread_;
   std::mutex mutex_;
   std::condition_variable job_cv_;
 #else
-#error Need to define FPL_BASE_BACKEND_XXX
+#error Need to define FPLBASE_BACKEND_XXX
 #endif
 };
 

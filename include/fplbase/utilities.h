@@ -15,6 +15,7 @@
 #ifndef FPLBASE_UTILITIES_H
 #define FPLBASE_UTILITIES_H
 
+#include <functional>
 #include <string>
 #include "fplbase/config.h"  // Must come first.
 
@@ -22,10 +23,10 @@
 
 #if defined(__ANDROID__)
 #include <jni.h>
-#if defined(FPL_BASE_BACKEND_STDLIB)
+#if defined(FPLBASE_BACKEND_STDLIB)
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
-#endif  // defined(FPL_BASE_BACKEND_STDLIB)
+#endif  // defined(FPLBASE_BACKEND_STDLIB)
 #endif
 
 namespace fplbase {
@@ -37,7 +38,7 @@ namespace fplbase {
 /// @{
 
 /// @brief Constants for use with LogInfo, LogError, etc.
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 enum LogCategory {
   kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
   kError = 1,        // SDL_LOG_CATEGORY_ERROR
@@ -62,7 +63,8 @@ enum LogCategory {
 #endif
 
 /// @brief Called by `LoadFile()`.
-typedef bool (*LoadFileFunction)(const char *filename, std::string *dest);
+typedef std::function<bool(const char *filename, std::string *dest)>
+    LoadFileFunction;
 
 /// @brief Enum for use with the `Set/GetPerformanceMode()` functions.
 enum PerformanceMode {
@@ -187,6 +189,21 @@ int32_t LoadPreference(const char *key, int32_t initial_value);
 /// @param[in] value The value to save for the preference.
 bool SavePreference(const char *key, int32_t value);
 
+/// @brief Map a file into memory and returns its contents via pointer.
+/// @details In contrast to `LoadFile()`, this method calls mmap API to map the
+/// whole or a part of the file.
+/// @param[in] filename A UTF-8 C-string representing the file to load.
+/// @param[in] offset An offset of the file contents to map.
+/// @param[in/out] size A size to map. A size of 0 indicates to map whole file.
+/// returns a mapped size of the file.
+/// @return Returns a mapped pointer. nullptr when failed to map the file.
+const void *MapFile(const char *filename, int32_t offset, int32_t *size);
+
+/// @brief Unmap a pointer that is mapped via MapFile() API.
+/// @param[in] file A pointer to the file, returned via MapFile API.
+/// @param[in] size A size to unmap.
+void UnmapFile(const void *file, int32_t size);
+
 /// @brief Search and change to a given directory.
 /// @param binary_dir A C-string corresponding to the current directory
 /// to start searching from.
@@ -295,12 +312,15 @@ std::string AndroidGetActivityName();
 std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
-#if defined(__ANDROID__) && defined(FPL_BASE_BACKEND_STDLIB)
-/// @breif Set an Android asset manager.
+#if defined(__ANDROID__) && defined(FPLBASE_BACKEND_STDLIB)
+/// @brief Set an Android asset manager.
 /// @param[in] manager A pointer to an already-created instance of
 /// `AAssetManager`.
 /// @note Must call this function once before loading any assets.
 void SetAAssetManager(AAssetManager *manager);
+/// @brief Set global Java virtual machine object.
+/// @note This method should be called only once.
+void AndroidSetJavaVM(JavaVM* vm, jint jni_version);
 #endif
 
 /// @brief Retrieve a path where an app can store data files.

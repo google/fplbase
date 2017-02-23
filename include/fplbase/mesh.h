@@ -18,9 +18,12 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
-#include "fplbase/asset.h"
 
+#include "fplbase/asset.h"
+#include "fplbase/async_loader.h"
+#include "fplbase/handles.h"
 #include "fplbase/material.h"
+#include "fplbase/render_state.h"
 #include "fplbase/shader.h"
 #include "mathfu/constants.h"
 
@@ -31,6 +34,7 @@ namespace fplbase {
 /// @{
 
 class Renderer;
+struct MeshImpl;
 
 /// @brief An array of these enums defines the format of vertex data.
 enum Attribute {
@@ -42,27 +46,56 @@ enum Attribute {
   kTexCoordAlt2f,  ///< @brief Second set of UVs for use with e.g. lightmaps.
   kColor4ub,
   kBoneIndices4ub,
-  kBoneWeights4ub
+  kBoneWeights4ub,
 };
 
 /// @class Mesh
 /// @brief Abstraction for a set of indices, used for rendering.
 ///
 /// A mesh instance contains a VBO and one or more IBO's.
-class Mesh : public Asset {
+class Mesh : public AsyncAsset {
  public:
   enum Primitive {
     kTriangles,
     kTriangleStrip,
+    kTriangleFan,
     kLines,
     kPoints,
   };
 
+  typedef std::function<Material *(const char *filename)> MaterialLoaderFn;
+
+  /// @brief Initialize a Mesh from a file asynchronously.
+  ///
+  /// Asynchronously create mesh from a file if filename is valid.
+  /// Otherwise, if filename is null, need to call LoadFromMemory to init
+  /// manually.
+  Mesh(const char *filename = nullptr,
+       MaterialLoaderFn material_loader_fn = nullptr,
+       Primitive primitive = kTriangles);
+
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
-  Mesh(const void *vertex_data, int count, int vertex_size,
+  Mesh(const void *vertex_data, size_t count, size_t vertex_size,
        const Attribute *format, mathfu::vec3 *max_position = nullptr,
-       mathfu::vec3 *min_position = nullptr);
+       mathfu::vec3 *min_position = nullptr, Primitive primitive = kTriangles);
+
   ~Mesh();
+
+  /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
+  virtual void LoadFromMemory(const void *vertex_data, size_t count,
+                              size_t vertex_size, const Attribute *format,
+                              mathfu::vec3 *max_position = nullptr,
+                              mathfu::vec3 *min_position = nullptr);
+
+  /// @brief Loads and unpacks the Mesh from 'filename_' and 'data_'.
+  virtual void Load();
+
+  /// @brief Creates a mesh from 'data_'.
+  virtual bool Finalize();
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  bool IsValid();
 
   /// @brief Add an index buffer object to be part of this mesh
   ///
@@ -71,7 +104,10 @@ class Mesh : public Asset {
   /// @param indices The indices to be included in the IBO.
   /// @param count The number of indices.
   /// @param mat The material associated with the IBO.
-  void AddIndices(const unsigned short *indices, int count, Material *mat);
+  /// @param is_32_bit Specifies that the indices are 32bit. Default 16bit.
+  /// @param primitive How the triangles are assembled from the indices.
+  void AddIndices(const void *indices, int count, Material *mat,
+                  bool is_32_bit = false);
 
   /// @brief Set the bones used by an animated mesh.
   ///
@@ -136,7 +172,7 @@ class Mesh : public Asset {
   /// @param ignore_material Whether to ignore the meshes defined material.
   /// @param instances The number of instances to be rendered.
   void RenderStereo(Renderer &renderer, const Shader *shader,
-                    const mathfu::vec4i *viewport, const mathfu::mat4 *mvp,
+                    const Viewport *viewport, const mathfu::mat4 *mvp,
                     const mathfu::vec3 *camera_position,
                     bool ignore_material = false, size_t instances = 1);
 
@@ -196,12 +232,10 @@ class Mesh : public Asset {
   /// @param top_right The bottom left coordinate of the Quad.
   /// @param tex_bottom_left The texture coordinates at the bottom left.
   /// @param tex_top_right The texture coordinates at the top right.
-  static void RenderAAQuadAlongX(const mathfu::vec3 &bottom_left,
-                                 const mathfu::vec3 &top_right,
-                                 const mathfu::vec2 &tex_bottom_left =
-                                     mathfu::vec2(0, 0),
-                                 const mathfu::vec2 &tex_top_right =
-                                     mathfu::vec2(1, 1));
+  static void RenderAAQuadAlongX(
+      const mathfu::vec3 &bottom_left, const mathfu::vec3 &top_right,
+      const mathfu::vec2 &tex_bottom_left = mathfu::vec2(0, 0),
+      const mathfu::vec2 &tex_top_right = mathfu::vec2(1, 1));
 
   /// @brief Convenience method for rendering a Quad with nine patch settings.
   ///
@@ -262,9 +296,9 @@ class Mesh : public Asset {
       // Similarly create uv space vectors:
       auto uv1 = mathfu::vec2(v1.tc) - mathfu::vec2(v0.tc);
       auto uv2 = mathfu::vec2(v2.tc) - mathfu::vec2(v0.tc);
-      float m = 1 / (uv1.x() * uv2.y() - uv2.x() * uv1.y());
-      auto tangent = mathfu::vec4((uv2.y() * q1 - uv1.y() * q2) * m, 0);
-      auto binorm = (uv1.x() * q2 - uv2.x() * q1) * m;
+      float m = 1 / (uv1.x * uv2.y - uv2.x * uv1.y);
+      auto tangent = mathfu::vec4((uv2.y * q1 - uv1.y * q2) * m, 0);
+      auto binorm = (uv1.x * q2 - uv2.x * q1) * m;
       v0.tangent = mathfu::vec4(v0.tangent) + tangent;
       v1.tangent = mathfu::vec4(v1.tangent) + tangent;
       v2.tangent = mathfu::vec4(v2.tangent) + tangent;
@@ -323,6 +357,16 @@ class Mesh : public Asset {
   ///
   /// @return Returns an array of indices of each bone's parent.
   const uint8_t *bone_parents() const { return bone_parents_.data(); }
+  /// @brief Array of names for each bone.
+  ///
+  /// @return Returns the array of names for each bone, of length num_bones().
+  const std::string *bone_names() const { return bone_names_.data(); }
+  /// @brief The array of default bone transform inverses.
+  ///
+  /// @return Returns the array of default bone transform inverses.
+  const mathfu::AffineTransform *default_bone_transform_inverses() const {
+    return default_bone_transform_inverses_;
+  }
   /// @brief The number of bones in the mesh.
   ///
   /// @return Returns the number of bones.
@@ -348,6 +392,23 @@ class Mesh : public Asset {
   /// @return Returns the total number of indices across all IBOs.
   size_t CalculateTotalNumberOfIndices() const;
 
+  /// @brief Holder for data that can be turned into a mesh.
+  struct InterleavedVertexData {
+    const void *vertex_data;
+    std::vector<uint8_t> owned_vertex_data;
+    size_t count;
+    size_t vertex_size;
+    std::vector<Attribute> format;
+    bool has_skinning;
+
+    InterleavedVertexData()
+        : vertex_data(nullptr), count(0), vertex_size(0), has_skinning(false) {}
+  };
+
+  /// @brief: Load vertex data from a FlatBuffer into CPU memory first.
+  void ParseInterleavedVertexData(const void *meshdef_buffer,
+                                  InterleavedVertexData *ivd);
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
@@ -357,27 +418,47 @@ class Mesh : public Asset {
   Mesh(const Mesh &);
   Mesh &operator=(const Mesh &);
 
-  // This typedef is compatible with its OpenGL equivalent, but doesn't require
-  // this header to depend on OpenGL.
-  typedef unsigned int BufferHandle;
+  // Free all resources in the platform-independent data (i.e. everything
+  // outside of the impl_ class). Implemented in mesh_common.cc.
+  void Clear();
+
+  // Free all resources in the platform-dependent data (i.e. everything in the
+  // impl_ class). Implemented in platform-dependent code.
+  void ClearPlatformDependent();
+
+  // Init mesh from MeshDef FlatBuffer.
+  bool InitFromMeshDef(const void *meshdef_buffer);
+
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific MeshImpl structs.
+  static MeshImpl *CreateMeshImpl();
+  static void DestroyMeshImpl(MeshImpl *impl);
+
+  // Backend-specific way to get underlying primitive flag.
+  static uint32_t GetPrimitiveTypeFlags(Mesh::Primitive primitive);
 
   static const int kMaxAttributes = 9;
 
-  static void SetAttributes(BufferHandle vbo, const Attribute *attributes,
-                            int vertex_size, const char *buffer);
-  static void UnSetAttributes(const Attribute *attributes);
-  void DrawElement(Renderer &renderer, int32_t count, int32_t instances);
-
   struct Indices {
+    Indices()
+        : count(0),
+          ibo(InvalidBufferHandle()),
+          mat(nullptr),
+          index_type(0),
+          indexBufferMem(InvalidDeviceMemoryHandle()) {}
     int count;
     BufferHandle ibo;
     Material *mat;
+    uint32_t index_type;
+    DeviceMemoryHandle indexBufferMem;
   };
+
+  MeshImpl *impl_;
   std::vector<Indices> indices_;
+  uint32_t primitive_;
   size_t vertex_size_;
   size_t num_vertices_;
   Attribute format_[kMaxAttributes];
-  BufferHandle vbo_;
   mathfu::vec3 min_position_;
   mathfu::vec3 max_position_;
 
@@ -405,6 +486,9 @@ class Mesh : public Asset {
   std::vector<uint8_t> bone_parents_;
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;
+
+  // Function to load material by filename.
+  MaterialLoaderFn material_loader_fn_;
 };
 
 /// @}

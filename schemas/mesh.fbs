@@ -29,31 +29,56 @@ enum MeshVersion : ushort {
 }
 
 table Surface {
-  indices:[ushort] (required);
-  material:string (required);  // e.g. "materials/example.bin"
+  indices:[ushort] (id: 0);  // Used when there's less than 64k indices.
+  indices32:[uint] (id: 2);  // Used when there's more than 64k indices.
+  material:string (id: 1, required);  // e.g. "materials/example.bin"
+}
+
+enum Attribute : ubyte {
+  END,
+  Position3f,
+  Normal3f,
+  Tangent4f,
+  TexCoord2f,
+  TexCoordAlt2f,
+  Color4ub,
+  BoneIndices4ub,
+  BoneWeights4ub
 }
 
 table Mesh {
-  surfaces:[Surface] (required);
+  surfaces:[Surface] (id: 0, required);
 
-  positions:[fplbase.Vec3] (required);
-  normals:[fplbase.Vec3];
-  tangents:[fplbase.Vec4];  // Tangent + handedness.
-  colors:[fplbase.Vec4ub];
-  texcoords:[fplbase.Vec2];
-  skin_indices:[fplbase.Vec4ub];  // reference bones
-  skin_weights:[fplbase.Vec4ub];  // sum to 1
-  max_position:fplbase.Vec3;
-  min_position:fplbase.Vec3;
-  bone_names:[string];          // For debugging.
-  bone_transforms:[fplbase.Mat3x4]; // Local transform from parent to bone's pivot.
-  bone_parents:[ubyte];         // Animation data must have the same hierarchy.
-  shader_to_mesh_bones:[ubyte]; // Maps to the mesh bone index to the shader
-                                // bone index. The mesh bones are all the bones.
-                                // The shader bones are the subset of bones that
-                                // have at least one vertex weighted to them.
-  texcoords_alt:[fplbase.Vec2]; // E.g. lightmap coordinates.
-  version:MeshVersion = Unspecified;
+  // Attributes in non-interleaved format (id 1..7).
+  // These define the format merely by their presense, no Attribute enum needed.
+  positions:[fplbase.Vec3] (id: 1);
+  normals:[fplbase.Vec3] (id: 2);
+  tangents:[fplbase.Vec4] (id: 3);  // Tangent + handedness.
+  colors:[fplbase.Vec4ub] (id: 4);
+  texcoords:[fplbase.Vec2] (id: 5);
+  skin_indices:[fplbase.Vec4ub] (id: 6);  // reference bones
+  skin_weights:[fplbase.Vec4ub] (id: 7);  // sum to 1
+
+  // Attributes in interleaved format (id 16..17).
+  // This can be specified instead of the attribute vectors above.
+  // This may be more efficient to load if the engine also prefers interleaved.
+  attributes:[Attribute] (id: 16);
+  vertices:[ubyte] (id: 17);
+
+  // These below are used regardless of interleaved or not.
+  max_position:fplbase.Vec3 (id: 8);
+  min_position:fplbase.Vec3 (id: 9);
+  bone_names:[string] (id: 10);  // For debugging.
+  // Local transform from parent to bone's pivot.
+  bone_transforms:[fplbase.Mat3x4] (id: 11);
+  // Animation data must have the same hierarchy.
+  bone_parents:[ubyte] (id: 12);
+  // Maps to the mesh bone index to the shader bone index. The mesh bones are
+  // all the bones. The shader bones are the subset of bones that have at least
+  // one vertex weighted to them.
+  shader_to_mesh_bones:[ubyte] (id: 13);
+  texcoords_alt:[fplbase.Vec2] (id: 14); // E.g. lightmap coordinates.
+  version:MeshVersion = Unspecified (id: 15);
 }
 
 root_type Mesh;

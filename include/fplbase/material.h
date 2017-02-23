@@ -19,7 +19,10 @@
 #include <vector>
 
 #include "fplbase/config.h"  // Must come first.
+
 #include "fplbase/asset.h"
+#include "fplbase/render_state.h"
+#include "fplbase/texture.h"
 
 namespace fplbase {
 
@@ -29,27 +32,6 @@ namespace fplbase {
 
 class Renderer;
 class Texture;
-
-/// @brief Specifies the blending mode used by the blend function.
-enum BlendMode {
-  kBlendModeOff = 0, /**< No blending is done. The alpha channel is ignored. */
-  kBlendModeTest, /**< Used to provide a function via `glAlphaFunc` instead of
-                       `glBlendFunc`. This is not supported directly, meaning
-                       the `glAlphaFunc` must be set manually by the user. This
-                       will simply configure the renderer to use that
-                       function.*/
-  kBlendModeAlpha, /**< Normal alpha channel blending. */
-  kBlendModeAdd, /**< Additive blending, where the resulting color is the sum of
-                      the two colors. */
-  kBlendModeAddAlpha, /**< Additive blending, where the resulting color is the
-                           sum of the two colors, and the image is affected
-                           by the alpha. (Note: The background is not affected
-                           by the image's alpha.) */
-  kBlendModeMultiply, /**< Multiplicative blending, where the resulting color is
-                           the product of the image color and the background
-                           color. */
-  kBlendModeCount  /** Used at the end of the enum as sentinel value. */
-};
 
 /// @brief Collections of textures used for rendering multi-texture models.
 class Material : public Asset {
@@ -87,6 +69,12 @@ class Material : public Asset {
 
   /// @brief Delete all Textures in this Material.
   void DeleteTextures();
+
+  /// @brief Load a .fplmat file, and all the textures referenced from it.
+  /// Used by the more convenient AssetManager interface, but can be used
+  /// without it.
+  static Material *LoadFromMaterialDef(const char *filename,
+                                       const TextureLoaderFn &tlf);
 
  private:
   std::vector<Texture *> textures_;

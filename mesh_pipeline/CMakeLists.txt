@@ -54,4 +54,5 @@ fbx_configure_target(mesh_pipeline)
 target_link_libraries(mesh_pipeline fplutil)
 
 # Additional flags for the target.
-fplbase_common_config(mesh_pipeline)
+mathfu_configure_flags(mesh_pipeline)
+

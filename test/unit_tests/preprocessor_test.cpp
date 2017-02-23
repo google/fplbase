@@ -12,34 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gtest/gtest.h"
 #include "fplbase/preprocessor.h"
 #include <string>
-#include <unordered_set>
+#include "gtest/gtest.h"
 
-using fplbase::LoadFileWithDirectives;
+static const std::set<std::string> kEmptyDefines;
 
 class PreprocessorTests : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp();
   virtual void TearDown();
 
   std::string error_message_;
   std::set<std::string> all_includes_;
-  std::unordered_set<std::string> all_define_;
+  std::set<std::string> all_define_;
 
   std::string file_;
 };
-
-static const std::string kDefineMissingIdError =
-    "#define must be followed by an identifier.";
-static const std::string kMissingEndIfError = "All #if (#ifdef, #ifndef) "
-                                              "statements must have a "
-                                              "corresponding #endif statement.";
-static const std::string kIfStackEmptyRegex =
-    "[Assertion failed: (!if_stack.empty())].*";
-
-static const char *empty_defines[] = {nullptr};
 
 // Load a golden file, e.g., take in an entire file and return it instead
 // of trying to load an external file.
@@ -58,278 +47,160 @@ void PreprocessorTests::TearDown() {
   file_ = "";
 }
 
-// #define without a definition should be fine as long as there is an
-// identifier
-TEST_F(PreprocessorTests, SimpleDefineTest) {
+// #defines should just be passed through.
+TEST_F(PreprocessorTests, DefinePassthrough) {
   const char *file = "#define foo";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
+  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
                                                 &error_message_);
   EXPECT_TRUE(result);
-  EXPECT_EQ(file_, std::string(""));
+  EXPECT_EQ(file_, std::string(file));
 }
 
-// #define as a standalone directive should fail
-TEST_F(PreprocessorTests, DefineWithoutIdentifier) {
-  const char *file = "#define";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
-                                                &error_message_);
-  EXPECT_FALSE(result);
-  EXPECT_EQ(error_message_, kDefineMissingIdError);
-}
-
-// #define should skip cases where arguments are supplied.
-TEST_F(PreprocessorTests, DefineWithArguments) {
-  const char *file = "#define foo(x) x";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
+// An empty list of defines should also be valid.
+TEST_F(PreprocessorTests, EmptyDefineList) {
+  const char *file = "#define foo";
+  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
                                                 &error_message_);
   EXPECT_TRUE(result);
-  EXPECT_EQ(file_, file);
+  EXPECT_EQ(file_, std::string(file));
 }
 
-// #if[n]def should skip certain whitelisted arguments.
-TEST_F(PreprocessorTests, WhiteListIfDef) {
-  const char *file = "#ifdef __LINE__\nFOO\n#else\nBAR\n#endif";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
-                                                &error_message_);
+// #defines passed-in should be inserted into the file. Try with just one.
+TEST_F(PreprocessorTests, OneDefinePassedIn) {
+  std::set<std::string> defines;
+  defines.insert("foo");
+  bool result =
+      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
   EXPECT_TRUE(result);
-  EXPECT_EQ(file_, file);
+  EXPECT_EQ(file_, std::string("#define foo\n"));
+}
+
+// #defines passed-in should be inserted into the file. Try with multiple.
+TEST_F(PreprocessorTests, MultipleDefinesPassedIn) {
+  std::set<std::string> defines;
+  defines.insert("foo");
+  defines.insert("foo2");
+  defines.insert("foo3");
+  bool result =
+      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, std::string("#define foo\n#define foo2\n#define foo3\n"));
 }
 
 // #define the same identifier twice should be ok
 TEST_F(PreprocessorTests, DefineSameIdTwice) {
-  const char *file = "#define foo\n"
-                     "#define foo";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
+  const char *file =
+      "#define foo\n"
+      "#define foo";
+  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
                                                 &error_message_);
   EXPECT_TRUE(result);
-  EXPECT_EQ(error_message_, std::string(""));
-  EXPECT_EQ(file_, std::string(""));
+  EXPECT_EQ(file_, std::string(file));
 }
 
-// #ifdef should allow compilation if the identifier is defined.
-TEST_F(PreprocessorTests, SimpleIfDefTest) {
-  const char *file = "#define foo\n"
-                     "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#endif";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
+// #defines with a value should be passed through.
+TEST_F(PreprocessorTests, ValuePassedIn) {
+  std::set<std::string> defines;
+  defines.insert("foo 1");
+  bool result =
+      fplbase::LoadFileWithDirectives("", &file_, defines, &error_message_);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(file_, std::string("#define foo 1\n"));
+}
+
+// #defines with a value should be left alone.
+TEST_F(PreprocessorTests, ValuePassthrough) {
+  const char *file = "#define foo 1";
+  bool result = fplbase::LoadFileWithDirectives(file, &file_, kEmptyDefines,
                                                 &error_message_);
   EXPECT_TRUE(result);
-  EXPECT_EQ(file_, std::string("foo is defined.\n"));
+  EXPECT_EQ(file_, std::string(file));
 }
 
-// #ifdef should skip compilation when the identifier is not defined.
-TEST_F(PreprocessorTests, IfDefNotDefined) {
-  const char *file = "#ifdef bar\n"
-                     "bar is defined.\n"
-                     "#endif";
-  bool result = fplbase::LoadFileWithDirectives(file, &file_, empty_defines,
-                                                &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "");
+TEST_F(PreprocessorTests, SanitizeCheckPrefix) {
+  const char* file = "";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+
+#ifdef PLATFORM_MOBILE
+  EXPECT_EQ(result, "#ifdef GL_ES\nprecision highp float;\n#endif\n");
+#else
+  EXPECT_EQ(result,
+            "#version 120\n#define lowp\n#define mediump\n#define highp\n");
+#endif
 }
 
-// #ifdef should skip nested statements that evaluate to be false.
-TEST_F(PreprocessorTests, IfDefNestedTrueFalse) {
-  std::string file = "#define foo\n"
-                     "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#ifdef bar\n"
-                     "bar is defined.\n"
-                     "#endif // bar\n"
-                     "#endif // foo";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is defined.\n");
+TEST_F(PreprocessorTests, SanitizeVersionIsFirstLine) {
+  const char* file = "#define foo 1\n#version 100\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  EXPECT_TRUE(result.compare(0, 12, "#version 100"));
 }
 
-// #ifdef should handle nested statements that are both true.
-TEST_F(PreprocessorTests, IfDefNestedBothTrue) {
-  std::string file = "#define foo\n"
-                     "#define bar\n"
-                     "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#ifdef bar\n"
-                     "bar is defined.\n"
-                     "#endif // bar\n"
-                     "#endif // foo";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is defined.\nbar is defined.\n");
+TEST_F(PreprocessorTests, SanitizeVersionConversion) {
+  struct ConversionTest {
+    const char* file;
+    const char* desktop_result;
+    const char* mobile_result;
+  };
+  const ConversionTest kTests[] = {
+    // Known conversions.
+    { "#version 110\n",    "#version 110\n", "#version 100 es\n" },
+    { "#version 100 es\n", "#version 110\n", "#version 100 es\n" },
+    { "#version 330\n",    "#version 330\n", "#version 300 es\n" },
+    { "#version 300 es\n", "#version 330\n", "#version 300 es\n" },
+
+    // Unknown versions: preserve across platforms.
+    { "#version 500\n",    "#version 500\n", "#version 500 es\n" },
+  };
+  const size_t kNumTests = sizeof(kTests) / sizeof(kTests[0]);
+
+  std::string result;
+  for (size_t i = 0; i < kNumTests; ++i) {
+    fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr, &result);
+
+#ifdef PLATFORM_MOBILE
+    const std::string& expected = kTests[i].mobile_result;
+#else
+    const std::string& expected = kTests[i].desktop_result;
+#endif
+
+    EXPECT_EQ(result.compare(0, expected.length(), expected), 0);
+  }
 }
 
-// #ifdef should skip everything (including nested statements) if the top-level
-// statement is false.
-TEST_F(PreprocessorTests, IfDefNestedFalseTrue) {
-  std::string file = "#define bar\n"
-                     "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#ifdef bar\n"
-                     "bar is defined.\n"
-                     "#endif // bar\n"
-                     "#endif // foo";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "");
+TEST_F(PreprocessorTests, SanitizeExtensionsMoved) {
+  const char* file =
+      "#define foo 1\n"
+      "#extension GL_OES_standard_derivatives : enable\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t define_pos = result.find("#define");
+  const size_t extension_pos = result.find("#extension");
+  EXPECT_LT(extension_pos, define_pos);
 }
 
-// #ifndef should compile if the symbol is not defined.
-TEST_F(PreprocessorTests, SimpleIfNDefTest) {
-  std::string file = "#ifndef foo\nfoo is not defined.\n#endif";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is not defined.\n");
+TEST_F(PreprocessorTests, SanitizeMultiPartLinesPreserved) {
+  const char* file = "#define foo(arg) \\\n    arg\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t pos = result.find("#define foo");
+  EXPECT_NE(pos, std::string::npos);
+  EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
 }
 
-// #ifndef should not compile if the symbol is defined.
-TEST_F(PreprocessorTests, IfNDefIsDefined) {
-  std::string file = "#define foo\n#ifndef foo\nfoo is not defined.\n#endif";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "");
-}
-
-// #else should compile if the #ifdef evaluates to false.
-TEST_F(PreprocessorTests, SimpleElseTest) {
-  std::string file =
-      "#ifdef foo\nfoo is defined.\n#else\nfoo is not defined.\n#endif";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is not defined.\n");
-}
-
-// #else should not compile if the #ifdef evaluates to true.
-TEST_F(PreprocessorTests, ElseIgnored) {
-  std::string file = "#define foo\n"
-                     "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#else\n"
-                     "foo is not defined.\n"
-                     "#endif";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is defined.\n");
-}
-
-// Nested #else should not compile if the top-level #if is false.
-TEST_F(PreprocessorTests, NestedElse) {
-  std::string file = "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#ifdef bar\n"
-                     "bar is defined.\n"
-                     "#else\n"
-                     "bar is not defined.\n"
-                     "#endif\n"
-                     "#endif\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "");
-}
-
-// Should fail if there aren't enough #endif
-TEST_F(PreprocessorTests, TooFewEndIf) {
-  std::string file = "#ifdef foo\n"
-                     "foo is defined.\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_FALSE(result);
-  EXPECT_EQ(error_message_, kMissingEndIfError);
-}
-
-// Should fail if there are too many #endif
-TEST_F(PreprocessorTests, TooManyEndif) {
-  std::string file = "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#endif\n"
-                     "#endif";
-  EXPECT_DEATH_IF_SUPPORTED(
-      fplbase::LoadFileWithDirectives(file.c_str(), &file_, empty_defines,
-                                      &error_message_), kIfStackEmptyRegex);
-}
-
-// Unknown directives should be passed through.
-TEST_F(PreprocessorTests, UnknownDirective) {
-  std::string file = "#unknown";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, file);
-}
-
-// Unknown directives should be passed through when in a block that's compiled.
-TEST_F(PreprocessorTests, UnknownDirectiveInCompiledBlock) {
-  std::string file = "#ifndef foo\n"
-                     "#unknown\n"
-                     "#endif\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "#unknown\n");
-}
-
-// Unknown directives should be removed when in a block that's not-compiled.
-TEST_F(PreprocessorTests, UnknownDirectiveInUncompiledBlock) {
-  std::string file = "#ifdef foo\n"
-                     "#unknown\n"
-                     "#endif\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "");
-}
-
-// Unknown directives should be passed through.
-TEST_F(PreprocessorTests, UnknownDirectiveTest) {
-  std::string file = "#unknown";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, file);
-}
-
-// Unknown directives (such as OpenGL #extension) should be passed through.
-TEST_F(PreprocessorTests, ExtensionDirectiveTest) {
-  std::string file = "#extension GL_OES_EGL_image_external : require";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                empty_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, file);
-}
-
-// Passing in #define variables manually should make #ifdef true.
-TEST_F(PreprocessorTests, ManualDefineTest) {
-  static const char *my_defines[] = {"foo", nullptr};
-  std::string file = "#ifdef foo\n"
-                     "foo is defined.\n"
-                     "#endif\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                my_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "foo is defined.\n");
-}
-
-// Comments inside a #ifdef that evaluates to false should be skipped.
-TEST_F(PreprocessorTests, NotCompilingComments) {
-  static const char *my_defines[] = {"foo", nullptr};
-  std::string file = "#ifdef foo\n"
-                     "// first comment\n"
-                     "foo is defined.\n"
-                     "#ifdef bar\n"
-                     "// second comment\n"
-                     "#endif // bar\n"
-                     "#endif // foo\n";
-  bool result = fplbase::LoadFileWithDirectives(file.c_str(), &file_,
-                                                my_defines, &error_message_);
-  EXPECT_TRUE(result);
-  EXPECT_EQ(file_, "// first comment\nfoo is defined.\n");
+TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
+  const char*file =
+      "#define foo 1\n"
+      "// #version 100\n"
+      "#define baz 0\n"
+      "// #extension GL_FOO_BAZ : enable\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  const size_t pos = result.find("#define foo");
+  EXPECT_NE(pos, std::string::npos);
+  EXPECT_NE(pos, 0u);
+  EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
 }
 
 extern "C" int FPL_main(int argc, char *argv[]) {

@@ -25,24 +25,35 @@ FPLBASE_DIR := $(LOCAL_PATH)
 
 FPLBASE_COMMON_SRC_FILES := \
   src/asset_manager.cpp \
+  src/gpu_debug_gl.cpp \
   src/input.cpp \
   src/material.cpp \
-  src/mesh.cpp \
+  src/mesh_common.cpp \
+  src/mesh_gl.cpp \
   src/precompiled.cpp \
   src/preprocessor.cpp \
-  src/renderer.cpp \
-  src/renderer_hmd.cpp \
-  src/render_target.cpp \
-  src/shader.cpp \
-  src/texture.cpp \
+  src/render_target_common.cpp \
+  src/render_target_gl.cpp \
+  src/renderer_common.cpp \
+  src/renderer_gl.cpp \
+  src/renderer_hmd_gl.cpp \
+  src/shader_common.cpp \
+  src/shader_gl.cpp \
+  src/texture_common.cpp \
+  src/texture_gl.cpp \
+  src/type_conversions_gl.cpp \
   src/utilities.cpp \
   src/version.cpp \
   $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
 
-FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11
+FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11 \
+                                  -DFPLBASE_OPENGL
 
 FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
-                           -Wno-literal-suffix -Wno-unused-function
+                           -Wno-literal-suffix -Wno-unused-function \
+                           -DSTB_IMAGE_IMPLEMENTATION \
+                           -DSTB_IMAGE_RESIZE_IMPLEMENTATION \
+                           -DFPLBASE_ANDROID_VR=0
 
 FPLBASE_COMMON_LIBRARIES := \
   libwebp \
@@ -70,13 +81,13 @@ FPLBASE_SCHEMA_FILES := \
 FPLBASE_COMMON_EXPORT_C_INCLUDES := \
   $(FPLBASE_DIR)/include \
   $(FPLBASE_GENERATED_OUTPUT_DIR) \
+  $(DEPENDENCIES_FPLUTIL_DIR)/libfplutil/include \
   $(NDK_ROOT)/sources/android/ndk_helper
 
 FPLBASE_COMMON_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES) \
   $(FPLBASE_DIR)/src \
   $(DEPENDENCIES_FLATBUFFERS_DIR)/include \
-  $(DEPENDENCIES_FPLUTIL_DIR)/include \
   $(DEPENDENCIES_WEBP_DIR)/src \
   $(DEPENDENCIES_STB_DIR)
 
@@ -124,6 +135,7 @@ LOCAL_C_INCLUDES := $(FPLBASE_COMMON_INCLUDES) $(DEPENDENCIES_SDL_DIR)
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader.cpp \
+  src/environment_sdl.cpp \
   src/input_sdl.cpp \
   src/renderer_android.cpp
 
@@ -146,7 +158,9 @@ LOCAL_ARM_MODE := arm
 LOCAL_STATIC_LIBRARIES := \
   $(FPLBASE_COMMON_LIBRARIES)
 
-LOCAL_CPPFLAGS := $(FPLBASE_COMMON_CPPFLAGS) -DFPL_BASE_BACKEND_STDLIB
+LOCAL_CPPFLAGS := \
+  $(FPLBASE_COMMON_CPPFLAGS) \
+  -DFPLBASE_BACKEND_STDLIB \
 
 LOCAL_EXPORT_C_INCLUDES := \
   $(FPLBASE_COMMON_EXPORT_C_INCLUDES)
@@ -161,6 +175,7 @@ LOCAL_C_INCLUDES := \
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader_stdlib.cpp \
+  src/environment_stdlib.cpp \
   src/input_stdlib.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
@@ -186,6 +201,6 @@ $(call import-add-path,$(FPLBASE_DIR)/..)
 $(call import-module,flatbuffers/android/jni)
 $(call import-module,mathfu/jni)
 $(call import-module,android/cpufeatures)
-$(call import-module,webp)
+$(call import-module,$(notdir $(DEPENDENCIES_WEBP_DIR)))
 # NOTE: We're including $(FPLBASE_DIR)/jni/SDL/Android.mk here.
 $(call import-module,fplbase/jni/sdl)

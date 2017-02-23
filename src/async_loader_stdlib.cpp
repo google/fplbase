@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "precompiled.h"
 #include "fplbase/async_loader.h"
+#include "fplbase/utilities.h"
+#include "precompiled.h"
 
-#ifndef FPL_BASE_BACKEND_STDLIB
+#ifndef FPLBASE_BACKEND_STDLIB
 #error This version of AsyncLoader is designed for use with the C++ library.
 #endif
 
@@ -24,6 +25,10 @@ namespace fplbase {
 AsyncLoader::AsyncLoader() {}
 
 AsyncLoader::~AsyncLoader() {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    queue_.clear();
+  }
   Stop();
 }
 
@@ -36,14 +41,25 @@ void AsyncLoader::Stop() {
 
 void AsyncLoader::QueueJob(AsyncAsset *res) {
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     queue_.push_back(res);
   }
   job_cv_.notify_one();
 }
 
 void AsyncLoader::StartLoading() {
-  worker_thread_ = std::thread(AsyncLoader::LoaderThread, this);
+  if (!worker_thread_.joinable()) {
+    worker_thread_ = std::thread(AsyncLoader::LoaderThread, this);
+  }
+}
+
+void AsyncLoader::PauseLoading() {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    queue_.push_front(nullptr);
+  }
+  job_cv_.notify_one();
+  worker_thread_.join();
 }
 
 void AsyncLoader::StopLoadingWhenComplete() { QueueJob(nullptr); }
@@ -52,15 +68,19 @@ bool AsyncLoader::TryFinalize() {
   for (;;) {
     AsyncAsset *resource = nullptr;
     {
-      std::unique_lock<std::mutex> lock(mutex_);
+      std::lock_guard<std::mutex> lock(mutex_);
       if (done_.size() > 0) resource = done_[0];
     }
 
     if (!resource) break;
-    resource->Finalize();
+    bool ok = resource->Finalize();
+    if (!ok) {
+      // Can't do much here, since res is already constructed. Caller has to
+      // check IsValid() to know if resource can be used.
+    }
 
     {
-      std::unique_lock<std::mutex> lock(mutex_);
+      std::lock_guard<std::mutex> lock(mutex_);
       done_.erase(done_.begin());
     }
   }
@@ -78,20 +98,17 @@ void AsyncLoader::LoaderWorker() {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       job_cv_.wait(lock, [this]() { return queue_.size() > 0; });
-      resource = queue_[0];
+      resource = queue_.front();
+      queue_.pop_front();
     }
 
-    if (resource) resource->Load();
-
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      queue_.erase(queue_.begin());
-      if (resource) done_.push_back(resource);
+    if (!resource) {
+      break;
     }
 
-    // We assume a nullptr inserted in to the queue is used as a termination
-    // signal.
-    if (!resource) break;
+    resource->Load();
+    std::lock_guard<std::mutex> lock(mutex_);
+    done_.push_back(resource);
   }
 }
 

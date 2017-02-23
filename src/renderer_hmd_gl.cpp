@@ -86,21 +86,24 @@ void SetCardboardButtonEnabled(bool enabled) {
   env->DeleteLocalRef(activity);
 }
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
 
 // Prepare to render to a Head Mounted Display.
 void HeadMountedDisplayRenderStart(
     const HeadMountedDisplayInput& head_mounted_display_input,
     Renderer* renderer, const mathfu::vec4& clear_color, bool use_undistortion,
     HeadMountedDisplayViewSettings* view_settings) {
-  if (use_undistortion) BeginUndistortFramebuffer();
+  if (use_undistortion) {
+    BeginUndistortFramebuffer();
+    renderer->SetRenderState(RenderState());
+  }
   renderer->ClearFrameBuffer(clear_color);
   renderer->set_color(mathfu::kOnes4f);
-  renderer->DepthTest(true);
+  renderer->SetDepthFunction(fplbase::kDepthFunctionLess);
 
   const mathfu::vec2i viewport_size = renderer->GetViewportSize();
-  int window_width = viewport_size.x();
-  int window_height = viewport_size.y();
+  int window_width = viewport_size.x;
+  int window_height = viewport_size.y;
   int half_width = window_width / 2;
   // Calculate settings for each viewport.
   mathfu::vec4i* viewport_extents = view_settings->viewport_extents;
@@ -114,15 +117,16 @@ void HeadMountedDisplayRenderStart(
 // Reset viewport settings, finish applying undistortion effect (if enabled)
 // and disable blending.
 void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
-  const vec2i viewport_size = renderer->GetViewportSize();
   // Reset the screen, and finish
-  GL_CALL(glViewport(0, 0, viewport_size.x(), viewport_size.y()));
+  Viewport viewport(mathfu::kZeros2i, renderer->GetViewportSize());
+  renderer->SetViewport(viewport);
   if (use_undistortion) {
     FinishUndistortFramebuffer();
+    renderer->SetRenderState(RenderState());
     renderer->SetBlendMode(kBlendModeOff);
   }
 }
 
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
 }  // namespace fplbase

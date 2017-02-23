@@ -14,7 +14,9 @@ an empty project and "drawing stuff on screen", by providing the typical
 minimal functionality you don't get if you work on top of raw OpenGL.
 
 It is also not meant to be a platform abstraction library (like SDL, GLFW,
-Glut etc). We actually use [SDL][] underneath for that purpose.
+Glut etc). We (optionally) use [SDL][] underneath for that purpose, and we
+provide a version of the library (`fplbase_stdlib`) that assumes you set up
+your own Open GL context.
 
 Other FPL libraries can be used on top of [FPLBase][], for example [FlatUI][]
 can provide font rendering and game UIs.
@@ -31,9 +33,6 @@ can provide font rendering and game UIs.
    * You'd prefer to not have to deal with writing yet another shader / texture
      / mesh loader etc.
    * You want to be using some of our other libraries with it.
-
-NOTE: this is a BETA release, and we anticipate there will still be
-significant API changes, in particular when/if we support newer rendering APIs.
 
 # Getting started.
 
@@ -55,7 +54,8 @@ following libraries (included in the download / submodules):
 
    * [OpenGL][]. Our code is written such that it works well with both ES 2 on
      mobile, and desktop OpenGL.
-   * [SDL][] as a cross-platform layer.
+   * [SDL][] as a cross-platform layer (optional, use `fplbase_stdlib` if you
+     initialize your own OpenGL context).
    * [MathFu][] for vector / matrix math.
    * [FlatBuffers][] for serialization.
    * [WebP][] for image loading.
@@ -92,7 +92,7 @@ upon so download the source using:
   [OS X]: http://www.apple.com/osx/
   [iOS]: http://www.apple.com/ios/
   [Windows]: http://windows.microsoft.com/
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplbase
   [FreeType]: http://www.freetype.org/
   [MathFu]: https://google.github.io/mathfu/
   [FlatBuffers]: https://google.github.io/flatbuffers/

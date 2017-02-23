@@ -32,21 +32,13 @@
 #endif
 
 #if !defined(ANDROID_GAMEPAD) && defined(__ANDROID__) && \
-    !defined(FPL_BASE_BACKEND_STDLIB)
+    !defined(FPLBASE_BACKEND_STDLIB)
 // Enable the android gamepad code.  It receives input events from java, via
 // JNI, and creates a local representation of the state of any connected
 // gamepads.  Also enables the gamepad_controller controller class.
 #define ANDROID_GAMEPAD 1
 #include "pthread.h"
 #endif  // !defined(ANDROID_GAMEPAD) && defined(__ANDROID__)
-
-#if !defined(ANDROID_HMD) && defined(__ANDROID__) && \
-    !defined(FPL_BASE_BACKEND_STDLIB)
-// Enable the android head mounted display (cardboard) code.  It receives
-// events about Cardboard from java, via JNI, and creates a local
-// representation of the state to be used.
-#define ANDROID_HMD 1
-#endif  //  !defined(ANDROID_HMD) && defined(__ANDROID__)
 
 namespace fplbase {
 
@@ -345,13 +337,13 @@ struct AndroidInputEvent {
 };
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
 /// @class HeadMountedDisplayInput
 /// @brief Represents the state of the device in a head mounted input device,
 ///        like Cardboard.
 ///
 /// Manages the state of the device in a head mounted input device based on
-/// events passed in from java, and read via JNI. Depends on ANDROID_HMD being
+/// events passed in from java, and read via JNI. Depends on FPLBASE_ANDROID_VR being
 /// defined.
 class HeadMountedDisplayInput {
  public:
@@ -470,7 +462,7 @@ class HeadMountedDisplayInput {
   /// orientation.
   int device_orientation() { return device_orientation_; }
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   void InitHMDJNIReference();
   void ClearHMDJNIReference();
 #endif
@@ -492,7 +484,7 @@ class HeadMountedDisplayInput {
   // The device's rotation the last time reset head tracker was called.
   int device_orientation_at_reset_;
 };
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
 // Text input structures and enums.
 
@@ -658,7 +650,7 @@ class InputSystem {
   void HandleGamepadEvents();
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   /// @brief Get the current input state of the Head Mounted Display device.
   ///
   /// @return Returns the current input state.
@@ -672,7 +664,7 @@ class InputSystem {
   const HeadMountedDisplayInput &head_mounted_display_input() const {
     return head_mounted_display_input_;
   }
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
   /// @brief Get a Button object for a pointer index.
   ///
@@ -769,7 +761,8 @@ class InputSystem {
   void SetTextInputRect(const mathfu::vec4 &input_rect);
 
   /// @brief Gets the vector of all the input pointers in the system.
-  const std::vector<InputPointer> &get_pointers() { return pointers_; }
+  const std::vector<InputPointer> &get_pointers() const { return pointers_; }
+  std::vector<InputPointer> &get_pointers() { return pointers_; }
 
   /// @brief Gets if the application is currently minimized.
   bool minimized() { return minimized_; }
@@ -811,10 +804,10 @@ class InputSystem {
   static std::queue<AndroidInputEvent> unhandled_java_input_events_;
 #endif  // ANDROID_GAMEPAD
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
   // Head mounted display input class.
   HeadMountedDisplayInput head_mounted_display_input_;
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
   // Most recent frame delta, in seconds.
   double frame_time_;

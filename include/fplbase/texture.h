@@ -20,16 +20,18 @@
 #include "fplbase/config.h"  // Must come first.
 
 #include "fplbase/async_loader.h"
+#include "fplbase/handles.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
 
 namespace fplbase {
 
+class Renderer;
+struct TextureImpl;
+
 /// @file
 /// @addtogroup fplbase_texture
 /// @{
-
-class RenderContext;
 
 enum TextureFormat {
   kFormatAuto = 0,  ///< @brief The default, picks based on loaded data.
@@ -42,15 +44,25 @@ enum TextureFormat {
   kFormatPKM,
   kFormatKTX,
   kFormatNative,  ///< @brief Uses the same format as the source file.
+  kFormatLuminanceAlpha,
   kFormatCount    // Must be at end.
 };
 
+/// Flags affecting loading and sampler modes for a texture
 enum TextureFlags {
+  /// Default behavior.
   kTextureFlagsNone = 0,
-  kTextureFlagsClampToEdge = 1 << 0,  // If not set, use repeating texcoords.
-  kTextureFlagsUseMipMaps = 1 << 1,   // Uses (or generates) mipmaps.
-  kTextureFlagsIsCubeMap = 1 << 2,    // Data represents a 1x6 cubemap.
-  kTextureFlagsLoadAsync = 1 << 3,    // Load texture asynchronously.
+  /// If not set, use repeating texcoords.
+  kTextureFlagsClampToEdge = 1 << 0,
+  /// Uses (or generates) mipmaps.
+  kTextureFlagsUseMipMaps = 1 << 1,
+  /// Data represents a 1x6 cubemap.
+  kTextureFlagsIsCubeMap = 1 << 2,
+  /// Load texture asynchronously.
+  kTextureFlagsLoadAsync = 1 << 3,
+  /// Premultiply by alpha on load.
+  /// Not supported for ASTC, PKM, or KTX images.
+  kTextureFlagsPremultiplyAlpha = 1 << 4,
 };
 
 inline TextureFlags operator|(TextureFlags a, TextureFlags b) {
@@ -85,11 +97,6 @@ inline bool IsCompressed(TextureFormat format) {
   }
 }
 
-/// @brief These typedefs are compatible with OpenGL equivalents, but don't
-/// require this header to depend on OpenGL.
-typedef unsigned int TextureHandle;
-typedef unsigned int TextureTarget;
-
 /// @class Texture
 /// @brief Abstraction for a texture object loaded on the GPU.
 ///
@@ -103,7 +110,7 @@ class Texture : public AsyncAsset {
 
   /// @brief Destructor for a Texture.
   /// @note Calls `Delete()`.
-  virtual ~Texture() { Delete(); }
+  virtual ~Texture();
 
   /// @brief Loads and unpacks the Texture from `filename_` into `data_`. It
   /// also sets the original size, if it has not yet been set.
@@ -118,50 +125,47 @@ class Texture : public AsyncAsset {
                               TextureFormat texture_format);
 
   /// @brief Creates a Texture from `data_` and stores the handle in `id_`.
-  virtual void Finalize();
+  virtual bool Finalize();
+
+  /// @brief Whether this object loaded and finalized correctly. Call after
+  /// Finalize has been called (by AssetManager::TryFinalize).
+  bool IsValid() { return ValidTextureHandle(id_); }
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
-  /// @param[in] render_context Pointer to the RenderContext object
+  /// @param[in] renderer Pointer to the Renderer
   /// @note Modifies global OpenGL state.
-  void Set(size_t unit, RenderContext *render_context);
+  void Set(size_t unit, Renderer *renderer);
   /// @overload void Set(size_t unit)
   void Set(size_t unit);
 
   /// @brief Set the active Texture and binds `id_` to `GL_TEXTURE_2D`.
   /// @param[in] unit Specifies which texture unit to make active.
-  /// @param[in] render_context Pointer to the RenderContext object
+  /// @param[in] renderer Pointer to the Renderer
   /// @note Modifies global OpenGL state.
-  void Set(size_t unit, RenderContext *render_context) const;
+  void Set(size_t unit, Renderer *renderer) const;
   /// @overload void Set(size_t unit) const
   void Set(size_t unit) const;
 
   /// @brief Delete the Texture stored in `id_`, and reset `id_` to `0`.
   void Delete();
 
-  /// @brief Create a texture from a memory buffer containing `xsize` * `ysize`
-  /// RGBA pixels.
-  /// @param[in] buffer The data to create the Texture from.
-  /// @param[in] size A const `mathfu::vec2i` reference to the original
-  /// Texture size `x` and `y` components.
-  /// @param[in] texture_format The format of `buffer`.
-  /// @param[in] desired The desired TextureFormat. Defaults to `kFormatAuto`.
-  /// @param[in] flags Options for the texture.
-  /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
-  /// power of two in size.
-  static TextureHandle CreateTexture(
-      const uint8_t *buffer, const mathfu::vec2i &size,
-      TextureFormat texture_format, TextureFormat desired = kFormatAuto,
-      TextureFlags flags = kTextureFlagsUseMipMaps);
-
   /// @brief Update (part of) the current texture with new pixel data.
-  /// For now, must always update at least entire rows.
-  static void UpdateTexture(TextureFormat format, int xoffset, int yoffset,
-                            int width, int height, const void *data);
+  /// For now, must always update at least entire row.
+  /// @param[in] unit Specifies which texture unit to do the update with.
+  /// @param[in] texture_format The format of `data`.
+  /// @param[in] xoffset Lowest x-pixel coordinate to update.
+  /// @param[in] yoffset Lowest y-pixel coordinate to update.
+  /// @param[in] width Number of pixels along x-axis to update.
+  /// @param[in] hegiht Number of pixels along y-axis to update.
+  /// @param[in] data The Texture data in memory to load from.
+  void UpdateTexture(size_t unit, TextureFormat format, int xoffset,
+                     int yoffset, int width, int height, const void *data);
 
   /// @brief Unpacks a memory buffer containing a TGA format file.
   /// @note May only be uncompressed RGB or RGBA data, Y-flipped or not.
   /// @param[in] tga_buf The TGA image data.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the TGA
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -169,7 +173,8 @@ class Texture : public AsyncAsset {
   /// @return Returns RGBA array of returned dimensions or `nullptr` if the
   /// format is not understood.
   /// @note You must `free()` the returned pointer when done.
-  static uint8_t *UnpackTGA(const void *tga_buf, mathfu::vec2i *dimensions,
+  static uint8_t *UnpackTGA(const void *tga_buf, TextureFlags flags,
+                            mathfu::vec2i *dimensions,
                             TextureFormat *texture_format);
 
   /// @brief Unpacks a memory buffer containing a Webp format file.
@@ -177,6 +182,7 @@ class Texture : public AsyncAsset {
   /// @param[in] size The size of the memory block pointed to by `webp_buf`.
   /// @param[in] scale A scale value must be a power of two to have correct
   /// Texture sizes.
+  /// @param[in] flags Texture flag, allowing premultiply
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -185,13 +191,14 @@ class Texture : public AsyncAsset {
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackWebP(const void *webp_buf, size_t size,
-                             const mathfu::vec2 &scale,
+                             const mathfu::vec2 &scale, TextureFlags flags,
                              mathfu::vec2i *dimensions,
                              TextureFormat *texture_format);
 
   /// @brief Reads a memory buffer containing an ASTC format (.astc) file.
   /// @param[in] astc_buf The ASTC image data.
   /// @param[in] size The size of the memory block pointed to by `astc_buf`.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -200,12 +207,13 @@ class Texture : public AsyncAsset {
   /// if the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackASTC(const void *astc_buf, size_t size,
-                             mathfu::vec2i *dimensions,
+                             TextureFlags flags, mathfu::vec2i *dimensions,
                              TextureFormat *texture_format);
 
   /// @brief Reads a memory buffer containing an ETC2 format (.pkm) file.
   /// @param[in] file_buf the loaded file.
   /// @param[in] size The size of the memory block pointed to by `file_buf`.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -214,12 +222,13 @@ class Texture : public AsyncAsset {
   /// if the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackPKM(const void *file_buf, size_t size,
-                            mathfu::vec2i *dimensions,
+                            TextureFlags flags, mathfu::vec2i *dimensions,
                             TextureFormat *texture_format);
 
   /// @brief Reads a memory buffer containing an KTX format (.ktx) file.
   /// @param[in] file_buf the loaded file.
   /// @param[in] size The size of the memory block pointed to by `file_buf`.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -228,7 +237,7 @@ class Texture : public AsyncAsset {
   /// if the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackKTX(const void *file_buf, size_t size,
-                            mathfu::vec2i *dimensions,
+                            TextureFlags flags, mathfu::vec2i *dimensions,
                             TextureFormat *texture_format);
 
   /// @brief Unpacks a memory buffer containing a Png format file.
@@ -236,6 +245,7 @@ class Texture : public AsyncAsset {
   /// @param[in] size The size of the memory block pointed to by `data`.
   /// @param[in] scale A scale value must be a power of two to have correct
   /// Texture sizes.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format Pixel format of unpacked image.
@@ -243,10 +253,10 @@ class Texture : public AsyncAsset {
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackPng(const void *png_buf, size_t size,
-                            const mathfu::vec2 &scale,
+                            const mathfu::vec2 &scale, TextureFlags flags,
                             mathfu::vec2i *dimensions,
                             TextureFormat *texture_format) {
-    return UnpackImage(png_buf, size, scale, dimensions, texture_format);
+    return UnpackImage(png_buf, size, scale, flags, dimensions, texture_format);
   }
 
   /// @brief Unpacks a memory buffer containing a Jpeg format file.
@@ -254,6 +264,7 @@ class Texture : public AsyncAsset {
   /// @param[in] size The size of the memory block pointed to by `data`.
   /// @param[in] scale A scale value must be a power of two to have correct
   /// Texture sizes.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] texture_format Pixel format of unpacked image.
@@ -261,10 +272,10 @@ class Texture : public AsyncAsset {
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackJpg(const void *jpg_buf, size_t size,
-                            const mathfu::vec2 &scale,
+                            const mathfu::vec2 &scale, TextureFlags flags,
                             mathfu::vec2i *dimensions,
                             TextureFormat *texture_format) {
-    return UnpackImage(jpg_buf, size, scale, dimensions, texture_format);
+    return UnpackImage(jpg_buf, size, scale, flags, dimensions, texture_format);
   }
 
   /// @brief Loads the file in filename, and then unpacks the file format
@@ -277,6 +288,7 @@ class Texture : public AsyncAsset {
   /// containing the Texture.
   /// @param[in] scale A scale value must be a power of two to have correct
   /// Texture sizes.
+  /// @param[in] flags Texture flag, allowing premultiply (only webp now)
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the Texture
   /// width and height.
   /// @param[out] texture_format The format of the returned buffer, always
@@ -286,6 +298,7 @@ class Texture : public AsyncAsset {
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *LoadAndUnpackTexture(const char *filename,
                                        const mathfu::vec2 &scale,
+                                       TextureFlags flags,
                                        mathfu::vec2i *dimensions,
                                        TextureFormat *texture_format);
 
@@ -301,7 +314,8 @@ class Texture : public AsyncAsset {
                                    const mathfu::vec2i &size);
 
   /// @brief Set texture target and id directly for textures that have been
-  /// created outside of this class.
+  /// created outside of this class.  The creator is responsible for deleting
+  /// the texture id.
   /// @param[in] target Texture target to use when binding texture to context.
   /// @param[in] id Texture handle ID.
   void SetTextureId(TextureTarget target, TextureHandle id);
@@ -329,8 +343,8 @@ class Texture : public AsyncAsset {
   TextureFlags flags() const { return flags_; }
 
   /// @brief Get the original size of the Texture.
-  /// @return Returns a const `mathfu::vec2` reference to the scale of the
-  /// Texture.
+  /// @return Returns a const `mathfu::vec2i` reference to the original size of
+  /// the Texture.
   const mathfu::vec2i &original_size() const { return original_size_; }
 
   /// @brief Set the original size of the Texture.
@@ -346,19 +360,43 @@ class Texture : public AsyncAsset {
   /// @param[in] size A `mathfu::vec2i` containing the original Texture
   /// `x` and `y` sizes.
   void SetOriginalSizeIfNotYetSet(const mathfu::vec2i &size) {
-    if (original_size_.x() == 0 && original_size_.y() == 0) {
+    if (original_size_.x == 0 && original_size_.y == 0) {
       original_size_ = size;
     }
   }
 
+  // For internal use only.
+  TextureImpl *impl() { return impl_; }
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
+  // Backend-specific create and destroy calls. These just call new and delete
+  // on the platform-specific MeshImpl structs.
+  static TextureImpl *CreateTextureImpl();
+  static void DestroyTextureImpl(TextureImpl *impl);
+
+  /// @brief Create a texture from a memory buffer containing `xsize` * `ysize`
+  /// RGBA pixels.
+  /// @param[in] buffer The data to create the Texture from.
+  /// @param[in] size A const `mathfu::vec2i` reference to the original
+  /// Texture size `x` and `y` components.
+  /// @param[in] texture_format The format of `buffer`.
+  /// @param[in] desired The desired TextureFormat.
+  /// @param[in] flags Options for the texture.
+  /// @return Returns the Texture handle. Otherwise, it returns `0`, if not a
+  /// power of two in size.
+  static TextureHandle CreateTexture(
+      const uint8_t *buffer, const mathfu::vec2i &size,
+      TextureFormat texture_format, TextureFormat desired,
+      TextureFlags flags, TextureImpl *impl);
+
   /// @brief Unpacks a memory buffer containing a PNG/JPEG/TGA format file.
   /// @param[in] img_buf The PNG/JPEG/TGA image data including an image header.
   /// @param[in] size The size of the memory block pointed to by `data`.
   /// @param[in] scale A scale value must be a power of two to have correct
   /// Texture sizes.
+  /// @param[in] flags Texture flag, allowing premultiply
   /// @param[out] dimensions A `mathfu::vec2i` pointer the captures the image
   /// width and height.
   /// @param[out] has_alpha A `bool` pointer that captures whether the Png
@@ -367,10 +405,14 @@ class Texture : public AsyncAsset {
   /// the format is not understood.
   /// @note You must `free()` on the returned pointer when done.
   static uint8_t *UnpackImage(const void *img_buf, size_t size,
-                              const mathfu::vec2 &scale,
+                              const mathfu::vec2 &scale, TextureFlags flags,
                               mathfu::vec2i *dimensions,
                               TextureFormat *texture_format);
 
+  /// @brief Backend specific conversion of flags to TextureTarget.
+  static TextureTarget TextureTargetFromFlags(TextureFlags flags);
+
+  TextureImpl *impl_;
   TextureHandle id_;
   mathfu::vec2i size_;
   mathfu::vec2i original_size_;
@@ -379,7 +421,14 @@ class Texture : public AsyncAsset {
   TextureTarget target_;
   TextureFormat desired_;
   TextureFlags flags_;
+  bool is_external_;
 };
+
+/// @brief used by some functions to allow the texture loading mechanism to
+/// be specified by the caller.
+typedef std::function<Texture *(const char *filename, TextureFormat format,
+                                TextureFlags flags)>
+    TextureLoaderFn;
 
 /// @}
 }  // namespace fplbase

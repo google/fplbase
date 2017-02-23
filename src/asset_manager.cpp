@@ -15,14 +15,10 @@
 #include "precompiled.h"
 #include "common_generated.h"
 #include "fplbase/asset_manager.h"
-#include "fplbase/flatbuffer_utils.h"
 #include "fplbase/texture.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/utilities.h"
-#include "materials_generated.h"
 #include "mesh_generated.h"
-#include "shader_generated.h"
-#include "texture_atlas_generated.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -40,38 +36,14 @@ void FileAsset::Load() {
   }
 }
 
-void FileAsset::Finalize() {
+bool FileAsset::Finalize() {
   // Since the asset was already "created", this is all we have to do here.
   data_ = nullptr;
   CallFinalizeCallback();
+  return true;
 }
 
-static_assert(
-    kBlendModeOff == static_cast<BlendMode>(matdef::BlendMode_OFF) &&
-        kBlendModeTest == static_cast<BlendMode>(matdef::BlendMode_TEST) &&
-        kBlendModeAlpha == static_cast<BlendMode>(matdef::BlendMode_ALPHA) &&
-        kBlendModeAdd == static_cast<BlendMode>(matdef::BlendMode_ADD) &&
-        kBlendModeAddAlpha ==
-            static_cast<BlendMode>(matdef::BlendMode_ADDALPHA) &&
-        kBlendModeMultiply ==
-            static_cast<BlendMode>(matdef::BlendMode_MULTIPLY),
-    "BlendMode enums in material.h and material.fbs must match.");
-static_assert(kBlendModeCount == kBlendModeMultiply + 1,
-              "Please update static_assert above with new enum values.");
-static_assert(
-    kFormatAuto == static_cast<TextureFormat>(matdef::TextureFormat_AUTO) &&
-    kFormat8888 == static_cast<TextureFormat>(matdef::TextureFormat_F_8888) &&
-    kFormat888 == static_cast<TextureFormat>(matdef::TextureFormat_F_888) &&
-    kFormat5551 == static_cast<TextureFormat>(matdef::TextureFormat_F_5551) &&
-    kFormat565 == static_cast<TextureFormat>(matdef::TextureFormat_F_565) &&
-    kFormatLuminance == static_cast<TextureFormat>(matdef::TextureFormat_F_8) &&
-    kFormatASTC == static_cast<TextureFormat>(matdef::TextureFormat_ASTC) &&
-    kFormatPKM == static_cast<TextureFormat>(matdef::TextureFormat_PKM) &&
-    kFormatKTX == static_cast<TextureFormat>(matdef::TextureFormat_KTX) &&
-    kFormatNative == static_cast<TextureFormat>(matdef::TextureFormat_NATIVE),
-      "TextureFormat enums in material.h and material.fbs must match.");
-static_assert(kFormatCount == kFormatNative + 1,
-              "Please update static_assert above with new enum values.");
+bool FileAsset::IsValid() { return true; }
 
 template <typename T>
 T FindInMap(const std::map<std::string, T> &map, const char *name) {
@@ -106,97 +78,61 @@ Shader *AssetManager::FindShader(const char *basename) {
   return FindInMap(shader_map_, basename);
 }
 
-Shader *AssetManager::LoadShaderHelper(const char *basename,
-                                       const char * const *defines,
-                                       bool should_reload) {
-  auto shader = FindShader(basename);
-  if (!should_reload && shader)
-    return shader;
-  std::string vs_file, ps_file;
-  std::string filename = std::string(basename) + ".glslv";
-  std::string error_message;
-  if (LoadFileWithDirectives(filename.c_str(), &vs_file, defines,
-                             &error_message)) {
-    filename = std::string(basename) + ".glslf";
-    if (LoadFileWithDirectives(filename.c_str(), &ps_file, defines,
-                               &error_message)) {
-      if (should_reload) {
-        renderer_.RecompileShader(vs_file.c_str(), ps_file.c_str(), shader);
-      } else {
-        shader =
-            renderer_.CompileAndLinkShader(vs_file.c_str(), ps_file.c_str());
-      }
-      if (shader) {
-        shader_map_[basename] = shader;
-      } else {
-        LogError(kError, "Shader Error: ");
-        LogError(kError, "VS:  -----------------------------------");
-        LogError(kError, "%s", vs_file.c_str());
-        LogError(kError, "PS:  -----------------------------------");
-        LogError(kError, "%s", ps_file.c_str());
-        LogError(kError, "----------------------------------------");
-        LogError(kError, "%s", renderer_.last_error().c_str());
-      }
-      return shader;
-    }
+Shader *AssetManager::LoadShaderHelper(
+    const char *basename, const std::vector<std::string> &local_defines,
+    const char *alias, bool async) {
+  auto shader = FindShader(alias != nullptr ? alias : basename);
+  const bool found = shader != nullptr;
+  if (!found) {
+    shader = new Shader(basename, local_defines, &renderer_);
   }
-  LogError(kError, "%s", error_message.c_str());
-  renderer_.set_last_error(error_message.c_str());
-  return nullptr;
+  shader->UpdateGlobalDefines(defines_to_add_, defines_to_omit_);
+  return found ? shader : LoadOrQueue(shader, shader_map_, async, alias);
 }
 
 Shader *AssetManager::LoadShader(const char *basename,
-                                 const char * const *defines) {
-  return LoadShaderHelper(basename, defines, false);
+                                 const std::vector<std::string> &local_defines,
+                                 bool async, const char *alias) {
+  return LoadShaderHelper(basename, local_defines, alias, async);
 }
 
-Shader *AssetManager::LoadShader(const char *basename) {
-  static const char * const *defines = {nullptr};
-  return LoadShader(basename, defines);
+Shader *AssetManager::LoadShader(const char *basename, bool async,
+                                 const char *alias) {
+  static const std::vector<std::string> empty_defines;
+  return LoadShader(basename, empty_defines, async, alias);
 }
 
-Shader *AssetManager::ReloadShader(const char *basename,
-                                   const char * const *defines) {
-  return LoadShaderHelper(basename, defines, true);
+void AssetManager::ResetGlobalShaderDefines(
+    const std::vector<std::string> &defines_to_add,
+    const std::vector<std::string> &defines_to_omit) {
+  defines_to_add_ = defines_to_add;
+  defines_to_omit_ = defines_to_omit;
+  for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
+    Shader *shader = iter->second;
+    shader->UpdateGlobalDefines(defines_to_add_, defines_to_omit_);
+  }
+}
+
+void AssetManager::ForEachShaderWithDefine(const char *define,
+    const std::function<void(Shader *)> &func) {
+  // Use a simple for loop to visit all shaders with 'define' specified, since
+  // we only have limited shaders currently. TODO(yifengh): optimize this if
+  // there is a growing number of shaders.
+  for (auto iter = shader_map_.begin(); iter != shader_map_.end(); ++iter) {
+    Shader *shader = iter->second;
+    if (ValidShaderHandle(shader->program()) && shader->HasDefine(define)) {
+      func(shader);
+    }
+  }
 }
 
 Shader *AssetManager::LoadShaderDef(const char *filename) {
   auto shader = FindShader(filename);
   if (shader) return shader;
-
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(shaderdef::VerifyShaderBuffer(verifier));
-    auto shaderdef = shaderdef::GetShader(flatbuf.c_str());
-
-    shader =
-        renderer_.CompileAndLinkShader(shaderdef->vertex_shader()->c_str(),
-                                       shaderdef->fragment_shader()->c_str());
-    if (shader) {
-      shader_map_[filename] = shader;
-    } else {
-      LogError(kError, "Shader Error: ");
-      if (shaderdef->original_sources()) {
-        for (int i = 0;
-             i < static_cast<int>(shaderdef->original_sources()->size()); ++i) {
-          const auto &source = shaderdef->original_sources()->Get(i);
-          LogError(kError, "%s", source->c_str());
-        }
-      }
-      LogError(kError, "VS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->vertex_shader()->c_str());
-      LogError(kError, "PS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
-      LogError(kError, "----------------------------------------");
-      LogError(kError, "%s", renderer_.last_error().c_str());
-    }
-    return shader;
-  }
-  LogError(kError, "Can\'t load shader file: %s", filename);
-  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
-  return nullptr;
+  shader = Shader::LoadFromShaderDef(filename);
+  if (!shader) return nullptr;
+  shader_map_[filename] = shader;
+  return shader;
 }
 
 void AssetManager::UnloadShader(const char *filename) {
@@ -215,10 +151,13 @@ Texture *AssetManager::LoadTexture(const char *filename, TextureFormat format,
   auto tex = FindTexture(filename);
   if (tex) return tex;
   tex = new Texture(filename, format, flags);
-  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0);
+  return LoadOrQueue(tex, texture_map_, (flags & kTextureFlagsLoadAsync) != 0,
+                     nullptr /* alias */);
 }
 
 void AssetManager::StartLoadingTextures() { loader_.StartLoading(); }
+
+void AssetManager::StopLoadingTextures() { loader_.PauseLoading(); }
 
 bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
 
@@ -233,44 +172,21 @@ Material *AssetManager::FindMaterial(const char *filename) {
   return FindInMap(material_map_, filename);
 }
 
-Material *AssetManager::LoadMaterial(const char *filename) {
+Material *AssetManager::LoadMaterial(const char *filename,
+                                     bool async_resources) {
   auto mat = FindMaterial(filename);
   if (mat) return mat;
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(matdef::VerifyMaterialBuffer(verifier));
-    auto matdef = matdef::GetMaterial(flatbuf.c_str());
-    mat = new Material();
-    mat->set_blend_mode(static_cast<BlendMode>(matdef->blendmode()));
-    for (size_t i = 0; i < matdef->texture_filenames()->size(); i++) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      auto format =
-          matdef->desired_format() && i < matdef->desired_format()->size()
-              ? static_cast<TextureFormat>(matdef->desired_format()->Get(index))
-              : kFormatAuto;
-      auto tex = LoadTexture(
-          matdef->texture_filenames()->Get(index)->c_str(), format,
-          (matdef->mipmaps() ? kTextureFlagsUseMipMaps : kTextureFlagsNone) |
-              (matdef->is_cubemap() && matdef->is_cubemap()->Get(index)
-                   ? kTextureFlagsIsCubeMap
-                   : kTextureFlagsNone));
-      mat->textures().push_back(tex);
-
-      auto original_size =
-          matdef->original_size() && index < matdef->original_size()->size()
-              ? LoadVec2i(matdef->original_size()->Get(index))
-              : tex->size();
-      tex->set_original_size(original_size);
-
+  mat = Material::LoadFromMaterialDef(filename,
+    [&](const char *filename, TextureFormat format,
+        TextureFlags flags) -> Texture* {
+      auto tex = LoadTexture(filename, format, flags |
+        (async_resources ? kTextureFlagsLoadAsync : kTextureFlagsNone));
       tex->set_scale(texture_scale_);
-    }
-    material_map_[filename] = mat;
-    return mat;
-  }
-  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
-  return nullptr;
+      return tex;
+    });
+  if (!mat) return nullptr;
+  material_map_[filename] = mat;
+  return mat;
 }
 
 void AssetManager::UnloadMaterial(const char *filename) {
@@ -287,125 +203,13 @@ Mesh *AssetManager::FindMesh(const char *filename) {
   return FindInMap(mesh_map_, filename);
 }
 
-template <typename T>
-void CopyAttribute(const T *attr, uint8_t *&buf) {
-  auto dest = (T *)buf;
-  *dest = *attr;
-  buf += sizeof(T);
-}
-
-Mesh *AssetManager::LoadMesh(const char *filename) {
+Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
   auto mesh = FindMesh(filename);
   if (mesh) return mesh;
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(meshdef::VerifyMeshBuffer(verifier));
-    auto meshdef = meshdef::GetMesh(flatbuf.c_str());
-
-    // Ensure the data version matches the runtime version, or that it was not
-    // tied to a specific version to begin with (e.g. it's legacy or it's
-    // created from a json file instead of mesh_pipeline).
-    if (meshdef->version() != meshdef::MeshVersion_Unspecified &&
-        meshdef->version() != meshdef::MeshVersion_MostRecent) {
-      LogError(kError, "Mesh file is stale: %s", filename);
-      renderer_.set_last_error(std::string("Mesh file is stale: ") + filename);
-      return nullptr;
-    }
-
-    auto has_skinning =
-        meshdef->skin_indices() && meshdef->skin_indices()->size() &&
-        meshdef->skin_weights() && meshdef->skin_weights()->size() &&
-        meshdef->bone_transforms() && meshdef->bone_transforms()->size() &&
-        meshdef->bone_parents() && meshdef->bone_parents()->size() &&
-        meshdef->shader_to_mesh_bones() &&
-        meshdef->shader_to_mesh_bones()->size();
-    auto has_normals = meshdef->normals() && meshdef->normals()->size();
-    auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
-    auto has_colors = meshdef->colors() && meshdef->colors()->size();
-    auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
-    auto has_texcoords_alt = meshdef->texcoords_alt() &&
-                             meshdef->texcoords_alt()->size();
-    // Collect what attributes are available.
-    std::vector<Attribute> attrs;
-    attrs.push_back(kPosition3f);
-    if (has_normals) attrs.push_back(kNormal3f);
-    if (has_tangents) attrs.push_back(kTangent4f);
-    if (has_colors) attrs.push_back(kColor4ub);
-    if (has_texcoords) attrs.push_back(kTexCoord2f);
-    if (has_texcoords_alt) attrs.push_back(kTexCoordAlt2f);
-    if (has_skinning) {
-      attrs.push_back(kBoneIndices4ub);
-      attrs.push_back(kBoneWeights4ub);
-    }
-    attrs.push_back(kEND);
-    auto vert_size = Mesh::VertexSize(attrs.data());
-    // Create an interleaved buffer. Would be cool to do this without
-    // the additional copy, but that's not easy in OpenGL.
-    // Could use multiple buffers instead, but likely less efficient.
-    auto buf = new uint8_t[vert_size * meshdef->positions()->Length()];
-    auto p = buf;
-    for (size_t i = 0; i < meshdef->positions()->Length(); i++) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      assert(meshdef->positions());
-      CopyAttribute(meshdef->positions()->Get(index), p);
-      if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
-      if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
-      if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
-      if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
-      if (has_texcoords_alt)
-        CopyAttribute(meshdef->texcoords_alt()->Get(index), p);
-      if (has_skinning) {
-        CopyAttribute(meshdef->skin_indices()->Get(index), p);
-        CopyAttribute(meshdef->skin_weights()->Get(index), p);
-      }
-    }
-    vec3 max = meshdef->max_position() ? LoadVec3(meshdef->max_position())
-                                       : mathfu::kZeros3f;
-    vec3 min = meshdef->min_position() ? LoadVec3(meshdef->min_position())
-                                       : mathfu::kZeros3f;
-    mesh = new Mesh(buf, static_cast<int>(meshdef->positions()->Length()),
-                    static_cast<int>(vert_size), attrs.data(),
-                    meshdef->max_position() ? &max : nullptr,
-                    meshdef->min_position() ? &min : nullptr);
-    delete[] buf;
-    // Load the bone information.
-    if (has_skinning) {
-      const size_t num_bones = meshdef->bone_parents()->Length();
-      assert(meshdef->bone_transforms()->Length() == num_bones);
-      std::unique_ptr<mathfu::AffineTransform[]> bone_transforms(
-          new mathfu::AffineTransform[num_bones]);
-      std::vector<const char *> bone_names(num_bones);
-      for (size_t i = 0; i < num_bones; ++i) {
-        flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-        bone_transforms[i] = LoadAffine(meshdef->bone_transforms()->Get(index));
-        bone_names[i] = meshdef->bone_names()->Get(index)->c_str();
-      }
-      const uint8_t *bone_parents = meshdef->bone_parents()->data();
-      mesh->SetBones(&bone_transforms[0], bone_parents, &bone_names[0],
-                     num_bones, meshdef->shader_to_mesh_bones()->Data(),
-                     meshdef->shader_to_mesh_bones()->Length());
-    }
-
-    // Load indices an materials.
-    for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      auto surface = meshdef->surfaces()->Get(index);
-      auto mat = LoadMaterial(surface->material()->c_str());
-      if (!mat) {
-        delete mesh;
-        return nullptr;
-      }  // Error msg already set.
-      mesh->AddIndices(
-          reinterpret_cast<const uint16_t *>(surface->indices()->Data()),
-          surface->indices()->Length(), mat);
-    }
-    mesh_map_[filename] = mesh;
-    return mesh;
-  }
-  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
-  return nullptr;
+  mesh = new Mesh(filename, [&](const char *filename) {
+    return LoadMaterial(filename, async);
+  });
+  return LoadOrQueue(mesh, mesh_map_, async, nullptr /* alias */);
 }
 
 void AssetManager::UnloadMesh(const char *filename) {
@@ -424,30 +228,13 @@ TextureAtlas *AssetManager::LoadTextureAtlas(const char *filename,
                                              TextureFlags flags) {
   auto atlas = FindTextureAtlas(filename);
   if (atlas) return atlas;
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(atlasdef::VerifyTextureAtlasBuffer(verifier));
-    auto atlasdef = atlasdef::GetTextureAtlas(flatbuf.c_str());
-    Texture *atlas_texture =
-        LoadTexture(atlasdef->texture_filename()->c_str(), format, flags);
-    atlas = new TextureAtlas();
-    atlas->set_atlas_texture(atlas_texture);
-    for (size_t i = 0; i < atlasdef->entries()->Length(); ++i) {
-      flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
-      atlas->index_map().insert(std::make_pair(
-          atlasdef->entries()->Get(index)->name()->str(), index));
-      vec2 size = LoadVec2(atlasdef->entries()->Get(index)->size());
-      vec2 location = LoadVec2(atlasdef->entries()->Get(index)->location());
-      atlas->subtexture_bounds().push_back(
-          vec4(location.x(), location.y(), size.x(), size.y()));
-    }
-    texture_atlas_map_[filename] = atlas;
-    return atlas;
-  }
-  renderer_.set_last_error(std::string("Couldn\'t load: ") + filename);
-  return nullptr;
+  atlas = TextureAtlas::LoadTextureAtlas(filename, format, flags,
+    [&](const char *filename, TextureFormat format, TextureFlags flags) {
+      return LoadTexture(filename, format, flags);
+    });
+  if (!atlas) return nullptr;
+  texture_atlas_map_[filename] = atlas;
+  return atlas;
 }
 
 void AssetManager::UnloadTextureAtlas(const char *filename) {

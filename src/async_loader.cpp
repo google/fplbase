@@ -16,7 +16,7 @@
 #include "fplbase/async_loader.h"
 #include "fplbase/utilities.h"
 
-#ifndef FPL_BASE_BACKEND_SDL
+#ifndef FPLBASE_BACKEND_SDL
 #error This version of AsyncLoader depends on SDL.
 #endif
 
@@ -30,7 +30,8 @@ class BookendAsyncResource : public AsyncAsset {
   BookendAsyncResource() : AsyncAsset(kBookendFileName) {}
   virtual ~BookendAsyncResource() {}
   virtual void Load() {}
-  virtual void Finalize() {}
+  virtual bool Finalize() { return true; }
+  virtual bool IsValid() { return true; }
   static bool IsBookend(const AsyncAsset &res) {
     return res.filename() == kBookendFileName;
   }
@@ -74,7 +75,7 @@ void AsyncLoader::QueueJob(AsyncAsset *res) {
 void AsyncLoader::LoaderWorker() {
   for (;;) {
     auto res = LockReturn<AsyncAsset *>(
-        [this]() { return queue_.empty() ? nullptr : queue_[0]; });
+        [this]() { return queue_.empty() ? nullptr : queue_.front(); });
     if (!res) {
       SDL_SemWait(static_cast<SDL_semaphore *>(job_semaphore_));
       continue;
@@ -85,7 +86,7 @@ void AsyncLoader::LoaderWorker() {
     LogInfo(kApplication, "async load: %s", res->filename_.c_str());
     res->Load();
     Lock([this, res]() {
-      queue_.erase(queue_.begin());
+      queue_.pop_front();
       done_.push_back(res);
     });
   }
@@ -102,6 +103,8 @@ void AsyncLoader::StartLoading() {
   assert(worker_thread_);
 }
 
+void AsyncLoader::PauseLoading() { assert(false); }
+
 void AsyncLoader::StopLoadingWhenComplete() {
   // When the loader thread hits the bookend, it will exit.
   static BookendAsyncResource bookend;
@@ -111,10 +114,14 @@ void AsyncLoader::StopLoadingWhenComplete() {
 bool AsyncLoader::TryFinalize() {
   for (;;) {
     auto res = LockReturn<AsyncAsset *>(
-        [this]() { return done_.empty() ? nullptr : done_[0]; });
+        [this]() { return done_.empty() ? nullptr : done_.front(); });
     if (!res) break;
-    res->Finalize();
-    Lock([this]() { done_.erase(done_.begin()); });
+    bool ok = res->Finalize();
+    if (!ok) {
+      // Can't do much here, since res is already constructed. Caller has to
+      // check IsValid() to know if resource can be used.
+    }
+    Lock([this]() { done_.pop_front(); });
   }
   return LockReturn<bool>([this]() { return queue_.empty() && done_.empty(); });
 }

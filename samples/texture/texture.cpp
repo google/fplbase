@@ -64,8 +64,8 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     auto s = sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 2);
     auto zoom = mathfu::vec3(3.0f, 3.0f, 1.0f) + mathfu::vec3(c, c, 1.0f);
-    auto aspect = static_cast<float>(renderer.window_size().y()) /
-                  renderer.window_size().x();
+    auto aspect =
+        static_cast<float>(renderer.window_size().y) / renderer.window_size().x;
     renderer.set_model_view_projection(
         mathfu::mat4::Ortho(-1.0, 1.0, -aspect, aspect, -1.0, 1.0) *
         mathfu::mat4::FromRotationMatrix(rotz) *

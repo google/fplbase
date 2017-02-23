@@ -371,7 +371,11 @@ public class FPLActivity extends SDLActivity implements
       TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
   }
 
-  public int[] GetLandscapedSize() {
+  public boolean IsPortrait() {
+    return getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+  }
+
+  public int[] GetDisplaySize() {
     Point size = new Point();
     // Immersive mode uses the full screen, so get the real size if using it
     if (UseImmersiveMode()) {
@@ -379,7 +383,10 @@ public class FPLActivity extends SDLActivity implements
     } else {
       getWindowManager().getDefaultDisplay().getSize(size);
     }
-    return new int[] { Math.max(size.x, size.y), Math.min(size.x, size.y) };
+
+    int min = Math.min(size.x, size.y);
+    int max = Math.max(size.x, size.y);
+    return new int[] { IsPortrait() ? min : max, IsPortrait() ? max : min };
   }
 
   public void SetHeadMountedDisplayResolution(int width, int height) {

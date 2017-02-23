@@ -18,7 +18,7 @@
 #include "fplbase/utilities.h"
 #include "precompiled.h"
 
-#if defined(FPL_BASE_BACKEND_SDL)
+#if defined(FPLBASE_BACKEND_SDL)
 // Include SDL internal headers and external refs
 #define TARGET_OS_IPHONE \
   1  // This one is not to turn on 'SDL_DYNAMIC_API' defitnition
@@ -29,7 +29,7 @@ extern "C" {
 }
 // We don't need this anymore
 #undef TARGET_OS_IPHONE
-#endif  // defined(FPL_BASE_BACKEND_SDL)
+#endif  // defined(FPLBASE_BACKEND_SDL)
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -40,7 +40,7 @@ using mathfu::vec4i;
 
 namespace fplbase {
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 // Quick hack for HW scaler setting
 static vec2i g_android_scaler_resolution;
 
@@ -49,18 +49,22 @@ void AndroidSetScalerResolution(const vec2i& resolution) {
   JNIEnv* env = AndroidGetJNIEnv();
   jobject activity = AndroidGetActivity();
   jclass fpl_class = env->GetObjectClass(activity);
-  jmethodID get_size = env->GetMethodID(fpl_class, "GetLandscapedSize", "()[I");
+  jmethodID get_size = env->GetMethodID(fpl_class, "GetDisplaySize", "()[I");
   jintArray size = (jintArray)env->CallObjectMethod(activity, get_size);
   jint* size_ints = env->GetIntArrayElements(size, NULL);
 
-  int width = std::min(size_ints[0], resolution.x());
-  int height = std::min(size_ints[1], resolution.y());
+  int width = std::min(size_ints[0], resolution.x);
+  int height = std::min(size_ints[1], resolution.y);
   g_android_scaler_resolution = vec2i(width, height);
 
+#if FPLBASE_ANDROID_VR
   // Update the underlying activity with the scaled resolution
+  // TODO(wvo): Create FPLVRActivity that derives from FPLActivity and
+  // implements this function and those in renderer_hmn.h (b/29940321).
   jmethodID set_resolution =
       env->GetMethodID(fpl_class, "SetHeadMountedDisplayResolution", "(II)V");
   env->CallVoidMethod(activity, set_resolution, width, height);
+#endif  // FPLBASE_ANDROID_VR
 
   env->ReleaseIntArrayElements(size, size_ints, JNI_ABORT);
   env->DeleteLocalRef(size);
@@ -77,8 +81,8 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
                            EGLNativeWindowType win, const EGLint* attrib_list) {
   // Apply scaler setting
   ANativeWindow* window = Android_JNI_GetNativeWindow();
-  ANativeWindow_setBuffersGeometry(window, g_android_scaler_resolution.x(),
-                                   g_android_scaler_resolution.y(), 0);
+  ANativeWindow_setBuffersGeometry(window, g_android_scaler_resolution.x,
+                                   g_android_scaler_resolution.y, 0);
 
   auto surface = eglCreateWindowSurface(dpy, config, win, attrib_list);
   // Check surface size if the HW scaler setting was successful.
@@ -86,19 +90,19 @@ HookEglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
   int32_t height;
   eglQuerySurface(dpy, surface, EGL_WIDTH, &width);
   eglQuerySurface(dpy, surface, EGL_HEIGHT, &height);
-  if (width != g_android_scaler_resolution.x() ||
-      height != g_android_scaler_resolution.y()) {
+  if (width != g_android_scaler_resolution.x ||
+      height != g_android_scaler_resolution.y) {
     LogError("Failed to initialize HW scaler.");
     // Reset scaler resolution.
-    g_android_scaler_resolution.x() = width;
-    g_android_scaler_resolution.y() = height;
+    g_android_scaler_resolution.x = width;
+    g_android_scaler_resolution.y = height;
   }
   return surface;
 }
 
 void AndroidPreCreateWindow() {
   // Apply scaler setting prior creating surface
-  if (g_android_scaler_resolution.x() && g_android_scaler_resolution.y()) {
+  if (g_android_scaler_resolution.x && g_android_scaler_resolution.y) {
     // Initialize OpenGL function pointers inside SDL
     if (SDL_GL_LoadLibrary(NULL) < 0) {
       LogError(kError, "couldn't initialize OpenGL library\n");
@@ -109,7 +113,7 @@ void AndroidPreCreateWindow() {
     device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
   }
 }
-#endif  // FPL_BASE_BACKEND_SDL
+#endif  // FPLBASE_BACKEND_SDL
 
 int AndroidGetContextClientVersion() {
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);

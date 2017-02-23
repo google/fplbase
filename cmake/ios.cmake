@@ -24,6 +24,3 @@ set(CMAKE_C_COMPILER_WORKS TRUE)
 
 # force MAC_BUNDLE for executable
 set(CMAKE_MACOSX_BUNDLE YES)
-
-# add IOS hints
-add_definitions(-D__IOS__)

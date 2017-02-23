@@ -54,7 +54,7 @@ struct HeadMountedDisplayViewSettings {
   mathfu::mat4 viewport_transforms[2];
 };
 
-#if ANDROID_HMD
+#if FPLBASE_ANDROID_VR
 
 /// @brief Prepare to render to a Head Mounted Display (HMD).
 /// @param head_mounted_display_input The input object managing the HMD state.
@@ -124,7 +124,7 @@ void HeadMountedDisplayRender(const InputSystem* input_system,
                            true);
 }
 
-#endif  // ANDROID_HMD
+#endif  // FPLBASE_ANDROID_VR
 
 /// @}
 }  // namespace fplbase

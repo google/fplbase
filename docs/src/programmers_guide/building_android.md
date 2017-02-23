@@ -5,11 +5,11 @@ Building for Android    {#fplbase_guide_android}
 
 Set up your build environment for Android builds by following these steps.
 
-   1. Install [Java 1.7][], required to use Android tools.
-        * **Windows / OSX**: Download the [Java 1.7][] installer and run it to
+   1. Install [Java 1.8][], required to use Android tools.
+        * **Windows / OSX**: Download the [Java 1.8][] installer and run it to
           install.
         * **Linux**: on systems that support apt-get...<br/>
-          `sudo apt-get install openjdk-7-jdk`
+          `sudo apt-get install default-jdk`
 
    2. Install the [Android SDK][], required to build Android applications.<br/>
       [Android Studio][] is the easiest way to install and configure the latest
@@ -100,7 +100,7 @@ installed.*
   [apk]: http://en.wikipedia.org/wiki/Android_application_package
   [fplutil]: http://google.github.io/fplutil
   [fplutil prerequisites]: http://google.github.io/fplutil/fplutil_prerequisites.html
-  [Java 1.7]: http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html
+  [Java 1.8]: http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
   [managing avds]: http://developer.android.com/tools/devices/managing-avds.html
   [NDK Eclipse plugin]: http://developer.android.com/sdk/index.html
   [PATH variable]: http://en.wikipedia.org/wiki/PATH_(variable)

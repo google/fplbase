@@ -40,13 +40,13 @@
 #include "flatbuffers/util.h"
 
 #include "mathfu/matrix.h"
-#include "mathfu/vector_4.h"
+#include "mathfu/vector.h"
 #include "mathfu/glsl_mappings.h"
 #include "mathfu/quaternion.h"
 #include "mathfu/constants.h"
 #include "mathfu/utilities.h"
 
-#ifdef FPL_BASE_BACKEND_SDL
+#ifdef FPLBASE_BACKEND_SDL
 #include "SDL.h"
 #include "SDL_log.h"
 #endif

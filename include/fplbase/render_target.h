@@ -27,9 +27,12 @@
 #include "fplbase/renderer_android.h"
 #endif
 
-#include "fplbase/glplatform.h"  // TODO: remove this dependency.
-
 namespace fplbase {
+
+enum RenderTargetFormat {
+  kRenderTargetFormatUByte,
+  kRenderTargetFormatCount,
+};
 
 /// @file
 /// @addtogroup fplbase_render_target
@@ -48,13 +51,14 @@ class RenderTarget {
   /// Defaults the format to GL_UNSIGNED_BYTE, using a depth buffer.
   ///
   /// @param dimensions The dimensions of the render target.
-  void Initialize(mathfu::vec2i dimensions);
+  void Initialize(const mathfu::vec2i& dimensions);
   /// @brief Initialize a render target of the provided dimensions.
   ///
   /// @param dimensions The dimensions of the render target.
   /// @param format The OpenGL format of the generated texture.
   /// @param useDepthBuffer Create a depth buffer used by the render target.
-  void Initialize(mathfu::vec2i dimensions, GLenum format, bool useDepthBuffer);
+  void Initialize(const mathfu::vec2i& dimensions, RenderTargetFormat format,
+                  bool useDepthBuffer);
 
   /// @brief Deletes the associated opengl resources associated with the
   ///        RenderTarget.
@@ -64,6 +68,7 @@ class RenderTarget {
   ///
   /// All subsequent openGL draw calls will render to this RenderTarget
   /// instead of wherever they were going before.
+  // TODO(shanee): deprecate, remove and implement Renderer::SetRenderTarget.
   void SetAsRenderTarget() const;
 
   /// @brief Binds the texture associated with this rendertarget as the active
@@ -82,7 +87,7 @@ class RenderTarget {
   ///
   /// @return Returns true if this rendertarget refers to an off-screen texture,
   ///         and false if it refers to the screen itself.
-  inline bool IsTexture() const { return framebuffer_id_ != 0; }
+  inline bool IsTexture() const { return ValidBufferHandle(framebuffer_id_); }
 
   /// @brief Gets the TextureId associated with the RenderTarget, assuming that
   ///        it is texture-based.
@@ -91,7 +96,7 @@ class RenderTarget {
   /// doesn't have a texture backing it, such as the screen's display buffer.
   ///
   /// @return Returns the TextureId associated with the RenderTarget.
-  inline unsigned int GetTextureId() const {
+  inline TextureHandle GetTextureId() const {
     assert(IsTexture());
     return rendered_texture_id_;
   }
@@ -114,9 +119,9 @@ class RenderTarget {
 
  private:
   mathfu::vec2i dimensions_;
-  GLuint framebuffer_id_;
-  GLuint rendered_texture_id_;
-  GLuint depth_buffer_id_;
+  BufferHandle framebuffer_id_;
+  TextureHandle rendered_texture_id_;
+  BufferHandle depth_buffer_id_;
   bool initialized_;
 };
 

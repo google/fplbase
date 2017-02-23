@@ -1,4 +1,4 @@
-FPLBase Version 0.9.0
+FPLBase Version 1.0.0
 
 # Welcome to FPLBase!
 
@@ -24,7 +24,7 @@ is useful and if we should continue to invest in it. Since this is open
 source, you are free to remove the version string but we would appreciate if
 you would leave it in.
 
-  [FPLBase Google Group]: http://group.google.com/group/fplbaselib
+  [FPLBase Google Group]: http://groups.google.com/group/fplbaselib
   [FPLBase Issues Tracker]: http://github.com/google/fplbase/issues
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplbase
   [landing page]: http://google.github.io/fplbase
