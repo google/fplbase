@@ -84,7 +84,7 @@ void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
         break;
       case kTangent4f:
         GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeTangent));
-        GL_CALL(glVertexAttribPointer(Mesh::kAttributeTangent, 3, GL_FLOAT,
+        GL_CALL(glVertexAttribPointer(Mesh::kAttributeTangent, 4, GL_FLOAT,
                                       false, stride, buffer + offset));
         offset += 4 * sizeof(float);
         break;
