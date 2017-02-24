@@ -127,10 +127,10 @@ bool Shader::Finalize() {
       renderer_->RecompileShader(source_pair->vertex_shader.c_str(),
                                  source_pair->fragment_shader.c_str(), this);
 
-  // RecompileShader() calls Shader::Reset() -> Shader::Clear() to clear
-  // 'data_'.
-  assert(data_ == nullptr);
-  source_pair = nullptr;
+  if (sh == nullptr) {
+    LogError(kError, "Shader compilation error:\n%s",
+             renderer_->last_error().c_str());
+  }
 
   CallFinalizeCallback();
 
