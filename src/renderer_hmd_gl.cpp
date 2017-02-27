@@ -95,7 +95,10 @@ void HeadMountedDisplayRenderStart(
     HeadMountedDisplayViewSettings* view_settings) {
   if (use_undistortion) {
     BeginUndistortFramebuffer();
-    renderer->SetRenderState(RenderState());
+    // Verify that the Cardboard API has not changed the rendering state.
+    // If we hit this assert, we'll have to set the appropriate state to
+    // `unknown` here.
+    assert(ValidateRenderState());
   }
   renderer->ClearFrameBuffer(clear_color);
   renderer->set_color(mathfu::kOnes4f);
@@ -122,7 +125,10 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
   renderer->SetViewport(viewport);
   if (use_undistortion) {
     FinishUndistortFramebuffer();
-    renderer->SetRenderState(RenderState());
+    // Verify that the Cardboard API has not changed the rendering state.
+    // If we hit this assert, we'll have to set the appropriate state to
+    // `unknown` here.
+    assert(ValidateRenderState());
     renderer->SetBlendMode(kBlendModeOff);
   }
 }

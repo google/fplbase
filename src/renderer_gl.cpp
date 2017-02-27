@@ -157,8 +157,9 @@ ShaderHandle RendererBase::CompileShader(bool is_vertex_shader,
   } else {
     GLint length = 0;
     GL_CALL(glGetShaderiv(shader_obj, GL_INFO_LOG_LENGTH, &length));
-    last_error_.assign(length, '\0');
-    GL_CALL(glGetShaderInfoLog(shader_obj, length, &length, &last_error_[0]));
+    std::string shader_error(length + 1, '\0');
+    GL_CALL(glGetShaderInfoLog(shader_obj, length, &length, &shader_error[0]));
+    last_error_ = platform_source + "\n----------\n" + shader_error;
     GL_CALL(glDeleteShader(shader_obj));
     return InvalidShaderHandle();
   }
