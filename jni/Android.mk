@@ -53,7 +53,7 @@ FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
                            -Wno-literal-suffix -Wno-unused-function \
                            -DSTB_IMAGE_IMPLEMENTATION \
                            -DSTB_IMAGE_RESIZE_IMPLEMENTATION \
-                           -DFPLBASE_ANDROID_VR=0
+                           -DFPLBASE_ANDROID_VR=1
 
 FPLBASE_COMMON_LIBRARIES := \
   libwebp \
