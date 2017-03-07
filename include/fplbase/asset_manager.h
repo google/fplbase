@@ -329,11 +329,7 @@ class AssetManager {
     if (async) {
       loader_.QueueJob(asset);
     } else {
-      bool ok = asset->LoadNow();
-      if (!ok) {
-        delete asset;
-        return nullptr;
-      }
+      asset->LoadNow();
     }
     return asset;
   }
