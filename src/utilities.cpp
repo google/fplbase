@@ -84,7 +84,11 @@ static LoadFileFunction g_load_file_function = LoadFileRaw;
 
 LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
   LoadFileFunction previous_function = g_load_file_function;
-  g_load_file_function = load_file_function ? load_file_function : LoadFileRaw;
+  if (load_file_function) {
+    g_load_file_function = load_file_function;
+  } else {
+    g_load_file_function = LoadFileRaw;
+  }
   return previous_function;
 }
 
