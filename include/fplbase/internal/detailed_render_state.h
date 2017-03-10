@@ -83,11 +83,9 @@ struct CullState {
 
 struct DepthState {
   RenderFunction function;
-  bool test_enabled;
-  bool write_enabled;
+  bool enabled;
 
-  DepthState()
-      : function(kRenderAlways), test_enabled(false), write_enabled(true) {}
+  DepthState() : function(kRenderAlways), enabled(false) {}
 };
 
 struct StencilFunction {
@@ -194,8 +192,7 @@ inline bool operator!=(const StencilState &lhs, const StencilState &rhs) {
 }
 
 inline bool operator==(const DepthState &lhs, const DepthState &rhs) {
-  return lhs.test_enabled == rhs.test_enabled &&
-         lhs.write_enabled == rhs.write_enabled && lhs.function == rhs.function;
+  return lhs.enabled == rhs.enabled && lhs.function == rhs.function;
 }
 
 inline bool operator!=(const DepthState &lhs, const DepthState &rhs) {
