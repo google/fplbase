@@ -424,6 +424,11 @@ class Renderer {
   /// @param depth_func The depth function to use.
   void SetDepthFunction(DepthFunction func);
 
+  /// @brief Set whether writing to the depth buffer is enabled or not.
+  ///
+  /// @param enabled The value to set the depth write to.
+  void SetDepthWrite(bool enabled);
+
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
   /// @param pos The lower left corner of the scissor box.

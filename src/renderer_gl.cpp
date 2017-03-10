@@ -227,46 +227,46 @@ void Renderer::SetDepthFunction(DepthFunction func) {
 
   switch (func) {
     case kDepthFunctionDisabled:
-      depth_state.enabled = false;
+      depth_state.test_enabled = false;
       break;
 
     case kDepthFunctionNever:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderNever;
       break;
 
     case kDepthFunctionAlways:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderAlways;
       break;
 
     case kDepthFunctionLess:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderLess;
       break;
 
     case kDepthFunctionLessEqual:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderLessEqual;
       break;
 
     case kDepthFunctionGreater:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderGreater;
       break;
 
     case kDepthFunctionGreaterEqual:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderGreaterEqual;
       break;
 
     case kDepthFunctionEqual:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderEqual;
       break;
 
     case kDepthFunctionNotEqual:
-      depth_state.enabled = true;
+      depth_state.test_enabled = true;
       depth_state.function = kRenderNotEqual;
       break;
 
@@ -279,8 +279,8 @@ void Renderer::SetDepthFunction(DepthFunction func) {
       break;
   }
 
-  if (depth_state.enabled != render_state_.depth_state.enabled) {
-    if (depth_state.enabled) {
+  if (depth_state.test_enabled != render_state_.depth_state.test_enabled) {
+    if (depth_state.test_enabled) {
       glEnable(GL_DEPTH_TEST);
     } else {
       glDisable(GL_DEPTH_TEST);
@@ -294,6 +294,16 @@ void Renderer::SetDepthFunction(DepthFunction func) {
 
   depth_function_ = func;
   render_state_.depth_state = depth_state;
+}
+
+void Renderer::SetDepthWrite(bool enabled) {
+  if (render_state_.depth_state.write_enabled == enabled) {
+    return;
+  }
+
+  glDepthMask(enabled ? GL_TRUE : GL_FALSE);
+
+  render_state_.depth_state.write_enabled = enabled;
 }
 
 void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
