@@ -190,17 +190,113 @@ TEST_F(PreprocessorTests, SanitizeMultiPartLinesPreserved) {
 }
 
 TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
-  const char*file =
+  const char* single_line_test =
       "#define foo 1\n"
       "// #version 100\n"
       "#define baz 0\n"
       "// #extension GL_FOO_BAZ : enable\n";
   std::string result;
-  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
-  const size_t pos = result.find("#define foo");
+  fplbase::PlatformSanitizeShaderSource(single_line_test, nullptr, &result);
+  size_t pos = result.find("#define foo 1");
   EXPECT_NE(pos, std::string::npos);
-  EXPECT_NE(pos, 0u);
-  EXPECT_EQ(result.compare(pos, strlen(file), file), 0);
+  EXPECT_EQ(result.compare(pos, strlen(single_line_test), single_line_test), 0);
+
+  const char* multi_line_test =
+      "/* start multi line comment\n"
+      "#version 100\n"
+      "#extension GL_FOO_BAZ : enable\n"
+      "end multi line comment */";
+  fplbase::PlatformSanitizeShaderSource(multi_line_test, nullptr, &result);
+  pos = result.find(multi_line_test);
+  EXPECT_NE(pos, std::string::npos);
+
+  const char* combined_test = 
+      "// this will not start a multi line comment /*\n"
+      "#extension GL_FOO_BAZ : enable\n"
+      "but /* will, but let's */ end it, just to restart /* now in a comment\n"
+      "#version 100\n"
+      "end */";
+  fplbase::PlatformSanitizeShaderSource(combined_test, nullptr, &result);
+  const size_t ext_pos = result.find("#extension GL_FOO_BAZ : enable");
+  EXPECT_NE(pos, std::string::npos);
+
+  // If the #version wasn't ignored, it will have been moved before #extension.
+  const size_t version_pos = result.find("#version 100");
+  EXPECT_NE(version_pos, std::string::npos);
+  EXPECT_LT(ext_pos, version_pos);
+
+  // The #extension should now be before the single line comment.
+  const size_t comment_pos = result.find("// this will not start");
+  EXPECT_NE(comment_pos, std::string::npos);
+  EXPECT_LT(ext_pos, comment_pos);
+}
+
+TEST_F(PreprocessorTests, SanitizeExtensionSimpleContext) {
+  const char* file =
+      "#if FOO\n"
+      "#extension GL_OES_standard_derivatives : enable\n"
+      "#endif\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+
+  const size_t extension_pos = result.find("#extension");
+  EXPECT_NE(extension_pos, std::string::npos);
+  EXPECT_NE(result.rfind("#if", extension_pos), std::string::npos);
+  EXPECT_EQ(result.rfind("#if", extension_pos),
+      result.rfind("#if FOO\n", extension_pos));
+  EXPECT_EQ(result.rfind("#endif", extension_pos), std::string::npos);
+
+  const size_t next_endif_pos = result.find("#endif", extension_pos);
+  EXPECT_NE(next_endif_pos, std::string::npos);
+
+  const size_t next_if_pos = result.find("#if", extension_pos);
+  EXPECT_TRUE(next_if_pos == std::string::npos || next_if_pos > next_endif_pos);
+}
+
+TEST_F(PreprocessorTests, SanitizeExtensionElseContext) {
+  const char* file =
+      "#if FOO\n"
+      "do some stuff\n"
+      "#elif BAZ\n"
+      "do some other stuff\n"
+      "#else\n"
+      "#extension GL_OES_standard_derivatives : enable\n"
+      "#endif\n";
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+
+  const size_t extension_pos = result.find("#extension");
+  EXPECT_NE(extension_pos, std::string::npos);
+  const size_t prev_if_pos = result.rfind("#if", extension_pos);
+  EXPECT_NE(prev_if_pos, std::string::npos);
+  EXPECT_EQ(prev_if_pos, result.rfind("#if FOO\n", extension_pos));
+  const size_t prev_else_pos = result.rfind("#else", extension_pos);
+  EXPECT_NE(prev_else_pos, std::string::npos);
+  EXPECT_LT(prev_if_pos, prev_else_pos);
+  EXPECT_EQ(result.rfind("#elif", extension_pos), std::string::npos);
+  EXPECT_EQ(result.rfind("#endif", extension_pos), std::string::npos);
+
+  const size_t next_endif_pos = result.find("#endif", extension_pos);
+  EXPECT_NE(next_endif_pos, std::string::npos);
+
+  const size_t next_if_pos = result.find("#if", extension_pos);
+  EXPECT_TRUE(next_if_pos == std::string::npos || next_if_pos > next_endif_pos);
+
+  const size_t next_elif_pos = result.find("#elif", extension_pos);
+  EXPECT_TRUE(next_elif_pos == std::string::npos ||
+      next_elif_pos > next_if_pos);
+
+  const size_t next_else_pos = result.find("#else", extension_pos);
+  EXPECT_TRUE(next_else_pos == std::string::npos ||
+      next_else_pos > next_if_pos);
+
+  const size_t some_stuff_pos = result.find("do some stuff");
+  EXPECT_NE(some_stuff_pos, std::string::npos);
+  EXPECT_GT(some_stuff_pos, extension_pos);
+
+  const size_t other_stuff_pos = result.find("do some other stuff");
+  EXPECT_NE(other_stuff_pos, std::string::npos);
+  EXPECT_GT(other_stuff_pos, extension_pos);
 }
 
 extern "C" int FPL_main(int argc, char *argv[]) {
