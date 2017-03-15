@@ -40,7 +40,7 @@ class BookendAsyncResource : public AsyncAsset {
 // static
 const char *BookendAsyncResource::kBookendFileName = "bookend";
 
-AsyncLoader::AsyncLoader() : worker_thread_(nullptr) {
+AsyncLoader::AsyncLoader() : loading_(nullptr), worker_thread_(nullptr) {
   mutex_ = SDL_CreateMutex();
   job_semaphore_ = SDL_CreateSemaphore(0);
   assert(mutex_ && job_semaphore_);
@@ -72,22 +72,47 @@ void AsyncLoader::QueueJob(AsyncAsset *res) {
   SDL_SemPost(static_cast<SDL_semaphore *>(job_semaphore_));
 }
 
+void AsyncLoader::AbortJob(AsyncAsset *res) {
+  const bool was_loading =
+      LockReturn<bool>([this, res]() { return loading_ == res; });
+
+  if (was_loading) {
+    PauseLoading();
+  }
+
+  Lock([this, res]() {
+    auto iter = std::find(queue_.begin(), queue_.end(), res);
+    if (iter != queue_.end()) {
+      queue_.erase(iter);
+    }
+
+    iter = std::find(done_.begin(), done_.end(), res);
+    if (iter != done_.end()) {
+      done_.erase(iter);
+    }
+  });
+
+  if (was_loading) {
+    StartLoading();
+  }
+}
+
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    auto res = LockReturn<AsyncAsset *>(
-        [this]() { return queue_.empty() ? nullptr : queue_.front(); });
-    if (!res) {
+    Lock([this]() { loading_ = queue_.empty() ? nullptr : queue_.front(); });
+    if (!loading_) {
       SDL_SemWait(static_cast<SDL_semaphore *>(job_semaphore_));
       continue;
     }
     // Stop loading once we reach the bookend enqueued by
     // StopLoadingWhenComplete(). To start loading again, call StartLoading().
-    if (BookendAsyncResource::IsBookend(*res)) break;
-    LogInfo(kApplication, "async load: %s", res->filename_.c_str());
-    res->Load();
-    Lock([this, res]() {
+    if (BookendAsyncResource::IsBookend(*loading_)) break;
+    LogInfo(kApplication, "async load: %s", loading_->filename_.c_str());
+    loading_->Load();
+    Lock([this]() {
       queue_.pop_front();
-      done_.push_back(res);
+      done_.push_back(loading_);
+      loading_ = nullptr;
     });
   }
 }

@@ -47,6 +47,35 @@ void AsyncLoader::QueueJob(AsyncAsset *res) {
   job_cv_.notify_one();
 }
 
+void AsyncLoader::AbortJob(AsyncAsset *res) {
+  bool was_loading = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    was_loading = loading_ == res;
+  }
+
+  if (was_loading) {
+    PauseLoading();
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = std::find(queue_.begin(), queue_.end(), res);
+    if (iter != queue_.end()) {
+      queue_.erase(iter);
+    }
+
+    iter = std::find(done_.begin(), done_.end(), res);
+    if (iter != done_.end()) {
+      done_.erase(iter);
+    }
+  }
+
+  if (was_loading) {
+    StartLoading();
+  }
+}
+
 void AsyncLoader::StartLoading() {
   if (!worker_thread_.joinable()) {
     worker_thread_ = std::thread(AsyncLoader::LoaderThread, this);
@@ -94,21 +123,21 @@ bool AsyncLoader::TryFinalize() {
 
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    AsyncAsset *resource = nullptr;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       job_cv_.wait(lock, [this]() { return queue_.size() > 0; });
-      resource = queue_.front();
+      loading_ = queue_.front();
       queue_.pop_front();
     }
 
-    if (!resource) {
+    if (!loading_) {
       break;
     }
 
-    resource->Load();
+    loading_->Load();
     std::lock_guard<std::mutex> lock(mutex_);
-    done_.push_back(resource);
+    done_.push_back(loading_);
+    loading_ = nullptr;
   }
 }
 
