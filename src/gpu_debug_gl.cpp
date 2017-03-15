@@ -82,7 +82,13 @@ bool ValidateGlDepthState(const DepthState& state) {
   GLint int_value;
 
   glGetBooleanv(GL_DEPTH_TEST, &bool_value);
-  if (GlToBool(bool_value) != state.enabled) {
+  if (GlToBool(bool_value) != state.test_enabled) {
+    assert(false);
+    return false;
+  }
+
+  glGetBooleanv(GL_DEPTH_WRITEMASK, &bool_value);
+  if (GlToBool(bool_value) != state.write_enabled) {
     assert(false);
     return false;
   }
