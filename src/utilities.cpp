@@ -15,6 +15,7 @@
 // clang-format off
 #include "precompiled.h"
 #include "fplbase/utilities.h"
+#include "fplutil/mutex.h"
 // clang-format on
 
 #if defined(__ANDROID__)
@@ -80,9 +81,11 @@ static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
 #endif  // FPLBASE_BACKEND_SDL
 
 // Function called by LoadFile().
+static fplutil::Mutex g_load_file_function_mutex_;
 static LoadFileFunction g_load_file_function = LoadFileRaw;
 
 LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
+  fplutil::MutexLock lock(g_load_file_function_mutex_);
   LoadFileFunction previous_function = g_load_file_function;
   if (load_file_function) {
     g_load_file_function = load_file_function;
@@ -93,8 +96,13 @@ LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
 }
 
 bool LoadFile(const char *filename, std::string *dest) {
-  assert(g_load_file_function);
-  return g_load_file_function(filename, dest);
+  LoadFileFunction load_file_function;
+  {
+    fplutil::MutexLock lock(g_load_file_function_mutex_);
+    load_file_function = g_load_file_function;
+  }
+  assert(load_file_function);
+  return load_file_function(filename, dest);
 }
 
 #ifdef FPLBASE_BACKEND_SDL
