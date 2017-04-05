@@ -276,6 +276,7 @@ class RendererBase {
   int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   bool supports_texture_npot_;
+  bool supports_instancing_;
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;
@@ -311,6 +312,33 @@ class Renderer {
  public:
   Renderer();
   ~Renderer();
+
+  /// @brief Render a mesh.
+  ///
+  /// Call to render a mesh. Uniforms must have been set before
+  /// calling this. For instanced rendering, pass in a value >1 (needs OpenGL
+  /// ES 3.0 to work).
+  ///
+  /// @param mesh The mesh object to be rendered.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
+  void Render(Mesh *mesh, bool ignore_material = false, size_t instances = 1);
+
+  /// @brief Render a mesh into stereoscopic viewports.
+  /// @param mesh The mesh object to be rendered.
+  /// @param shader The shader object to be used.
+  /// @param viewport An array with two elements (left and right parameters) for
+  /// the viewport.
+  /// @param mvp An array with two elements (left and right parameters) for the
+  /// Model View Projection (MVP) matrix.
+  /// @param camera_position An array with two elements (left and right
+  /// parameters) for camera position.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
+  void RenderStereo(Mesh *mesh, const Shader *shader, const Viewport *viewport,
+                    const mathfu::mat4 *mvp,
+                    const mathfu::vec3 *camera_position,
+                    bool ignore_material = false, size_t instances = 1);
 
   /// @brief Shader uniform: model_view_projection
   /// @return Returns the current model view projection being used.

@@ -54,6 +54,8 @@ enum Attribute {
 ///
 /// A mesh instance contains a VBO and one or more IBO's.
 class Mesh : public AsyncAsset {
+  friend class Renderer;
+
  public:
   enum Primitive {
     kTriangles,
@@ -148,34 +150,6 @@ class Mesh : public AsyncAsset {
   void GatherShaderTransforms(const mathfu::AffineTransform *bone_transforms,
                               mathfu::AffineTransform *shader_transforms) const;
 
-  /// @brief Render the mesh.
-  ///
-  /// Call to have the mesh render itself. Uniforms must have been set before
-  /// calling this. For instanced rendering, pass in a value >1 (needs OpenGL
-  /// ES 3.0 to work).
-  ///
-  /// @param renderer The renderer object to be used.
-  /// @param ignore_material Whether to ignore the meshes defined material.
-  /// @param instances The number of instances to be rendered.
-  void Render(Renderer &renderer, bool ignore_material = false,
-              size_t instances = 1);
-
-  /// @brief Render the mesh, itself, into stereoscopic viewports.
-  /// @param renderer The renderer object to be used.
-  /// @param shader The shader object to be used.
-  /// @param viewport An array with two elements (left and right parameters) for
-  /// the viewport.
-  /// @param mvp An array with two elements (left and right parameters) for the
-  /// Model View Projection (MVP) matrix.
-  /// @param camera_position An array with two elements (left and right
-  /// parameters) for camera position.
-  /// @param ignore_material Whether to ignore the meshes defined material.
-  /// @param instances The number of instances to be rendered.
-  void RenderStereo(Renderer &renderer, const Shader *shader,
-                    const Viewport *viewport, const mathfu::mat4 *mvp,
-                    const mathfu::vec3 *camera_position,
-                    bool ignore_material = false, size_t instances = 1);
-
   /// @brief Get the material associated with the IBO at the given index.
   ///
   /// @param i The index of the IBO.
@@ -189,69 +163,6 @@ class Mesh : public AsyncAsset {
   /// @param format Array of attributes to set the format to, delimitted with
   ///        `kEND`.
   void set_format(const Attribute *format);
-
-  /// @brief Renders the given vertex and index data directly.
-  ///
-  /// Renders primitives using vertex and index data directly in local memory.
-  /// This is a convenient alternative to creating a Mesh instance for small
-  /// amounts of data, or dynamic data.
-  ///
-  /// @param primitive The type of primitive to render the data as.
-  /// @param index_count The total number of indices.
-  /// @param format The vertex buffer format, following the same rules as
-  ///        described in set_format().
-  /// @param vertex_size The size of an individual vertex.
-  /// @param vertices The array of vertices.
-  /// @param indices The array of indices into the vertex array.
-  static void RenderArray(Primitive primitive, int index_count,
-                          const Attribute *format, int vertex_size,
-                          const void *vertices, const unsigned short *indices);
-
-  /// @brief Renders the given vertex data directly.
-  ///
-  /// Renders primitives using vertex data directly in local memory. This is a
-  /// convenient alternative to creating a Mesh instance for small amounts of
-  /// data, or dynamic data.
-  ///
-  /// @param primitive The type of primitive to render the data as.
-  /// @param vertex_count The total number of vertices.
-  /// @param format The vertex buffer format, following the same rules as
-  ///        described in set_format().
-  /// @param vertex_size The size of an individual vertex.
-  /// @param vertices The array of vertices.
-  static void RenderArray(Primitive primitive, int vertex_count,
-                          const Attribute *format, int vertex_size,
-                          const void *vertices);
-
-  /// @brief Convenience method for rendering a Quad.
-  ///
-  /// bottom_left and top_right must have their X coordinate be different, but
-  /// either Y or Z can be the same.
-  ///
-  /// @param bottom_left The bottom left coordinate of the Quad.
-  /// @param top_right The bottom left coordinate of the Quad.
-  /// @param tex_bottom_left The texture coordinates at the bottom left.
-  /// @param tex_top_right The texture coordinates at the top right.
-  static void RenderAAQuadAlongX(
-      const mathfu::vec3 &bottom_left, const mathfu::vec3 &top_right,
-      const mathfu::vec2 &tex_bottom_left = mathfu::vec2(0, 0),
-      const mathfu::vec2 &tex_top_right = mathfu::vec2(1, 1));
-
-  /// @brief Convenience method for rendering a Quad with nine patch settings.
-  ///
-  /// In the patch_info, the user can define nine patch settings
-  /// as vec4(x0, y0, x1, y1) where
-  /// (x0,y0): top-left corner of stretchable area in UV coordinate.
-  /// (x1,y1): bottom-right corner of stretchable area in UV coordinate.
-  ///
-  /// @param bottom_left The bottom left coordinate of the Quad.
-  /// @param top_right The top right coordinate of the Quad.
-  /// @param texture_size The size of the texture used by the patches.
-  /// @param patch_info Defines how the patches are set up.
-  static void RenderAAQuadAlongXNinePatch(const mathfu::vec3 &bottom_left,
-                                          const mathfu::vec3 &top_right,
-                                          const mathfu::vec2i &texture_size,
-                                          const mathfu::vec4 &patch_info);
 
   /// @brief Compute normals and tangents given position and texcoords.
   ///
@@ -433,9 +344,6 @@ class Mesh : public AsyncAsset {
   // on the platform-specific MeshImpl structs.
   static MeshImpl *CreateMeshImpl();
   static void DestroyMeshImpl(MeshImpl *impl);
-
-  // Backend-specific way to get underlying primitive flag.
-  static uint32_t GetPrimitiveTypeFlags(Mesh::Primitive primitive);
 
   static const int kMaxAttributes = 9;
 

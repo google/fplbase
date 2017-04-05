@@ -17,6 +17,7 @@
 
 #include "fplbase/handles.h"
 #include "fplbase/internal/detailed_render_state.h"
+#include "fplbase/mesh.h"
 #include "fplbase/render_target.h"
 
 namespace fplbase {
@@ -45,6 +46,11 @@ unsigned int CullFaceToGl(CullState::CullFace face);
 ///
 /// @param face The format to convert.
 unsigned int RenderTargetFormatToGl(RenderTargetFormat format);
+
+/// @brief Converts FPL Mesh Primitive to equivalent GL enum value.
+///
+/// @param primitive The primitive type to convert.
+unsigned int GetPrimitiveTypeFlags(Mesh::Primitive primitive);
 
 union HandleUnionGl {
   HandleUnionGl() { handle.handle = 0; }

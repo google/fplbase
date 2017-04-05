@@ -13,10 +13,13 @@
 // limitations under the License.
 //
 
-#include "fplbase/renderer.h"
 #include <cassert>
+
 #include "fplbase/input.h"
 #include "fplbase/mesh.h"
+#include "fplbase/render_utils.h"
+#include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 
 // This is a sample that displays a colored triangle.
 //
@@ -64,8 +67,8 @@ extern "C" int FPL_main(int /*argc*/, char * /*argv*/[]) {
       0.5f, -.5f, 0.0f
     };
 
-    fplbase::Mesh::RenderArray(fplbase::Mesh::kTriangles, 3, format,
-                           sizeof(float) * 3, vertices, indices);
+    fplbase::RenderArray(fplbase::Mesh::kTriangles, 3, format,
+                         sizeof(float) * 3, vertices, indices);
   }
   delete shader;
   renderer.ShutDown();

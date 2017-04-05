@@ -89,5 +89,19 @@ unsigned int RenderTargetFormatToGl(RenderTargetFormat format) {
   return kRenderTargetFormatToGlTable[format];
 }
 
+uint32_t GetPrimitiveTypeFlags(Mesh::Primitive primitive) {
+  switch (primitive) {
+    case Mesh::kLines:
+      return GL_LINES;
+    case Mesh::kPoints:
+      return GL_POINTS;
+    case Mesh::kTriangleStrip:
+      return GL_TRIANGLE_STRIP;
+    case Mesh::kTriangleFan:
+      return GL_TRIANGLE_FAN;
+    default:
+      return GL_TRIANGLES;
+  }
+}
 
 }  // namespace fplbase

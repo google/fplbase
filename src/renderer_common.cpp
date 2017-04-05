@@ -39,6 +39,7 @@ RendererBase::RendererBase()
       time_(0),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
+      supports_instancing_(false),
       force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),

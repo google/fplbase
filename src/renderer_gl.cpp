@@ -17,9 +17,11 @@
 #include "fplbase/internal/type_conversions_gl.h"
 #include "fplbase/preprocessor.h"
 #include "fplbase/render_target.h"
+#include "fplbase/render_utils.h"
 #include "fplbase/renderer.h"
 #include "fplbase/texture.h"
 #include "fplbase/utilities.h"
+#include "mesh_impl_gl.h"
 
 using mathfu::mat4;
 using mathfu::vec2;
@@ -28,6 +30,42 @@ using mathfu::vec3;
 using mathfu::vec4;
 
 namespace fplbase {
+
+// Local helper functions to help rendering.
+namespace {
+
+void DrawElement(int32_t count, int32_t instances, uint32_t index_type,
+                 GLenum gl_primitive, bool support_instancing) {
+  static const void *kNullIndices = nullptr;
+
+  if (instances == 1) {
+    GL_CALL(glDrawElements(gl_primitive, count, index_type, kNullIndices));
+  } else {
+    assert(support_instancing);
+    GL_CALL(glDrawElementsInstanced(gl_primitive, count, index_type,
+                                    kNullIndices, instances));
+  }
+}
+
+void BindAttributes(BufferHandle vao, BufferHandle vbo,
+                    const Attribute *attributes, size_t vertex_size) {
+  if (ValidBufferHandle(vao)) {
+    glBindVertexArray(GlBufferHandle(vao));
+  } else {
+    SetAttributes(GlBufferHandle(vbo), attributes,
+                  static_cast<int>(vertex_size), nullptr);
+  }
+}
+
+void UnbindAttributes(BufferHandle vao, const Attribute *attributes) {
+  if (ValidBufferHandle(vao)) {
+    glBindVertexArray(0);  // TODO(wvo): could probably omit this?
+  } else {
+    UnSetAttributes(attributes);
+  }
+}
+
+}  // namespace
 
 TextureHandle InvalidTextureHandle() { return TextureHandleFromGl(0); }
 TextureTarget InvalidTextureTarget() { return TextureTargetFromGl(0); }
@@ -88,6 +126,8 @@ bool RendererBase::InitializeRenderingState() {
       HasGLExt("GL_OES_texture_npot")) {
     supports_texture_npot_ = true;
   }
+
+  supports_instancing_ = environment_.feature_level() >= kFeatureLevel30;
 
 // Check for ETC2:
 #ifdef PLATFORM_MOBILE
@@ -601,6 +641,55 @@ void Renderer::ScissorOff() {
 
   GL_CALL(glDisable(GL_SCISSOR_TEST));
   render_state_.scissor_state.enabled = false;
+}
+
+void Renderer::Render(Mesh *mesh, bool ignore_material, size_t instances) {
+  BindAttributes(mesh->impl_->vao, mesh->impl_->vbo, mesh->format_,
+                 mesh->vertex_size_);
+  if (!mesh->indices_.empty()) {
+    for (auto it = mesh->indices_.begin(); it != mesh->indices_.end(); ++it) {
+      if (!ignore_material) it->mat->Set(*this);
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
+      DrawElement(it->count, static_cast<int32_t>(instances), it->index_type,
+                  mesh->primitive_, base_->supports_instancing_);
+    }
+  } else {
+    glDrawArrays(mesh->primitive_, 0,
+                 static_cast<int32_t>(mesh->num_vertices_));
+  }
+  UnbindAttributes(mesh->impl_->vao, mesh->format_);
+}
+
+void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
+                            const Viewport *viewport, const mat4 *mvp,
+                            const vec3 *camera_position, bool ignore_material,
+                            size_t instances) {
+  BindAttributes(mesh->impl_->vao, mesh->impl_->vbo, mesh->format_,
+                 mesh->vertex_size_);
+  auto prep_stereo = [&](size_t i) {
+    set_camera_pos(camera_position[i]);
+    set_model_view_projection(mvp[i]);
+    SetViewport(viewport[i]);
+    shader->Set(*this);
+  };
+  if (!mesh->indices_.empty()) {
+    for (auto it = mesh->indices_.begin(); it != mesh->indices_.end(); ++it) {
+      if (!ignore_material) it->mat->Set(*this);
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
+      for (size_t i = 0; i < 2; ++i) {
+        prep_stereo(i);
+        DrawElement(it->count, static_cast<int32_t>(instances), it->index_type,
+                    mesh->primitive_, base_->supports_instancing_);
+      }
+    }
+  } else {
+    for (size_t i = 0; i < 2; ++i) {
+      prep_stereo(i);
+      glDrawArrays(mesh->primitive_, 0,
+                   static_cast<int32_t>(mesh->num_vertices_));
+    }
+  }
+  UnbindAttributes(mesh->impl_->vao, mesh->format_);
 }
 
 }  // namespace fplbase

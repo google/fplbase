@@ -214,6 +214,7 @@ set(fplbase_common_SRCS
   include/fplbase/renderer_common.h
   include/fplbase/render_state.h
   include/fplbase/render_target.h
+  include/fplbase/render_utils.h
   include/fplbase/shader.h
   include/fplbase/texture.h
   include/fplbase/texture_atlas.h
@@ -226,12 +227,14 @@ set(fplbase_common_SRCS
   src/material.cpp
   src/mesh_common.cpp
   src/mesh_gl.cpp
+  src/mesh_impl_gl.h
   src/precompiled.h
   src/preprocessor.cpp
   src/renderer_common.cpp
   src/renderer_gl.cpp
   src/render_target_common.cpp
   src/render_target_gl.cpp
+  src/render_utils_gl.cpp
   src/shader_common.cpp
   src/shader_gl.cpp
   src/texture_common.cpp
