@@ -55,7 +55,7 @@ extern "C" int FPL_main(int /*argc*/, char * /*argv*/[]) {
     float color = (1.0f - cos(static_cast<float>(input.Time())) / 2.0f);
     renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
 
-    shader->Set(renderer);
+    renderer.SetShader(shader);
 
     // define geometry for a triangle
     const fplbase::Attribute format[] = {fplbase::kPosition3f,

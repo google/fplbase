@@ -96,15 +96,6 @@ class Shader : public AsyncAsset {
   /// Finalize has been called (by AssetManager::TryFinalize).
   bool IsValid() { return ValidShaderHandle(program_); }
 
-  /// @brief Activate this shader for subsequent draw calls.
-  ///
-  /// Will make this shader active for any subsequent draw calls, and sets
-  /// all standard uniforms (e.g. mvp matrix) based on current values in
-  /// Renderer, if this shader refers to them.
-  ///
-  /// @param renderer The renderer that has the standard uniforms set.
-  void Set(const Renderer &renderer) const;
-
   /// @brief Find a non-standard uniform by name.
   ///
   /// @param uniform_name The name of the uniform to find.
@@ -205,6 +196,7 @@ class Shader : public AsyncAsset {
   static Shader *LoadFromShaderDef(const char *filename);
 
  private:
+  friend class Renderer;
   friend class RendererBase;
 
   // Holds the source code of vertex shader and fragment shader.

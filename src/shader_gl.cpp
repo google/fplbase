@@ -107,39 +107,4 @@ void Shader::InitializeUniforms() {
   }
 }
 
-void Shader::Set(const Renderer &renderer) const {
-  assert(!dirty_);  // Need to call ReloadIfDirty() on this shader first.
-  const int kNumVec4InBoneTransform = 3;
-  GL_CALL(glUseProgram(GlShaderHandle(program_)));
-
-  if (ValidUniformHandle(uniform_model_view_projection_))
-    GL_CALL(glUniformMatrix4fv(GlUniformHandle(uniform_model_view_projection_),
-                               1, false, &renderer.model_view_projection()[0]));
-  if (ValidUniformHandle(uniform_model_))
-    GL_CALL(glUniformMatrix4fv(GlUniformHandle(uniform_model_), 1, false,
-                               &renderer.model()[0]));
-  if (ValidUniformHandle(uniform_color_))
-    GL_CALL(
-        glUniform4fv(GlUniformHandle(uniform_color_), 1, &renderer.color()[0]));
-  if (ValidUniformHandle(uniform_light_pos_))
-    GL_CALL(glUniform3fv(GlUniformHandle(uniform_light_pos_), 1,
-                         &renderer.light_pos()[0]));
-  if (ValidUniformHandle(uniform_camera_pos_))
-    GL_CALL(glUniform3fv(GlUniformHandle(uniform_camera_pos_), 1,
-                         &renderer.camera_pos()[0]));
-  if (ValidUniformHandle(uniform_time_))
-    GL_CALL(glUniform1f(GlUniformHandle(uniform_time_),
-                        static_cast<float>(renderer.time())));
-  if (ValidUniformHandle(uniform_bone_transforms_) &&
-      renderer.num_bones() > 0) {
-    assert(renderer.bone_transforms() != nullptr);
-
-    const mathfu::AffineTransform *bone_transforms = renderer.bone_transforms();
-
-    GL_CALL(glUniform4fv(GlUniformHandle(uniform_bone_transforms_),
-                         renderer.num_bones() * kNumVec4InBoneTransform,
-                         &bone_transforms[0][0]));
-  }
-}
-
 }  // namespace fplbase

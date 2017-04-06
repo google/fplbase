@@ -588,11 +588,14 @@ class Renderer {
   /// will be updated.)
   void UpdateCachedRenderState(const RenderState &render_state);
 
-  /// @brief Returns the active shader, or nullptr if no active shader.
-  const Shader *GetActiveShader() const { return shader_; }
-
-  /// @brief Returns the active shader, or nullptr if no active shader.
-  Shader *GetActiveShader() { return shader_; }
+  /// @brief Activate a shader for subsequent draw calls.
+  ///
+  /// Will make a shader active for any subsequent draw calls, and sets
+  /// all standard uniforms (e.g. mvp matrix) based on current values in
+  /// Renderer, if the shader refers to them.
+  ///
+  /// @param shader The shader to be activated.
+  void SetShader(const Shader *shader);
 
   // For internal use only.
   RendererImpl* impl() { return impl_; }
@@ -622,7 +625,6 @@ class Renderer {
   const mathfu::AffineTransform *bone_transforms_;
   int num_bones_;
 
-  Shader *shader_;
   RenderState render_state_;
 
   BlendMode blend_mode_;

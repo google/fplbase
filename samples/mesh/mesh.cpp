@@ -76,7 +76,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
                mathfu::mat4::FromRotationMatrix(roty) *
                mathfu::mat4::FromScaleVector(zoom);
     renderer.set_model_view_projection(mvp);
-    shader->Set(renderer);
+    renderer.SetShader(shader);
     renderer.Render(mesh);
   }
   asset_manager.ClearAllAssets();

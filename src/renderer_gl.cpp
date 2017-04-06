@@ -623,6 +623,46 @@ void Renderer::SetViewport(const Viewport &viewport) {
   render_state_.viewport = viewport;
 }
 
+void Renderer::SetShader(const Shader *shader) {
+  // If the shader is dirty, ReloadIfDirty() must be called first.
+  assert(!shader->IsDirty());
+  const int kNumVec4InBoneTransform = 3;
+  GL_CALL(glUseProgram(GlShaderHandle(shader->program_)));
+
+  if (ValidUniformHandle(shader->uniform_model_view_projection_)) {
+    GL_CALL(glUniformMatrix4fv(
+        GlUniformHandle(shader->uniform_model_view_projection_), 1, false,
+        &model_view_projection()[0]));
+  }
+  if (ValidUniformHandle(shader->uniform_model_)) {
+    GL_CALL(glUniformMatrix4fv(GlUniformHandle(shader->uniform_model_), 1,
+                               false, &model()[0]));
+  }
+  if (ValidUniformHandle(shader->uniform_color_)) {
+    GL_CALL(
+        glUniform4fv(GlUniformHandle(shader->uniform_color_), 1, &color()[0]));
+  }
+  if (ValidUniformHandle(shader->uniform_light_pos_)) {
+    GL_CALL(glUniform3fv(GlUniformHandle(shader->uniform_light_pos_), 1,
+                         &light_pos()[0]));
+  }
+  if (ValidUniformHandle(shader->uniform_camera_pos_)) {
+    GL_CALL(glUniform3fv(GlUniformHandle(shader->uniform_camera_pos_), 1,
+                         &camera_pos()[0]));
+  }
+  if (ValidUniformHandle(shader->uniform_time_)) {
+    GL_CALL(glUniform1f(GlUniformHandle(shader->uniform_time_),
+                        static_cast<float>(time())));
+  }
+  if (ValidUniformHandle(shader->uniform_bone_transforms_) && num_bones() > 0) {
+    assert(bone_transforms_ != nullptr);
+
+    GL_CALL(glUniform4fv(GlUniformHandle(shader->uniform_bone_transforms_),
+                         num_bones() * kNumVec4InBoneTransform,
+                         &bone_transforms_[0][0]));
+  }
+}
+
 void Renderer::ScissorOn(const vec2i &pos, const vec2i &size) {
   if (!render_state_.scissor_state.enabled) {
     GL_CALL(glEnable(GL_SCISSOR_TEST));
@@ -677,7 +717,7 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
     set_camera_pos(camera_position[i]);
     set_model_view_projection(mvp[i]);
     SetViewport(viewport[i]);
-    shader->Set(*this);
+    SetShader(shader);
   };
   if (!mesh->indices_.empty()) {
     for (auto it = mesh->indices_.begin(); it != mesh->indices_.end(); ++it) {

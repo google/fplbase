@@ -72,7 +72,7 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
         mathfu::mat4::FromRotationMatrix(rotz) *
         mathfu::mat4::FromScaleVector(zoom));
 
-    shader->Set(renderer);
+    renderer.SetShader(shader);
     tex->Set(0);
 
     fplbase::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0), mathfu::vec3(1, 1, 0),
