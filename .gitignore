@@ -1,0 +1,74 @@
+# Git Ignore file.
+
+# General build files
+obj/*
+bin/*
+gen/*
+libs/*
+docs/html/*
+fplbase_assets/*
+assets/*
+Makefile
+fplbase.cbp
+docs/linklint_results
+
+# Generated files
+include/*_generated.h
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/*
+CMakeLists.txt.user
+CMakeScripts/*
+cmake_install.cmake
+demo/CMakeFiles/*
+demo/Makefile
+demo/cmake_install.cmake
+fplbase.build/*
+fplbase.xcodeproj/*
+mesh_pipeline/CMakeFiles/*
+mesh_pipeline/CMakeScripts/*
+mesh_pipeline/mesh_pipeline.xcodeproj/*
+samples/CMakeFiles/*
+samples/CMakeScripts/*
+samples/*/CMakeFiles/*
+samples/*/CMakeScripts/*
+samples/*/apks/*
+samples/*/bin/*
+samples/*/build.xml
+samples/*/gen/*
+samples/*/libs/*
+samples/*/local.properties
+samples/*/proguard-project.txt
+samples/*/project.properties
+samples/*/src_java
+samples/*/fplbase-*.xcodeproj/*
+samples/*/fplbase.build/*
+samples/fplbase-samples.xcodeproj/*
+test/CMakeFiles/*
+test/CMakeScripts/*
+test/Makefile
+test/cmake_install.cmake
+test/fplbase_test.xcodeproj/*
+test/fplbase.build/*
+
+# Visual Studio files
+*.opensdf
+*.pdb
+*.sdf
+*.sln
+*.suo
+*.user
+*.vcxproj
+*.vcxproj.filters
+Debug/
+Win32/
+build/
+pingme.txt
+
+# qt creator
+*.cbp
+
+# xcode
+samples/fplbase.build
+.DS_Store

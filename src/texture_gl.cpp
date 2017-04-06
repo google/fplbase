@@ -354,7 +354,7 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
 
     GL_CALL(glGenerateMipmap(tex_type));
   } else if (have_mips && IsCompressed(texture_format)) {
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(APPLE)
     // At least on Linux, there appears to be a bug with uploading pre-made
     // compressed mipmaps that makes the texture not show up if
     // glGenerateMipmap isn't called, even though glGenerateMipmap can't

@@ -121,11 +121,18 @@ bool RendererBase::InitializeRenderingState() {
   if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
     supports_texture_format_ &= ~(1 << kFormatASTC);
   }
+#ifdef __ANDROID__
   // Check for Non Power of 2 (NPOT) extension.
   if (HasGLExt("GL_ARB_texture_non_power_of_two") ||
       HasGLExt("GL_OES_texture_npot")) {
     supports_texture_npot_ = true;
   }
+#else
+  // All desktop platforms support NPOT.
+  // iOS ES 2 is supposed to only have limited support, but in practice always
+  // supports it.
+  supports_texture_npot_ = true;
+#endif
 
   supports_instancing_ = environment_.feature_level() >= kFeatureLevel30;
 

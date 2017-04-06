@@ -467,7 +467,7 @@ bool ChangeToUpstreamDir(const char *const binary_dir,
     }
     return (retval == 0);
   }
-#elif !defined(__ANDROID__)
+#elif !defined(PLATFORM_MOBILE)
   {
     std::string current_dir = binary_dir;
     const std::string separator_str(1, flatbuffers::kPathSeparator);
