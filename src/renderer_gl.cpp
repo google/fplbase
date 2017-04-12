@@ -137,7 +137,7 @@ bool RendererBase::InitializeRenderingState() {
   supports_instancing_ = environment_.feature_level() >= kFeatureLevel30;
 
 // Check for ETC2:
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   if (environment_.feature_level() < kFeatureLevel30) {
 #else
   if (!HasGLExt("GL_ARB_ES3_compatibility")) {
@@ -145,7 +145,7 @@ bool RendererBase::InitializeRenderingState() {
     supports_texture_format_ &= ~((1 << kFormatPKM) | (1 << kFormatKTX));
   }
 
-#ifndef PLATFORM_MOBILE
+#ifndef FPLBASE_GLES
   if (!HasGLExt("GL_ARB_vertex_buffer_object") ||
       !HasGLExt("GL_ARB_multitexture") || !HasGLExt("GL_ARB_vertex_program") ||
       !HasGLExt("GL_ARB_fragment_program")) {
@@ -450,7 +450,7 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
     GL_CALL(glBlendFunc(src_factor, dst_factor));
   }
 
-#ifndef PLATFORM_MOBILE  // Alpha test not supported in ES 2.
+#ifndef FPLBASE_GLES  // Alpha test not supported in ES 2.
   if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
     if (alpha_test_state.enabled) {
       GL_CALL(glEnable(GL_ALPHA_TEST));
@@ -772,14 +772,14 @@ void LogGLError(const char *file, int line, const char *call) {
 }
 
 #if !defined(GL_GLEXT_PROTOTYPES)
-#if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
+#if !defined(FPLBASE_GLES) && !defined(__APPLE__)
 #define GLEXT(type, name, required) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 #endif  // !defined(GL_GLEXT_PROTOTYPES)
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
 #define GLEXT(type, name, required) type name = nullptr;
     GLESEXTS
-#endif  // PLATFORM_MOBILE
+#endif  // FPLBASE_GLES

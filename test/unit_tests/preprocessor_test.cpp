@@ -122,7 +122,7 @@ TEST_F(PreprocessorTests, SanitizeCheckPrefix) {
   std::string result;
   fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   EXPECT_EQ(result, "#ifdef GL_ES\nprecision highp float;\n#endif\n");
 #else
   EXPECT_EQ(result,
@@ -140,8 +140,8 @@ TEST_F(PreprocessorTests, SanitizeVersionIsFirstLine) {
 TEST_F(PreprocessorTests, SanitizeVersionConversion) {
   struct ConversionTest {
     const char* file;
-    const char* desktop_result;
-    const char* mobile_result;
+    const char* gl_result;
+    const char* gles_result;
   };
   const ConversionTest kTests[] = {
     // Known conversions.
@@ -159,10 +159,10 @@ TEST_F(PreprocessorTests, SanitizeVersionConversion) {
   for (size_t i = 0; i < kNumTests; ++i) {
     fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr, &result);
 
-#ifdef PLATFORM_MOBILE
-    const std::string& expected = kTests[i].mobile_result;
+#ifdef FPLBASE_GLES
+    const std::string& expected = kTests[i].gles_result;
 #else
-    const std::string& expected = kTests[i].desktop_result;
+    const std::string& expected = kTests[i].gl_result;
 #endif
 
     EXPECT_EQ(result.compare(0, expected.length(), expected), 0);

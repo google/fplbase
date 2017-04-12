@@ -114,7 +114,7 @@ bool Environment::Initialize(const vec2i &window_size, const char *window_title,
   // On desktop, we assume we can get function pointers for all ES 3 equivalent
   // functions.
   feature_level_ = kFeatureLevel30;
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #else
@@ -128,7 +128,7 @@ bool Environment::Initialize(const vec2i &window_size, const char *window_title,
                       SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 #endif
   auto context = SDL_GL_CreateContext(window);
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   if (context) {
 #ifdef __ANDROID__
     AndroidInitGl3Functions();
@@ -149,7 +149,7 @@ bool Environment::Initialize(const vec2i &window_size, const char *window_title,
 
   handles_.reset(new SDLHandles(window, context));
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   LogInfo("FPLBase: got OpenGL ES context level %s",
           feature_level_ == kFeatureLevel20 ? "2.0" : "3.0");
 #endif
@@ -159,19 +159,19 @@ bool Environment::Initialize(const vec2i &window_size, const char *window_title,
   SDL_GL_SetSwapInterval(1);
 #endif
 
-#if !defined(PLATFORM_MOBILE) && !defined(__APPLE__)
+#if !defined(FPLBASE_GLES) && !defined(__APPLE__)
 #define GLEXT(type, name, required) \
   LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
   GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
 #define GLEXT(type, name, required) \
   LOOKUP_GL_FUNCTION(type, name, required, SDL_GL_GetProcAddress)
-  GLESEXTS
+      GLESEXTS
 #undef GLEXT
-#endif  // PLATFORM_MOBILE
+#endif  // FPLBASE_GLES
 
   return true;
 }

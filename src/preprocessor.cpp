@@ -234,7 +234,7 @@ void PlatformSanitizeShaderSource(const char *csource,
   // If we have a version, put it at the top of the file.
   if (version_number != 0) {
     // If specified version wasn't for current platform, try to convert it.
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
     if (!version_es) {
       version_number = MobileFromDesktopVersion(version_number);
       version_es = true;
@@ -251,7 +251,7 @@ void PlatformSanitizeShaderSource(const char *csource,
         .append(flatbuffers::NumToString(version_number))
         .append(version_es ? " es\n" : "\n");
   } else {
-#ifndef PLATFORM_MOBILE
+#ifndef FPLBASE_GLES
     // Use GLSL 1.20 by default on desktop.
     result->append("#version 120\n");
 #endif
@@ -264,7 +264,7 @@ void PlatformSanitizeShaderSource(const char *csource,
   }
 
   // Add per-platform definitions.
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
   result->append("#ifdef GL_ES\nprecision highp float;\n#endif\n");
 #else
   result->append("#define lowp\n#define mediump\n#define highp\n");

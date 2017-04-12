@@ -47,12 +47,12 @@ bool Environment::Initialize(const vec2i& /*window_size*/,
     AndroidInitGl3Functions();
   }
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
 #define GLEXT(type, name, required) \
   LOOKUP_GL_FUNCTION(type, name, required, eglGetProcAddress)
   GLESEXTS
 #undef GLEXT
-#endif  // PLATFORM_MOBILE
+#endif  // FPLBASE_GLES
 #endif  // defined(__ANDROID__)
 
   return true;
