@@ -238,6 +238,9 @@ class RendererBase {
   /// see: https://www.opengl.org/wiki/NPOT_Texture
   bool SupportsTextureNpot() const;
 
+  /// @brief Returns if multiview capabilities are supported by the hardware.
+  bool SupportsMultiview() const;
+
   // For internal use only.
   RendererBaseImpl* impl() { return impl_; }
 
@@ -276,6 +279,7 @@ class RendererBase {
   int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   bool supports_texture_npot_;
+  bool supports_multiview_;
   bool supports_instancing_;
 
   Shader *force_shader_;

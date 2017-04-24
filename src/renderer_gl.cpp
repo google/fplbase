@@ -117,6 +117,11 @@ bool RendererBase::InitializeRenderingState() {
     return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
   };
 
+  // Check for multiview extension support.
+  if (HasGLExt("GL_OVR_multiview") || HasGLExt("GL_OVR_multiview2")) {
+    supports_multiview_ = true;
+  }
+
   // Check for ASTC: Available in devices supporting AEP.
   if (!HasGLExt("GL_KHR_texture_compression_astc_ldr")) {
     supports_texture_format_ &= ~(1 << kFormatASTC);

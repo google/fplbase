@@ -39,6 +39,7 @@ RendererBase::RendererBase()
       time_(0),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
+      supports_multiview_(false),
       supports_instancing_(false),
       force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
@@ -132,6 +133,10 @@ bool RendererBase::SupportsTextureFormat(TextureFormat texture_format) const {
 
 bool RendererBase::SupportsTextureNpot() const {
   return supports_texture_npot_;
+}
+
+bool RendererBase::SupportsMultiview() const {
+  return supports_multiview_;
 }
 
 Shader *RendererBase::CompileAndLinkShader(const char *vs_source,
