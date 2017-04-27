@@ -108,7 +108,7 @@ LOCAL_CPPFLAGS := \
   -D'FPLBASE_JNI_ONLOAD_FUNCTIONS(X)=$(foreach \
        func,$(FPLBASE_JNI_ONLOAD_FUNCTIONS),X($(func)) )'
 
-LOCAL_SRC_FILES := src/main_sdl.cpp
+LOCAL_SRC_FILES := src/main.cpp
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -134,11 +134,10 @@ LOCAL_C_INCLUDES := $(FPLBASE_COMMON_INCLUDES) $(DEPENDENCIES_SDL_DIR)
 
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
-  src/async_loader_sdl.cpp \
+  src/async_loader.cpp \
   src/environment_sdl.cpp \
   src/input_sdl.cpp \
-  src/renderer_android.cpp \
-  src/utilities_sdl.cpp
+  src/renderer_android.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
 FPLBASE_RUN_ONCE := 1
@@ -177,8 +176,7 @@ LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader_stdlib.cpp \
   src/environment_stdlib.cpp \
-  src/input_stdlib.cpp \
-  src/utilities_stdlib.cpp
+  src/input_stdlib.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
 FPLBASE_RUN_ONCE := 1

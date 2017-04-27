@@ -17,13 +17,17 @@
 
 #include "fplbase/config.h"  // Must come first.
 
+#ifdef FPLBASE_BACKEND_SDL
 #include "SDL_main.h"
+#endif
 
-#ifdef __ANDROID__
+#if defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)
 #include <assert.h>
 #include <jni.h>
 #include <android/log.h>
+#endif  // defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)
 
+#if defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)
 #if !defined(FPLBASE_JNI_ONLOAD_FUNCTIONS)
 #error FPLBASE_JNI_ONLOAD_FUNCTIONS should at least be configured to \
        call SDL_JNI_OnLoad.  For example: \
@@ -39,8 +43,7 @@
 // Used by FPLBASE_JNI_ONLOAD_FUNCTIONS to expand into a comma separated list
 // of strings.
 #define FPLBASE_JNI_ONLOAD_FUNCTION_STRINGS(X) #X,
-
-#endif  // __ANDROID__
+#endif  // defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)
 
 extern "C" int FPL_main(int argc, char* argv[]);
 
@@ -51,7 +54,7 @@ int main(int argc, char* argv[]) { return FPL_main(argc, argv); }
 // from stripping the JNI_OnLoad entry point from the application.  Since
 // main() / SDL_main() will always be referenced this object should always be
 // linked.
-#if defined(__ANDROID__)
+#if defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)
 typedef jint (*JniOnLoadFunction)(JavaVM* vm, void* reserved);
 
 FPLBASE_JNI_ONLOAD_FUNCTIONS(FPLBASE_JNI_ONLOAD_FUNCTION_DECLARATIONS)
@@ -83,4 +86,4 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
   }
   return expected_jni_version;
 }
-#endif  // defined(__ANDROID__)
+#endif  // defined(FPLBASE_BACKEND_SDL) && defined(__ANDROID__)

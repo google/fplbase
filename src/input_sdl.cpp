@@ -21,6 +21,10 @@
 #include <android/keycodes.h>
 #endif  // ANDROID_GAMEPAD
 
+// #ifdef this whole file, such that build systems can include .cpp files
+// for all backends if that's easier.
+#ifdef FPLBASE_BACKEND_SDL
+
 using mathfu::vec2;
 using mathfu::vec2i;
 using mathfu::mat4;
@@ -693,3 +697,5 @@ Java_com_google_fpl_fplbase_FPLActivity_nativeOnDisplayRotationChanged(
 #endif  // __ANDROID__
 
 }  // namespace fplbase
+
+#endif  // FPLBASE_BACKEND_SDL

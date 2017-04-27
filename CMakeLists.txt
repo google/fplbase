@@ -246,18 +246,16 @@ set(fplbase_common_SRCS
 
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
-  src/async_loader_sdl.cpp
+  src/async_loader.cpp
   src/environment_sdl.cpp
   src/input_sdl.cpp
-  src/main_sdl.cpp
-  src/utilities_sdl.cpp)
+  src/main.cpp)
 
 set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_stdlib.cpp
   src/environment_stdlib.cpp
-  src/input_stdlib.cpp
-  src/utilities_stdlib.cpp)
+  src/input_stdlib.cpp)
 
 set(fplbase_stb_defines
     STB_IMAGE_IMPLEMENTATION

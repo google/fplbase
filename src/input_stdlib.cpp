@@ -16,6 +16,10 @@
 #include "fplbase/input.h"
 #include "fplbase/utilities.h"
 
+// #ifdef this whole file, such that build systems can include .cpp files
+// for all backends if that's easier.
+#ifdef FPLBASE_BACKEND_STDLIB
+
 using mathfu::vec2;
 using mathfu::vec2i;
 
@@ -109,3 +113,5 @@ int Joystick::GetNumHats() const {
 }
 
 }  // namespace fplbase
+
+#endif  // FPLBASE_BACKEND_STDLIB
