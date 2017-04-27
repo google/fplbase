@@ -270,7 +270,13 @@ void LogError(LogCategory category, const char *fmt, ...);
 /// @brief Get the Android activity class.
 /// @return Returns a pointer to the Java instance of the activity class
 /// in an Android application.
-jobject AndroidGetActivity();
+jobject AndroidGetActivity(bool optional = false);
+
+#ifdef FPLBASE_BACKEND_STDLIB
+/// @brief Sets the Android activity class. Required by many of the functions
+/// below, must be set before calling them.
+void AndroidSetActivity(jobject activity);
+#endif
 
 /// @brief Get the Java native interface object (JNIEnv).
 /// @return Returns a pointer to the Java native interface object (JNIEnv) of
@@ -285,6 +291,10 @@ JNIEnv *AndroidGetJNIEnv();
 /// @return Return value is whatever callback was previously registered. (Or
 /// `nullptr` if there was none.)
 VsyncCallback RegisterVsyncCallback(VsyncCallback callback);
+
+/// @brief Call the current Vsync callback. Normally done by the native OnVsync
+/// method.
+void CallVsyncCallback();
 
 /// @brief Blocks until the next time a VSync happens.
 void WaitForVsync();

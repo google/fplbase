@@ -16,10 +16,6 @@
 #include "fplbase/async_loader.h"
 #include "fplbase/utilities.h"
 
-#ifndef FPLBASE_BACKEND_SDL
-#error This version of AsyncLoader depends on SDL.
-#endif
-
 namespace fplbase {
 
 // Push this to signal the worker thread that it's time to quit.
