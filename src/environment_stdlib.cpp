@@ -31,7 +31,7 @@ namespace fplbase {
 // When building without SDL we assume the window and rendering context have
 // already been created prior to calling initialize.
 bool Environment::Initialize(const vec2i& /*window_size*/,
-                             const char* /*window_size*/,
+                             const char* /*window_title*/,
                              WindowMode /*window_mode*/) {
 #if defined(_WIN32)
 #define GLEXT(type, name, required) \
