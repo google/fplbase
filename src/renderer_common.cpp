@@ -153,6 +153,10 @@ void Renderer::SetBlendMode(BlendMode blend_mode) {
   SetBlendMode(blend_mode, 0.5f);
 }
 
+BlendMode Renderer::GetBlendMode() {
+  return blend_mode_;
+}
+
 void Renderer::AdvanceFrame(bool minimized, double time) {
   base_->AdvanceFrame(minimized, time);
   SetDepthFunction(kDepthFunctionLess);

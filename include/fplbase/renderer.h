@@ -433,6 +433,9 @@ class Renderer {
   /// @overload void SetBlendMode(BlendMode blend_mode)
   void SetBlendMode(BlendMode blend_mode);
 
+  /// @brief Gets the currently set blend mode.
+  BlendMode GetBlendMode();
+
   /// @brief Sets the stencil mode. By default, the stencil test is off.
   ///
   /// @param mode The stencil mode to use.
