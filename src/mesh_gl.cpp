@@ -79,11 +79,11 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
 
   if (RendererBase::Get()->feature_level() >= kFeatureLevel30) {
     GLuint vao = 0;
-    glGenVertexArrays(1, &vao);
+    GL_CALL(glGenVertexArrays(1, &vao));
     impl_->vao = BufferHandleFromGl(vao);
-    glBindVertexArray(vao);
+    GL_CALL(glBindVertexArray(vao));
     SetAttributes(vbo, format_, static_cast<int>(vertex_size_), nullptr);
-    glBindVertexArray(0);
+    GL_CALL(glBindVertexArray(0));
   }
 
   // Determine the min and max position

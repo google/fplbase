@@ -50,7 +50,7 @@ void DrawElement(int32_t count, int32_t instances, uint32_t index_type,
 void BindAttributes(BufferHandle vao, BufferHandle vbo,
                     const Attribute *attributes, size_t vertex_size) {
   if (ValidBufferHandle(vao)) {
-    glBindVertexArray(GlBufferHandle(vao));
+    GL_CALL(glBindVertexArray(GlBufferHandle(vao)));
   } else {
     SetAttributes(GlBufferHandle(vbo), attributes,
                   static_cast<int>(vertex_size), nullptr);
@@ -59,7 +59,7 @@ void BindAttributes(BufferHandle vao, BufferHandle vbo,
 
 void UnbindAttributes(BufferHandle vao, const Attribute *attributes) {
   if (ValidBufferHandle(vao)) {
-    glBindVertexArray(0);  // TODO(wvo): could probably omit this?
+    GL_CALL(glBindVertexArray(0));  // TODO(wvo): could probably omit this?
   } else {
     UnSetAttributes(attributes);
   }
@@ -333,9 +333,9 @@ void Renderer::SetDepthFunction(DepthFunction func) {
 
   if (depth_state.test_enabled != render_state_.depth_state.test_enabled) {
     if (depth_state.test_enabled) {
-      glEnable(GL_DEPTH_TEST);
+      GL_CALL(glEnable(GL_DEPTH_TEST));
     } else {
-      glDisable(GL_DEPTH_TEST);
+      GL_CALL(glDisable(GL_DEPTH_TEST));
     }
   }
 
@@ -353,7 +353,7 @@ void Renderer::SetDepthWrite(bool enabled) {
     return;
   }
 
-  glDepthMask(enabled ? GL_TRUE : GL_FALSE);
+  GL_CALL(glDepthMask(enabled ? GL_TRUE : GL_FALSE));
 
   render_state_.depth_state.write_enabled = enabled;
 }
@@ -706,8 +706,8 @@ void Renderer::Render(Mesh *mesh, bool ignore_material, size_t instances) {
                   mesh->primitive_, base_->supports_instancing_);
     }
   } else {
-    glDrawArrays(mesh->primitive_, 0,
-                 static_cast<int32_t>(mesh->num_vertices_));
+    GL_CALL(glDrawArrays(mesh->primitive_, 0,
+                         static_cast<int32_t>(mesh->num_vertices_)));
   }
   UnbindAttributes(mesh->impl_->vao, mesh->format_);
 }
@@ -737,8 +737,8 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
   } else {
     for (size_t i = 0; i < 2; ++i) {
       prep_stereo(i);
-      glDrawArrays(mesh->primitive_, 0,
-                   static_cast<int32_t>(mesh->num_vertices_));
+      GL_CALL(glDrawArrays(mesh->primitive_, 0,
+                           static_cast<int32_t>(mesh->num_vertices_)));
     }
   }
   UnbindAttributes(mesh->impl_->vao, mesh->format_);
