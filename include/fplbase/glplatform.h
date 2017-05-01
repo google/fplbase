@@ -130,7 +130,9 @@
   GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced, true)         \
   GLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays, true)                     \
   GLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays, true)               \
-  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)
+  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)                     \
+  GLEXT(PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC,                               \
+        glFramebufferTextureMultiviewOVR, false)
 
 // TODO(jsanmiya): Get this compiling for all versions of OpenGL. Currently only
 //                 valid when GL_VERSION_4_3 is defined.
