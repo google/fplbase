@@ -43,9 +43,7 @@ enum Attribute : ubyte {
   TexCoordAlt2f,
   Color4ub,
   BoneIndices4ub,
-  BoneWeights4ub,
-  Position2f,
-  TexCoord2us,
+  BoneWeights4ub
 }
 
 table Mesh {

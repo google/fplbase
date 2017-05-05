@@ -124,7 +124,6 @@ void RenderAAQuadAlongXNinePatch(const vec3 &bottom_left, const vec3 &top_right,
 
 void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                    const char *buffer) {
-  Mesh::VerifyFormat(attributes);
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo));
   size_t offset = 0;
   for (;;) {
@@ -134,12 +133,6 @@ void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
         GL_CALL(glVertexAttribPointer(Mesh::kAttributePosition, 3, GL_FLOAT,
                                       false, stride, buffer + offset));
         offset += 3 * sizeof(float);
-        break;
-      case kPosition2f:
-        GL_CALL(glEnableVertexAttribArray(Mesh::kAttributePosition));
-        GL_CALL(glVertexAttribPointer(Mesh::kAttributePosition, 2, GL_FLOAT,
-                                      false, stride, buffer + offset));
-        offset += 2 * sizeof(float);
         break;
       case kNormal3f:
         GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeNormal));
@@ -158,14 +151,6 @@ void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
         GL_CALL(glVertexAttribPointer(Mesh::kAttributeTexCoord, 2, GL_FLOAT,
                                       false, stride, buffer + offset));
         offset += 2 * sizeof(float);
-        break;
-      case kTexCoord2us:
-        GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeTexCoord));
-        GL_CALL(glVertexAttribPointer(Mesh::kAttributeTexCoord, 2,
-                                      GL_UNSIGNED_SHORT,
-                                      /* normalized = */ true, stride,
-                                      buffer + offset));
-        offset += 2 * sizeof(uint16_t);
         break;
       case kTexCoordAlt2f:
         GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeTexCoordAlt));
@@ -205,7 +190,6 @@ void UnSetAttributes(const Attribute *attributes) {
   for (;;) {
     switch (*attributes++) {
       case kPosition3f:
-      case kPosition2f:
         GL_CALL(glDisableVertexAttribArray(Mesh::kAttributePosition));
         break;
       case kNormal3f:
@@ -215,7 +199,6 @@ void UnSetAttributes(const Attribute *attributes) {
         GL_CALL(glDisableVertexAttribArray(Mesh::kAttributeTangent));
         break;
       case kTexCoord2f:
-      case kTexCoord2us:
         GL_CALL(glDisableVertexAttribArray(Mesh::kAttributeTexCoord));
         break;
       case kTexCoordAlt2f:

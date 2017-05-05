@@ -47,10 +47,6 @@ enum Attribute {
   kColor4ub,
   kBoneIndices4ub,
   kBoneWeights4ub,
-  kPosition2f,   ///< @brief 2D position.  Can't coexist with kPosition3f.
-  /// @brief 2 unsigned shorts, normalized to [0,1].  Can't coexist with
-  /// kTexCoord2f.
-  kTexCoord2us,
 };
 
 /// @class Mesh
@@ -259,12 +255,6 @@ class Mesh : public AsyncAsset {
   /// @param end The attribute to treat as the end of the array.
   /// @return Returns the byte size based on the given attributes.
   static size_t VertexSize(const Attribute *attributes, Attribute end = kEND);
-
-  /// @brief Checks the vertex format for correctness.
-  ///
-  /// @param attributes The array of attributes describing the vertex.
-  /// @param end The attribute to treat as the end of the array.
-  static void VerifyFormat(const Attribute *attributes, Attribute end = kEND);
 
   /// @brief Get the minimum position of an AABB about the mesh.
   ///
