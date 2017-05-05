@@ -45,7 +45,9 @@ static_assert(
         kBoneIndices4ub ==
             static_cast<Attribute>(meshdef::Attribute_BoneIndices4ub) &&
         kBoneWeights4ub ==
-            static_cast<Attribute>(meshdef::Attribute_BoneWeights4ub),
+            static_cast<Attribute>(meshdef::Attribute_BoneWeights4ub) &&
+        kPosition2f == static_cast<Attribute>(meshdef::Attribute_Position2f) &&
+        kTexCoord2us == static_cast<Attribute>(meshdef::Attribute_TexCoord2us),
     "Attribute enums in mesh.h and mesh.fbs must match.");
 
 template <typename T>
@@ -88,7 +90,43 @@ Mesh::~Mesh() {
   DestroyMeshImpl(impl_);
 }
 
+void Mesh::VerifyFormat(const Attribute *attributes, Attribute end) {
+#ifdef LOG_GL_ERRORS
+  bool seen[kMaxAttributes] = {false};
+  int count = 0;
+  for (;; attributes++) {
+    bool done = *attributes == end;
+    int index = 0;
+    // clang-format off
+    switch (*attributes) {
+      case kPosition3f:     index = kAttributePosition;    break;
+      case kPosition2f:     index = kAttributePosition;    break;
+      case kNormal3f:       index = kAttributeNormal;      break;
+      case kTangent4f:      index = kAttributeTangent;     break;
+      case kTexCoord2f:     index = kAttributeTexCoord;    break;
+      case kTexCoord2us:    index = kAttributeTexCoord;    break;
+      case kTexCoordAlt2f:  index = kAttributeTexCoordAlt; break;
+      case kColor4ub:       index = kAttributeColor;       break;
+      case kBoneIndices4ub: index = kAttributeBoneIndices; break;
+      case kBoneWeights4ub: index = kAttributeBoneWeights; break;
+      case kEND:            done = true;                   break;
+    }
+    if (done) {
+      break;
+    }
+    // clang-format on
+    assert(!seen[index]);
+    seen[index] = true;
+    assert(count < kMaxAttributes);
+    ++count;
+  }
+  assert(seen[kAttributePosition]);
+#endif  // LOG_GL_ERRORS
+}
+
 size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
+  VerifyFormat(attributes, end);
+
   size_t size = 0;
   for (;; attributes++) {
     if (*attributes == end) {
@@ -96,14 +134,16 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
     }
     // clang-format off
     switch (*attributes) {
-      case kPosition3f:     size += 3 * sizeof(float); break;
-      case kNormal3f:       size += 3 * sizeof(float); break;
-      case kTangent4f:      size += 4 * sizeof(float); break;
-      case kTexCoord2f:     size += 2 * sizeof(float); break;
-      case kTexCoordAlt2f:  size += 2 * sizeof(float); break;
-      case kColor4ub:       size += 4;                 break;
-      case kBoneIndices4ub: size += 4;                 break;
-      case kBoneWeights4ub: size += 4;                 break;
+      case kPosition3f:     size += 3 * sizeof(float);    break;
+      case kPosition2f:     size += 2 * sizeof(float);    break;
+      case kNormal3f:       size += 3 * sizeof(float);    break;
+      case kTangent4f:      size += 4 * sizeof(float);    break;
+      case kTexCoord2f:     size += 2 * sizeof(float);    break;
+      case kTexCoord2us:    size += 2 * sizeof(uint16_t); break;
+      case kTexCoordAlt2f:  size += 2 * sizeof(float);    break;
+      case kColor4ub:       size += 4;                    break;
+      case kBoneIndices4ub: size += 4;                    break;
+      case kBoneWeights4ub: size += 4;                    break;
       case kEND:            return size;
     }
     // clang-format on
@@ -273,10 +313,9 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
 }
 
 void Mesh::set_format(const Attribute *format) {
-  for (int i = 0;; ++i) {
-    assert(i < kMaxAttributes);
-    if (i >= kMaxAttributes) break;
+  VerifyFormat(format);
 
+  for (int i = 0; i < kMaxAttributes; ++i) {
     format_[i] = format[i];
     if (format[i] == kEND) break;
   }
