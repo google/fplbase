@@ -81,5 +81,6 @@ function(test_executable name)
   mathfu_configure_flags(${name}_test)
 endfunction()
 
+test_executable(mesh)
 test_executable(utils)
 test_executable(preprocessor)
