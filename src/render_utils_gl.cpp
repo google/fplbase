@@ -124,7 +124,7 @@ void RenderAAQuadAlongXNinePatch(const vec3 &bottom_left, const vec3 &top_right,
 
 void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                    const char *buffer) {
-  Mesh::VerifyFormat(attributes);
+  assert(Mesh::IsValidFormat(attributes));
   GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vbo));
   size_t offset = 0;
   for (;;) {

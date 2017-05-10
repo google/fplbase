@@ -259,15 +259,18 @@ class Mesh : public AsyncAsset {
   /// If a custom end parameter is used, it will effectively return the byte
   /// offset of that value within the vertex.
   ///
-  /// @param attributes The array of attributes describing the vertex.
+  /// @param attributes The array of attributes describing the vertex,
+  /// terminated with kEND.
   /// @param end The attribute to treat as the end of the array.
   /// @return Returns the byte size based on the given attributes.
   static size_t VertexSize(const Attribute *attributes, Attribute end = kEND);
 
   /// @brief Checks the vertex format for correctness.
   ///
-  /// @param attributes The array of attributes describing the vertex.
-  static void VerifyFormat(const Attribute *attributes);
+  /// @param attributes The array of attributes describing the vertex,
+  /// terminated with kEND.
+  /// @return Returns whether the format is valid.
+  static bool IsValidFormat(const Attribute *attributes);
 
   /// @brief Get the minimum position of an AABB about the mesh.
   ///

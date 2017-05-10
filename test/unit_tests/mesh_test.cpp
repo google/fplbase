@@ -16,6 +16,19 @@
 #include "gtest/gtest.h"
 
 namespace fplbase {
+namespace {
+
+const Attribute kP[] = {kPosition3f, kEND};
+const Attribute kPN[] = {kPosition3f, kNormal3f, kEND};
+const Attribute kPT[] = {kPosition3f, kTangent4f, kEND};
+const Attribute kPUv[] = {kPosition3f, kTexCoord2f, kEND};
+const Attribute kPC[] = {kPosition3f, kColor4ub, kEND};
+const Attribute kPIW[] = {kPosition3f, kBoneIndices4ub, kBoneWeights4ub, kEND};
+const Attribute kPUvC[] = {kPosition3f, kTexCoord2f, kColor4ub, kEND};
+const Attribute kPNTIW[] = {kPosition3f,     kNormal3f,       kTangent4f,
+                            kBoneIndices4ub, kBoneWeights4ub, kEND};
+
+}  // namespace
 
 class MeshTests : public ::testing::Test {
  protected:
@@ -23,35 +36,58 @@ class MeshTests : public ::testing::Test {
   virtual void TearDown() {}
 };
 
+TEST_F(MeshTests, IsValidFormat) {
+  EXPECT_TRUE(Mesh::IsValidFormat(kP));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPN));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPT));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPUv));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPC));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPIW));
+  EXPECT_TRUE(Mesh::IsValidFormat(kPNTIW));
+
+  const Attribute kNoPosition[] = {kNormal3f, kEND};
+  EXPECT_FALSE(Mesh::IsValidFormat(kNoPosition));
+
+  const Attribute kBadPositions[] = {kPosition3f, kPosition2f, kEND};
+  EXPECT_FALSE(Mesh::IsValidFormat(kBadPositions));
+
+  const Attribute kBadUvs[] = {kTexCoord2f, kTexCoord2us, kEND};
+  EXPECT_FALSE(Mesh::IsValidFormat(kBadUvs));
+
+  // Simulate uninitialized memory by filling it with 0xff, which isn't kEND.
+  Attribute unterminated[100];
+  memset(unterminated, 0xff, sizeof unterminated);
+  unterminated[0] = kPosition3f;
+  EXPECT_FALSE(Mesh::IsValidFormat(unterminated));
+}
+
 // Check vertex size calculations.
 TEST_F(MeshTests, VertexSize) {
-  const Attribute kP[] = {kPosition3f, kEND};
+  // kP = 3 floats = 12 bytes
   EXPECT_EQ(Mesh::VertexSize(kP), 12U);
 
-  const Attribute kPN[] = {kPosition3f, kNormal3f, kEND};
+  // kPN = 3 + 3 floats = 24 bytes
   EXPECT_EQ(Mesh::VertexSize(kPN), 24U);
 
-  const Attribute kPT[] = {kPosition3f, kTangent4f, kEND};
+  // kPT = 3 + 4 floats = 24 bytes
   EXPECT_EQ(Mesh::VertexSize(kPT), 28U);
 
-  const Attribute kPUv[] = {kPosition3f, kTexCoord2f, kEND};
+  // kPUv = 3 + 2 floats = 20 bytes
   EXPECT_EQ(Mesh::VertexSize(kPUv), 20U);
 
-  const Attribute kPC[] = {kPosition3f, kColor4ub, kEND};
+  // kPC = 3 floats + 4 bytes = 16 bytes
   EXPECT_EQ(Mesh::VertexSize(kPC), 16U);
 
-  const Attribute kPIW[] = {kPosition3f, kBoneIndices4ub, kBoneWeights4ub,
-                            kEND};
+  // kPIW = 3 floats + (4 + 4) bytes = 20 bytes
   EXPECT_EQ(Mesh::VertexSize(kPIW), 20U);
 
-  const Attribute kPUvC[] = {kPosition3f, kTexCoord2f, kColor4ub, kEND};
+  // kPUvC = (3 + 2) floats + 4 bytes = 24 bytes
   EXPECT_EQ(Mesh::VertexSize(kPUvC), 24U);
   EXPECT_EQ(Mesh::VertexSize(kPUvC, kPosition3f), 0U);
   EXPECT_EQ(Mesh::VertexSize(kPUvC, kTexCoord2f), 12U);
   EXPECT_EQ(Mesh::VertexSize(kPUvC, kColor4ub), 20U);
 
-  const Attribute kPNTIW[] = {kPosition3f,     kNormal3f,       kTangent4f,
-                              kBoneIndices4ub, kBoneWeights4ub, kEND};
+  // KPNTIW = (3 + 3 + 4) floats + (4 + 4) bytes = 48 bytes
   EXPECT_EQ(Mesh::VertexSize(kPNTIW), 48U);
   EXPECT_EQ(Mesh::VertexSize(kPNTIW, kPosition3f), 0U);
   EXPECT_EQ(Mesh::VertexSize(kPNTIW, kNormal3f), 12U);

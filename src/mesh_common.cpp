@@ -90,42 +90,37 @@ Mesh::~Mesh() {
   DestroyMeshImpl(impl_);
 }
 
-void Mesh::VerifyFormat(const Attribute *attributes) {
-#ifdef LOG_GL_ERRORS
+bool Mesh::IsValidFormat(const Attribute *attributes) {
   bool seen[kMaxAttributes] = {false};
   int count = 0;
-  bool done = false;
   for (;; attributes++) {
     int index = 0;
     // clang-format off
     switch (*attributes) {
-      case kPosition3f:     index = kAttributePosition;    break;
-      case kPosition2f:     index = kAttributePosition;    break;
-      case kNormal3f:       index = kAttributeNormal;      break;
-      case kTangent4f:      index = kAttributeTangent;     break;
-      case kTexCoord2f:     index = kAttributeTexCoord;    break;
-      case kTexCoord2us:    index = kAttributeTexCoord;    break;
-      case kTexCoordAlt2f:  index = kAttributeTexCoordAlt; break;
-      case kColor4ub:       index = kAttributeColor;       break;
-      case kBoneIndices4ub: index = kAttributeBoneIndices; break;
-      case kBoneWeights4ub: index = kAttributeBoneWeights; break;
-      case kEND:            done = true;                   break;
+      case kPosition3f:     index = kAttributePosition;      break;
+      case kPosition2f:     index = kAttributePosition;      break;
+      case kNormal3f:       index = kAttributeNormal;        break;
+      case kTangent4f:      index = kAttributeTangent;       break;
+      case kTexCoord2f:     index = kAttributeTexCoord;      break;
+      case kTexCoord2us:    index = kAttributeTexCoord;      break;
+      case kTexCoordAlt2f:  index = kAttributeTexCoordAlt;   break;
+      case kColor4ub:       index = kAttributeColor;         break;
+      case kBoneIndices4ub: index = kAttributeBoneIndices;   break;
+      case kBoneWeights4ub: index = kAttributeBoneWeights;   break;
+      case kEND:            return seen[kAttributePosition];
     }
     // clang-format on
-    if (done) {
-      break;
+    if (seen[index] || count == kMaxAttributes) {
+      return false;
     }
-    assert(!seen[index]);
     seen[index] = true;
-    assert(count < kMaxAttributes);
     ++count;
   }
-  assert(seen[kAttributePosition]);
-#endif  // LOG_GL_ERRORS
+  return false;
 }
 
 size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
-  VerifyFormat(attributes);
+  assert(IsValidFormat(attributes));
 
   size_t size = 0;
   for (;; attributes++) {
@@ -313,7 +308,7 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
 }
 
 void Mesh::set_format(const Attribute *format) {
-  VerifyFormat(format);
+  assert(IsValidFormat(format));
 
   for (int i = 0; i < kMaxAttributes; ++i) {
     format_[i] = format[i];
