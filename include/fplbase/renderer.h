@@ -586,6 +586,11 @@ class Renderer {
   /// @brief Returns the current render state.
   const RenderState &GetRenderState() const { return render_state_; }
 
+  /// @brief Sets the render state to match the desired state.
+  //
+  /// @param render_state The render state to be set.
+  void SetRenderState(const RenderState &render_state);
+
   /// @brief Updates the cached render state with the given render state.
   ///
   /// This should be used to avoid mismatch between the expected render state
@@ -614,6 +619,13 @@ class Renderer {
   // on the platform-specific impl structs.
   static RendererImpl *CreateRendererImpl();
   static void DestroyRendererImpl(RendererImpl *impl);
+
+  void SetAlphaTestState(const AlphaTestState &alpha_test_state);
+  void SetBlendState(const BlendState &blend_state);
+  void SetCullState(const CullState &cull_state);
+  void SetDepthState(const DepthState &depth_state);
+  void SetScissorState(const ScissorState &scissor_state);
+  void SetStencilState(const StencilState &stencil_state);
 
   // Platform-dependent data.
   RendererImpl* impl_;

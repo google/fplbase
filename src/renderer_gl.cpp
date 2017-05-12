@@ -331,21 +331,9 @@ void Renderer::SetDepthFunction(DepthFunction func) {
       break;
   }
 
-  if (depth_state.test_enabled != render_state_.depth_state.test_enabled) {
-    if (depth_state.test_enabled) {
-      GL_CALL(glEnable(GL_DEPTH_TEST));
-    } else {
-      GL_CALL(glDisable(GL_DEPTH_TEST));
-    }
-  }
-
-  if (depth_state.function != render_state_.depth_state.function) {
-    const GLenum depth_func = RenderFunctionToGlFunction(depth_state.function);
-    GL_CALL(glDepthFunc(depth_func));
-  }
+  SetDepthState(depth_state);
 
   depth_function_ = func;
-  render_state_.depth_state = depth_state;
 }
 
 void Renderer::SetDepthWrite(bool enabled) {
@@ -437,45 +425,12 @@ void Renderer::SetBlendMode(BlendMode blend_mode, float amount) {
       break;
   }
 
-  if (blend_state.enabled != render_state_.blend_state.enabled) {
-    if (blend_state.enabled) {
-      GL_CALL(glEnable(GL_BLEND));
-    } else {
-      GL_CALL(glDisable(GL_BLEND));
-    }
-  }
+  SetBlendState(blend_state);
 
-  if (blend_state.src_alpha != render_state_.blend_state.src_alpha ||
-      blend_state.src_color != render_state_.blend_state.src_color ||
-      blend_state.dst_alpha != render_state_.blend_state.dst_alpha ||
-      blend_state.dst_color != render_state_.blend_state.dst_color) {
-    const GLenum src_factor = BlendStateFactorToGl(blend_state.src_alpha);
-    const GLenum dst_factor = BlendStateFactorToGl(blend_state.dst_alpha);
-
-    GL_CALL(glBlendFunc(src_factor, dst_factor));
-  }
-
-#ifndef FPLBASE_GLES  // Alpha test not supported in ES 2.
-  if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
-    if (alpha_test_state.enabled) {
-      GL_CALL(glEnable(GL_ALPHA_TEST));
-    } else {
-      GL_CALL(glDisable(GL_ALPHA_TEST));
-    }
-  }
-
-  if (alpha_test_state.ref != render_state_.alpha_test_state.ref ||
-      alpha_test_state.function != render_state_.alpha_test_state.function) {
-    const GLenum gl_func =
-        RenderFunctionToGlFunction(alpha_test_state.function);
-    GL_CALL(glAlphaFunc(gl_func, alpha_test_state.ref));
-  }
-#endif
+  SetAlphaTestState(alpha_test_state);
 
   blend_mode_ = blend_mode;
   blend_amount_ = amount;
-  render_state_.alpha_test_state = alpha_test_state;
-  render_state_.blend_state = blend_state;
 }
 
 static void SetStencilOp(GLenum face, const StencilOperation &set_op,
@@ -547,28 +502,9 @@ void Renderer::SetStencilMode(StencilMode mode, int ref, uint32_t mask) {
       assert(false);
   }
 
-  if (stencil_state.enabled != render_state_.stencil_state.enabled) {
-    if (stencil_state.enabled) {
-      GL_CALL(glEnable(GL_STENCIL_TEST));
-    } else {
-      GL_CALL(glDisable(GL_STENCIL_TEST));
-    }
-  }
+  SetStencilState(stencil_state);
 
-  SetStencilFunction(GL_BACK, stencil_state.back_function,
-                     render_state_.stencil_state.back_function);
-  SetStencilFunction(GL_FRONT, stencil_state.front_function,
-                     render_state_.stencil_state.front_function);
-
-  SetStencilOp(GL_FRONT, stencil_state.front_op,
-               render_state_.stencil_state.front_op);
-  SetStencilOp(GL_BACK, stencil_state.back_op,
-               render_state_.stencil_state.back_op);
-
-  render_state_.stencil_state = stencil_state;
   stencil_mode_ = mode;
-  stencil_ref_ = ref;
-  stencil_mask_ = mask;
 }
 
 void Renderer::SetCulling(CullingMode mode) {
@@ -601,21 +537,9 @@ void Renderer::SetCulling(CullingMode mode) {
       assert(false);
   }
 
-  if (cull_state.enabled != render_state_.cull_state.enabled) {
-    if (cull_state.enabled) {
-      GL_CALL(glEnable(GL_CULL_FACE));
-    } else {
-      GL_CALL(glDisable(GL_CULL_FACE));
-    }
-  }
-
-  if (cull_state.face != render_state_.cull_state.face) {
-    const GLenum cull_face = CullFaceToGl(cull_state.face);
-    GL_CALL(glCullFace(cull_face));
-  }
+  SetCullState(cull_state);
 
   cull_mode_ = mode;
-  render_state_.cull_state = cull_state;
 }
 
 void Renderer::SetViewport(const Viewport &viewport) {
@@ -742,6 +666,142 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
     }
   }
   UnbindAttributes(mesh->impl_->vao, mesh->format_);
+}
+
+void Renderer::SetRenderState(const RenderState &render_state) {
+  SetAlphaTestState(render_state.alpha_test_state);
+  SetBlendState(render_state.blend_state);
+  SetCullState(render_state.cull_state);
+  SetDepthState(render_state.depth_state);
+  SetScissorState(render_state.scissor_state);
+  SetStencilState(render_state.stencil_state);
+  SetViewport(render_state.viewport);
+}
+
+void Renderer::SetAlphaTestState(const AlphaTestState &alpha_test_state) {
+#ifndef FPLBASE_GLES  // Alpha test not supported in ES 2.
+  if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
+    if (alpha_test_state.enabled) {
+      GL_CALL(glEnable(GL_ALPHA_TEST));
+    } else {
+      GL_CALL(glDisable(GL_ALPHA_TEST));
+    }
+  }
+
+  if (alpha_test_state.ref != render_state_.alpha_test_state.ref ||
+      alpha_test_state.function != render_state_.alpha_test_state.function) {
+    const GLenum gl_func =
+        RenderFunctionToGlFunction(alpha_test_state.function);
+    GL_CALL(glAlphaFunc(gl_func, alpha_test_state.ref));
+  }
+#endif
+
+  render_state_.alpha_test_state = alpha_test_state;
+
+  blend_mode_ = kBlendModeUnknown;
+  blend_amount_ =  alpha_test_state.ref;
+}
+
+void Renderer::SetBlendState(const BlendState &blend_state) {
+  if (blend_state.enabled != render_state_.blend_state.enabled) {
+    if (blend_state.enabled) {
+      GL_CALL(glEnable(GL_BLEND));
+    } else {
+      GL_CALL(glDisable(GL_BLEND));
+    }
+  }
+
+  if (blend_state.src_alpha != render_state_.blend_state.src_alpha ||
+      blend_state.src_color != render_state_.blend_state.src_color ||
+      blend_state.dst_alpha != render_state_.blend_state.dst_alpha ||
+      blend_state.dst_color != render_state_.blend_state.dst_color) {
+    const GLenum src_factor = BlendStateFactorToGl(blend_state.src_alpha);
+    const GLenum dst_factor = BlendStateFactorToGl(blend_state.dst_alpha);
+
+    GL_CALL(glBlendFunc(src_factor, dst_factor));
+  }
+
+  render_state_.blend_state = blend_state;
+
+  blend_mode_ = kBlendModeUnknown;
+}
+
+void Renderer::SetCullState(const CullState &cull_state) {
+  if (cull_state.enabled != render_state_.cull_state.enabled) {
+    if (cull_state.enabled) {
+      GL_CALL(glEnable(GL_CULL_FACE));
+    } else {
+      GL_CALL(glDisable(GL_CULL_FACE));
+    }
+  }
+
+  if (cull_state.face != render_state_.cull_state.face) {
+    const GLenum cull_face = CullFaceToGl(cull_state.face);
+    GL_CALL(glCullFace(cull_face));
+  }
+
+  render_state_.cull_state = cull_state;
+
+  cull_mode_ = kCullingModeUnknown;
+}
+
+void Renderer::SetDepthState(const DepthState &depth_state) {
+  if (depth_state.test_enabled != render_state_.depth_state.test_enabled) {
+    if (depth_state.test_enabled) {
+      GL_CALL(glEnable(GL_DEPTH_TEST));
+    } else {
+      GL_CALL(glDisable(GL_DEPTH_TEST));
+    }
+  }
+
+  if (depth_state.function != render_state_.depth_state.function) {
+    const GLenum depth_func = RenderFunctionToGlFunction(depth_state.function);
+    GL_CALL(glDepthFunc(depth_func));
+  }
+
+  render_state_.depth_state = depth_state;
+
+  depth_function_ = kDepthFunctionUnknown;
+}
+
+void Renderer::SetScissorState(const ScissorState &scissor_state) {
+  if (render_state_.scissor_state == scissor_state) {
+    return;
+  }
+
+  if (scissor_state.enabled) {
+    GL_CALL(glEnable(GL_SCISSOR_TEST));
+  } else {
+    GL_CALL(glDisable(GL_SCISSOR_TEST));
+  }
+
+  render_state_.scissor_state = scissor_state;
+}
+
+void Renderer::SetStencilState(const StencilState &stencil_state) {
+  if (stencil_state.enabled != render_state_.stencil_state.enabled) {
+    if (stencil_state.enabled) {
+      GL_CALL(glEnable(GL_STENCIL_TEST));
+    } else {
+      GL_CALL(glDisable(GL_STENCIL_TEST));
+    }
+  }
+
+  SetStencilFunction(GL_BACK, stencil_state.back_function,
+                     render_state_.stencil_state.back_function);
+  SetStencilFunction(GL_FRONT, stencil_state.front_function,
+                     render_state_.stencil_state.front_function);
+
+  SetStencilOp(GL_FRONT, stencil_state.front_op,
+               render_state_.stencil_state.front_op);
+  SetStencilOp(GL_BACK, stencil_state.back_op,
+               render_state_.stencil_state.back_op);
+
+  render_state_.stencil_state = stencil_state;
+
+  stencil_ref_ = stencil_state.front_function.ref;
+  stencil_mask_ = stencil_state.front_function.mask;
+  stencil_mode_ = kStencilUnknown;
 }
 
 }  // namespace fplbase
