@@ -83,17 +83,21 @@ TEST_F(MeshTests, VertexSize) {
 
   // kPUvC = (3 + 2) floats + 4 bytes = 24 bytes
   EXPECT_EQ(Mesh::VertexSize(kPUvC), 24U);
-  EXPECT_EQ(Mesh::VertexSize(kPUvC, kPosition3f), 0U);
-  EXPECT_EQ(Mesh::VertexSize(kPUvC, kTexCoord2f), 12U);
-  EXPECT_EQ(Mesh::VertexSize(kPUvC, kColor4ub), 20U);
 
   // KPNTIW = (3 + 3 + 4) floats + (4 + 4) bytes = 48 bytes
   EXPECT_EQ(Mesh::VertexSize(kPNTIW), 48U);
-  EXPECT_EQ(Mesh::VertexSize(kPNTIW, kPosition3f), 0U);
-  EXPECT_EQ(Mesh::VertexSize(kPNTIW, kNormal3f), 12U);
-  EXPECT_EQ(Mesh::VertexSize(kPNTIW, kTangent4f), 24U);
-  EXPECT_EQ(Mesh::VertexSize(kPNTIW, kBoneIndices4ub), 40U);
-  EXPECT_EQ(Mesh::VertexSize(kPNTIW, kBoneWeights4ub), 44U);
+}
+
+TEST_F(MeshTests, AttributeOffset) {
+  EXPECT_EQ(Mesh::AttributeOffset(kPUvC, kPosition3f), 0U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPUvC, kTexCoord2f), 12U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPUvC, kColor4ub), 20U);
+
+  EXPECT_EQ(Mesh::AttributeOffset(kPNTIW, kPosition3f), 0U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPNTIW, kNormal3f), 12U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPNTIW, kTangent4f), 24U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPNTIW, kBoneIndices4ub), 40U);
+  EXPECT_EQ(Mesh::AttributeOffset(kPNTIW, kBoneWeights4ub), 44U);
 }
 
 }  // namespace fplbase

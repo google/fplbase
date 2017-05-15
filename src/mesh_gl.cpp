@@ -93,7 +93,7 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
   } else {
     auto data = static_cast<const float *>(vertex_data);
     const Attribute *attribute = format;
-    data += VertexSize(attribute, kPosition3f) / sizeof(float);
+    data += AttributeOffset(attribute, kPosition3f) / sizeof(float);
     const size_t step = vertex_size / sizeof(float);
     min_position_ = vec3(data);
     max_position_ = min_position_;

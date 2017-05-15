@@ -119,7 +119,7 @@ bool Mesh::IsValidFormat(const Attribute *attributes) {
   return false;
 }
 
-size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
+size_t Mesh::AttributeOffset(const Attribute *attributes, Attribute end) {
   assert(IsValidFormat(attributes));
 
   size_t size = 0;
@@ -143,6 +143,10 @@ size_t Mesh::VertexSize(const Attribute *attributes, Attribute end) {
     }
     // clang-format on
   }
+}
+
+size_t Mesh::VertexSize(const Attribute *attributes) {
+  return AttributeOffset(attributes, kEND);
 }
 
 void Mesh::Load() {

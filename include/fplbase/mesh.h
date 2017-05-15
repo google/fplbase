@@ -255,15 +255,19 @@ class Mesh : public AsyncAsset {
 
   /// @brief Compute the byte size for a vertex from given attributes.
   ///
-  /// In normal usage, this function will compute the size of the entire vertex.
-  /// If a custom end parameter is used, it will effectively return the byte
-  /// offset of that value within the vertex.
-  ///
   /// @param attributes The array of attributes describing the vertex,
   /// terminated with kEND.
-  /// @param end The attribute to treat as the end of the array.
   /// @return Returns the byte size based on the given attributes.
-  static size_t VertexSize(const Attribute *attributes, Attribute end = kEND);
+  static size_t VertexSize(const Attribute *attributes);
+
+  /// @brief Compute the byte offset of an attribute within a given format.
+  ///
+  /// @param vertex_attributes The array of attributes describing the vertex,
+  /// terminated with kEND.
+  /// @param attribute The attribute to calculate the offset of.
+  /// @return Returns the byte offset of the given attribute.
+  static size_t AttributeOffset(const Attribute *vertex_attributes,
+                                Attribute attribute);
 
   /// @brief Checks the vertex format for correctness.
   ///
