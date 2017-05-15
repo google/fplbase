@@ -22,10 +22,11 @@
 #include "shader_generated.h"
 
 struct ShaderPipelineArgs {
-  std::string vertex_shader;    /// The vertex shader source file.
-  std::string fragment_shader;  /// The fragment shader source file.
-  std::string output_file;      /// The output fplshader file.
-  std::vector<char*> defines;   /// Definitions to include into the shaders.
+  std::string vertex_shader;       /// The vertex shader source file.
+  std::string fragment_shader;     /// The fragment shader source file.
+  std::string output_file;         /// The output fplshader file.
+  std::vector<char*> defines;      /// Definitions to include into the shaders.
+  std::vector<char*> include_dirs; /// Directories to search for include files.
 };
 
 static bool ParseShaderPipelineArgs(int argc, char** argv,
@@ -70,6 +71,15 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         valid_args = false;
       }
 
+      // -i switch
+    } else if (arg == "-i" || arg == "--include_dir") {
+      if (i < argc - 2) {
+        ++i;
+        args->include_dirs.insert(args->include_dirs.end(), argv[i]);
+      } else {
+        valid_args = false;
+      }
+
       // all other (non-empty) arguments
     } else if (arg != "") {
       printf("Unknown parameter: %s\n", arg.c_str());
@@ -97,6 +107,7 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         "Options:\n"
         "  -vs, --vertex-shader VERTEX_SHADER\n"
         "  -fs, --fragment-shader FRAGMENT_SHADER\n"
+        "  -i,  --include_dir DIRECTORY\n"
         "  -d,  --defines DEFINITION\n");
   }
 
@@ -120,6 +131,35 @@ int main(int argc, char** argv) {
   if (!ParseShaderPipelineArgs(argc, argv, &args)) {
     return 1;
   }
+
+  // Create a custom load file function to search our include dirs.
+  auto load_shader_file = [&args](const char *filename, std::string *dest) {
+    // First try to load the file at the given path.
+    if (fplbase::LoadFileRaw(filename, dest)) {
+      return true;
+    }
+
+    // Otherwise, try to load from each of the include dirs (but only for
+    // #included files).
+    if (args.vertex_shader.compare(filename) != 0 &&
+        args.fragment_shader.compare(filename) != 0) {
+      std::string path;
+      for (const auto& dir : args.include_dirs) {
+        path = dir;
+        if (path.back() != '/' && path.back() != '\\') {
+          path += '/';
+        }
+        path += filename;
+        if (fplbase::LoadFileRaw(path.c_str(), dest)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  fplbase::SetLoadFileFunction(load_shader_file);
 
   // Read
   std::string vsh;
