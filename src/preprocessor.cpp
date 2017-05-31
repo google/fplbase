@@ -22,6 +22,39 @@ namespace {
 
 static const std::set<std::string> kEmptySet;
 
+const int kDefaultDesktopVersion = 120;  // Use GLSL 1.20 by default on desktop.
+const char kVersionTag[] = "version";
+const char kIfTag[] = "if";  // This will catch all flavors.
+const char kEndIfTag[] = "endif";
+const size_t kVersionTagLength = sizeof(kVersionTag) - 1;
+const size_t kIfTagLength = sizeof(kIfTag) - 1;
+const size_t kEndIfTagLength = sizeof(kEndIfTag) - 1;
+
+// Default definitions which get placed at the top of a shader (but after any
+// #version specifier).
+const char kDefaultDefines[] =
+    "#ifndef GL_ES\n"
+    "#define lowp\n"
+    "#define mediump\n"
+    "#define highp\n"
+    "#endif\n";
+
+// This defines a default float precision for GL ES shaders. Without this, all
+// float-based variables would require their own precision specifier. It's safe
+// to have several of these in a file, so inserting one should be innocuous.
+const char kDefaultPrecisionSpecifier[] =
+    "#ifdef GL_ES\n"
+    "precision highp float;\n"
+    "#endif\n";
+
+struct Substring {
+  Substring() : start(nullptr), len(0) {}
+  Substring(const char *start, size_t len) : start(start), len(len) {}
+
+  const char *start;
+  size_t len;
+};
+
 // Maps desktop GLSL [1] shader to mobile GLSL-ES [2] shader #versions.
 // [1] https://www.opengl.org/wiki/Core_Language_(GLSL)
 // [2] https://github.com/mattdesl/lwjgl-basics/wiki/GLSL-Versions
@@ -64,10 +97,78 @@ const char *SkipWhitespaceInLine(const char *ptr) {
 }
 
 const char *FindNextLine(const char *ptr) {
-  // Newlines are \n, \r, \r\n or \n\r.
-  ptr += strcspn(ptr, "\n\r");
-  ptr += strspn(ptr, "\n\r");
-  return ptr;
+  // Newlines are \n, \r, \r\n or \n\r, except when immediately preceded by a
+  // backslash.
+  const char kNewlineCharacterSet[] = "\n\r";
+  const char *next_line = ptr + strcspn(ptr, kNewlineCharacterSet);
+  while (next_line > ptr && next_line[-1] == '\\') {
+    next_line += strspn(next_line, kNewlineCharacterSet);
+    next_line += strcspn(next_line, kNewlineCharacterSet);
+  }
+  next_line += strspn(next_line, kNewlineCharacterSet);
+  return next_line;
+}
+
+bool IsEmptyLine(const char *ptr) {
+  return strcspn(ptr, "\n\r") == 0;
+}
+
+// Returns the start of a multiline comment within a line.
+const char *FindUnterminatedCommentInLine(const char *line, size_t line_len) {
+  // Search backwards.  If we find /*, return its location unless we've already
+  // seen */.
+  for (const char *ptr = line + line_len - 1; ptr > line; --ptr) {
+    if (ptr[-1] == '*' && ptr[0] == '/') {
+      return nullptr;
+    }
+    if (ptr[-1] == '/' && ptr[0] == '*') {
+      return ptr - 1;
+    }
+  }
+
+  return nullptr;
+}
+
+// Appends a substring to a list of substrings, merging if possible.
+void AppendSubstring(const char *start, size_t len,
+                     std::vector<Substring> *list) {
+  if (!list->empty() && list->back().start + list->back().len == start) {
+    // Merge with previous line.
+    list->back().len += len;
+  } else {
+    list->push_back(Substring(start, len));
+  }
+}
+
+// If specified version isn't for current platform, try to convert it.
+void ConvertVersion(int *version_number, bool *version_es) {
+#ifdef FPLBASE_GLES
+  if (!*version_es) {
+    *version_number = MobileFromDesktopVersion(*version_number);
+    *version_es = true;
+  }
+#else
+  if (*version_es) {
+    *version_number = DesktopFromMobileVersion(*version_number);
+    *version_es = false;
+  }
+#endif
+}
+
+// Appends a version number and type to a string.
+void AppendVersion(int version_number, bool version_es, std::string *result) {
+  result->append("#")
+      .append(kVersionTag)
+      .append(" ")
+      .append(flatbuffers::NumToString(version_number))
+      .append(version_es ? " es\n" : "\n");
+}
+
+// Appends the default version for the current platform, if any.
+void AppendDefaultVersion(std::string *result) {
+#ifndef FPLBASE_GLES
+  AppendVersion(kDefaultDesktopVersion, false, result);
+#endif
 }
 
 }  // namespace
@@ -96,16 +197,16 @@ bool LoadFileWithDirectivesHelper(
   all_includes->insert(filename);
   std::vector<std::string> includes;
   auto cursor = dest->c_str();
-  static auto kIncludeStatement = "#include";
-  auto include_len = strlen(kIncludeStatement);
+  static const char kIncludeStatement[] = "#include";
+  auto include_len = sizeof(kIncludeStatement) - 1;
   size_t insertion_point = 0;
   // Parse only lines that are include statements, skipping everything else.
   while (*cursor) {
-    cursor += strspn(cursor, " \t");  // Skip whitespace.
+    cursor = SkipWhitespaceInLine(cursor);
     auto start = cursor;
     if (strncmp(cursor, kIncludeStatement, include_len) == 0) {
       cursor += include_len;
-      cursor += strspn(cursor, " \t");  // Skip whitespace.
+      cursor = SkipWhitespaceInLine(cursor);
       if (*cursor == '\"') {            // Must find quote.
         cursor++;
         auto len = strcspn(cursor, "\"\n\r");  // Filename part.
@@ -121,8 +222,7 @@ bool LoadFileWithDirectivesHelper(
       }
     }
     // Something else, skip it.
-    cursor += strcspn(cursor, "\n\r");  // Skip all except newline;
-    cursor += strspn(cursor, "\n\r");   // Skip newline;
+    cursor = FindNextLine(cursor);
   }
 
   // Now insert the includes.
@@ -178,97 +278,117 @@ void PlatformSanitizeShaderSource(const char *csource,
   assert(csource);
   assert(result);
 
-  // - If it exists, #version must be first non-empty line.
-  // - Any #extension directives must be before any code.
-  // - Only whitespace is allowed before #.
-  const char *kVersionTag = "#version";
-  const char *kExtensionTag = "#extension";
-  const size_t kVersionTagLength = strlen(kVersionTag);
-  const size_t kExtensionTagLength = strlen(kExtensionTag);
+  // This function does several things to try to meet both GLSL and GLSL-ES
+  // specs using the same source:
+  // 1. Keep #version directives first, and translate version numbers between
+  //    the two standards since they use different numbering schemes.
+  // 2. Add preprocessor definitions next so they can be used by the following
+  //    code.
+  // 3. Identify the first non-empty, non-comment, non-preprocessor line, and
+  //    insert a default precision float specifier before it.
 
-  struct Substring {
-    Substring() : start(nullptr), len(0) {}
-    Substring(const char *start, size_t len) : start(start), len(len) {}
-
-    const char *start;
-    size_t len;
-  };
-  std::vector<Substring> extensions;
-  std::vector<Substring> code;
+  std::vector<Substring> preamble;
+  const char* last_top_level_line = csource;
+  int if_depth = 0;
   int version_number = 0;
   bool version_es = false;
+  const char *comment_start = nullptr;
 
-  // Iterate through each line, stripping #version and #extension lines from the
-  // rest of the code.
-  // TODO(b/32952464) Early-out when we hit the first line of code.
+  // Iterate through each line until we find the first non-empty, non-comment,
+  // non-preprocessor line. Strip out the #version line (we'll manually add it),
+  // and remember lines we've seen so they can be added before
+  // kDefaultPrecisionSpecifier.
   for (const GLchar *line = csource, *next_line = nullptr; line && *line;
        line = next_line) {
-    const GLchar *ptr = SkipWhitespaceInLine(line);
-    next_line = FindNextLine(line);
-    const size_t len = next_line - line;
+    // If we start the line in a /* */ comment, skip across lines until it ends.
+    if (comment_start) {
+      const char *comment_end = strstr(line, "*/");
+      if (comment_end) {
+        next_line = comment_end + 2;
+        AppendSubstring(comment_start, next_line - comment_start, &preamble);
+      } else {
+        next_line = nullptr;
+      }
+      comment_start = nullptr;
+      continue;
+    }
 
-    if (strncmp(ptr, kVersionTag, kVersionTagLength) == 0) {
-      if (version_number != 0) {
-        LogError("More than one #version found in shader: %s", ptr);
+    const char *start = SkipWhitespaceInLine(line);
+    next_line = FindNextLine(start);
+
+    // Single-line comment; just skip this line.
+    const bool is_single_line_comment = start[0] == '/' && start[1] == '/';
+    if (is_single_line_comment) {
+      AppendSubstring(line, next_line - line, &preamble);
+      continue;
+    }
+
+    size_t line_len = next_line - line;
+
+    // Check if there's an unterminated /* */ comment on this line.  If so,
+    // end the line there and remember that we're inside a comment.
+    comment_start = FindUnterminatedCommentInLine(start, next_line - start);
+    if (comment_start) {
+      line_len = comment_start - line;
+    }
+
+    // Check for a preprocessor directive.  It can be separated from # by spaces
+    // and horizontal tabs.
+    if (start[0] == '#') {
+      const char *directive = SkipWhitespaceInLine(start + 1);
+
+      if (strncmp(directive, kVersionTag, kVersionTagLength) == 0) {
+        if (version_number != 0) {
+          LogError("More than one #version found in shader: %s", start);
+          continue;
+        }
+
+        const char *version_str = directive + kVersionTagLength;
+        if (sscanf(version_str, " %d es", &version_number) == 1) {
+          version_es = true;
+        } else if (sscanf(version_str, " %d ", &version_number) != 1) {
+          LogError("Invalid version identifier: %s", version_str);
+        }
+
         continue;
       }
 
-      ptr += kVersionTagLength;
-      if (sscanf(ptr, " %d es", &version_number) == 1) {
-        version_es = true;
-      } else if (sscanf(ptr, " %d ", &version_number) != 1) {
-        LogError("Invalid version identifier: %s", ptr);
+      // Update the #if context.
+      if (strncmp(directive, kIfTag, kIfTagLength) == 0) {
+        ++if_depth;
+      } else if (if_depth > 0 &&
+          strncmp(directive, kEndIfTag, kEndIfTagLength) == 0) {
+        --if_depth;
+      } else if (if_depth == 0) {
+        last_top_level_line = line;
       }
-    } else if (strncmp(ptr, kExtensionTag, kExtensionTagLength) == 0) {
-      extensions.push_back(Substring(line, len));
-    } else if (!code.empty() && code.back().start + code.back().len == line) {
-      // Merge with previous line.
-      code.back().len += len;
     } else {
-      code.push_back(Substring(line, len));
+      if (if_depth == 0) {
+        last_top_level_line = line;
+      }
+      if (!IsEmptyLine(start)) {
+        // We've found the first line of code.  Since there can be no #version
+        // or #extension directives from this point on, we're done.
+        break;
+      }
     }
+
+    AppendSubstring(line, line_len, &preamble);
   }
 
+  // Time to write the file.
   result->clear();
 
-  // If we have a version, put it at the top of the file.
+  // Version number must come first.
   if (version_number != 0) {
-    // If specified version wasn't for current platform, try to convert it.
-#ifdef FPLBASE_GLES
-    if (!version_es) {
-      version_number = MobileFromDesktopVersion(version_number);
-      version_es = true;
-    }
-#else
-    if (version_es) {
-      version_number = DesktopFromMobileVersion(version_number);
-      version_es = false;
-    }
-#endif
-
-    result->append(kVersionTag)
-        .append(" ")
-        .append(flatbuffers::NumToString(version_number))
-        .append(version_es ? " es\n" : "\n");
+    ConvertVersion(&version_number, &version_es);
+    AppendVersion(version_number, version_es, result);
   } else {
-#ifndef FPLBASE_GLES
-    // Use GLSL 1.20 by default on desktop.
-    result->append("#version 120\n");
-#endif
-  }
-
-  // Next add extension lines, preserving order.
-  for (size_t i = 0; i < extensions.size(); ++i) {
-    const auto& line = extensions[i];
-    result->append(line.start, line.len);
+    AppendDefaultVersion(result);
   }
 
   // Add per-platform definitions.
-#ifdef FPLBASE_GLES
-  result->append("#ifdef GL_ES\nprecision highp float;\n#endif\n");
-#else
-  result->append("#define lowp\n#define mediump\n#define highp\n");
-#endif
+  result->append(kDefaultDefines);
 
   // Add custom definitions, if any.
   if (defines) {
@@ -279,11 +399,20 @@ void PlatformSanitizeShaderSource(const char *csource,
     }
   }
 
-  // Finally append the rest of the code.
-  for (size_t i = 0; i < code.size(); ++i) {
-    const auto& block = code[i];
-    result->append(block.start, block.len);
+  // Add the preamble (lines before any code). Make sure we don't go past
+  // last_top_level_line, otherwise we end up with a partial dupe.
+  for (size_t i = 0; i < preamble.size(); ++i) {
+    if (preamble[i].start >= last_top_level_line) {
+      break;
+    }
+    const size_t max_len = last_top_level_line - preamble[i].start;
+    result->append(preamble[i].start, std::min(max_len, preamble[i].len));
   }
+
+  // Add the default precision specifier.
+  result->append(kDefaultPrecisionSpecifier);
+  // Add the rest of the code.
+  result->append(last_top_level_line);
 }
 
 }  // namespace fplbase

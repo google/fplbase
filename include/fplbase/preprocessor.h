@@ -69,9 +69,15 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 /// @brief Prepares OpenGL shaders for compilation across desktop or mobile.
 ///
 /// This function adds platform-specific definitions that allow the same
-/// shaders to be used on both desktop and mobile versions of GL.  It does so
-/// in a way that is aware of #version and #extension directives, which must
-/// be placed before any shader code.
+/// shaders to be used on both desktop and mobile (ES) versions of GL.
+/// Specifically, it does a few things:
+///
+/// 1. Translates version numbers between GLSL and GLSL-ES.
+/// 2. Null-defines lowp, mediump, and highp on desktop so they won't trigger
+///    compiler errors.
+/// 3. Specifies highp as the default float precision on ES platforms, otherwise
+///    precision-less floats in frag shaders could cause errors.
+/// 4. Inserts the specified definitions before any code, but after the version.
 ///
 /// @param[in] source Shader source to be sanitized.
 /// @param[in] defines A nullptr-terminated array of identifiers which will be
