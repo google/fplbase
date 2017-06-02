@@ -197,6 +197,7 @@ TEST_F(PreprocessorTests, SanitizeVersionConversion) {
 #endif
 
     EXPECT_EQ(result.compare(0, expected.length(), expected), 0);
+    EXPECT_EQ(result.find("#version"), result.rfind("#version"));
   }
 }
 
@@ -251,6 +252,67 @@ TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
   const size_t version_pos = result.find("#version 100");
   EXPECT_NE(version_pos, std::string::npos);
   EXPECT_LT(ext_pos, version_pos);
+}
+
+TEST_F(PreprocessorTests, SanitizeSample) {
+  const char* file =
+      "\n"
+      "// #if Single line comment.\n"
+      "/* #version\n"
+      "within a\n"
+      "  multi-line comment should be ignored */\n"
+      "// A multi-part single-line comment should also be ignored \\\n"
+      "#version 900 is still part of the comment\n"
+      "\n"
+      // #version must be the first non-whitespace line (incl. comments).
+      "#version 100  // The actual version.\n"
+      "#define TEST_A 1\n"
+      "#define TEST_B 2\n"
+      "\n"
+      "#if GL_ES\n"
+      // No "code" can come before #extension directives.
+      "#extension GL_OES_standard_derivatives : enable\n"
+      "#endif\n"
+      "\n"
+      // This is the first line of top level "code".
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+
+  // For our expected result, we skip the #version since it can change based on
+  // host platform.
+  const char* expected_after_version =
+      // Our desktop-safe precision #defines should be first.
+      "#ifndef GL_ES\n"
+      "#define lowp\n"
+      "#define mediump\n"
+      "#define highp\n"
+      "#endif\n"
+      "\n"
+      "// #if Single line comment.\n"
+      "/* #version\n"
+      "within a\n"
+      "  multi-line comment should be ignored */\n"
+      "// A multi-part single-line comment should also be ignored \\\n"
+      "#version 900 is still part of the comment\n"
+      "\n"
+      // "#version 100  // The actual version.\n" should have been removed.
+      "#define TEST_A 1\n"
+      "#define TEST_B 2\n"
+      "\n"
+      "#if GL_ES\n"
+      "#extension GL_OES_standard_derivatives : enable\n"
+      "#endif\n"
+      "\n"
+      // The default precision specifier should be here, before the first line
+      // of top level code.
+      "#ifdef GL_ES\n"
+      "precision highp float;\n"
+      "#endif\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
+  EXPECT_EQ(result.find("#version"), 0U);
+  EXPECT_EQ(result.substr(result.find('\n') + 1), expected_after_version);
 }
 
 extern "C" int FPL_main(int argc, char* argv[]) {

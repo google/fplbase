@@ -329,6 +329,11 @@ void PlatformSanitizeShaderSource(const char *csource,
     // end the line there and remember that we're inside a comment.
     comment_start = FindUnterminatedCommentInLine(start, next_line - start);
     if (comment_start) {
+      if (comment_start == start) {
+        // Entire line is a comment; reprocess it as such.
+        next_line = line;
+        continue;
+      }
       line_len = comment_start - line;
     }
 
@@ -342,6 +347,9 @@ void PlatformSanitizeShaderSource(const char *csource,
           LogError("More than one #version found in shader: %s", start);
           continue;
         }
+        if (if_depth != 0) {
+          LogError("Found #version directive within an #if");
+        }
 
         const char *version_str = directive + kVersionTagLength;
         if (sscanf(version_str, " %d es", &version_number) == 1) {
@@ -350,6 +358,8 @@ void PlatformSanitizeShaderSource(const char *csource,
           LogError("Invalid version identifier: %s", version_str);
         }
 
+        // Be sure to skip this line when composing the result.
+        last_top_level_line = next_line;
         continue;
       }
 
