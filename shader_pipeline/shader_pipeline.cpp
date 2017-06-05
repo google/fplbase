@@ -22,11 +22,12 @@
 #include "shader_generated.h"
 
 struct ShaderPipelineArgs {
-  std::string vertex_shader;       /// The vertex shader source file.
-  std::string fragment_shader;     /// The fragment shader source file.
-  std::string output_file;         /// The output fplshader file.
-  std::vector<char*> defines;      /// Definitions to include into the shaders.
-  std::vector<char*> include_dirs; /// Directories to search for include files.
+  std::string vertex_shader;        /// The vertex shader source file.
+  std::string fragment_shader;      /// The fragment shader source file.
+  std::string output_file;          /// The output fplshader file.
+  std::string version;              /// Version override.
+  std::vector<char*> defines;       /// Definitions to include into the shaders.
+  std::vector<char*> include_dirs;  /// Directories to search for include files.
 };
 
 static bool ParseShaderPipelineArgs(int argc, char** argv,
@@ -80,6 +81,15 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         valid_args = false;
       }
 
+      // --version switch
+    } else if (arg == "--version") {
+      if (i < argc - 2) {
+        ++i;
+        args->version = argv[i];
+      } else {
+        valid_args = false;
+      }
+
       // all other (non-empty) arguments
     } else if (arg != "") {
       printf("Unknown parameter: %s\n", arg.c_str());
@@ -108,7 +118,8 @@ static bool ParseShaderPipelineArgs(int argc, char** argv,
         "  -vs, --vertex-shader VERTEX_SHADER\n"
         "  -fs, --fragment-shader FRAGMENT_SHADER\n"
         "  -i,  --include_dir DIRECTORY\n"
-        "  -d,  --defines DEFINITION\n");
+        "  -d,  --defines DEFINITION\n"
+        "       --version VERSION\n");
   }
 
   return valid_args;
@@ -125,6 +136,13 @@ bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
   return false;
 }
 
+std::string ApplyVersion(const std::string& source,
+                         const std::string& version) {
+  std::string versioned_source;
+  fplbase::SetShaderVersion(source.c_str(), version.c_str(), &versioned_source);
+  return versioned_source;
+}
+
 int main(int argc, char** argv) {
   // Parse the command line arguments.
   ShaderPipelineArgs args;
@@ -133,7 +151,7 @@ int main(int argc, char** argv) {
   }
 
   // Create a custom load file function to search our include dirs.
-  auto load_shader_file = [&args](const char *filename, std::string *dest) {
+  auto load_shader_file = [&args](const char* filename, std::string* dest) {
     // First try to load the file at the given path.
     if (fplbase::LoadFileRaw(filename, dest)) {
       return true;
@@ -165,7 +183,7 @@ int main(int argc, char** argv) {
   std::string vsh;
   std::string fsh;
   std::string error_message;
-  const char* const *defines = args.defines.data();
+  const char* const* defines = args.defines.data();
   if (!fplbase::LoadFileWithDirectives(args.vertex_shader.c_str(), &vsh,
                                        defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
@@ -178,6 +196,11 @@ int main(int argc, char** argv) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
     return 1;
+  }
+
+  if (!args.version.empty()) {
+    vsh = ApplyVersion(vsh, args.version);
+    fsh = ApplyVersion(fsh, args.version);
   }
 
   // Create the FlatBuffer for the Shader.

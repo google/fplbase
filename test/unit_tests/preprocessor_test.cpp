@@ -315,6 +315,44 @@ TEST_F(PreprocessorTests, SanitizeSample) {
   EXPECT_EQ(result.substr(result.find('\n') + 1), expected_after_version);
 }
 
+TEST_F(PreprocessorTests, SetShaderVersion) {
+  const char* source =
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  const char* expected = "#version 200\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  std::string result;
+  fplbase::SetShaderVersion(source, "200", &result);
+  EXPECT_EQ(result, expected);
+
+  source =
+      "#version 100\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  expected = "#version 300 es\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  fplbase::SetShaderVersion(source, "300 es", &result);
+  EXPECT_EQ(result, expected);
+
+  source =
+      "// #version 100\n"
+      "/*\n"
+      "#version 200\n"
+      "*/\n"
+      "// Multi-part line\\\n"
+      "#version 300\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  expected =
+      "#version 330\n"
+      "// #version 100\n"
+      "/*\n"
+      "#version 200\n"
+      "*/\n"
+      "// Multi-part line\\\n"
+      "#version 300\n"
+      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  fplbase::SetShaderVersion(source, "330", &result);
+  EXPECT_EQ(result, expected);
+}
+
 extern "C" int FPL_main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

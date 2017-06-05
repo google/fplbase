@@ -86,6 +86,17 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 void PlatformSanitizeShaderSource(const char *source,
   const char * const *defines, std::string *result);
 
+/// @brief Adds or replaces the #version string in a shader.
+///
+/// This function sets the parameters of the #version directive in a file,
+/// adding the directive if necessary.
+///
+/// @param[in] source Shader source to be version tagged.
+/// @param[in] version The version string to add to the shader.
+/// @param[out] result Versioned source code.
+void SetShaderVersion(const char *source, const char *version_string,
+                      std::string *result);
+
 }  // namespace fplbase
 
 #endif  // FPLBASE_PREPROCESSOR_H

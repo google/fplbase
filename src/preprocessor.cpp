@@ -22,7 +22,7 @@ namespace {
 
 static const std::set<std::string> kEmptySet;
 
-const int kDefaultDesktopVersion = 120;  // Use GLSL 1.20 by default on desktop.
+const char kDefaultDesktopVersion[] = "120";
 const char kVersionTag[] = "version";
 const char kIfTag[] = "if";  // This will catch all flavors.
 const char kEndIfTag[] = "endif";
@@ -155,19 +155,28 @@ void ConvertVersion(int *version_number, bool *version_es) {
 #endif
 }
 
-// Appends a version number and type to a string.
-void AppendVersion(int version_number, bool version_es, std::string *result) {
+// Appends a version to a string.
+void AppendVersion(const char *version_string, std::string *result) {
   result->append("#")
       .append(kVersionTag)
       .append(" ")
-      .append(flatbuffers::NumToString(version_number))
-      .append(version_es ? " es\n" : "\n");
+      .append(version_string)
+      .append("\n");
+}
+
+// Appends a version number and type to a string.
+void AppendVersion(int version_number, bool version_es, std::string *result) {
+  std::string version_string = flatbuffers::NumToString(version_number);
+  if (version_es) {
+    version_string.append(" es");
+  }
+  AppendVersion(version_string.c_str(), result);
 }
 
 // Appends the default version for the current platform, if any.
 void AppendDefaultVersion(std::string *result) {
 #ifndef FPLBASE_GLES
-  AppendVersion(kDefaultDesktopVersion, false, result);
+  AppendVersion(kDefaultDesktopVersion, result);
 #endif
 }
 
@@ -298,6 +307,7 @@ void PlatformSanitizeShaderSource(const char *csource,
   // non-preprocessor line. Strip out the #version line (we'll manually add it),
   // and remember lines we've seen so they can be added before
   // kDefaultPrecisionSpecifier.
+  // TODO(ahynek) pull out line iteration into a separate function
   for (const GLchar *line = csource, *next_line = nullptr; line && *line;
        line = next_line) {
     // If we start the line in a /* */ comment, skip across lines until it ends.
@@ -423,6 +433,64 @@ void PlatformSanitizeShaderSource(const char *csource,
   result->append(kDefaultPrecisionSpecifier);
   // Add the rest of the code.
   result->append(last_top_level_line);
+}
+
+void SetShaderVersion(const char *source, const char *version_string,
+                      std::string *result) {
+  assert(source);
+  assert(version_string);
+  assert(result);
+
+  const char *comment_start = nullptr;
+  Substring existing_version;
+
+  // TODO(ahynek) pull out line iteration into a separate function
+  for (const GLchar *line = source, *next_line = nullptr; line && *line;
+       line = next_line) {
+    // If we start the line in a /* */ comment, skip across lines until it ends.
+    if (comment_start) {
+      const char *comment_end = strstr(line, "*/");
+      next_line = comment_end ? comment_end + 2 : nullptr;
+      comment_start = nullptr;
+      continue;
+    }
+
+    const char *start = SkipWhitespaceInLine(line);
+    next_line = FindNextLine(start);
+
+    // Single-line comment; just skip this line.
+    const bool is_single_line_comment = start[0] == '/' && start[1] == '/';
+    if (is_single_line_comment) {
+      continue;
+    }
+
+    // Check if there's an unterminated /* */ comment on this line.  If so,
+    // end the line there and remember that we're inside a comment.
+    comment_start = FindUnterminatedCommentInLine(start, next_line - start);
+
+    // Check for #version directive.  It can be separated from # by spaces
+    // and horizontal tabs.
+    if (start[0] == '#') {
+      const char *directive = SkipWhitespaceInLine(start + 1);
+      if (strncmp(directive, kVersionTag, kVersionTagLength) == 0) {
+        existing_version.start = line;
+        existing_version.len =
+            (comment_start ? comment_start : next_line) - line;
+        break;
+      }
+    }
+  }
+
+  result->clear();
+  AppendVersion(version_string, result);
+
+  if (existing_version.start != nullptr) {
+    // Remove the existing version string.
+    result->append(source, existing_version.start - source);
+    result->append(existing_version.start + existing_version.len);
+  } else {
+    result->append(source);
+  }
 }
 
 }  // namespace fplbase
