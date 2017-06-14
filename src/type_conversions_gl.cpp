@@ -77,16 +77,77 @@ unsigned int CullFaceToGl(CullState::CullFace face) {
   return kCullFaceToGlTable[face];
 }
 
-unsigned int RenderTargetFormatToGl(RenderTargetFormat format) {
-  static const GLenum kRenderTargetFormatToGlTable[] = {
-    GL_UNSIGNED_BYTE,    // kRenderTargetFormatUByte,
+unsigned int RenderTargetTextureFormatToInternalFormatGl(
+    RenderTargetTextureFormat format) {
+  static const GLenum kRenderTargetTextureFormatToTypeGlTable[] = {
+      GL_ALPHA,  // kRenderTargetTextureFormatA8,
+      GL_RGB8,   // kRenderTargetTextureFormatR8,
+      GL_RGB8,   // kRenderTargetTextureFormatRGB8,
+      GL_RGBA8   // kRenderTargetTextureFormatRGBA8,
   };
 
-  static_assert(
-      FPL_ARRAYSIZE(kRenderTargetFormatToGlTable) == kRenderTargetFormatCount,
-      "Update kRenderTargetFormatToGlTable to match enum");
-  assert(0 <= format && format < FPL_ARRAYSIZE(kRenderTargetFormatToGlTable));
-  return kRenderTargetFormatToGlTable[format];
+  static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
+                    kRenderTargetTextureFormatCount,
+                "Update kRenderTargetTextureFormatToTypeGlTable to match "
+                "enum");
+  assert(0 <= format &&
+         format < FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable));
+  return kRenderTargetTextureFormatToTypeGlTable[format];
+}
+
+unsigned int RenderTargetTextureFormatToFormatGl(
+    RenderTargetTextureFormat format) {
+  static const GLenum kRenderTargetTextureFormatToTypeGlTable[] = {
+      GL_ALPHA,  // kRenderTargetTextureFormatA8,
+      GL_RED,    // kRenderTargetTextureFormatR8,
+      GL_RGB,    // kRenderTargetTextureFormatRGB8,
+      GL_RGBA    // kRenderTargetTextureFormatRGBA8,
+  };
+
+  static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
+                    kRenderTargetTextureFormatCount,
+                "Update kRenderTargetTextureFormatToTypeGlTable to match "
+                "enum");
+  assert(0 <= format &&
+         format < FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable));
+  return kRenderTargetTextureFormatToTypeGlTable[format];
+}
+
+unsigned int RenderTargetTextureFormatToTypeGl(
+    RenderTargetTextureFormat format) {
+  static const GLenum kRenderTargetTextureFormatToTypeGlTable[] = {
+      GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatA8,
+      GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatR8,
+      GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatRGB8,
+      GL_UNSIGNED_BYTE   // kRenderTargetTextureFormatRGBA8,
+  };
+
+  static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
+                    kRenderTargetTextureFormatCount,
+                "Update kRenderTargetTextureFormatToTypeGlTable to match "
+                "enum");
+  assert(0 <= format &&
+         format < FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable));
+  return kRenderTargetTextureFormatToTypeGlTable[format];
+}
+
+unsigned int DepthStencilFormatToInternalFormatGl(DepthStencilFormat format) {
+  static const GLenum kDepthStencilFormatToInternalFormatGlTable[] = {
+      GL_DEPTH_COMPONENT16,   // kDepthStencilFormatDepth16,
+      GL_DEPTH_COMPONENT24,   // kDepthStencilFormatDepth24,
+      GL_DEPTH_COMPONENT32F,  // kDepthStencilFormatDepth32F,
+      GL_DEPTH24_STENCIL8,    // kDepthStencilFormatDepth24Stencil8,
+      GL_DEPTH32F_STENCIL8,   // kDepthStencilFormatDepth32FStencil8,
+      GL_STENCIL_INDEX8       // kDepthStencilFormatStencil8,
+  };
+
+  static_assert(FPL_ARRAYSIZE(kDepthStencilFormatToInternalFormatGlTable) ==
+                    kDepthStencilFormatCount,
+                "Update kDepthStencilFormatToInternalFormatGlTable to match "
+                "enum");
+  assert(0 <= format &&
+         format < FPL_ARRAYSIZE(kDepthStencilFormatToInternalFormatGlTable));
+  return kDepthStencilFormatToInternalFormatGlTable[format];
 }
 
 uint32_t GetPrimitiveTypeFlags(Mesh::Primitive primitive) {

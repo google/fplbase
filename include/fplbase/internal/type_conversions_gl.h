@@ -42,10 +42,32 @@ unsigned int StencilOpToGlOp(StencilOperation::StencilOperations op);
 /// @param face The cull face value to convert.
 unsigned int CullFaceToGl(CullState::CullFace face);
 
-/// @brief Converts FPL RenderTargetFormat to equivalent GL enum value.
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL internal
+/// format enum value.
 ///
-/// @param face The format to convert.
-unsigned int RenderTargetFormatToGl(RenderTargetFormat format);
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToInternalFormatGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL format enum
+/// value.
+///
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToFormatGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL type enum
+/// value.
+///
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToTypeGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL DepthStencilFormat to equivalent GL depth
+/// internal format enum value.
+///
+/// @param format The format to convert.
+unsigned int DepthStencilFormatToInternalFormatGl(DepthStencilFormat format);
 
 /// @brief Converts FPL Mesh Primitive to equivalent GL enum value.
 ///

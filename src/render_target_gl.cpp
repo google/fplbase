@@ -21,8 +21,8 @@
 namespace fplbase {
 
 void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
-                              RenderTargetFormat format,
-                              bool create_depth_buffer) {
+                              RenderTargetTextureFormat texture_format,
+                              DepthStencilFormat depth_stencil_format) {
   assert(!initialized());
   dimensions_ = dimensions;
 
@@ -49,8 +49,11 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
 
   // Give an empty image to OpenGL.  (It will allocate memory, but not bother
   // to populate it.  Which is fine, since we're going to render into it.)
-  GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0,
-                       GL_RGBA, RenderTargetFormatToGl(format), nullptr));
+  GL_CALL(glTexImage2D(
+      GL_TEXTURE_2D, 0,
+      RenderTargetTextureFormatToInternalFormatGl(texture_format), dimensions.x,
+      dimensions.y, 0, RenderTargetTextureFormatToFormatGl(texture_format),
+      RenderTargetTextureFormatToTypeGl(texture_format), nullptr));
 
   // Define texture properties:
   GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -63,7 +66,7 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
   GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                  GL_TEXTURE_2D, rendered_texture_id, 0));
 
-  if (create_depth_buffer) {
+  if (depth_stencil_format != kDepthStencilFormatNone) {
     // A renderbuffer, that we'll use for depth:
     GLuint depth_buffer_id = 0;
     GL_CALL(glGenRenderbuffers(1, &depth_buffer_id));
@@ -72,8 +75,10 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
 
     // Bind renderbuffer and set it as the depth buffer:
     GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id));
-    GL_CALL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
-                                  dimensions_.x, dimensions_.y));
+    GL_CALL(glRenderbufferStorage(
+        GL_RENDERBUFFER,
+        DepthStencilFormatToInternalFormatGl(depth_stencil_format),
+        dimensions_.x, dimensions_.y));
 
     // Attach renderbuffer as our depth attachment.
     GL_CALL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
