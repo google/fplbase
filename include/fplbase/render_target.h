@@ -72,7 +72,7 @@ class RenderTarget {
   /// @brief Initialize a render target of the provided dimensions.
   ///
   /// @param dimensions The dimensions of the render target.
-  /// @param format The format of the generated texture.
+  /// @param texture_format The format of the generated texture.
   /// @param depth_stencil_format The depth stencl format for the render target.
   void Initialize(const mathfu::vec2i& dimensions,
                   RenderTargetTextureFormat texture_format,
