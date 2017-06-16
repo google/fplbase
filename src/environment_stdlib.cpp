@@ -55,6 +55,9 @@ bool Environment::Initialize(const vec2i& /*window_size*/,
 #endif  // FPLBASE_GLES
 #endif  // defined(__ANDROID__)
 
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  feature_level_ = kFeatureLevel30;
+#endif  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
   return true;
 }
 
