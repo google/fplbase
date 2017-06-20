@@ -71,10 +71,22 @@ unsigned int CullFaceToGl(CullState::CullFace face) {
   static const GLenum kCullFaceToGlTable[] = {GL_FRONT, GL_BACK,
                                               GL_FRONT_AND_BACK};
 
-  static_assert(FPL_ARRAYSIZE(kCullFaceToGlTable) == CullState::kCount,
+  static_assert(FPL_ARRAYSIZE(kCullFaceToGlTable) == CullState::kCullFaceCount,
                 "Need to update the kCullFaceToGlTable array");
   assert(static_cast<size_t>(face) < FPL_ARRAYSIZE(kCullFaceToGlTable));
   return kCullFaceToGlTable[face];
+}
+
+unsigned int FrontFaceToGl(CullState::FrontFace front_face) {
+  static const GLenum kFrontFaceToGlTable[] = {
+      GL_CW,  // kClockWise,
+      GL_CCW  // kCounterClockWise,
+  };
+  static_assert(
+      FPL_ARRAYSIZE(kFrontFaceToGlTable) == CullState::kFrontFaceCount,
+      "Need to update the kFrontFaceToGlTable array");
+  assert(static_cast<size_t>(front_face) < FPL_ARRAYSIZE(kFrontFaceToGlTable));
+  return kFrontFaceToGlTable[front_face];
 }
 
 unsigned int RenderTargetTextureFormatToInternalFormatGl(

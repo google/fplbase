@@ -740,6 +740,10 @@ void Renderer::SetCullState(const CullState &cull_state) {
     GL_CALL(glCullFace(cull_face));
   }
 
+  if (cull_state.front != render_state_.cull_state.front) {
+    GL_CALL(glFrontFace(FrontFaceToGl(cull_state.front)));
+  }
+
   render_state_.cull_state = cull_state;
 
   cull_mode_ = kCullingModeUnknown;
@@ -802,6 +806,14 @@ void Renderer::SetStencilState(const StencilState &stencil_state) {
   stencil_ref_ = stencil_state.front_function.ref;
   stencil_mask_ = stencil_state.front_function.mask;
   stencil_mode_ = kStencilUnknown;
+}
+
+void Renderer::SetFrontFace(CullState::FrontFace front_face) {
+  if (front_face != render_state_.cull_state.front) {
+    GL_CALL(glFrontFace(FrontFaceToGl(front_face)));
+  }
+
+  render_state_.cull_state.front = front_face;
 }
 
 }  // namespace fplbase

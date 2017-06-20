@@ -74,11 +74,13 @@ struct BlendState {
 };
 
 struct CullState {
-  enum CullFace { kFront, kBack, kFrontAndBack, kCount };
+  enum CullFace { kFront, kBack, kFrontAndBack, kCullFaceCount };
+  enum FrontFace { kClockWise, kCounterClockWise, kFrontFaceCount };
   CullFace face;
+  FrontFace front;
   bool enabled;
 
-  CullState() : face(kBack), enabled(false) {}
+  CullState() : face(kBack), front(kCounterClockWise), enabled(false) {}
 };
 
 struct DepthState {

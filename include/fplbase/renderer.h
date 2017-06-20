@@ -436,6 +436,11 @@ class Renderer {
   /// @brief Gets the currently set blend mode.
   BlendMode GetBlendMode();
 
+  /// @brief Sets which face of a triangle is the front face.
+  ///
+  /// @param front_face The value that determines the front face.
+  void SetFrontFace(CullState::FrontFace front_face);
+
   /// @brief Sets the stencil mode. By default, the stencil test is off.
   ///
   /// @param mode The stencil mode to use.

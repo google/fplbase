@@ -42,6 +42,11 @@ unsigned int StencilOpToGlOp(StencilOperation::StencilOperations op);
 /// @param face The cull face value to convert.
 unsigned int CullFaceToGl(CullState::CullFace face);
 
+/// @brief Converts FPL front face value to equivalent GL enum value.
+///
+/// @param front_face The front face value to convert.
+unsigned int FrontFaceToGl(CullState::FrontFace front_face);
+
 /// @brief Converts FPL RenderTargetTextureFormat to equivalent GL internal
 /// format enum value.
 ///
