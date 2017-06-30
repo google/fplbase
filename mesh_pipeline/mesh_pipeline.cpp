@@ -879,7 +879,10 @@ class FlatMesh {
     size_t surface_idx = 0;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
-      if (!HasTexture(textures)) continue;
+      if (!HasTexture(textures)) {
+        ++surface_idx;
+        continue;
+      }
 
       const std::string material_file_name =
           MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
@@ -932,6 +935,11 @@ class FlatMesh {
       log_.Log(kLogInfo, "  blend mode: %s\n",
                matdef::EnumNameBlendMode(blend_mode));
     }
+  }
+
+  VertIndex GetMaxIndex(const IndexBuffer& indices) const {
+    return indices.empty() ? 0
+                           : *std::max_element(indices.begin(), indices.end());
   }
 
   void OutputMeshFlatBuffer(const std::string& mesh_name,
@@ -987,7 +995,7 @@ class FlatMesh {
                index_buf.size() / 3);
       flatbuffers::Offset<flatbuffers::Vector<VertIndexCompact>> indices_fb = 0;
       flatbuffers::Offset<flatbuffers::Vector<VertIndex>> indices32_fb = 0;
-      if (!force32 && index_buf.size() <= kMaxVertexIndex) {
+      if (!force32 && GetMaxIndex(index_buf) <= kMaxVertexIndex) {
         CopyIndexBuf(index_buf, &index_buf_compact);
         indices_fb = fbb.CreateVector(index_buf_compact);
       } else {
