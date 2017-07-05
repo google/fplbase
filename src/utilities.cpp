@@ -293,9 +293,8 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
                                 const char *const target_dir) {
 #if !defined(PLATFORM_MOBILE)
   {
-    std::string target_dir_str(target_dir);
-    std::string current_dir = binary_dir;
-    const std::string separator_str(1, flatbuffers::kPathSeparator);
+    std::string target_dir_str(flatbuffers::PosixPath(target_dir));
+    std::string current_dir(flatbuffers::PosixPath(binary_dir));
 
     // Search up the tree from the directory containing the binary searching
     // for target_dir.
@@ -303,13 +302,15 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
       size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
       if (separator == std::string::npos) break;
       current_dir = current_dir.substr(0, separator);
-      int success = chdir(current_dir.c_str());
-      if (success) break;
+      int chdir_error_code = chdir(current_dir.c_str());
+      if (chdir_error_code) break;
       char real_path[256];
-      current_dir = getcwd(real_path, sizeof(real_path));
-      std::string target = current_dir + separator_str + target_dir_str;
-      success = chdir(target.c_str());
-      if (success == 0) return true;
+      current_dir =
+        flatbuffers::PosixPath(getcwd(real_path, sizeof(real_path)));
+      std::string target =
+        flatbuffers::ConCatPathFileName(current_dir, target_dir_str);
+      chdir_error_code = chdir(target.c_str());
+      if (chdir_error_code == 0) return true;
     }
     return false;
   }
