@@ -295,6 +295,8 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
   {
     std::string target_dir_str(flatbuffers::PosixPath(target_dir));
     std::string current_dir(flatbuffers::PosixPath(binary_dir));
+    std::string real_path;
+    real_path.reserve(512);
 
     // Search up the tree from the directory containing the binary searching
     // for target_dir.
@@ -304,9 +306,10 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
       current_dir = current_dir.substr(0, separator);
       int chdir_error_code = chdir(current_dir.c_str());
       if (chdir_error_code) break;
-      char real_path[256];
-      current_dir =
-        flatbuffers::PosixPath(getcwd(real_path, sizeof(real_path)));
+      real_path[0] = '\0';
+      const char* cwd = getcwd(&real_path[0], real_path.capacity());
+      assert(cwd);  // cwd could be null if real_path is not long enough.
+      current_dir = flatbuffers::PosixPath(cwd);
       std::string target =
         flatbuffers::ConCatPathFileName(current_dir, target_dir_str);
       chdir_error_code = chdir(target.c_str());
