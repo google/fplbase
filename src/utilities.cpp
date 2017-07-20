@@ -279,8 +279,8 @@ bool SavePreference(const char *key, int32_t value) {
 }
 
 #if defined(_WIN32)
-inline char *getcwd(char *buffer, int maxlen) {
-  return _getcwd(buffer, maxlen);
+inline char *getcwd(char *buffer, size_t maxlen) {
+  return _getcwd(buffer, static_cast<int>(maxlen));
 }
 
 inline int chdir(const char *dirname) { return _chdir(dirname); }
