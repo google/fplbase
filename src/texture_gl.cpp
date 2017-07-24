@@ -50,6 +50,72 @@ void Texture::Delete() {
   }
 }
 
+// Returns the block size for compressed texture formats, else 1x1.
+static vec2i GetBlockSize(int internal_format) {
+  switch (internal_format) {
+    // ETC1 and ETC2 use 4x4 blocks.
+    case GL_COMPRESSED_R11_EAC:
+    case GL_COMPRESSED_SIGNED_R11_EAC:
+    case GL_COMPRESSED_RG11_EAC:
+    case GL_COMPRESSED_SIGNED_RG11_EAC:
+    case GL_COMPRESSED_RGB8_ETC2:
+    case GL_COMPRESSED_SRGB8_ETC2:
+    case GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:
+    case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:
+    case GL_COMPRESSED_RGBA8_ETC2_EAC:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:
+      return vec2i(4, 4);
+
+    // ASTC formats tell us their block size.
+    case GL_COMPRESSED_RGBA_ASTC_4x4_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR:
+      return vec2i(4, 4);
+    case GL_COMPRESSED_RGBA_ASTC_5x4_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR:
+      return vec2i(5, 4);
+    case GL_COMPRESSED_RGBA_ASTC_5x5_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR:
+      return vec2i(5, 5);
+    case GL_COMPRESSED_RGBA_ASTC_6x5_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR:
+      return vec2i(6, 5);
+    case GL_COMPRESSED_RGBA_ASTC_6x6_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR:
+      return vec2i(6, 6);
+    case GL_COMPRESSED_RGBA_ASTC_8x5_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR:
+      return vec2i(8, 5);
+    case GL_COMPRESSED_RGBA_ASTC_8x6_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR:
+      return vec2i(8, 6);
+    case GL_COMPRESSED_RGBA_ASTC_8x8_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR:
+      return vec2i(8, 8);
+    case GL_COMPRESSED_RGBA_ASTC_10x5_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR:
+      return vec2i(10, 5);
+    case GL_COMPRESSED_RGBA_ASTC_10x6_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR:
+      return vec2i(10, 6);
+    case GL_COMPRESSED_RGBA_ASTC_10x8_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR:
+      return vec2i(10, 8);
+    case GL_COMPRESSED_RGBA_ASTC_10x10_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR:
+      return vec2i(10, 10);
+    case GL_COMPRESSED_RGBA_ASTC_12x10_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR:
+      return vec2i(12, 10);
+    case GL_COMPRESSED_RGBA_ASTC_12x12_KHR:
+      // case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR:
+      return vec2i(12, 12);
+
+    // Uncompressed textures effectively have 1x1 blocks.
+    default:
+      return vec2i(1, 1);
+  }
+}
+
 // static
 TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                      TextureFormat texture_format,
@@ -313,11 +379,18 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       format = header.internal_format;
       auto data = buffer + sizeof(KTXHeader);
       auto cur_size = tex_size;
+      const vec2i block_size = GetBlockSize(format);
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         // Guard against extra mip levels in the ktx.
-        if (cur_size.x == 0 && cur_size.y == 0) {
-          LogError("KTX file has too many mips: %dx%d, %d mips", tex_size.x,
-                   tex_size.y, header.mip_levels);
+        if (cur_size.x < block_size.x || cur_size.y < block_size.y) {
+          LogError(
+              "KTX file has too many mips: %dx%d, %d mips, block size %dx%d",
+              tex_size.x, tex_size.y, header.mip_levels, block_size.x,
+              block_size.y);
+          // Some GL drivers need to be explicitly told that we don't have a
+          // full mip chain (down to 1x1).
+          assert(i > 0);
+          GL_CALL(glTexParameteri(tex_type, GL_TEXTURE_MAX_LEVEL, i - 1));
           break;
         }
         auto data_size = *(reinterpret_cast<const int32_t *>(data));
@@ -353,18 +426,6 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
 
     GL_CALL(glGenerateMipmap(tex_type));
-  } else if (have_mips && IsCompressed(texture_format)) {
-#if !defined(__ANDROID__) && !defined(APPLE)
-    // At least on Linux, there appears to be a bug with uploading pre-made
-    // compressed mipmaps that makes the texture not show up if
-    // glGenerateMipmap isn't called, even though glGenerateMipmap can't
-    // generate any mipmaps for compressed textures.
-    // Also, this call should generate GL_INVALID_OPERATION but it doesn't?
-    // TODO(wvo): is this a driver bug, or what is the root cause of this?
-    // On android/adreno, this goes generate a GL_INVALID_OPERATION and isn't
-    // needed.
-    GL_CALL(glGenerateMipmap(tex_type));
-#endif
   }
   return TextureHandleFromGl(texture_id);
 }
