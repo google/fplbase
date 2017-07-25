@@ -159,11 +159,16 @@ bool RendererBase::InitializeRenderingState() {
   }
 #endif
 
-  // We are using GL_MAX_VERTEX_UNIFORM_VECTORS here because it is always
-  // available while GL_MAX_VERTEX_UNIFORM_COMPONENTS is not (i.e. GL ES 2.0).
-  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
+  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
                         &max_vertex_uniform_components_));
-  max_vertex_uniform_components_ *= 4;
+#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+  if (max_vertex_uniform_components_ == 0) {
+    // If missing the number of uniform components, use the number of vectors.
+    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
+                          &max_vertex_uniform_components_));
+    max_vertex_uniform_components_ *= 4;
+  }
+#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
 
   return true;
 }
