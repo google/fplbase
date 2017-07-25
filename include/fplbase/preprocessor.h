@@ -19,6 +19,14 @@
 #include "fplbase/utilities.h"
 
 namespace fplbase {
+
+/// Shader profile identifiers used during preprocessing and in shader_pipeline
+/// to determine the target device/environment.
+enum ShaderProfile {
+  kShaderProfileCore,
+  kShaderProfileEs,
+};
+
 /// @brief Load a file like `LoadFile()`, but scan for directives.
 ///
 /// The only supported directives is \#include.
@@ -82,9 +90,25 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 /// @param[in] source Shader source to be sanitized.
 /// @param[in] defines A nullptr-terminated array of identifiers which will be
 /// safely prefixed with \#define at the start of the file.  Can be null.
+/// @param[in] profile Profile to build result in.
 /// @param[out] result Sanitized source code.
 void PlatformSanitizeShaderSource(const char *source,
-  const char * const *defines, std::string *result);
+                                  const char *const *defines,
+                                  ShaderProfile profile,
+                                  std::string *result);
+
+/// @brief Prepares OpenGL shaders for compilation across desktop or mobile.
+///
+/// This function uses the current host machine to determine the shader profile,
+/// then calls the above function.
+///
+/// @param[in] source Shader source to be sanitized.
+/// @param[in] defines A nullptr-terminated array of identifiers which will be
+/// safely prefixed with \#define at the start of the file.  Can be null.
+/// @param[out] result Sanitized source code.
+void PlatformSanitizeShaderSource(const char *source,
+                                  const char *const *defines,
+                                  std::string *result);
 
 /// @brief Adds or replaces the #version string in a shader.
 ///

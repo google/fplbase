@@ -188,14 +188,16 @@ TEST_F(PreprocessorTests, SanitizeVersionConversion) {
 
   std::string result;
   for (size_t i = 0; i < kNumTests; ++i) {
-    fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr, &result);
+    // Test against both core and es profiles.
+    std::string expected = kTests[i].gl_result;
+    fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr,
+                                          fplbase::kShaderProfileCore, &result);
+    EXPECT_EQ(result.compare(0, expected.length(), expected), 0);
+    EXPECT_EQ(result.find("#version"), result.rfind("#version"));
 
-#ifdef FPLBASE_GLES
-    const std::string& expected = kTests[i].gles_result;
-#else
-    const std::string& expected = kTests[i].gl_result;
-#endif
-
+    expected = kTests[i].gles_result;
+    fplbase::PlatformSanitizeShaderSource(kTests[i].file, nullptr,
+                                          fplbase::kShaderProfileEs, &result);
     EXPECT_EQ(result.compare(0, expected.length(), expected), 0);
     EXPECT_EQ(result.find("#version"), result.rfind("#version"));
   }
@@ -316,9 +318,9 @@ TEST_F(PreprocessorTests, SanitizeSample) {
 }
 
 TEST_F(PreprocessorTests, SetShaderVersion) {
-  const char* source =
-      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
-  const char* expected = "#version 200\n"
+  const char* source = "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
+  const char* expected =
+      "#version 200\n"
       "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
   std::string result;
   fplbase::SetShaderVersion(source, "200", &result);
@@ -327,7 +329,8 @@ TEST_F(PreprocessorTests, SetShaderVersion) {
   source =
       "#version 100\n"
       "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
-  expected = "#version 300 es\n"
+  expected =
+      "#version 300 es\n"
       "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
   fplbase::SetShaderVersion(source, "300 es", &result);
   EXPECT_EQ(result, expected);

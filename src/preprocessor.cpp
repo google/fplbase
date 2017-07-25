@@ -140,19 +140,19 @@ void AppendSubstring(const char *start, size_t len,
   }
 }
 
-// If specified version isn't for current platform, try to convert it.
-void ConvertVersion(int *version_number, bool *version_es) {
-#ifdef FPLBASE_GLES
-  if (!*version_es) {
+// If |version| doesn't match |profile|, try to convert it.
+void ConvertVersion(ShaderProfile profile, int *version_number,
+                    bool *version_es) {
+  const bool profile_es = profile == kShaderProfileEs;
+  if (profile_es == *version_es) {
+    return;
+  }
+  if (profile_es) {
     *version_number = MobileFromDesktopVersion(*version_number);
-    *version_es = true;
-  }
-#else
-  if (*version_es) {
+  } else {
     *version_number = DesktopFromMobileVersion(*version_number);
-    *version_es = false;
   }
-#endif
+  *version_es = profile_es;
 }
 
 // Appends a version to a string.
@@ -173,11 +173,11 @@ void AppendVersion(int version_number, bool version_es, std::string *result) {
   AppendVersion(version_string.c_str(), result);
 }
 
-// Appends the default version for the current platform, if any.
-void AppendDefaultVersion(std::string *result) {
-#ifndef FPLBASE_GLES
-  AppendVersion(kDefaultDesktopVersion, result);
-#endif
+// Appends the default version for |profile|, if any.
+void AppendDefaultVersion(ShaderProfile profile, std::string *result) {
+  if (profile == kShaderProfileCore) {
+    AppendVersion(kDefaultDesktopVersion, result);
+  }
 }
 
 }  // namespace
@@ -283,7 +283,7 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 
 void PlatformSanitizeShaderSource(const char *csource,
                                   const char *const *defines,
-                                  std::string *result) {
+                                  ShaderProfile profile, std::string *result) {
   assert(csource);
   assert(result);
 
@@ -362,9 +362,12 @@ void PlatformSanitizeShaderSource(const char *csource,
         }
 
         const char *version_str = directive + kVersionTagLength;
-        if (sscanf(version_str, " %d es", &version_number) == 1) {
+        char spec[3];
+        const int num_scanned =
+            sscanf(version_str, " %d %2[es]", &version_number, spec);
+        if (num_scanned == 2) {
           version_es = true;
-        } else if (sscanf(version_str, " %d ", &version_number) != 1) {
+        } else if (num_scanned != 1) {
           LogError("Invalid version identifier: %s", version_str);
         }
 
@@ -401,10 +404,10 @@ void PlatformSanitizeShaderSource(const char *csource,
 
   // Version number must come first.
   if (version_number != 0) {
-    ConvertVersion(&version_number, &version_es);
+    ConvertVersion(profile, &version_number, &version_es);
     AppendVersion(version_number, version_es, result);
   } else {
-    AppendDefaultVersion(result);
+    AppendDefaultVersion(profile, result);
   }
 
   // Add per-platform definitions.
@@ -433,6 +436,17 @@ void PlatformSanitizeShaderSource(const char *csource,
   result->append(kDefaultPrecisionSpecifier);
   // Add the rest of the code.
   result->append(last_top_level_line);
+}
+
+void PlatformSanitizeShaderSource(const char *source,
+                                  const char *const *defines,
+                                  std::string *result) {
+#ifdef FPLBASE_GLES
+  const ShaderProfile kProfile = kShaderProfileEs;
+#else
+  const ShaderProfile kProfile = kShaderProfileCore;
+#endif
+  PlatformSanitizeShaderSource(source, defines, kProfile, result);
 }
 
 void SetShaderVersion(const char *source, const char *version_string,
