@@ -41,7 +41,7 @@ add_subdirectory("${dependencies_fplutil_dir}/libfplutil"
 add_subdirectory(${dependencies_fplutil_dir}/fbx_common ${tmp_dir}/fbx_common)
 
 # Source files for the pipeline.
-set(fplbase_mesh_pipeline_SRCS mesh_pipeline.cpp)
+set(fplbase_mesh_pipeline_SRCS mesh_pipeline.cpp mesh_pipeline_main.cpp)
 
 # Set compile options for FBX programs.
 fbx_compile_options()
