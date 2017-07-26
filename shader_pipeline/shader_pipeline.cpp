@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "shader_pipeline.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <vector>
@@ -21,112 +23,10 @@
 #include "fplbase/utilities.h"
 #include "shader_generated.h"
 
-struct ShaderPipelineArgs {
-  std::string vertex_shader;        /// The vertex shader source file.
-  std::string fragment_shader;      /// The fragment shader source file.
-  std::string output_file;          /// The output fplshader file.
-  std::string version;              /// Version override.
-  std::vector<char*> defines;       /// Definitions to include into the shaders.
-  std::vector<char*> include_dirs;  /// Directories to search for include files.
-};
+namespace fplbase {
 
-static bool ParseShaderPipelineArgs(int argc, char** argv,
-                                    ShaderPipelineArgs* args) {
-  bool valid_args = true;
-
-  // Last parameter is used as the output file.
-  if (argc > 1) {
-    args->output_file = std::string(argv[argc - 1]);
-  } else {
-    valid_args = false;
-  }
-
-  // Parse switches.
-  for (int i = 1; i < argc - 1; ++i) {
-    const std::string arg = argv[i];
-
-    // -vs switch
-    if (arg == "-vs" || arg == "--vertex-shader") {
-      if (i < argc - 2) {
-        ++i;
-        args->vertex_shader = std::string(argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // -fs switch
-    } else if (arg == "-fs" || arg == "--fragment-shader") {
-      if (i < argc - 2) {
-        ++i;
-        args->fragment_shader = std::string(argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // -d switch
-    } else if (arg == "-d" || arg == "--defines") {
-      if (i < argc - 2) {
-        ++i;
-        args->defines.insert(args->defines.end(), argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // -i switch
-    } else if (arg == "-i" || arg == "--include_dir") {
-      if (i < argc - 2) {
-        ++i;
-        args->include_dirs.insert(args->include_dirs.end(), argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // --version switch
-    } else if (arg == "--version") {
-      if (i < argc - 2) {
-        ++i;
-        args->version = argv[i];
-      } else {
-        valid_args = false;
-      }
-
-      // all other (non-empty) arguments
-    } else if (arg != "") {
-      printf("Unknown parameter: %s\n", arg.c_str());
-      valid_args = false;
-    }
-
-    if (!valid_args) break;
-  }
-  // Null-terminate the vector so the resulting array is null-termintated.
-  args->defines.insert(args->defines.end(), nullptr);
-
-  if (args->vertex_shader.empty() || args->fragment_shader.empty()) {
-    valid_args = false;
-  }
-
-  // Print usage.
-  if (!valid_args) {
-    printf(
-        "Usage: shader_pipeline -vs VERTEX_SHADER -fs FRAGMENT_SHADER\n"
-        "                       OUTPUT_FILE\n"
-        "\n"
-        "Pipeline to generate fplshader files from individual vertex and \n"
-        "fragment shader files.\n"
-        "\n"
-        "Options:\n"
-        "  -vs, --vertex-shader VERTEX_SHADER\n"
-        "  -fs, --fragment-shader FRAGMENT_SHADER\n"
-        "  -i,  --include_dir DIRECTORY\n"
-        "  -d,  --defines DEFINITION\n"
-        "       --version VERSION\n");
-  }
-
-  return valid_args;
-}
-
-bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
-                            const std::string& filename) {
+static bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
+                                   const std::string& filename) {
   FILE* file = fopen(filename.c_str(), "wb");
   if (file) {
     fwrite(fbb.GetBufferPointer(), 1, fbb.GetSize(), file);
@@ -136,20 +36,14 @@ bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
   return false;
 }
 
-std::string ApplyVersion(const std::string& source,
-                         const std::string& version) {
+static std::string ApplyVersion(const std::string& source,
+                                const std::string& version) {
   std::string versioned_source;
   fplbase::SetShaderVersion(source.c_str(), version.c_str(), &versioned_source);
   return versioned_source;
 }
 
-int main(int argc, char** argv) {
-  // Parse the command line arguments.
-  ShaderPipelineArgs args;
-  if (!ParseShaderPipelineArgs(argc, argv, &args)) {
-    return 1;
-  }
-
+int RunShaderPipeline(const ShaderPipelineArgs& args) {
   // Create a custom load file function to search our include dirs.
   auto load_shader_file = [&args](const char* filename, std::string* dest) {
     // First try to load the file at the given path.
@@ -225,3 +119,5 @@ int main(int argc, char** argv) {
   // Success.
   return 0;
 }
+
+}  // namespace fplbase

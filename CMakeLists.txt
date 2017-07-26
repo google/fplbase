@@ -411,7 +411,8 @@ if(fplbase_build_library)
 endif()
 
 if(fplbase_build_shader_pipeline)
-  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp)
+  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp
+                                   shader_pipeline/shader_pipeline_main.cpp)
   include_directories(include)
   include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
   include_directories(${dependencies_flatbuffers_dir}/include)
