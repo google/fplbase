@@ -86,6 +86,8 @@ void Mesh::LoadFromMemory(const void *vertex_data, size_t count,
     GL_CALL(glBindVertexArray(0));
   }
 
+  GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+
   // Determine the min and max position
   if (max_position && min_position) {
     max_position_ = *max_position;
@@ -120,6 +122,7 @@ void Mesh::AddIndices(const void *index_data, int count, Material *mat,
                    index_data, GL_STATIC_DRAW));
   idxs.index_type = (is_32_bit ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT);
   idxs.mat = mat;
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
 }  // namespace fplbase

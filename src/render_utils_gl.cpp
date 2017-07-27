@@ -231,6 +231,7 @@ void UnSetAttributes(const Attribute *attributes) {
         GL_CALL(glDisableVertexAttribArray(Mesh::kAttributeBoneWeights));
         break;
       case kEND:
+        GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         return;
     }
   }

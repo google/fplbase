@@ -628,6 +628,7 @@ void Renderer::Render(Mesh *mesh, bool ignore_material, size_t instances) {
       GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
       DrawElement(it->count, static_cast<int32_t>(instances), it->index_type,
                   mesh->primitive_, base_->supports_instancing_);
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
   } else {
     GL_CALL(glDrawArrays(mesh->primitive_, 0,
@@ -657,6 +658,7 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
         DrawElement(it->count, static_cast<int32_t>(instances), it->index_type,
                     mesh->primitive_, base_->supports_instancing_);
       }
+      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
   } else {
     for (size_t i = 0; i < 2; ++i) {
