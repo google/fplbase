@@ -149,7 +149,11 @@ bool AsyncLoader::TryFinalize() {
       // check IsValid() to know if resource can be used.
     }
     Lock([this]() {
-      done_.pop_front();
+      // It's possible that the resource was destroyed during its finalize
+      // callbacks, so ensure that it's still the first item in done_.
+      if (done_.size() > 0 && done_.front() == res) {
+        done_.pop_front();
+      }
       --num_pending_requests_;
     });
   }

@@ -110,7 +110,11 @@ bool AsyncLoader::TryFinalize() {
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      done_.erase(done_.begin());
+      // It's possible that the resource was destroyed during its finalize
+      // callbacks, so ensure that it's still the first item in done_.
+      if (done_.size() > 0 && done_.front() == resource) {
+        done_.pop_front();
+      }
       --num_pending_requests_;
     }
   }
