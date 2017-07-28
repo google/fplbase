@@ -18,7 +18,8 @@
 
 namespace fplbase {
 
-AsyncLoader::AsyncLoader() {}
+AsyncLoader::AsyncLoader() : loading_(nullptr), num_pending_requests_(0) {
+}
 
 AsyncLoader::~AsyncLoader() {
   {
@@ -39,6 +40,7 @@ void AsyncLoader::QueueJob(AsyncAsset *res) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push_back(res);
+    ++num_pending_requests_;
   }
   job_cv_.notify_one();
 }
@@ -59,11 +61,13 @@ void AsyncLoader::AbortJob(AsyncAsset *res) {
     auto iter = std::find(queue_.begin(), queue_.end(), res);
     if (iter != queue_.end()) {
       queue_.erase(iter);
+      --num_pending_requests_;
     }
 
     iter = std::find(done_.begin(), done_.end(), res);
     if (iter != done_.end()) {
       done_.erase(iter);
+      --num_pending_requests_;
     }
   }
 
@@ -107,12 +111,13 @@ bool AsyncLoader::TryFinalize() {
     {
       std::lock_guard<std::mutex> lock(mutex_);
       done_.erase(done_.begin());
+      --num_pending_requests_;
     }
   }
   bool finished;
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    finished = queue_.empty() && done_.empty();
+    finished = num_pending_requests_ == 0;
   }
   return finished;
 }

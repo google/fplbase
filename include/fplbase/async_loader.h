@@ -203,6 +203,7 @@ class AsyncLoader {
 
   std::deque<AsyncAsset *> queue_, done_;
   AsyncAsset *loading_;
+  int num_pending_requests_;
 #ifdef FPLBASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.

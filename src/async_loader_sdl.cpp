@@ -36,7 +36,8 @@ class BookendAsyncResource : public AsyncAsset {
 // static
 const char *BookendAsyncResource::kBookendFileName = "bookend";
 
-AsyncLoader::AsyncLoader() : loading_(nullptr), worker_thread_(nullptr) {
+AsyncLoader::AsyncLoader()
+    : loading_(nullptr), num_pending_requests_(0), worker_thread_(nullptr) {
   mutex_ = SDL_CreateMutex();
   job_semaphore_ = SDL_CreateSemaphore(0);
   assert(mutex_ && job_semaphore_);
@@ -64,7 +65,10 @@ void AsyncLoader::Stop() {
 }
 
 void AsyncLoader::QueueJob(AsyncAsset *res) {
-  Lock([this, res]() { queue_.push_back(res); });
+  Lock([this, res]() {
+    queue_.push_back(res);
+    ++num_pending_requests_;
+  });
   SDL_SemPost(static_cast<SDL_semaphore *>(job_semaphore_));
 }
 
@@ -80,11 +84,13 @@ void AsyncLoader::AbortJob(AsyncAsset *res) {
     auto iter = std::find(queue_.begin(), queue_.end(), res);
     if (iter != queue_.end()) {
       queue_.erase(iter);
+      --num_pending_requests_;
     }
 
     iter = std::find(done_.begin(), done_.end(), res);
     if (iter != done_.end()) {
       done_.erase(iter);
+      --num_pending_requests_;
     }
   });
 
@@ -142,9 +148,12 @@ bool AsyncLoader::TryFinalize() {
       // Can't do much here, since res is already constructed. Caller has to
       // check IsValid() to know if resource can be used.
     }
-    Lock([this]() { done_.pop_front(); });
+    Lock([this]() {
+      done_.pop_front();
+      --num_pending_requests_;
+    });
   }
-  return LockReturn<bool>([this]() { return queue_.empty() && done_.empty(); });
+  return LockReturn<bool>([this]() { return num_pending_requests_ == 0; });
 }
 
 void AsyncLoader::Lock(const std::function<void()> &body) {
