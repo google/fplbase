@@ -148,7 +148,7 @@ bool AsyncLoader::TryFinalize() {
       // Can't do much here, since res is already constructed. Caller has to
       // check IsValid() to know if resource can be used.
     }
-    Lock([this]() {
+    Lock([this, res]() {
       // It's possible that the resource was destroyed during its finalize
       // callbacks, so ensure that it's still the first item in done_.
       if (done_.size() > 0 && done_.front() == res) {
