@@ -44,10 +44,15 @@ static std::string ApplyVersion(const std::string& source,
 }
 
 int RunShaderPipeline(const ShaderPipelineArgs& args) {
-  // Create a custom load file function to search our include dirs.
-  auto load_shader_file = [&args](const char* filename, std::string* dest) {
+  // Store the current load file function which we'll restore later.
+  fplbase::LoadFileFunction load_fn = fplbase::SetLoadFileFunction(nullptr);
+
+  // Provide a custom loader that will search include paths for files.  This
+  // loader will use the previous file loader for the actual loading operation.
+  fplbase::SetLoadFileFunction([&load_fn, &args](const char* filename,
+                                                 std::string* dest) {
     // First try to load the file at the given path.
-    if (fplbase::LoadFileRaw(filename, dest)) {
+    if (load_fn(filename, dest)) {
       return true;
     }
 
@@ -62,18 +67,17 @@ int RunShaderPipeline(const ShaderPipelineArgs& args) {
           path += '/';
         }
         path += filename;
-        if (fplbase::LoadFileRaw(path.c_str(), dest)) {
+        if (load_fn(path.c_str(), dest)) {
           return true;
         }
       }
     }
 
     return false;
-  };
-
-  fplbase::SetLoadFileFunction(load_shader_file);
+  });
 
   // Read
+  int status = 0;
   std::string vsh;
   std::string fsh;
   std::string error_message;
@@ -82,14 +86,22 @@ int RunShaderPipeline(const ShaderPipelineArgs& args) {
                                        defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
-    return 1;
+    status = 1;
   }
 
-  if (!fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
+  if (!status &&
+      !fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
                                        defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
-    return 1;
+    status = 1;
+  }
+
+  // Restore the previous load file function.
+  fplbase::SetLoadFileFunction(load_fn);
+
+  if (status != 0) {
+    return status;
   }
 
   if (!args.version.empty()) {
