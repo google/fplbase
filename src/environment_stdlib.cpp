@@ -20,6 +20,10 @@
 #include "fplbase/renderer_android.h"
 #endif
 
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#include "fplbase/internal/renderer_ios.h"
+#endif
+
 using mathfu::mat4;
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -56,7 +60,11 @@ bool Environment::Initialize(const vec2i& /*window_size*/,
 #endif  // defined(__ANDROID__)
 
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-  feature_level_ = kFeatureLevel30;
+  const int version = IosGetContextClientVersion();
+  assert(version >= 2);
+  if (version >= 3) {
+    feature_level_ = kFeatureLevel30;
+  }
 #endif  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
   return true;
 }
@@ -72,4 +80,4 @@ vec2i Environment::GetViewportSize() const {
   return window_size();
 }
 
-}
+}  // namespace fplbase

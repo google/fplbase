@@ -257,6 +257,7 @@ set(fplbase_stdlib_SRCS
   src/async_loader_stdlib.cpp
   src/environment_stdlib.cpp
   src/input_stdlib.cpp
+  src/renderer_ios.mm
   src/utilities_stdlib.cpp)
 
 set(fplbase_stb_defines
