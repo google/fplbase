@@ -159,16 +159,23 @@ bool RendererBase::InitializeRenderingState() {
   }
 #endif
 
-  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
-                        &max_vertex_uniform_components_));
-#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
-  if (max_vertex_uniform_components_ == 0) {
-    // If missing the number of uniform components, use the number of vectors.
-    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
-                          &max_vertex_uniform_components_));
+  // Now we attempt to get max vertex uniform components.  On OS X, there is no
+  // Compatibility Profile support, which means we can't graduate OS X to a
+  // Core Profile (3.2+) and still use our existing shaders which target older
+  // GLSL versions.  In that case (or any platform with a similar issue) the
+  // glGet of GL_MAX_VERTEX_UNIFORM_VECTORS will fail, so we return the spec
+  // minimum of 256 in that case.
+#ifdef GL_MAX_VERTEX_UNIFORM_VECTORS
+  glGetError();
+  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &max_vertex_uniform_components_);
+  if (glGetError() == GL_NONE) {
     max_vertex_uniform_components_ *= 4;
+  } else {
+    max_vertex_uniform_components_ = 256;
   }
-#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+#else
+  max_vertex_uniform_components_ = 256;
+#endif
 
   return true;
 }
