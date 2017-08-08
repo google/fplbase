@@ -74,6 +74,7 @@
 #define GLBASEEXTS
 #endif  // !defined(_WIN32)
 #define GLEXTS                                                                 \
+  GLEXT(PFNGLGETSTRINGIPROC, glGetStringi, true)                               \
   GLEXT(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers, true)                     \
   GLEXT(PFNGLBINDFRAMEBUFFEREXTPROC, glBindFramebuffer, true)                  \
   GLEXT(PFNGLGENRENDERBUFFERSEXTPROC, glGenRenderbuffers, true)                \

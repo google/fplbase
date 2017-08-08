@@ -44,8 +44,20 @@ bool Environment::Initialize(const vec2i& /*window_size*/,
 #undef GLEXT
 #endif  // defined(_WIN32)
 
+#ifndef PLATFORM_MOBILE
+#ifdef GL_MAJOR_VERSION
+  GLint version = 0;
+  glGetIntegerv(GL_MAJOR_VERSION, &version);
+  if (glGetError() == 0) {
+    if (version >= 3) {
+      feature_level_ = kFeatureLevel30;
+    }
+  }
+#endif  // defined(GL_MAJOR_VERSION)
+#endif  // !defined(PLATFORM_MOBILE)
+
 #ifdef __ANDROID__
-      const int version = AndroidGetContextClientVersion();
+  const int version = AndroidGetContextClientVersion();
   if (version >= 3) {
     feature_level_ = kFeatureLevel30;
     AndroidInitGl3Functions();

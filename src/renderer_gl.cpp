@@ -105,16 +105,40 @@ void RendererBase::AdvanceFrame(bool minimized, double time) {
   environment_.AdvanceFrame(minimized);
 }
 
-bool RendererBase::InitializeRenderingState() {
-  auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
+static std::vector<std::string> GetExtensions() {
+  std::vector<std::string> extensions;
 
-  auto HasGLExt = [&exts](const char *ext) -> bool {
-    // TODO(b/28761934): Consider supporting GL3.0 version.
-    if (exts == nullptr) {
-      return false;
+  auto res = glGetString(GL_EXTENSIONS);
+  if (glGetError() == GL_NO_ERROR && res != nullptr) {
+    std::stringstream ss(reinterpret_cast<const char *>(res));
+    std::string ext;
+    while (std::getline(ss, ext, ' ')) {
+      extensions.push_back(ext);
     }
-    auto pos = strstr(exts, ext);
-    return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
+    return extensions;
+  }
+
+#if GL_ES_VERSION_3_0 || defined(GL_VERSION_3_0)
+  int num_extensions = 0;
+  glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+  if (glGetError() == GL_NO_ERROR) {
+    extensions.reserve(num_extensions);
+    for (int i = 0; i < num_extensions; ++i) {
+      auto res = glGetStringi(GL_EXTENSIONS, i);
+      if (res != nullptr) {
+        extensions.push_back(reinterpret_cast<const char *>(res));
+      }
+    }
+  }
+#endif  // defined(GL_NUM_EXTENSIONS)
+  return extensions;
+}
+
+bool RendererBase::InitializeRenderingState() {
+  const auto extensions = GetExtensions();
+  auto HasGLExt = [&extensions](const char *ext) -> bool {
+    auto it = std::find(extensions.begin(), extensions.end(), std::string(ext));
+    return it != extensions.end();
   };
 
   // Check for multiview extension support.
