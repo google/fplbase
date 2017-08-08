@@ -20,6 +20,10 @@
 #include "fplbase/renderer_android.h"
 #endif
 
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#include "fplbase/internal/renderer_ios.h"
+#endif
+
 using mathfu::mat4;
 using mathfu::vec2;
 using mathfu::vec2i;
@@ -31,7 +35,7 @@ namespace fplbase {
 // When building without SDL we assume the window and rendering context have
 // already been created prior to calling initialize.
 bool Environment::Initialize(const vec2i& /*window_size*/,
-                             const char* /*window_size*/,
+                             const char* /*window_title*/,
                              WindowMode /*window_mode*/) {
 #if defined(_WIN32)
 #define GLEXT(type, name, required) \
@@ -47,14 +51,21 @@ bool Environment::Initialize(const vec2i& /*window_size*/,
     AndroidInitGl3Functions();
   }
 
-#ifdef PLATFORM_MOBILE
+#ifdef FPLBASE_GLES
 #define GLEXT(type, name, required) \
   LOOKUP_GL_FUNCTION(type, name, required, eglGetProcAddress)
   GLESEXTS
 #undef GLEXT
-#endif  // PLATFORM_MOBILE
+#endif  // FPLBASE_GLES
 #endif  // defined(__ANDROID__)
 
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  const int version = IosGetContextClientVersion();
+  assert(version >= 2);
+  if (version >= 3) {
+    feature_level_ = kFeatureLevel30;
+  }
+#endif  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
   return true;
 }
 
@@ -69,4 +80,4 @@ vec2i Environment::GetViewportSize() const {
   return window_size();
 }
 
-}
+}  // namespace fplbase

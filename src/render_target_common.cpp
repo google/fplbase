@@ -19,7 +19,8 @@
 namespace fplbase {
 
 void RenderTarget::Initialize(const mathfu::vec2i& dimensions) {
-  Initialize(dimensions, kRenderTargetFormatUByte, true);
+  Initialize(dimensions, kRenderTargetTextureFormatRGBA8,
+             kDepthStencilFormatNone);
 }
 
 // Generates a render target that represents the screen.

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "shader_pipeline.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <vector>
@@ -21,90 +23,10 @@
 #include "fplbase/utilities.h"
 #include "shader_generated.h"
 
-struct ShaderPipelineArgs {
-  std::string vertex_shader;    /// The vertex shader source file.
-  std::string fragment_shader;  /// The fragment shader source file.
-  std::string output_file;      /// The output fplshader file.
-  std::vector<char*> defines;   /// Definitions to include into the shaders.
-};
+namespace fplbase {
 
-static bool ParseShaderPipelineArgs(int argc, char** argv,
-                                    ShaderPipelineArgs* args) {
-  bool valid_args = true;
-
-  // Last parameter is used as the output file.
-  if (argc > 1) {
-    args->output_file = std::string(argv[argc - 1]);
-  } else {
-    valid_args = false;
-  }
-
-  // Parse switches.
-  for (int i = 1; i < argc - 1; ++i) {
-    const std::string arg = argv[i];
-
-    // -vs switch
-    if (arg == "-vs" || arg == "--vertex-shader") {
-      if (i < argc - 2) {
-        ++i;
-        args->vertex_shader = std::string(argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // -fs switch
-    } else if (arg == "-fs" || arg == "--fragment-shader") {
-      if (i < argc - 2) {
-        ++i;
-        args->fragment_shader = std::string(argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // -d switch
-    } else if (arg == "-d" || arg == "--defines") {
-      if (i < argc - 2) {
-        ++i;
-        args->defines.insert(args->defines.end(), argv[i]);
-      } else {
-        valid_args = false;
-      }
-
-      // all other (non-empty) arguments
-    } else if (arg != "") {
-      printf("Unknown parameter: %s\n", arg.c_str());
-      valid_args = false;
-    }
-
-    if (!valid_args) break;
-  }
-  // Null-terminate the vector so the resulting array is null-termintated.
-  args->defines.insert(args->defines.end(), nullptr);
-
-  if (args->vertex_shader.empty() || args->fragment_shader.empty()) {
-    valid_args = false;
-  }
-
-  // Print usage.
-  if (!valid_args) {
-    printf(
-        "Usage: shader_pipeline -vs VERTEX_SHADER -fs FRAGMENT_SHADER\n"
-        "                       OUTPUT_FILE\n"
-        "\n"
-        "Pipeline to generate fplshader files from individual vertex and \n"
-        "fragment shader files.\n"
-        "\n"
-        "Options:\n"
-        "  -vs, --vertex-shader VERTEX_SHADER\n"
-        "  -fs, --fragment-shader FRAGMENT_SHADER\n"
-        "  -d,  --defines DEFINITION\n");
-  }
-
-  return valid_args;
-}
-
-bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
-                            const std::string& filename) {
+static bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
+                                   const std::string& filename) {
   FILE* file = fopen(filename.c_str(), "wb");
   if (file) {
     fwrite(fbb.GetBufferPointer(), 1, fbb.GetSize(), file);
@@ -114,30 +36,77 @@ bool WriteFlatBufferBuilder(const flatbuffers::FlatBufferBuilder& fbb,
   return false;
 }
 
-int main(int argc, char** argv) {
-  // Parse the command line arguments.
-  ShaderPipelineArgs args;
-  if (!ParseShaderPipelineArgs(argc, argv, &args)) {
-    return 1;
-  }
+static std::string ApplyVersion(const std::string& source,
+                                const std::string& version) {
+  std::string versioned_source;
+  fplbase::SetShaderVersion(source.c_str(), version.c_str(), &versioned_source);
+  return versioned_source;
+}
+
+int RunShaderPipeline(const ShaderPipelineArgs& args) {
+  // Store the current load file function which we'll restore later.
+  fplbase::LoadFileFunction load_fn = fplbase::SetLoadFileFunction(nullptr);
+
+  // Provide a custom loader that will search include paths for files.  This
+  // loader will use the previous file loader for the actual loading operation.
+  fplbase::SetLoadFileFunction([&load_fn, &args](const char* filename,
+                                                 std::string* dest) {
+    // First try to load the file at the given path.
+    if (load_fn(filename, dest)) {
+      return true;
+    }
+
+    // Otherwise, try to load from each of the include dirs (but only for
+    // #included files).
+    if (args.vertex_shader.compare(filename) != 0 &&
+        args.fragment_shader.compare(filename) != 0) {
+      std::string path;
+      for (const auto& dir : args.include_dirs) {
+        path = dir;
+        if (path.back() != '/' && path.back() != '\\') {
+          path += '/';
+        }
+        path += filename;
+        if (load_fn(path.c_str(), dest)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  });
 
   // Read
+  int status = 0;
   std::string vsh;
   std::string fsh;
   std::string error_message;
-  const char* const *defines = args.defines.data();
+  const char* const* defines = args.defines.data();
   if (!fplbase::LoadFileWithDirectives(args.vertex_shader.c_str(), &vsh,
                                        defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
-    return 1;
+    status = 1;
   }
 
-  if (!fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
+  if (!status &&
+      !fplbase::LoadFileWithDirectives(args.fragment_shader.c_str(), &fsh,
                                        defines, &error_message)) {
     printf("Unable to load file: %s \n%s\n", args.vertex_shader.c_str(),
            error_message.c_str());
-    return 1;
+    status = 1;
+  }
+
+  // Restore the previous load file function.
+  fplbase::SetLoadFileFunction(load_fn);
+
+  if (status != 0) {
+    return status;
+  }
+
+  if (!args.version.empty()) {
+    vsh = ApplyVersion(vsh, args.version);
+    fsh = ApplyVersion(fsh, args.version);
   }
 
   // Create the FlatBuffer for the Shader.
@@ -162,3 +131,5 @@ int main(int argc, char** argv) {
   // Success.
   return 0;
 }
+
+}  // namespace fplbase

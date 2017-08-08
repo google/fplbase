@@ -105,12 +105,15 @@ void AndroidPreCreateWindow() {
   if (g_android_scaler_resolution.x && g_android_scaler_resolution.y) {
     // Initialize OpenGL function pointers inside SDL
     if (SDL_GL_LoadLibrary(NULL) < 0) {
-      LogError(kError, "couldn't initialize OpenGL library\n");
+      LogError(kError, "couldn't initialize OpenGL library: %s\n",
+               SDL_GetError());
     }
 
     // Hook eglCreateWindowSurface call
     SDL_VideoDevice* device = SDL_GetVideoDevice();
-    device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
+    if (device) {
+      device->egl_data->eglCreateWindowSurface = HookEglCreateWindowSurface;
+    }
   }
 }
 #endif  // FPLBASE_BACKEND_SDL

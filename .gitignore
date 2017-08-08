@@ -1,5 +1,6 @@
 # Git Ignore file.
-#General build files
+
+# General build files
 obj/*
 bin/*
 gen/*
@@ -10,6 +11,9 @@ assets/*
 Makefile
 fplbase.cbp
 docs/linklint_results
+
+# Generated files
+include/*_generated.h
 
 # CMake files
 CMakeCache.txt
@@ -64,3 +68,7 @@ pingme.txt
 
 # qt creator
 *.cbp
+
+# xcode
+samples/fplbase.build
+.DS_Store

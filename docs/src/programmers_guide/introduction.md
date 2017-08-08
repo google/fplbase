@@ -237,7 +237,7 @@ to .webp if the hardware does not support it, i.e systems that don't support
 OpenGL 3.0. Alternatively, use ETC1 which is always supported.
 Generate these with e.g:
 ~~~
-etcpack mytexture.png mytexture.ktx -c etc2 -f RGBA -mipmaps -ktx
+etcpack mytexture.png . -c etc2 -f RGBA -mipmaps -ktx
 ~~~
 
 

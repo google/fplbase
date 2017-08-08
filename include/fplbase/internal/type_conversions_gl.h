@@ -17,6 +17,7 @@
 
 #include "fplbase/handles.h"
 #include "fplbase/internal/detailed_render_state.h"
+#include "fplbase/mesh.h"
 #include "fplbase/render_target.h"
 
 namespace fplbase {
@@ -41,10 +42,42 @@ unsigned int StencilOpToGlOp(StencilOperation::StencilOperations op);
 /// @param face The cull face value to convert.
 unsigned int CullFaceToGl(CullState::CullFace face);
 
-/// @brief Converts FPL RenderTargetFormat to equivalent GL enum value.
+/// @brief Converts FPL front face value to equivalent GL enum value.
 ///
-/// @param face The format to convert.
-unsigned int RenderTargetFormatToGl(RenderTargetFormat format);
+/// @param front_face The front face value to convert.
+unsigned int FrontFaceToGl(CullState::FrontFace front_face);
+
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL internal
+/// format enum value.
+///
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToInternalFormatGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL format enum
+/// value.
+///
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToFormatGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL RenderTargetTextureFormat to equivalent GL type enum
+/// value.
+///
+/// @param format The format to convert.
+unsigned int RenderTargetTextureFormatToTypeGl(
+    RenderTargetTextureFormat format);
+
+/// @brief Converts FPL DepthStencilFormat to equivalent GL depth
+/// internal format enum value.
+///
+/// @param format The format to convert.
+unsigned int DepthStencilFormatToInternalFormatGl(DepthStencilFormat format);
+
+/// @brief Converts FPL Mesh Primitive to equivalent GL enum value.
+///
+/// @param primitive The primitive type to convert.
+unsigned int GetPrimitiveTypeFlags(Mesh::Primitive primitive);
 
 union HandleUnionGl {
   HandleUnionGl() { handle.handle = 0; }

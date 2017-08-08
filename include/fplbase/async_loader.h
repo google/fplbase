@@ -151,6 +151,14 @@ class AsyncLoader {
   /// @param res The resource to queue for loading.
   void QueueJob(AsyncAsset *res);
 
+  /// @brief Aborts any pending operations for the given asset.
+  ///
+  /// If the given asset is currently loading, this blocks until it is complete.
+  /// If it has not yet been loaded, this removes it from the queue.
+  ///
+  /// @param res The resource to abort performing any operations on.
+  void AbortJob(AsyncAsset *res);
+
   /// @brief Launches the loading thread for the previously queued jobs.
   void StartLoading();
 
@@ -194,6 +202,8 @@ class AsyncLoader {
   static int LoaderThread(void *user_data);
 
   std::deque<AsyncAsset *> queue_, done_;
+  AsyncAsset *loading_;
+  int num_pending_requests_;
 #ifdef FPLBASE_BACKEND_SDL
   // Keep handle to the worker thread around so that we can wait for it to
   // finish before destroying the class.

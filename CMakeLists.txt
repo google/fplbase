@@ -214,6 +214,7 @@ set(fplbase_common_SRCS
   include/fplbase/renderer_common.h
   include/fplbase/render_state.h
   include/fplbase/render_target.h
+  include/fplbase/render_utils.h
   include/fplbase/shader.h
   include/fplbase/texture.h
   include/fplbase/texture_atlas.h
@@ -226,12 +227,14 @@ set(fplbase_common_SRCS
   src/material.cpp
   src/mesh_common.cpp
   src/mesh_gl.cpp
+  src/mesh_impl_gl.h
   src/precompiled.h
   src/preprocessor.cpp
   src/renderer_common.cpp
   src/renderer_gl.cpp
   src/render_target_common.cpp
   src/render_target_gl.cpp
+  src/render_utils_gl.cpp
   src/shader_common.cpp
   src/shader_gl.cpp
   src/texture_common.cpp
@@ -243,16 +246,19 @@ set(fplbase_common_SRCS
 
 set(fplbase_SRCS
   ${fplbase_common_SRCS}
-  src/async_loader.cpp
+  src/async_loader_sdl.cpp
   src/environment_sdl.cpp
   src/input_sdl.cpp
-  src/main.cpp)
+  src/main_sdl.cpp
+  src/utilities_sdl.cpp)
 
 set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_stdlib.cpp
   src/environment_stdlib.cpp
-  src/input_stdlib.cpp)
+  src/input_stdlib.cpp
+  src/renderer_ios.mm
+  src/utilities_stdlib.cpp)
 
 set(fplbase_stb_defines
     STB_IMAGE_IMPLEMENTATION
@@ -406,7 +412,8 @@ if(fplbase_build_library)
 endif()
 
 if(fplbase_build_shader_pipeline)
-  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp)
+  set(fplbase_shader_pipeline_SRCS shader_pipeline/shader_pipeline.cpp
+                                   shader_pipeline/shader_pipeline_main.cpp)
   include_directories(include)
   include_directories(${FPLBASE_FLATBUFFERS_GENERATED_INCLUDES_DIR})
   include_directories(${dependencies_flatbuffers_dir}/include)

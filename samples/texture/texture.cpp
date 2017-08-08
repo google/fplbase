@@ -13,11 +13,12 @@
 // limitations under the License.
 //
 
-#include "fplbase/asset_manager.h"
-#include "fplbase/renderer.h"
-#include "fplbase/input.h"
-#include "fplbase/utilities.h"
 #include <cassert>
+#include "fplbase/asset_manager.h"
+#include "fplbase/input.h"
+#include "fplbase/render_utils.h"
+#include "fplbase/renderer.h"
+#include "fplbase/utilities.h"
 
 // Game is a sample that displays a textured quad.
 //
@@ -71,12 +72,11 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
         mathfu::mat4::FromRotationMatrix(rotz) *
         mathfu::mat4::FromScaleVector(zoom));
 
-    shader->Set(renderer);
+    renderer.SetShader(shader);
     tex->Set(0);
 
-    fplbase::Mesh::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0),
-                                      mathfu::vec3(1, 1, 0), mathfu::vec2(0, 0),
-                                      mathfu::vec2(10, 10));
+    fplbase::RenderAAQuadAlongX(mathfu::vec3(-1, -1, 0), mathfu::vec3(1, 1, 0),
+                                mathfu::vec2(0, 0), mathfu::vec2(10, 10));
   }
 
   asset_manager.ClearAllAssets();

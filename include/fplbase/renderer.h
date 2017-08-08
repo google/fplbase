@@ -238,6 +238,9 @@ class RendererBase {
   /// see: https://www.opengl.org/wiki/NPOT_Texture
   bool SupportsTextureNpot() const;
 
+  /// @brief Returns if multiview capabilities are supported by the hardware.
+  bool SupportsMultiview() const;
+
   // For internal use only.
   RendererBaseImpl* impl() { return impl_; }
 
@@ -276,6 +279,8 @@ class RendererBase {
   int64_t supports_texture_format_;  // 1 bit for each enum in TextureFormat.
 
   bool supports_texture_npot_;
+  bool supports_multiview_;
+  bool supports_instancing_;
 
   Shader *force_shader_;
   BlendMode force_blend_mode_;
@@ -311,6 +316,33 @@ class Renderer {
  public:
   Renderer();
   ~Renderer();
+
+  /// @brief Render a mesh.
+  ///
+  /// Call to render a mesh. Uniforms must have been set before
+  /// calling this. For instanced rendering, pass in a value >1 (needs OpenGL
+  /// ES 3.0 to work).
+  ///
+  /// @param mesh The mesh object to be rendered.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
+  void Render(Mesh *mesh, bool ignore_material = false, size_t instances = 1);
+
+  /// @brief Render a mesh into stereoscopic viewports.
+  /// @param mesh The mesh object to be rendered.
+  /// @param shader The shader object to be used.
+  /// @param viewport An array with two elements (left and right parameters) for
+  /// the viewport.
+  /// @param mvp An array with two elements (left and right parameters) for the
+  /// Model View Projection (MVP) matrix.
+  /// @param camera_position An array with two elements (left and right
+  /// parameters) for camera position.
+  /// @param ignore_material Whether to ignore the meshes defined material.
+  /// @param instances The number of instances to be rendered.
+  void RenderStereo(Mesh *mesh, const Shader *shader, const Viewport *viewport,
+                    const mathfu::mat4 *mvp,
+                    const mathfu::vec3 *camera_position,
+                    bool ignore_material = false, size_t instances = 1);
 
   /// @brief Shader uniform: model_view_projection
   /// @return Returns the current model view projection being used.
@@ -401,6 +433,14 @@ class Renderer {
   /// @overload void SetBlendMode(BlendMode blend_mode)
   void SetBlendMode(BlendMode blend_mode);
 
+  /// @brief Gets the currently set blend mode.
+  BlendMode GetBlendMode();
+
+  /// @brief Sets which face of a triangle is the front face.
+  ///
+  /// @param front_face The value that determines the front face.
+  void SetFrontFace(CullState::FrontFace front_face);
+
   /// @brief Sets the stencil mode. By default, the stencil test is off.
   ///
   /// @param mode The stencil mode to use.
@@ -423,6 +463,11 @@ class Renderer {
   ///
   /// @param depth_func The depth function to use.
   void SetDepthFunction(DepthFunction func);
+
+  /// @brief Set whether writing to the depth buffer is enabled or not.
+  ///
+  /// @param enabled The value to set the depth write to.
+  void SetDepthWrite(bool enabled);
 
   /// @brief Turn on a scissor region. Arguments are in screen pixels.
   ///
@@ -546,6 +591,11 @@ class Renderer {
   /// @brief Returns the current render state.
   const RenderState &GetRenderState() const { return render_state_; }
 
+  /// @brief Sets the render state to match the desired state.
+  //
+  /// @param render_state The render state to be set.
+  void SetRenderState(const RenderState &render_state);
+
   /// @brief Updates the cached render state with the given render state.
   ///
   /// This should be used to avoid mismatch between the expected render state
@@ -555,11 +605,14 @@ class Renderer {
   /// will be updated.)
   void UpdateCachedRenderState(const RenderState &render_state);
 
-  /// @brief Returns the active shader, or nullptr if no active shader.
-  const Shader *GetActiveShader() const { return shader_; }
-
-  /// @brief Returns the active shader, or nullptr if no active shader.
-  Shader *GetActiveShader() { return shader_; }
+  /// @brief Activate a shader for subsequent draw calls.
+  ///
+  /// Will make a shader active for any subsequent draw calls, and sets
+  /// all standard uniforms (e.g. mvp matrix) based on current values in
+  /// Renderer, if the shader refers to them.
+  ///
+  /// @param shader The shader to be activated.
+  void SetShader(const Shader *shader);
 
   // For internal use only.
   RendererImpl* impl() { return impl_; }
@@ -571,6 +624,13 @@ class Renderer {
   // on the platform-specific impl structs.
   static RendererImpl *CreateRendererImpl();
   static void DestroyRendererImpl(RendererImpl *impl);
+
+  void SetAlphaTestState(const AlphaTestState &alpha_test_state);
+  void SetBlendState(const BlendState &blend_state);
+  void SetCullState(const CullState &cull_state);
+  void SetDepthState(const DepthState &depth_state);
+  void SetScissorState(const ScissorState &scissor_state);
+  void SetStencilState(const StencilState &stencil_state);
 
   // Platform-dependent data.
   RendererImpl* impl_;
@@ -589,7 +649,6 @@ class Renderer {
   const mathfu::AffineTransform *bone_transforms_;
   int num_bones_;
 
-  Shader *shader_;
   RenderState render_state_;
 
   BlendMode blend_mode_;

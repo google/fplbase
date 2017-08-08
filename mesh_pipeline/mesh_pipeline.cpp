@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mesh_pipeline.h"
+
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -56,42 +58,9 @@ using mathfu::kZeros2f;
 using mathfu::kZeros3f;
 using mathfu::kZeros4f;
 
-enum VertexAttribute {
-  kVertexAttribute_Position,
-  kVertexAttribute_Normal,
-  kVertexAttribute_Tangent,
-  kVertexAttribute_Uv,
-  kVertexAttribute_UvAlt,
-  kVertexAttribute_Color,
-  kVertexAttribute_Bone,
-  kVertexAttribute_Count  // must come at end
-};
-
-// Bitwise OR of the kVertexAttributeBits.
-typedef uint32_t VertexAttributeBitmask;
-static const VertexAttributeBitmask kVertexAttributeBit_Position =
-    1 << kVertexAttribute_Position;
-static const VertexAttributeBitmask kVertexAttributeBit_Normal =
-    1 << kVertexAttribute_Normal;
-static const VertexAttributeBitmask kVertexAttributeBit_Tangent =
-    1 << kVertexAttribute_Tangent;
-static const VertexAttributeBitmask kVertexAttributeBit_Uv =
-    1 << kVertexAttribute_Uv;
-static const VertexAttributeBitmask kVertexAttributeBit_UvAlt =
-    1 << kVertexAttribute_UvAlt;
-static const VertexAttributeBitmask kVertexAttributeBit_Color =
-    1 << kVertexAttribute_Color;
-static const VertexAttributeBitmask kVertexAttributeBit_Bone =
-    1 << kVertexAttribute_Bone;
-static const VertexAttributeBitmask
-    kVertexAttributeBit_AllAttributesInSourceFile =
-        static_cast<VertexAttributeBitmask>(-1);
-
 static const char* const kImageExtensions[] = {"jpg", "jpeg", "png", "webp",
                                                "tga"};
 static const FbxColor kDefaultColor(1.0, 1.0, 1.0, 1.0);
-static const matdef::TextureFormat kDefaultTextureFormat =
-    matdef::TextureFormat_AUTO;
 
 // Defines the order in which textures are assigned shader indices.
 // Shader indices are assigned, starting from 0, as textures are found.
@@ -112,14 +81,6 @@ static const char* kTextureProperties[] = {
     FbxSurfaceMaterial::sReflection,
     FbxSurfaceMaterial::sReflectionFactor,
 };
-
-static const char* kVertexAttributeShortNames[] = {
-    "p - positions",     "n - normals", "t - tangents",     "u - UVs",
-    "v - alternate UVs", "c - colors",  "b - bone indices", nullptr,
-};
-static_assert(
-    FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
-    "kVertexAttributeShortNames is not in sync with VertexAttribute.");
 
 /// Return the direct index into `element`. If `element` is set up to be indexed
 /// directly, the return value is just `index`. Otherwise, we dereference the
@@ -879,7 +840,10 @@ class FlatMesh {
     size_t surface_idx = 0;
     for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
       const FlatTextures& textures = it->first;
-      if (!HasTexture(textures)) continue;
+      if (!HasTexture(textures)) {
+        ++surface_idx;
+        continue;
+      }
 
       const std::string material_file_name =
           MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
@@ -932,6 +896,11 @@ class FlatMesh {
       log_.Log(kLogInfo, "  blend mode: %s\n",
                matdef::EnumNameBlendMode(blend_mode));
     }
+  }
+
+  VertIndex GetMaxIndex(const IndexBuffer& indices) const {
+    return indices.empty() ? 0
+                           : *std::max_element(indices.begin(), indices.end());
   }
 
   void OutputMeshFlatBuffer(const std::string& mesh_name,
@@ -987,7 +956,7 @@ class FlatMesh {
                index_buf.size() / 3);
       flatbuffers::Offset<flatbuffers::Vector<VertIndexCompact>> indices_fb = 0;
       flatbuffers::Offset<flatbuffers::Vector<VertIndex>> indices32_fb = 0;
-      if (!force32 && index_buf.size() <= kMaxVertexIndex) {
+      if (!force32 && GetMaxIndex(index_buf) <= kMaxVertexIndex) {
         CopyIndexBuf(index_buf, &index_buf_compact);
         indices_fb = fbb.CreateVector(index_buf_compact);
       } else {
@@ -2097,375 +2066,17 @@ class FbxMeshParser {
   Logger& log_;
 };
 
-struct MeshPipelineArgs {
-  MeshPipelineArgs()
-      : blend_mode(static_cast<matdef::BlendMode>(-1)),
-        axis_system(fplutil::kUnspecifiedAxisSystem),
-        distance_unit_scale(-1.0f),
-        recenter(false),
-        interleaved(true),
-        force32(false),
-        vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
-        log_level(kLogWarning) {}
+MeshPipelineArgs::MeshPipelineArgs()
+    : blend_mode(static_cast<matdef::BlendMode>(-1)),
+      axis_system(fplutil::kUnspecifiedAxisSystem),
+      distance_unit_scale(-1.0f),
+      recenter(false),
+      interleaved(true),
+      force32(false),
+      vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
+      log_level(kLogWarning) {}
 
-  std::string fbx_file;        /// FBX input file to convert.
-  std::string asset_base_dir;  /// Directory from which all assets are loaded.
-  std::string asset_rel_dir;   /// Directory (relative to base) to output files.
-  std::string texture_extension;  /// Extension of textures in material file.
-  std::vector<matdef::TextureFormat> texture_formats;
-  matdef::BlendMode blend_mode;
-  AxisSystem axis_system;
-  float distance_unit_scale;
-  bool recenter;     /// Translate geometry to origin.
-  bool interleaved;  /// Write vertex attributes interleaved.
-  bool force32;      /// Force 32bit indices.
-  VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
-  LogLevel log_level;  /// Amount of logging to dump during conversion.
-};
-
-static VertexAttributeBitmask ParseVertexAttribute(char c) {
-  for (int i = 0; i < kVertexAttribute_Count; ++i) {
-    if (c == kVertexAttributeShortNames[i][0]) return 1 << i;
-  }
-  return 0;
-}
-
-static VertexAttributeBitmask ParseVertexAttributes(const char* s) {
-  VertexAttributeBitmask vertex_attributes = 0;
-  for (const char* p = s; *p != '\0'; ++p) {
-    const VertexAttributeBitmask bit = ParseVertexAttribute(*p);
-    if (bit == 0) return 0;
-    vertex_attributes |= bit;
-  }
-  return vertex_attributes;
-}
-
-static matdef::TextureFormat ParseTextureFormat(const char* s) {
-  return static_cast<matdef::TextureFormat>(
-      fplutil::IndexOfName(s, matdef::EnumNamesTextureFormat()));
-}
-
-static matdef::BlendMode ParseBlendMode(const char* s) {
-  return static_cast<matdef::BlendMode>(
-      fplutil::IndexOfName(s, matdef::EnumNamesBlendMode()));
-}
-
-static bool ParseTextureFormats(
-    const std::string& arg, Logger& log,
-    std::vector<matdef::TextureFormat>* texture_formats) {
-  // No texture formats specified is valid. Always use `AUTO`.
-  if (arg.size() == 0) return true;
-
-  // Loop through the comma-delimited string of texture formats.
-  size_t format_start = 0;
-  for (;;) {
-    // Get substring with the name of one texture format.
-    const size_t comma = arg.find_first_of(',', format_start);
-    const std::string s = arg.substr(format_start, comma);
-
-    // Parse the format. If it is invalid, log an error and exit.
-    const matdef::TextureFormat format = ParseTextureFormat(s.c_str());
-    if (format < 0) {
-      log.Log(kLogError, "Invalid texture format `%s`\n", s.c_str());
-      return false;
-    }
-    texture_formats->push_back(format);
-
-    // Break if on last texture format. Otherwise, advance to next argument.
-    if (comma == std::string::npos) return true;
-    format_start = comma + 1;
-  }
-}
-
-static bool TextureFormatHasAlpha(matdef::TextureFormat format) {
-  return format == matdef::TextureFormat_F_8888;
-}
-
-static matdef::BlendMode DefaultBlendMode(
-    const std::vector<matdef::TextureFormat>& texture_formats) {
-  return texture_formats.size() > 0 && TextureFormatHasAlpha(texture_formats[0])
-             ? matdef::BlendMode_ALPHA
-             : matdef::BlendMode_OFF;
-}
-
-static bool ParseMeshPipelineArgs(int argc, char** argv, Logger& log,
-                                  MeshPipelineArgs* args) {
-  bool valid_args = true;
-
-  // Last parameter is used as file name.
-  if (argc > 1) {
-    args->fbx_file = std::string(argv[argc - 1]);
-  }
-
-  // Ensure file name is valid.
-  const bool valid_fbx_file =
-      args->fbx_file.length() > 0 && args->fbx_file[0] != '-';
-  if (!valid_fbx_file) {
-    valid_args = false;
-  }
-
-  // Parse switches.
-  for (int i = 1; i < argc - 1; ++i) {
-    const std::string arg = argv[i];
-
-    // -v switch
-    if (arg == "-v" || arg == "--verbose") {
-      args->log_level = kLogVerbose;
-
-      // -d switch
-    } else if (arg == "-d" || arg == "--details") {
-      args->log_level = kLogImportant;
-
-      // -i switch
-    } else if (arg == "-i" || arg == "--info") {
-      args->log_level = kLogInfo;
-
-      // -b switch
-    } else if (arg == "-b" || arg == "--base-dir") {
-      if (i + 1 < argc - 1) {
-        args->asset_base_dir = std::string(argv[i + 1]);
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-      // -r switch
-    } else if (arg == "-r" || arg == "--relative-dir") {
-      if (i + 1 < argc - 1) {
-        args->asset_rel_dir = std::string(argv[i + 1]);
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-    } else if (arg == "-e" || arg == "--texture-extension") {
-      if (i + 1 < argc - 1) {
-        args->texture_extension = std::string(argv[i + 1]);
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-      // -h switch
-    } else if (arg == "-h" || arg == "--hierarchy") {
-      // This switch has been deprecated.
-
-      // -c switch
-    } else if (arg == "-c" || arg == "--center") {
-      args->recenter = true;
-
-      // -l switch
-    } else if (arg == "-l" || arg == "--non-interleaved") {
-      args->interleaved = false;
-
-    } else if (arg == "--force-32-bit-indices") {
-      args->force32 = true;
-
-      // -f switch
-    } else if (arg == "-f" || arg == "--texture-formats") {
-      if (i + 1 < argc - 1) {
-        valid_args = ParseTextureFormats(std::string(argv[i + 1]), log,
-                                         &args->texture_formats);
-        if (!valid_args) {
-          log.Log(kLogError, "Unknown texture format: %s\n\n", argv[i + 1]);
-        }
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-      // -m switch
-    } else if (arg == "-m" || arg == "--blend-mode") {
-      if (i + 1 < argc - 1) {
-        args->blend_mode = ParseBlendMode(argv[i + 1]);
-        valid_args = args->blend_mode >= 0;
-        if (!valid_args) {
-          log.Log(kLogError, "Unknown blend mode: %s\n\n", argv[i + 1]);
-        }
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-    } else if (arg == "-a" || arg == "--axes") {
-      if (i + 1 < argc - 1) {
-        args->axis_system = fplutil::AxisSystemFromName(argv[i + 1]);
-        valid_args = args->axis_system >= 0;
-        if (!valid_args) {
-          log.Log(kLogError, "Unknown coordinate system: %s\n\n", argv[i + 1]);
-        }
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-    } else if (arg == "-u" || arg == "--unit") {
-      if (i + 1 < argc - 1) {
-        args->distance_unit_scale = fplutil::DistanceUnitFromName(argv[i + 1]);
-        valid_args = args->distance_unit_scale > 0.0f;
-        if (!valid_args) {
-          log.Log(kLogError, "Unknown distance unit: %s\n\n", argv[i + 1]);
-        }
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-    } else if (arg == "--attrib" || arg == "--vertex-attributes") {
-      if (i + 1 < argc - 1) {
-        args->vertex_attributes = ParseVertexAttributes(argv[i + 1]);
-        valid_args = args->vertex_attributes != 0;
-        if (!valid_args) {
-          log.Log(kLogError, "Unknown vertex attributes: %s\n\n", argv[i + 1]);
-        }
-        i++;
-      } else {
-        valid_args = false;
-      }
-
-      // ignore empty arguments
-    } else if (arg == "") {
-      // Invalid switch.
-    } else {
-      log.Log(kLogError, "Unknown parameter: %s\n", arg.c_str());
-      valid_args = false;
-    }
-
-    if (!valid_args) break;
-  }
-
-  // If blend mode not explicitly specified, calculate it from the texture
-  // formats.
-  if (args->blend_mode < 0) {
-    args->blend_mode = DefaultBlendMode(args->texture_formats);
-  }
-
-  // Print usage.
-  if (!valid_args) {
-    static const char kOptionIndent[] = "                           ";
-    log.Log(
-        kLogImportant,
-        "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
-        "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
-        "                     [-m BLEND_MODE] [-a AXES] [-u (unit)|(scale)]\n"
-        "                     [--attrib p|n|t|u|c|b]\n"
-        "                     [-h] [-c] [-v|-d|-i]\n"
-        "                     FBX_FILE\n"
-        "\n"
-        "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
-        "We output a .fplmesh file and (potentially several) .fplmat files,\n"
-        "one for each material. The files have the same base name as\n"
-        "FBX_FILE, with a number appended to the .fplmat files if required.\n"
-        "The .fplmesh file references the .fplmat files.\n"
-        "The .fplmat files reference the textures.\n"
-        "\n"
-        "Options:\n"
-        "  -b, --base-dir ASSET_BASE_DIR\n"
-        "  -r, --relative-dir ASSET_REL_DIR\n"
-        "                The .fplmesh file and the .fplmat files are output\n"
-        "                to the ASSET_BASE_DIR/ASSET_REL_DIR directory.\n"
-        "                ASSET_BASE_DIR is the working directory of your app,\n"
-        "                from which all files are loaded. The .fplmesh file\n"
-        "                references the .fplmat file relative to\n"
-        "                ASSET_BASE_DIR, that is, by prefixing ASSET_REL_DIR.\n"
-        "                If ASSET_BASE_DIR is unspecified, use current\n"
-        "                directory. If ASSET_REL_DIR is unspecified, output\n"
-        "                and reference files from ASSET_BASE_DIR.\n"
-        "  -e, --texture-extension TEXTURE_EXTENSION\n"
-        "                material files use this extension for texture files.\n"
-        "                Useful if your textures are externally converted\n"
-        "                to a different file format.\n"
-        "                If unspecified, uses original file extension.\n"
-        "  -f, --texture-formats TEXTURE_FORMATS\n"
-        "                comma-separated list of formats for each output\n"
-        "                texture. For example, if a mesh has two textures\n"
-        "                then `AUTO,F_888` will ensure the second texture's\n"
-        "                material has 8-bits of RGB precision.\n"
-        "                Default is %s.\n"
-        "                Valid possibilities:\n",
-        matdef::EnumNameTextureFormat(kDefaultTextureFormat));
-    LogOptions(kOptionIndent, matdef::EnumNamesTextureFormat(), &log);
-
-    log.Log(
-        kLogImportant,
-        "  -m, --blend-mode BLEND_MODE\n"
-        "                rendering blend mode for the generated materials.\n"
-        "                If texture format has an alpha channel, defaults to\n"
-        "                ALPHA. Otherwise, defaults to OFF.\n"
-        "                Valid possibilities:\n");
-    LogOptions(kOptionIndent, matdef::EnumNamesBlendMode(), &log);
-
-    log.Log(
-        kLogImportant,
-        "  -a, --axes AXES\n"
-        "                coordinate system of exported file, in format\n"
-        "                    (up-axis)(front-axis)(left-axis) \n"
-        "                where,\n"
-        "                    'up' = [x|y|z]\n"
-        "                    'front' = [+x|-x|+y|-y|+z|-z], is the axis\n"
-        "                      pointing out of the front of the mesh.\n"
-        "                      For example, the vector pointing out of a\n"
-        "                      character's belly button.\n"
-        "                    'left' = [+x|-x|+y|-y|+z|-z], is the axis\n"
-        "                      pointing out the left of the mesh.\n"
-        "                      For example, the vector from the character's\n"
-        "                      neck to his left shoulder.\n"
-        "                For example, 'z+y+x' is z-axis up, positive y-axis\n"
-        "                out of a character's belly button, positive x-axis\n"
-        "                out of a character's left side.\n"
-        "                If unspecified, use file's coordinate system.\n"
-        "  -u, --unit (unit)|(scale)\n"
-        "                Outputs mesh in target units. You can override the\n"
-        "                FBX file's distance unit with this option.\n"
-        "                For example, if your game runs in meters,\n"
-        "                specify '-u m' to ensure the output .fplmesh file\n"
-        "                is in meters, no matter the distance unit of the\n"
-        "                FBX file.\n"
-        "                (unit) can be one of the following:\n");
-    LogOptions(kOptionIndent, fplutil::DistanceUnitNames(), &log);
-
-    log.Log(
-        kLogImportant,
-        "                (scale) is the number of centimeters in your\n"
-        "                distance unit. For example, instead of '-u inches',\n"
-        "                you could also use '-u 2.54'.\n"
-        "                If unspecified, use FBX file's unit.\n"
-        "  --attrib, --vertex-attributes ATTRIBUTES\n"
-        "                Composition of the output vertex buffer.\n"
-        "                If unspecified, output attributes in source file.\n"
-        "                ATTRIBUTES is a combination of the following:\n");
-    LogOptions(kOptionIndent, kVertexAttributeShortNames, &log);
-
-    log.Log(
-        kLogImportant,
-        "                For example, '--attrib pu' outputs the positions and\n"
-        "                UVs into the vertex buffer, but ignores normals,\n"
-        "                colors, and all other per-vertex data.\n"
-        "  -c, --center  ensure world origin is inside geometry bounding box\n"
-        "                by adding a translation if required.\n"
-        "  -l, --non-interleaved\n"
-        "                Write out vextex attributes in non-interleaved\n"
-        "                format (per-attribute arrays).\n"
-        "  --force-32-bit-indices\n"
-        "                By default, decides to use 16 or 32 bit indices\n"
-        "                on index count. This makes it always use 32 bit.\n"
-        "  -v, --verbose output all informative messages\n"
-        "  -d, --details output important informative messages\n"
-        "  -i, --info    output more than details, less than verbose\n");
-  }
-
-  return valid_args;
-}
-
-}  // namespace fplbase
-
-int main(int argc, char** argv) {
-  fplbase::Logger log;
-
-  // Parse the command line arguments.
-  fplbase::MeshPipelineArgs args;
-  if (!ParseMeshPipelineArgs(argc, argv, log, &args)) return 1;
-
+int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Update the amount of information we're dumping.
   log.set_level(args.log_level);
 
@@ -2491,3 +2102,5 @@ int main(int argc, char** argv) {
   // Success.
   return 0;
 }
+
+}  // namespace fplbase

@@ -16,13 +16,10 @@
 #include "fplbase/utilities.h"
 #include "precompiled.h"
 
-#ifndef FPLBASE_BACKEND_STDLIB
-#error This version of AsyncLoader is designed for use with the C++ library.
-#endif
-
 namespace fplbase {
 
-AsyncLoader::AsyncLoader() {}
+AsyncLoader::AsyncLoader() : loading_(nullptr), num_pending_requests_(0) {
+}
 
 AsyncLoader::~AsyncLoader() {
   {
@@ -43,8 +40,40 @@ void AsyncLoader::QueueJob(AsyncAsset *res) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push_back(res);
+    ++num_pending_requests_;
   }
   job_cv_.notify_one();
+}
+
+void AsyncLoader::AbortJob(AsyncAsset *res) {
+  bool was_loading = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    was_loading = loading_ == res;
+  }
+
+  if (was_loading) {
+    PauseLoading();
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = std::find(queue_.begin(), queue_.end(), res);
+    if (iter != queue_.end()) {
+      queue_.erase(iter);
+      --num_pending_requests_;
+    }
+
+    iter = std::find(done_.begin(), done_.end(), res);
+    if (iter != done_.end()) {
+      done_.erase(iter);
+      --num_pending_requests_;
+    }
+  }
+
+  if (was_loading) {
+    StartLoading();
+  }
 }
 
 void AsyncLoader::StartLoading() {
@@ -81,34 +110,39 @@ bool AsyncLoader::TryFinalize() {
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      done_.erase(done_.begin());
+      // It's possible that the resource was destroyed during its finalize
+      // callbacks, so ensure that it's still the first item in done_.
+      if (done_.size() > 0 && done_.front() == resource) {
+        done_.pop_front();
+      }
+      --num_pending_requests_;
     }
   }
   bool finished;
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    finished = queue_.empty() && done_.empty();
+    finished = num_pending_requests_ == 0;
   }
   return finished;
 }
 
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    AsyncAsset *resource = nullptr;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       job_cv_.wait(lock, [this]() { return queue_.size() > 0; });
-      resource = queue_.front();
+      loading_ = queue_.front();
       queue_.pop_front();
     }
 
-    if (!resource) {
+    if (!loading_) {
       break;
     }
 
-    resource->Load();
+    loading_->Load();
     std::lock_guard<std::mutex> lock(mutex_);
-    done_.push_back(resource);
+    done_.push_back(loading_);
+    loading_ = nullptr;
   }
 }
 

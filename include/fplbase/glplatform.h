@@ -25,6 +25,7 @@
 #include "TargetConditionals.h"
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #define PLATFORM_MOBILE
+#define FPLBASE_GLES
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
 #else  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
@@ -40,6 +41,7 @@
 #else  // !defined(__APPLE__)
 #ifdef __ANDROID__
 #define PLATFORM_MOBILE
+#define FPLBASE_GLES
 #include <EGL/egl.h>
 #include <android/api-level.h>
 #if __ANDROID_API__ >= 18
@@ -119,6 +121,8 @@
   GLEXT(PFNGLUNIFORM3FVARBPROC, glUniform3fv, true)                            \
   GLEXT(PFNGLUNIFORM4FVARBPROC, glUniform4fv, true)                            \
   GLEXT(PFNGLUNIFORM1IARBPROC, glUniform1i, true)                              \
+  GLEXT(PFNGLUNIFORMMATRIX2FVARBPROC, glUniformMatrix2fv, true)                \
+  GLEXT(PFNGLUNIFORMMATRIX3FVARBPROC, glUniformMatrix3fv, true)                \
   GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC, glUniformMatrix4fv, true)                \
   GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC /*type*/, glUniformMatrix3x4fv, true)     \
   GLEXT(PFNGLBINDATTRIBLOCATIONARBPROC, glBindAttribLocation, true)            \
@@ -128,7 +132,9 @@
   GLEXT(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced, true)         \
   GLEXT(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays, true)                     \
   GLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays, true)               \
-  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)
+  GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)                     \
+  GLEXT(PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC,                               \
+        glFramebufferTextureMultiviewOVR, false)
 
 // TODO(jsanmiya): Get this compiling for all versions of OpenGL. Currently only
 //                 valid when GL_VERSION_4_3 is defined.
@@ -143,7 +149,9 @@ GLEXTS
 #endif  // !defined(__ANDROID__), so WIN32 & Linux
 #endif  // !defined(__APPLE__)
 
-#ifdef PLATFORM_MOBILE
+// Note: GLES is enabled for mobile platforms by default, but it can also be
+// forcibly enabled for non-mobile platforms.
+#ifdef FPLBASE_GLES
 // TODO(jsanmiya): Get this compiling for all versions of iOS. Currently only
 //                 valid with __OSX_AVAILABLE_STARTING(__MAC_NA,__IPHONE_5_0)
 // OpenGL ES extensions function pointers.
@@ -161,7 +169,7 @@ GLEXTS
 // GLESEXTS
 // #undef GLEXT
 #define GLESEXTS
-#endif  // PLATFORM_MOBILE
+#endif  // FPLBASE_GLES
 
 #ifdef PLATFORM_OSX
 #define glPushGroupMarker glPushGroupMarkerEXT

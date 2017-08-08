@@ -53,7 +53,7 @@ FPLBASE_COMMON_CPPFLAGS := $(FPLBASE_EXPORT_COMMON_CPPFLAGS) \
                            -Wno-literal-suffix -Wno-unused-function \
                            -DSTB_IMAGE_IMPLEMENTATION \
                            -DSTB_IMAGE_RESIZE_IMPLEMENTATION \
-                           -DFPLBASE_ANDROID_VR=1
+                           -DFPLBASE_ANDROID_VR=0
 
 FPLBASE_COMMON_LIBRARIES := \
   libwebp \
@@ -108,7 +108,7 @@ LOCAL_CPPFLAGS := \
   -D'FPLBASE_JNI_ONLOAD_FUNCTIONS(X)=$(foreach \
        func,$(FPLBASE_JNI_ONLOAD_FUNCTIONS),X($(func)) )'
 
-LOCAL_SRC_FILES := src/main.cpp
+LOCAL_SRC_FILES := src/main_sdl.cpp
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -134,10 +134,11 @@ LOCAL_C_INCLUDES := $(FPLBASE_COMMON_INCLUDES) $(DEPENDENCIES_SDL_DIR)
 
 LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
-  src/async_loader.cpp \
+  src/async_loader_sdl.cpp \
   src/environment_sdl.cpp \
   src/input_sdl.cpp \
-  src/renderer_android.cpp
+  src/renderer_android.cpp \
+  src/utilities_sdl.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
 FPLBASE_RUN_ONCE := 1
@@ -176,7 +177,8 @@ LOCAL_SRC_FILES := \
   $(FPLBASE_COMMON_SRC_FILES) \
   src/async_loader_stdlib.cpp \
   src/environment_stdlib.cpp \
-  src/input_stdlib.cpp
+  src/input_stdlib.cpp \
+  src/utilities_stdlib.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
 FPLBASE_RUN_ONCE := 1

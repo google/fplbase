@@ -39,6 +39,8 @@ RendererBase::RendererBase()
       time_(0),
       supports_texture_format_(-1),
       supports_texture_npot_(false),
+      supports_multiview_(false),
+      supports_instancing_(false),
       force_shader_(nullptr),
       force_blend_mode_(kBlendModeCount),
       max_vertex_uniform_components_(0),
@@ -133,6 +135,10 @@ bool RendererBase::SupportsTextureNpot() const {
   return supports_texture_npot_;
 }
 
+bool RendererBase::SupportsMultiview() const {
+  return supports_multiview_;
+}
+
 Shader *RendererBase::CompileAndLinkShader(const char *vs_source,
                                            const char *ps_source) {
   return CompileAndLinkShaderHelper(vs_source, ps_source, nullptr);
@@ -145,6 +151,10 @@ Shader *RendererBase::RecompileShader(const char *vs_source,
 
 void Renderer::SetBlendMode(BlendMode blend_mode) {
   SetBlendMode(blend_mode, 0.5f);
+}
+
+BlendMode Renderer::GetBlendMode() {
+  return blend_mode_;
 }
 
 void Renderer::AdvanceFrame(bool minimized, double time) {

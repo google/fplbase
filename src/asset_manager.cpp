@@ -138,6 +138,7 @@ Shader *AssetManager::LoadShaderDef(const char *filename) {
 void AssetManager::UnloadShader(const char *filename) {
   auto shader = FindShader(filename);
   if (!shader || shader->DecreaseRefCount()) return;
+  loader_.AbortJob(shader);
   shader_map_.erase(filename);
   delete shader;
 }
@@ -164,6 +165,7 @@ bool AssetManager::TryFinalize() { return loader_.TryFinalize(); }
 void AssetManager::UnloadTexture(const char *filename) {
   auto tex = FindTexture(filename);
   if (!tex || tex->DecreaseRefCount()) return;
+  loader_.AbortJob(tex);
   texture_map_.erase(filename);
   delete tex;
 }
@@ -215,6 +217,7 @@ Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
 void AssetManager::UnloadMesh(const char *filename) {
   auto mesh = FindMesh(filename);
   if (!mesh || mesh->DecreaseRefCount()) return;
+  loader_.AbortJob(mesh);
   mesh_map_.erase(filename);
   delete mesh;
 }

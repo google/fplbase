@@ -16,10 +16,6 @@
 #include "fplbase/async_loader.h"
 #include "fplbase/utilities.h"
 
-#ifndef FPLBASE_BACKEND_SDL
-#error This version of AsyncLoader depends on SDL.
-#endif
-
 namespace fplbase {
 
 // Push this to signal the worker thread that it's time to quit.
@@ -40,7 +36,8 @@ class BookendAsyncResource : public AsyncAsset {
 // static
 const char *BookendAsyncResource::kBookendFileName = "bookend";
 
-AsyncLoader::AsyncLoader() : worker_thread_(nullptr) {
+AsyncLoader::AsyncLoader()
+    : loading_(nullptr), num_pending_requests_(0), worker_thread_(nullptr) {
   mutex_ = SDL_CreateMutex();
   job_semaphore_ = SDL_CreateSemaphore(0);
   assert(mutex_ && job_semaphore_);
@@ -68,26 +65,56 @@ void AsyncLoader::Stop() {
 }
 
 void AsyncLoader::QueueJob(AsyncAsset *res) {
-  Lock([this, res]() { queue_.push_back(res); });
+  Lock([this, res]() {
+    queue_.push_back(res);
+    ++num_pending_requests_;
+  });
   SDL_SemPost(static_cast<SDL_semaphore *>(job_semaphore_));
+}
+
+void AsyncLoader::AbortJob(AsyncAsset *res) {
+  const bool was_loading =
+      LockReturn<bool>([this, res]() { return loading_ == res; });
+
+  if (was_loading) {
+    PauseLoading();
+  }
+
+  Lock([this, res]() {
+    auto iter = std::find(queue_.begin(), queue_.end(), res);
+    if (iter != queue_.end()) {
+      queue_.erase(iter);
+      --num_pending_requests_;
+    }
+
+    iter = std::find(done_.begin(), done_.end(), res);
+    if (iter != done_.end()) {
+      done_.erase(iter);
+      --num_pending_requests_;
+    }
+  });
+
+  if (was_loading) {
+    StartLoading();
+  }
 }
 
 void AsyncLoader::LoaderWorker() {
   for (;;) {
-    auto res = LockReturn<AsyncAsset *>(
-        [this]() { return queue_.empty() ? nullptr : queue_.front(); });
-    if (!res) {
+    Lock([this]() { loading_ = queue_.empty() ? nullptr : queue_.front(); });
+    if (!loading_) {
       SDL_SemWait(static_cast<SDL_semaphore *>(job_semaphore_));
       continue;
     }
     // Stop loading once we reach the bookend enqueued by
     // StopLoadingWhenComplete(). To start loading again, call StartLoading().
-    if (BookendAsyncResource::IsBookend(*res)) break;
-    LogInfo(kApplication, "async load: %s", res->filename_.c_str());
-    res->Load();
-    Lock([this, res]() {
+    if (BookendAsyncResource::IsBookend(*loading_)) break;
+    LogInfo(kApplication, "async load: %s", loading_->filename_.c_str());
+    loading_->Load();
+    Lock([this]() {
       queue_.pop_front();
-      done_.push_back(res);
+      done_.push_back(loading_);
+      loading_ = nullptr;
     });
   }
 }
@@ -121,9 +148,16 @@ bool AsyncLoader::TryFinalize() {
       // Can't do much here, since res is already constructed. Caller has to
       // check IsValid() to know if resource can be used.
     }
-    Lock([this]() { done_.pop_front(); });
+    Lock([this, res]() {
+      // It's possible that the resource was destroyed during its finalize
+      // callbacks, so ensure that it's still the first item in done_.
+      if (done_.size() > 0 && done_.front() == res) {
+        done_.pop_front();
+      }
+      --num_pending_requests_;
+    });
   }
-  return LockReturn<bool>([this]() { return queue_.empty() && done_.empty(); });
+  return LockReturn<bool>([this]() { return num_pending_requests_ == 0; });
 }
 
 void AsyncLoader::Lock(const std::function<void()> &body) {

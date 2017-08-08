@@ -23,7 +23,7 @@
 #include "fplbase/config.h"  // Must come first.
 #include "fplbase/glplatform.h"
 
-#if defined(PLATFORM_MOBILE) || defined(PLATFORM_OSX)
+#if defined(FPLBASE_GLES) || defined(PLATFORM_OSX)
 #define FPLBASE_DEBUG_MARKER_NOLENGTH 0
 #else
 #define FPLBASE_DEBUG_MARKER_NOLENGTH -1
@@ -34,7 +34,7 @@ inline void PushDebugMarker(const char *marker,
   (void)marker;
   (void)length;
 #ifdef FPLBASE_ENABLE_DEBUG_MARKERS
-#if defined(PLATFORM_MOBILE) || defined(PLATFORM_OSX)
+#if defined(FPLBASE_GLES) || defined(PLATFORM_OSX)
 // TODO(jsanmiya): Get glPushGroupMarker working for all iOS builds
 //   if (glPushGroupMarker) {
 //     GL_CALL(glPushGroupMarker(length, marker));
@@ -43,7 +43,7 @@ inline void PushDebugMarker(const char *marker,
 //   if (glPushDebugGroup) {
 //     GL_CALL(glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, length, marker));
 //   }
-#endif  // PLATFORM_MOBILE || PLATFORM_OSX
+#endif  // FPLBASE_GLES || PLATFORM_OSX
 #endif  // FPLBASE_ENABLE_DEBUG_MARKERS
 }
 
@@ -56,7 +56,7 @@ inline void PushDebugMarker(const std::string& marker) {
 
 inline void PopDebugMarker() {
 #ifdef FPLBASE_ENABLE_DEBUG_MARKERS
-#if defined(PLATFORM_MOBILE) || defined(PLATFORM_OSX)
+#if defined(FPLBASE_GLES) || defined(PLATFORM_OSX)
 // TODO(jsanmiya): Get glPushGroupMarker working for all iOS builds
 //   if (glPopGroupMarker) {
 //     GL_CALL(glPopGroupMarker());
@@ -65,7 +65,7 @@ inline void PopDebugMarker() {
 //   if (glPopDebugGroup) {
 //     GL_CALL(glPopDebugGroup());
 //   }
-#endif  // PLATFORM_MOBILE || PLATFORM_OSX
+#endif  // FPLBASE_GLES || PLATFORM_OSX
 #endif  // FPLBASE_ENABLE_DEBUG_MARKERS
 }
 

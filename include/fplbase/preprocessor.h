@@ -19,6 +19,14 @@
 #include "fplbase/utilities.h"
 
 namespace fplbase {
+
+/// Shader profile identifiers used during preprocessing and in shader_pipeline
+/// to determine the target device/environment.
+enum ShaderProfile {
+  kShaderProfileCore,
+  kShaderProfileEs,
+};
+
 /// @brief Load a file like `LoadFile()`, but scan for directives.
 ///
 /// The only supported directives is \#include.
@@ -69,16 +77,49 @@ bool LoadFileWithDirectives(const char *filename, std::string *dest,
 /// @brief Prepares OpenGL shaders for compilation across desktop or mobile.
 ///
 /// This function adds platform-specific definitions that allow the same
-/// shaders to be used on both desktop and mobile versions of GL.  It does so
-/// in a way that is aware of #version and #extension directives, which must
-/// be placed before any shader code.
+/// shaders to be used on both desktop and mobile (ES) versions of GL.
+/// Specifically, it does a few things:
+///
+/// 1. Translates version numbers between GLSL and GLSL-ES.
+/// 2. Null-defines lowp, mediump, and highp on desktop so they won't trigger
+///    compiler errors.
+/// 3. Specifies highp as the default float precision on ES platforms, otherwise
+///    precision-less floats in frag shaders could cause errors.
+/// 4. Inserts the specified definitions before any code, but after the version.
+///
+/// @param[in] source Shader source to be sanitized.
+/// @param[in] defines A nullptr-terminated array of identifiers which will be
+/// safely prefixed with \#define at the start of the file.  Can be null.
+/// @param[in] profile Profile to build result in.
+/// @param[out] result Sanitized source code.
+void PlatformSanitizeShaderSource(const char *source,
+                                  const char *const *defines,
+                                  ShaderProfile profile,
+                                  std::string *result);
+
+/// @brief Prepares OpenGL shaders for compilation across desktop or mobile.
+///
+/// This function uses the current host machine to determine the shader profile,
+/// then calls the above function.
 ///
 /// @param[in] source Shader source to be sanitized.
 /// @param[in] defines A nullptr-terminated array of identifiers which will be
 /// safely prefixed with \#define at the start of the file.  Can be null.
 /// @param[out] result Sanitized source code.
 void PlatformSanitizeShaderSource(const char *source,
-  const char * const *defines, std::string *result);
+                                  const char *const *defines,
+                                  std::string *result);
+
+/// @brief Adds or replaces the #version string in a shader.
+///
+/// This function sets the parameters of the #version directive in a file,
+/// adding the directive if necessary.
+///
+/// @param[in] source Shader source to be version tagged.
+/// @param[in] version The version string to add to the shader.
+/// @param[out] result Versioned source code.
+void SetShaderVersion(const char *source, const char *version_string,
+                      std::string *result);
 
 }  // namespace fplbase
 
