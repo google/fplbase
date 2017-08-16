@@ -365,9 +365,10 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
       assert(texture_format == kFormatKTX);
       auto &header = *reinterpret_cast<const KTXHeader *>(buffer);
       format = header.internal_format;
-      auto data = buffer + sizeof(KTXHeader);
+      auto data = buffer + sizeof(KTXHeader) + header.keyvalue_data;
       auto cur_size = tex_size;
       const vec2i block_size = GetBlockSize(format);
+      bool compressed = std::max(block_size[0], block_size[1]) > 1;
       for (uint32_t i = 0; i < header.mip_levels; i++) {
         // Guard against extra mip levels in the ktx.
         if (cur_size.x < block_size.x || cur_size.y < block_size.y) {
@@ -387,7 +388,7 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
         // to 0, but maintain a min size of 1.  This is needed to get non-square
         // mip chains to work using ETC2 (eg a 256x512 needs 10 mips defined).
         gl_tex_image(data, vec2i::Max(mathfu::kOnes2i, cur_size), i,
-                     data_size / tex_num_faces, true);
+                     data_size / tex_num_faces, compressed);
         cur_size /= 2;
         data += data_size;
         // If the file has mips but the caller doesn't want them, stop here.
