@@ -37,7 +37,7 @@ namespace fplbase {
 bool Environment::Initialize(const vec2i& /*window_size*/,
                              const char* /*window_title*/,
                              WindowMode /*window_mode*/) {
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(FPLBASE_GLES)
 #define GLEXT(type, name, required) \
   LOOKUP_GL_FUNCTION(type, name, required, wglGetProcAddress)
   GLBASEEXTS GLEXTS

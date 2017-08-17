@@ -882,14 +882,14 @@ void LogGLError(const char *file, int line, const char *call) {
 }
 
 #if !defined(GL_GLEXT_PROTOTYPES)
-#if !defined(FPLBASE_GLES) && !defined(__APPLE__)
+#if (!defined(FPLBASE_GLES) && !defined(__APPLE__)) || defined(_WIN32)
 #define GLEXT(type, name, required) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 #endif  // !defined(GL_GLEXT_PROTOTYPES)
 
-#ifdef FPLBASE_GLES
+#if defined(FPLBASE_GLES)
 #define GLEXT(type, name, required) type name = nullptr;
     GLESEXTS
-#endif  // FPLBASE_GLES
+#endif  // defined(FPLBASE_GLES)
