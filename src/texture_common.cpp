@@ -268,7 +268,7 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
   auto v = memcmp(header.id, magic, sizeof(header.id));
   if (v != 0 || header.endian != 0x04030201 || header.depth != 0 ||
-      header.faces != ((flags & kTextureFlagsIsCubeMap) ? 6 : 1))
+      header.faces != 1 || header.keyvalue_data != 0)
     return nullptr;
 
   *dimensions = vec2i(header.width, header.height);
