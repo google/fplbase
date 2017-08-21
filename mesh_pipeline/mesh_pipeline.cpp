@@ -27,6 +27,7 @@
 
 #include "common_generated.h"
 #include "fbx_common/fbx_common.h"
+#include "flatbuffers/hash.h"
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
 #include "fplutil/string_utils.h"
@@ -745,16 +746,8 @@ class FlatMesh {
 
   struct VertexHash {
     size_t operator()(const VertexRef& c) const {
-      const size_t* p = reinterpret_cast<const size_t*>(c.ref);
-      size_t hash = 0;
-      for (size_t i = 0; i < sizeof(*c.ref) / sizeof(size_t); ++i) {
-        hash ^= Rotate(p[i], i);
-      }
-      return hash;
-    }
-
-    static size_t Rotate(size_t x, size_t bytes) {
-      return (x << (8 * bytes)) | (x >> (8 * (sizeof(size_t) - bytes)));
+      return flatbuffers::HashFnv1a<size_t>(
+          reinterpret_cast<const char*>(c.ref));
     }
   };
 
