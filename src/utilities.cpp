@@ -302,8 +302,19 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
     // for target_dir.
     for (;;) {
       size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
-      if (separator == std::string::npos) break;
+      if (separator == std::string::npos ||
+          separator == current_dir.length() - 1) {
+        break;
+      }
       current_dir = current_dir.substr(0, separator);
+#ifdef _WIN32
+      // On Windows, if you try to "cd c:" and you are already in a subdirectory
+      // of c:, you will end up in the same directory. "cd c:\" will take you to
+      // the root.
+      if (current_dir.length() == 2) {
+        current_dir.append("\\");
+      }
+#endif
       int chdir_error_code = chdir(current_dir.c_str());
       if (chdir_error_code) break;
       real_path[0] = '\0';
