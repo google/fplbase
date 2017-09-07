@@ -163,16 +163,15 @@ void Mesh::Load() {
 }
 
 bool Mesh::Finalize() {
-  if (data_ == nullptr) {
-    return false;
+  if (data_) {
+    const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
+    bool ok = InitFromMeshDef(flatbuf->c_str());
+    delete flatbuf;
+    data_ = nullptr;
+    if (!ok) Clear();
   }
-  const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
-  bool ok = InitFromMeshDef(flatbuf->c_str());
-  delete flatbuf;
-  data_ = nullptr;
-  if (!ok) Clear();
   CallFinalizeCallback();
-  return ok;
+  return IsValid();
 }
 
 void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
