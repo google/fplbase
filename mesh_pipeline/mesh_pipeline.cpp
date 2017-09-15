@@ -1430,7 +1430,7 @@ class FbxMeshParser {
   }
 
   // Gather converted geometry into our `FlatMesh` class.
-  void GatherFlatMesh(FlatMesh* out) const {
+  void GatherFlatMesh(bool gather_textures, FlatMesh* out) const {
     FbxNode* const root_node = scene_->GetRootNode();
     const int child_count = root_node->GetChildCount();
     NodeToBoneMap node_to_bone_map;
@@ -1450,7 +1450,8 @@ class FbxMeshParser {
     }
 
     // Final pass: Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(&node_to_bone_map, root_node, root_node, out);
+    GatherFlatMeshRecursive(gather_textures, &node_to_bone_map, root_node,
+                            root_node, out);
   }
 
  private:
@@ -1794,7 +1795,8 @@ class FbxMeshParser {
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(const NodeToBoneMap* node_to_bone_map,
+  void GatherFlatMeshRecursive(bool gather_textures,
+                               const NodeToBoneMap* node_to_bone_map,
                                FbxNode* node, FbxNode* parent_node,
                                FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
@@ -1828,8 +1830,10 @@ class FbxMeshParser {
         const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
 
         // Gather the textures attached to this mesh.
-        std::string normal_map_file_name;
-        const FlatTextures textures = GatherTextures(node, mesh);
+        FlatTextures textures;
+        if (gather_textures) {
+          textures = GatherTextures(node, mesh);
+        }
         out->SetSurface(textures);
 
         // If no textures for this mesh, try to get a solid color from the
@@ -1854,7 +1858,8 @@ class FbxMeshParser {
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(node_to_bone_map, node->GetChild(i), node, out);
+      GatherFlatMeshRecursive(gather_textures, node_to_bone_map,
+                              node->GetChild(i), node, out);
     }
   }
 
@@ -2067,7 +2072,8 @@ MeshPipelineArgs::MeshPipelineArgs()
       interleaved(true),
       force32(false),
       vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
-      log_level(kLogWarning) {}
+      log_level(kLogWarning),
+      gather_textures(true) {}
 
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Update the amount of information we're dumping.
@@ -2083,7 +2089,7 @@ int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Gather data into a format conducive to our FlatBuffer format.
   const int max_verts = pipe.NumVertsUpperBound();
   fplbase::FlatMesh mesh(max_verts, args.vertex_attributes, log);
-  pipe.GatherFlatMesh(&mesh);
+  pipe.GatherFlatMesh(args.gather_textures, &mesh);
 
   // Output gathered data to a binary FlatBuffer.
   const bool output_status = mesh.OutputFlatBuffer(

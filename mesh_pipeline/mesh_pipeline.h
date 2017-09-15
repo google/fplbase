@@ -81,6 +81,7 @@ struct MeshPipelineArgs {
   bool force32;      /// Force 32bit indices.
   VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   fplutil::LogLevel log_level;  /// Amount of logging to dump during conversion.
+  bool gather_textures;         /// Gather textures and generate .fplmat files.
 };
 
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log);
