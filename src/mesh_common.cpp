@@ -59,7 +59,7 @@ void CopyAttribute(const T *attr, uint8_t *&buf) {
 
 }  // namespace
 
-Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn,
+Mesh::Mesh(const char *filename, MaterialCreateFn material_create_fn,
            Primitive primitive)
     : AsyncAsset(filename ? filename : ""),
       impl_(CreateMeshImpl()),
@@ -69,7 +69,7 @@ Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn,
       min_position_(mathfu::kZeros3f),
       max_position_(mathfu::kZeros3f),
       default_bone_transform_inverses_(nullptr),
-      material_loader_fn_(std::move(material_loader_fn)) {}
+      material_create_fn_(std::move(material_create_fn)) {}
 
 Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position,
@@ -255,13 +255,14 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
 
   // Load materials, return error if there is any material that is failed to
   // load.
-  assert(material_loader_fn_ != nullptr || meshdef->surfaces()->size() == 0);
+  assert(material_create_fn_ != nullptr || meshdef->surfaces()->size() == 0);
   typedef std::pair<const meshdef::Surface *, Material *> SurfaceMaterialPair;
   std::vector<SurfaceMaterialPair> indices_data;
   for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
     flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
     auto surface = meshdef->surfaces()->Get(index);
-    auto mat = material_loader_fn_(surface->material()->c_str());
+    auto mat = material_create_fn_(surface->material()->c_str(),
+                                   surface->material_info());
     if (!mat) {
       LogError(kError, "Invalid material file: ", surface->material()->c_str());
       return false;

@@ -23,6 +23,7 @@
 #include "fplbase/asset.h"
 #include "fplbase/render_state.h"
 #include "fplbase/texture.h"
+#include "materials_generated.h"
 
 namespace fplbase {
 
@@ -69,6 +70,10 @@ class Material : public Asset {
 
   /// @brief Delete all Textures in this Material.
   void DeleteTextures();
+
+  /// @brief Create a Material from the specified flatbuffer matdef::Material*.
+  static Material *LoadFromMaterialDef(const matdef::Material *matdef,
+                                       const TextureLoaderFn &tlf);
 
   /// @brief Load a .fplmat file, and all the textures referenced from it.
   /// Used by the more convenient AssetManager interface, but can be used

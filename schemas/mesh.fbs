@@ -15,6 +15,7 @@
 // Definitions for meshes.
 
 include "common.fbs";
+include "materials.fbs";
 
 namespace meshdef;
 
@@ -32,6 +33,7 @@ table Surface {
   indices:[ushort] (id: 0);  // Used when there's less than 64k indices.
   indices32:[uint] (id: 2);  // Used when there's more than 64k indices.
   material:string (id: 1, required);  // e.g. "materials/example.bin"
+  material_info:matdef.Material (id: 3);
 }
 
 enum Attribute : ubyte {

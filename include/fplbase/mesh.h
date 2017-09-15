@@ -69,7 +69,12 @@ class Mesh : public AsyncAsset {
     kPoints,
   };
 
-  typedef std::function<Material *(const char *filename)> MaterialLoaderFn;
+  // Creates a Material object using the matdef::Material.  If the matdef is
+  // null, attempts to load the Material from the specified filename instead.
+  // If both are null, returns nullptr.
+  typedef std::function<Material *(const char *filename,
+                                   const matdef::Material *def)>
+      MaterialCreateFn;
 
   /// @brief Initialize a Mesh from a file asynchronously.
   ///
@@ -77,7 +82,7 @@ class Mesh : public AsyncAsset {
   /// Otherwise, if filename is null, need to call LoadFromMemory to init
   /// manually.
   Mesh(const char *filename = nullptr,
-       MaterialLoaderFn material_loader_fn = nullptr,
+       MaterialCreateFn material_create_fn = nullptr,
        Primitive primitive = kTriangles);
 
   /// @brief Initialize a Mesh by creating one VBO, and no IBO's.
@@ -415,8 +420,8 @@ class Mesh : public AsyncAsset {
   std::vector<std::string> bone_names_;
   std::vector<uint8_t> shader_bone_indices_;
 
-  // Function to load material by filename.
-  MaterialLoaderFn material_loader_fn_;
+  // Function to create material.
+  MaterialCreateFn material_create_fn_;
 };
 
 /// @}
