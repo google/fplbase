@@ -34,6 +34,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/preprocessor.cpp \
   src/render_target_common.cpp \
   src/render_target_gl.cpp \
+  src/render_utils_gl.cpp \
   src/renderer_common.cpp \
   src/renderer_gl.cpp \
   src/renderer_hmd_gl.cpp \
@@ -178,6 +179,7 @@ LOCAL_SRC_FILES := \
   src/async_loader_stdlib.cpp \
   src/environment_stdlib.cpp \
   src/input_stdlib.cpp \
+  src/renderer_android.cpp \
   src/utilities_stdlib.cpp
 
 ifeq (,$(FPLBASE_RUN_ONCE))
