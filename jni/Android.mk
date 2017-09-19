@@ -45,7 +45,7 @@ FPLBASE_COMMON_SRC_FILES := \
   src/type_conversions_gl.cpp \
   src/utilities.cpp \
   src/version.cpp \
-  $(NDK_ROOT)/sources/android/ndk_helper/gl3stub.c
+  src/gl3stub_android.c
 
 FPLBASE_EXPORT_COMMON_CPPFLAGS := -std=c++11 \
                                   -DFPLBASE_OPENGL
