@@ -35,7 +35,13 @@ enum RenderTargetTextureFormat {
   kRenderTargetTextureFormatR8,     /// 8-bits red.
   kRenderTargetTextureFormatRGB8,   /// 8-bits red, green, blue.
   kRenderTargetTextureFormatRGBA8,  /// 8-bits red, green, blue, alpha.
-  kRenderTargetTextureFormatCount,
+
+  // Depth Formats:
+  kRenderTargetTextureFormatDepth16F,  /// 16-bits depth texture format.
+  kRenderTargetTextureFormatDepth32F,  /// 32-bits depth texture format.
+
+  kRenderTargetTextureFormatNone,  /// No texture buffer.
+  kRenderTargetTextureFormatCount = kRenderTargetTextureFormatNone,
 };
 
 /// Depth stencil formats used by the render target's depth buffer.

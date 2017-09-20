@@ -36,37 +36,57 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
   framebuffer_id_ = TextureHandleFromGl(framebuffer_id);
   assert(ValidBufferHandle(framebuffer_id_));
 
-  // The texture we're going to render to
-  GLuint rendered_texture_id = 0;
-  GL_CALL(glGenTextures(1, &rendered_texture_id));
-  rendered_texture_id_ = TextureHandleFromGl(rendered_texture_id);
-
   // Bind the framebuffer:
   GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id));
 
-  // Set up the texture:
-  GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id));
+  // Is the texture format a depth format?
+  const bool is_depth_texture =
+      (texture_format >= kRenderTargetTextureFormatDepth16F &&
+       texture_format <= kRenderTargetTextureFormatDepth32F);
 
-  // Give an empty image to OpenGL.  (It will allocate memory, but not bother
-  // to populate it.  Which is fine, since we're going to render into it.)
-  GL_CALL(glTexImage2D(
-      GL_TEXTURE_2D, 0,
-      RenderTargetTextureFormatToInternalFormatGl(texture_format), dimensions.x,
-      dimensions.y, 0, RenderTargetTextureFormatToFormatGl(texture_format),
-      RenderTargetTextureFormatToTypeGl(texture_format), nullptr));
+  // The color buffer:
+  if (texture_format != kRenderTargetTextureFormatNone) {
+    // The texture we're going to render to
+    GLuint rendered_texture_id = 0;
+    GL_CALL(glGenTextures(1, &rendered_texture_id));
+    rendered_texture_id_ = TextureHandleFromGl(rendered_texture_id);
 
-  // Define texture properties:
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    // Set up the texture:
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, rendered_texture_id));
 
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-  GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+    // Give an empty image to OpenGL.  (It will allocate memory, but not bother
+    // to populate it.  Which is fine, since we're going to render into it.)
+    GL_CALL(glTexImage2D(
+        GL_TEXTURE_2D, 0,
+        RenderTargetTextureFormatToInternalFormatGl(texture_format),
+        dimensions.x, dimensions.y, 0,
+        RenderTargetTextureFormatToFormatGl(texture_format),
+        RenderTargetTextureFormatToTypeGl(texture_format), nullptr));
 
-  // Attach our texture as the color attachment.
-  GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                 GL_TEXTURE_2D, rendered_texture_id, 0));
+    // Define texture properties:
+    const GLenum filter = is_depth_texture ? GL_NEAREST : GL_LINEAR;
+    GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter));
+    GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter));
 
-  if (depth_stencil_format != kDepthStencilFormatNone) {
+    GL_CALL(
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL_CALL(
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+
+    // Attach the texture to the frame buffer.
+    const GLenum texture_target =
+        is_depth_texture ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
+    GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, texture_target,
+                                   GL_TEXTURE_2D, rendered_texture_id, 0));
+
+    if (is_depth_texture) {
+      const GLenum draw_buffers = GL_NONE;
+      GL_CALL(glDrawBuffers(1, &draw_buffers));
+      GL_CALL(glReadBuffer(GL_NONE));
+    }
+  }
+
+  if (depth_stencil_format != kDepthStencilFormatNone && !is_depth_texture) {
     // A renderbuffer, that we'll use for depth:
     GLuint depth_buffer_id = 0;
     GL_CALL(glGenRenderbuffers(1, &depth_buffer_id));

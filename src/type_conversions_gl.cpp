@@ -95,7 +95,10 @@ unsigned int RenderTargetTextureFormatToInternalFormatGl(
       GL_ALPHA,  // kRenderTargetTextureFormatA8,
       GL_RGB,    // kRenderTargetTextureFormatR8,
       GL_RGB,    // kRenderTargetTextureFormatRGB8,
-      GL_RGBA    // kRenderTargetTextureFormatRGBA8,
+      GL_RGBA,   // kRenderTargetTextureFormatRGBA8,
+
+      GL_DEPTH_COMPONENT,  // kRenderTargetTextureFormatDepth16F,
+      GL_DEPTH_COMPONENT   // kRenderTargetTextureFormatDepth32F,
   };
 
   static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
@@ -113,12 +116,15 @@ unsigned int RenderTargetTextureFormatToFormatGl(
       GL_ALPHA,  // kRenderTargetTextureFormatA8,
 #ifdef FPLBASE_GLES
       // For GLES2, the format must match internalformat.
-      GL_RGB,    // kRenderTargetTextureFormatR8,
+      GL_RGB,  // kRenderTargetTextureFormatR8,
 #else
-      GL_RED,    // kRenderTargetTextureFormatR8,
+      GL_RED,  // kRenderTargetTextureFormatR8,
 #endif
-      GL_RGB,    // kRenderTargetTextureFormatRGB8,
-      GL_RGBA    // kRenderTargetTextureFormatRGBA8,
+      GL_RGB,   // kRenderTargetTextureFormatRGB8,
+      GL_RGBA,  // kRenderTargetTextureFormatRGBA8,
+
+      GL_DEPTH_COMPONENT,  // kRenderTargetTextureFormatDepth16F,
+      GL_DEPTH_COMPONENT   // kRenderTargetTextureFormatDepth32F,
   };
 
   static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
@@ -136,7 +142,10 @@ unsigned int RenderTargetTextureFormatToTypeGl(
       GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatA8,
       GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatR8,
       GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatRGB8,
-      GL_UNSIGNED_BYTE   // kRenderTargetTextureFormatRGBA8,
+      GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatRGBA8,
+
+      GL_HALF_FLOAT,  // kRenderTargetTextureFormatDepth16F,
+      GL_FLOAT        // kRenderTargetTextureFormatDepth32F,
   };
 
   static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
