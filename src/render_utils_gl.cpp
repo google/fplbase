@@ -153,6 +153,12 @@ void SetAttributes(GLuint vbo, const Attribute *attributes, int stride,
                                       false, stride, buffer + offset));
         offset += 4 * sizeof(float);
         break;
+      case kOrientation4f:
+        GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeOrientation));
+        GL_CALL(glVertexAttribPointer(Mesh::kAttributeOrientation, 4, GL_FLOAT,
+                                      false, stride, buffer + offset));
+        offset += 4 * sizeof(float);
+        break;
       case kTexCoord2f:
         GL_CALL(glEnableVertexAttribArray(Mesh::kAttributeTexCoord));
         GL_CALL(glVertexAttribPointer(Mesh::kAttributeTexCoord, 2, GL_FLOAT,
@@ -213,6 +219,9 @@ void UnSetAttributes(const Attribute *attributes) {
         break;
       case kTangent4f:
         GL_CALL(glDisableVertexAttribArray(Mesh::kAttributeTangent));
+        break;
+      case kOrientation4f:
+        GL_CALL(glDisableVertexAttribArray(Mesh::kAttributeOrientation));
         break;
       case kTexCoord2f:
       case kTexCoord2us:

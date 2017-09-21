@@ -41,7 +41,7 @@ enum Attribute {
   kEND = 0,  ///< @brief The array must always be terminated by one of these.
   kPosition3f,
   kNormal3f,
-  kTangent4f,
+  kTangent4f,  ///< @brief xyz is the tangent vector; w is handedness.
   kTexCoord2f,
   kTexCoordAlt2f,  ///< @brief Second set of UVs for use with e.g. lightmaps.
   kColor4ub,
@@ -51,6 +51,9 @@ enum Attribute {
   /// @brief 2 unsigned shorts, normalized to [0,1].  Can't coexist with
   /// kTexCoord2f.
   kTexCoord2us,
+  /// @brief A quaternion representation of normal/binormal/tangent.
+  /// Order: (vector.xyz, scalar). The handededness is the sign of the scalar.
+  kOrientation4f,
 };
 
 /// @class Mesh
@@ -251,6 +254,7 @@ class Mesh : public AsyncAsset {
     kAttributePosition,
     kAttributeNormal,
     kAttributeTangent,
+    kAttributeOrientation,
     kAttributeTexCoord,
     kAttributeTexCoordAlt,
     kAttributeColor,
@@ -370,7 +374,7 @@ class Mesh : public AsyncAsset {
   static MeshImpl *CreateMeshImpl();
   static void DestroyMeshImpl(MeshImpl *impl);
 
-  static const int kMaxAttributes = 9;
+  static const int kMaxAttributes = 10;
 
   struct Indices {
     Indices()

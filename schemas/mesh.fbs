@@ -40,7 +40,7 @@ enum Attribute : ubyte {
   END,
   Position3f,
   Normal3f,
-  Tangent4f,
+  Tangent4f,  // Tangent vector in xyz, handedness in w.
   TexCoord2f,
   TexCoordAlt2f,
   Color4ub,
@@ -48,20 +48,23 @@ enum Attribute : ubyte {
   BoneWeights4ub,
   Position2f,
   TexCoord2us,
+  Orientation4f,  // Quaternion as (vector.xyz, scalar); sign(w) is handedness.
 }
 
 table Mesh {
   surfaces:[Surface] (id: 0, required);
 
-  // Attributes in non-interleaved format (id 1..7).
+  // Attributes in non-interleaved format (id 1..7, 14, 18).
   // These define the format merely by their presense, no Attribute enum needed.
   positions:[fplbase.Vec3] (id: 1);
   normals:[fplbase.Vec3] (id: 2);
   tangents:[fplbase.Vec4] (id: 3);  // Tangent + handedness.
   colors:[fplbase.Vec4ub] (id: 4);
   texcoords:[fplbase.Vec2] (id: 5);
+  texcoords_alt:[fplbase.Vec2] (id: 14); // E.g. lightmap coordinates.
   skin_indices:[fplbase.Vec4ub] (id: 6);  // reference bones
   skin_weights:[fplbase.Vec4ub] (id: 7);  // sum to 1
+  orientations:[fplbase.Vec4] (id: 18);
 
   // Attributes in interleaved format (id 16..17).
   // This can be specified instead of the attribute vectors above.
@@ -81,7 +84,6 @@ table Mesh {
   // all the bones. The shader bones are the subset of bones that have at least
   // one vertex weighted to them.
   shader_to_mesh_bones:[ubyte] (id: 13);
-  texcoords_alt:[fplbase.Vec2] (id: 14); // E.g. lightmap coordinates.
   version:MeshVersion = Unspecified (id: 15);
 }
 

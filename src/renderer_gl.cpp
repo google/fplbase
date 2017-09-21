@@ -263,6 +263,8 @@ Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
           glBindAttribLocation(program_gl, Mesh::kAttributeNormal, "aNormal"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTangent,
                                    "aTangent"));
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeOrientation,
+                                   "aOrientation"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoord,
                                    "aTexCoord"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoordAlt,
