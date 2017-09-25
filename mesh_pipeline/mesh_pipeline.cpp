@@ -51,7 +51,9 @@ using fplutil::kLogError;
 using mathfu::vec2;
 using mathfu::vec3;
 using mathfu::vec4;
+using mathfu::mat3;
 using mathfu::mat4;
+using mathfu::quat;
 using mathfu::vec2_packed;
 using mathfu::vec3_packed;
 using mathfu::vec4_packed;
@@ -512,16 +514,17 @@ class FlatMesh {
 
   // Populate a single surface with data from FBX arrays.
   void AppendPolyVert(const vec3& vertex, const vec3& normal,
-                      const vec4& tangent, const vec4& color, const vec2& uv,
-                      const vec2& uv_alt, const SkinBinding& skin_binding) {
+                      const vec4& tangent, const vec4& orientation,
+                      const vec4& color, const vec2& uv, const vec2& uv_alt,
+                      const SkinBinding& skin_binding) {
     // The `unique_` map holds pointers into `points_`, so we cannot realloc
     // `points_`. Instead, we reserve enough memory for an upper bound on
     // its size. If this assert hits, NumVertsUpperBound() is incorrect.
     assert(points_.capacity() > points_.size());
 
     // TODO: Round values before creating.
-    points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent, color,
-                             uv, uv_alt, skin_binding));
+    points_.push_back(Vertex(vertex_attributes_, vertex, normal, tangent,
+                             orientation, color, uv, uv_alt, skin_binding));
 
     const VertexRef ref_to_insert(&points_.back(), points_.size() - 1);
     auto insertion = unique_.insert(ref_to_insert);
@@ -557,6 +560,11 @@ class FlatMesh {
           log_.Log(kLogVerbose,
                    ", tangent (%.3f, %.3f, %.3f) binormal-handedness %.0f",
                    tangent.x, tangent.y, tangent.z, tangent.w);
+        }
+        if (attributes & kVertexAttributeBit_Orientation) {
+          log_.Log(kLogVerbose,
+                   ", orientation (%.3f, %.3f, %.3f, scalar %.3f)",
+                   orientation.x, orientation.y, orientation.z, orientation.w);
         }
         if (attributes & kVertexAttributeBit_Uv) {
           log_.Log(kLogVerbose, ", uv (%.3f, %.3f)", uv.x, uv.y);
@@ -714,6 +722,7 @@ class FlatMesh {
     vec3_packed vertex;
     vec3_packed normal;
     vec4_packed tangent;  // 4th element is handedness: +1 or -1
+    vec4_packed orientation;
     vec2_packed uv;
     vec2_packed uv_alt;
     Vec4ub color;  // Use byte-format to ensure correct hashing.
@@ -726,11 +735,12 @@ class FlatMesh {
     }
     // Only record the attributes that we're asked to record. Ignore the rest.
     Vertex(VertexAttributeBitmask attribs, const vec3& p, const vec3& n,
-           const vec4& t, const vec4& c, const vec2& u, const vec2& v,
-           const SkinBinding& skin_binding)
+           const vec4& t, const vec4& q, const vec4& c,
+           const vec2& u, const vec2& v, const SkinBinding& skin_binding)
         : vertex(attribs & kVertexAttributeBit_Position ? p : kZeros3f),
           normal(attribs & kVertexAttributeBit_Normal ? n : kZeros3f),
           tangent(attribs & kVertexAttributeBit_Tangent ? t : kZeros4f),
+          orientation(attribs & kVertexAttributeBit_Orientation ? q : kZeros4f),
           uv(attribs & kVertexAttributeBit_Uv ? u : kZeros2f),
           uv_alt(attribs & kVertexAttributeBit_UvAlt ? v : kZeros2f),
           color(attribs & kVertexAttributeBit_Color ? FlatBufferVec4ub(c)
@@ -998,6 +1008,10 @@ class FlatMesh {
         format.push_back(meshdef::Attribute_Tangent4f);
         vert_size += sizeof(vec4_packed);
       }
+      if (attributes & kVertexAttributeBit_Orientation) {
+        format.push_back(meshdef::Attribute_Orientation4f);
+        vert_size += sizeof(vec4_packed);
+      }
       if (attributes & kVertexAttributeBit_Uv) {
         format.push_back(meshdef::Attribute_TexCoord2f);
         vert_size += sizeof(vec2_packed);
@@ -1031,6 +1045,10 @@ class FlatMesh {
         }
         if (attributes & kVertexAttributeBit_Tangent) {
           auto attr = reinterpret_cast<const uint8_t *>(&p.tangent);
+          iattrs.insert(iattrs.end(), attr, attr + sizeof(vec4_packed));
+        }
+        if (attributes & kVertexAttributeBit_Orientation) {
+          auto attr = reinterpret_cast<const uint8_t *>(&p.orientation);
           iattrs.insert(iattrs.end(), attr, attr + sizeof(vec4_packed));
         }
         if (attributes & kVertexAttributeBit_Uv) {
@@ -1071,6 +1089,7 @@ class FlatMesh {
       std::vector<Vec3> vertices;
       std::vector<Vec3> normals;
       std::vector<Vec4> tangents;
+      std::vector<Vec4> orientations;
       std::vector<Vec4ub> colors;
       std::vector<Vec2> uvs;
       std::vector<Vec2> uvs_alt;
@@ -1079,6 +1098,7 @@ class FlatMesh {
       vertices.reserve(num_points);
       normals.reserve(num_points);
       tangents.reserve(num_points);
+      orientations.reserve(num_points);
       colors.reserve(num_points);
       uvs.reserve(num_points);
       uvs_alt.reserve(num_points);
@@ -1089,6 +1109,7 @@ class FlatMesh {
         vertices.push_back(FlatBufferVec3(vec3(p.vertex)));
         normals.push_back(FlatBufferVec3(vec3(p.normal)));
         tangents.push_back(FlatBufferVec4(vec4(p.tangent)));
+        orientations.push_back(FlatBufferVec4(vec4(p.orientation)));
         colors.push_back(p.color);
         uvs.push_back(FlatBufferVec2(vec2(p.uv)));
         uvs_alt.push_back(FlatBufferVec2(vec2(p.uv_alt)));
@@ -1111,6 +1132,9 @@ class FlatMesh {
       auto tangents_fb = (attributes & kVertexAttributeBit_Tangent)
                              ? fbb.CreateVectorOfStructs(tangents)
                              : 0;
+      auto orientations_fb = (attributes & kVertexAttributeBit_Orientation)
+                                 ? fbb.CreateVectorOfStructs(orientations)
+                                 : 0;
       auto colors_fb = (attributes & kVertexAttributeBit_Color)
                            ? fbb.CreateVectorOfStructs(colors)
                            : 0;
@@ -1130,7 +1154,8 @@ class FlatMesh {
           fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb,
           colors_fb, uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
           bone_names_fb, bone_transforms_fb, bone_parents_fb,
-          shader_to_mesh_bones_fb, uvs_alt_fb, meshdef::MeshVersion_MostRecent);
+          shader_to_mesh_bones_fb, uvs_alt_fb, meshdef::MeshVersion_MostRecent,
+          /* attributes = */ 0, /* vertices = */ 0, orientations_fb);
     }
   }
 
@@ -1495,6 +1520,19 @@ class FbxMeshParser {
  private:
   FPL_DISALLOW_COPY_AND_ASSIGN(FbxMeshParser);
 
+  vec4 CalculateOrientation(const vec3& normal, const vec4& tangent) const {
+    const vec3 n = normal.Normalized();
+    const vec3 t = tangent.xyz().Normalized();
+    const vec3 b = vec3::CrossProduct(n, t).Normalized();
+    const mat3 m(t.x, t.y, t.z, b.x, b.y, b.z, n.x, n.y, n.z);
+    quat q = quat::FromMatrix(m).Normalized();
+    // Align the sign bit of the orientation scalar to our handedness.
+    if (signbit(tangent.w) != signbit(q.scalar())) {
+      q = quat(-q.scalar(), -q.vector());
+    }
+    return vec4(q.vector(), q.scalar());
+  }
+
   void ConvertGeometry(bool recenter,
                        VertexAttributeBitmask vertex_attributes) {
     FbxGeometryConverter geo_converter(manager_);
@@ -1532,7 +1570,8 @@ class FbxMeshParser {
 
       // Generate normals. Leaves existing normal data if it already exists.
       if (vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
-          (vertex_attributes & kVertexAttributeBit_Normal)) {
+          (vertex_attributes &
+           (kVertexAttributeBit_Normal | kVertexAttributeBit_Orientation))) {
         const bool normals_generated = mesh->GenerateNormals();
         if (normals_generated) {
           log_.Log(kLogInfo, "Generating normals for mesh %s\n",
@@ -1546,7 +1585,8 @@ class FbxMeshParser {
       // Generate tangents. Leaves existing tangent data if it already exists.
       if (mesh->GetElementUVCount() > 0 &&
           vertex_attributes != kVertexAttributeBit_AllAttributesInSourceFile &&
-          (vertex_attributes & kVertexAttributeBit_Tangent)) {
+          (vertex_attributes &
+           (kVertexAttributeBit_Tangent | kVertexAttributeBit_Orientation))) {
         const bool tangents_generated = mesh->GenerateTangentsData(0);
         if (tangents_generated) {
           log_.Log(kLogInfo, "Generating tangents for mesh %s\n",
@@ -2075,18 +2115,19 @@ class FbxMeshParser {
         const vec4 tangent(
             Vec3FromFbx(vector_transform.MultT(tangent_fbx)).Normalized(),
             static_cast<float>(tangent_fbx[3]));
+        const vec4 orientation = CalculateOrientation(normal, tangent);
         const vec4 color = Vec4FromFbx(color_fbx);
         const vec2 uv = Vec2FromFbxUv(uv_fbx);
         const vec2 uv_alt = Vec2FromFbxUv(uv_alt_fbx);
         const SkinBinding& skin_binding = skin_bindings[control_index];
-        out->AppendPolyVert(vertex, normal, tangent, color, uv, uv_alt,
-                            skin_binding);
+        out->AppendPolyVert(vertex, normal, tangent, orientation, color, uv,
+                            uv_alt, skin_binding);
 
         // Control points are listed in order of poly + vertex.
         vertex_counter++;
       }
     }
-  };
+  }
 
   // Entry point to the FBX SDK.
   FbxManager* manager_;
@@ -2117,6 +2158,16 @@ MeshPipelineArgs::MeshPipelineArgs()
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Update the amount of information we're dumping.
   log.set_level(args.log_level);
+
+  // Currently orientations can only be generated from normal-tangents, so it
+  // doesn't make sense to export both. If this changes at some point, then be
+  // sure to also update kVertexAttributeBit_AllAttributesInSourceFile.
+  if ((args.vertex_attributes & kVertexAttributeBit_Orientation) &&
+      (args.vertex_attributes &
+       (kVertexAttributeBit_Normal | kVertexAttributeBit_Tangent))) {
+    log.Log(kLogError, "Can't output normal-tangent and orientation.\n");
+    return 1;
+  }
 
   // Load the FBX file.
   fplbase::FbxMeshParser pipe(log);

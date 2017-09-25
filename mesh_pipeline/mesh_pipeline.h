@@ -27,6 +27,7 @@ enum VertexAttribute {
   kVertexAttribute_Position,
   kVertexAttribute_Normal,
   kVertexAttribute_Tangent,
+  kVertexAttribute_Orientation,
   kVertexAttribute_Uv,
   kVertexAttribute_UvAlt,
   kVertexAttribute_Color,
@@ -42,6 +43,8 @@ static const VertexAttributeBitmask kVertexAttributeBit_Normal =
     1 << kVertexAttribute_Normal;
 static const VertexAttributeBitmask kVertexAttributeBit_Tangent =
     1 << kVertexAttribute_Tangent;
+static const VertexAttributeBitmask kVertexAttributeBit_Orientation =
+    1 << kVertexAttribute_Orientation;
 static const VertexAttributeBitmask kVertexAttributeBit_Uv =
     1 << kVertexAttribute_Uv;
 static const VertexAttributeBitmask kVertexAttributeBit_UvAlt =
@@ -52,11 +55,13 @@ static const VertexAttributeBitmask kVertexAttributeBit_Bone =
     1 << kVertexAttribute_Bone;
 static const VertexAttributeBitmask
     kVertexAttributeBit_AllAttributesInSourceFile =
-        static_cast<VertexAttributeBitmask>(-1);
+        static_cast<VertexAttributeBitmask>(-1) ^
+        kVertexAttributeBit_Orientation;
 
 static const char* kVertexAttributeShortNames[] = {
-    "p - positions",     "n - normals", "t - tangents",     "u - UVs",
-    "v - alternate UVs", "c - colors",  "b - bone indices", nullptr,
+    "p - positions",    "n - normals",      "t - tangents",
+    "q - orientations", "u - UVs",          "v - alternate UVs",
+    "c - colors",       "b - bone indices", nullptr,
 };
 static_assert(
     FPL_ARRAYSIZE(kVertexAttributeShortNames) - 1 == kVertexAttribute_Count,
@@ -76,9 +81,9 @@ struct MeshPipelineArgs {
   matdef::BlendMode blend_mode;
   fplutil::AxisSystem axis_system;
   float distance_unit_scale;
-  bool recenter;     /// Translate geometry to origin.
-  bool interleaved;  /// Write vertex attributes interleaved.
-  bool force32;      /// Force 32bit indices.
+  bool recenter;         /// Translate geometry to origin.
+  bool interleaved;      /// Write vertex attributes interleaved.
+  bool force32;          /// Force 32bit indices.
   bool embed_materials;  /// Embed material definitions in fplmesh file.
   VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   fplutil::LogLevel log_level;  /// Amount of logging to dump during conversion.
