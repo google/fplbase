@@ -759,8 +759,8 @@ class FlatMesh {
   };
 
   struct VertexHash {
-    size_t operator()(const VertexRef& c) const {
-      return flatbuffers::HashFnv1a<size_t>(
+    uint64_t operator()(const VertexRef& c) const {
+      return flatbuffers::HashFnv1a<uint64_t>(
           reinterpret_cast<const char*>(c.ref));
     }
   };
