@@ -60,14 +60,9 @@ void Material::DeleteTextures() {
   for (size_t i = 0; i < textures_.size(); i++) textures_[i]->Delete();
 }
 
-Material *Material::LoadFromMaterialDef(const char *filename,
+Material *Material::LoadFromMaterialDef(const matdef::Material *matdef,
                                         const TextureLoaderFn &tlf) {
-  std::string flatbuf;
-  if (LoadFile(filename, &flatbuf)) {
-    flatbuffers::Verifier verifier(
-        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
-    assert(matdef::VerifyMaterialBuffer(verifier));
-    auto matdef = matdef::GetMaterial(flatbuf.c_str());
+  if (matdef) {
     auto mat = new Material();
     mat->set_blend_mode(static_cast<BlendMode>(matdef->blendmode()));
     for (size_t i = 0; i < matdef->texture_filenames()->size(); i++) {
@@ -98,9 +93,25 @@ Material *Material::LoadFromMaterialDef(const char *filename,
     }
     return mat;
   }
-  RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ")
-                                      + filename);
   return nullptr;
+}
+
+Material *Material::LoadFromMaterialDef(const char *filename,
+                                        const TextureLoaderFn &tlf) {
+  const matdef::Material *def = nullptr;
+  std::string flatbuf;
+  if (LoadFile(filename, &flatbuf)) {
+    flatbuffers::Verifier verifier(
+        reinterpret_cast<const uint8_t *>(flatbuf.c_str()), flatbuf.length());
+    assert(matdef::VerifyMaterialBuffer(verifier));
+    def = matdef::GetMaterial(flatbuf.c_str());
+  }
+  Material *mat = LoadFromMaterialDef(def, tlf);
+  if (!mat) {
+    RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ")
+                                      + filename);
+  }
+  return mat;
 }
 
 }  // namespace fplbase

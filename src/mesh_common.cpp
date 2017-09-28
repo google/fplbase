@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "fplbase/flatbuffer_utils.h"
+#include "fplbase/fpl_common.h"
 #include "fplbase/internal/type_conversions_gl.h"
 #include "fplbase/mesh.h"
 #include "fplbase/utilities.h"
@@ -47,7 +48,10 @@ static_assert(
         kBoneWeights4ub ==
             static_cast<Attribute>(meshdef::Attribute_BoneWeights4ub) &&
         kPosition2f == static_cast<Attribute>(meshdef::Attribute_Position2f) &&
-        kTexCoord2us == static_cast<Attribute>(meshdef::Attribute_TexCoord2us),
+        kTexCoord2us ==
+            static_cast<Attribute>(meshdef::Attribute_TexCoord2us) &&
+        kOrientation4f ==
+            static_cast<Attribute>(meshdef::Attribute_Orientation4f),
     "Attribute enums in mesh.h and mesh.fbs must match.");
 
 template <typename T>
@@ -59,7 +63,7 @@ void CopyAttribute(const T *attr, uint8_t *&buf) {
 
 }  // namespace
 
-Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn,
+Mesh::Mesh(const char *filename, MaterialCreateFn material_create_fn,
            Primitive primitive)
     : AsyncAsset(filename ? filename : ""),
       impl_(CreateMeshImpl()),
@@ -69,7 +73,7 @@ Mesh::Mesh(const char *filename, MaterialLoaderFn material_loader_fn,
       min_position_(mathfu::kZeros3f),
       max_position_(mathfu::kZeros3f),
       default_bone_transform_inverses_(nullptr),
-      material_loader_fn_(std::move(material_loader_fn)) {}
+      material_create_fn_(std::move(material_create_fn)) {}
 
 Mesh::Mesh(const void *vertex_data, size_t count, size_t vertex_size,
            const Attribute *format, vec3 *max_position, vec3 *min_position,
@@ -101,6 +105,7 @@ bool Mesh::IsValidFormat(const Attribute *attributes) {
       case kPosition2f:     index = kAttributePosition;      break;
       case kNormal3f:       index = kAttributeNormal;        break;
       case kTangent4f:      index = kAttributeTangent;       break;
+      case kOrientation4f:  index = kAttributeOrientation;   break;
       case kTexCoord2f:     index = kAttributeTexCoord;      break;
       case kTexCoord2us:    index = kAttributeTexCoord;      break;
       case kTexCoordAlt2f:  index = kAttributeTexCoordAlt;   break;
@@ -110,6 +115,7 @@ bool Mesh::IsValidFormat(const Attribute *attributes) {
       case kEND:            return seen[kAttributePosition];
     }
     // clang-format on
+    assert(index < FPL_ARRAYSIZE(seen));
     if (seen[index] || count == kMaxAttributes) {
       return false;
     }
@@ -133,6 +139,7 @@ size_t Mesh::AttributeOffset(const Attribute *attributes, Attribute end) {
       case kPosition2f:     size += 2 * sizeof(float);    break;
       case kNormal3f:       size += 3 * sizeof(float);    break;
       case kTangent4f:      size += 4 * sizeof(float);    break;
+      case kOrientation4f:  size += 4 * sizeof(float);    break;
       case kTexCoord2f:     size += 2 * sizeof(float);    break;
       case kTexCoord2us:    size += 2 * sizeof(uint16_t); break;
       case kTexCoordAlt2f:  size += 2 * sizeof(float);    break;
@@ -163,16 +170,15 @@ void Mesh::Load() {
 }
 
 bool Mesh::Finalize() {
-  if (data_ == nullptr) {
-    return false;
+  if (data_) {
+    const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
+    bool ok = InitFromMeshDef(flatbuf->c_str());
+    delete flatbuf;
+    data_ = nullptr;
+    if (!ok) Clear();
   }
-  const std::string *flatbuf = reinterpret_cast<const std::string *>(data_);
-  bool ok = InitFromMeshDef(flatbuf->c_str());
-  delete flatbuf;
-  data_ = nullptr;
-  if (!ok) Clear();
   CallFinalizeCallback();
-  return ok;
+  return IsValid();
 }
 
 void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
@@ -201,6 +207,8 @@ void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
                         meshdef->skin_weights()->size();
     auto has_normals = meshdef->normals() && meshdef->normals()->size();
     auto has_tangents = meshdef->tangents() && meshdef->tangents()->size();
+    auto has_orientations = meshdef->orientations() &&
+                            meshdef->orientations()->size();
     auto has_colors = meshdef->colors() && meshdef->colors()->size();
     auto has_texcoords = meshdef->texcoords() && meshdef->texcoords()->size();
     auto has_texcoords_alt =
@@ -209,6 +217,7 @@ void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
     ivd->format.push_back(kPosition3f);
     if (has_normals) ivd->format.push_back(kNormal3f);
     if (has_tangents) ivd->format.push_back(kTangent4f);
+    if (has_orientations) ivd->format.push_back(kOrientation4f);
     if (has_colors) ivd->format.push_back(kColor4ub);
     if (has_texcoords) ivd->format.push_back(kTexCoord2f);
     if (has_texcoords_alt) ivd->format.push_back(kTexCoordAlt2f);
@@ -231,6 +240,9 @@ void Mesh::ParseInterleavedVertexData(const void *meshdef_buffer,
       CopyAttribute(meshdef->positions()->Get(index), p);
       if (has_normals) CopyAttribute(meshdef->normals()->Get(index), p);
       if (has_tangents) CopyAttribute(meshdef->tangents()->Get(index), p);
+      if (has_orientations) {
+        CopyAttribute(meshdef->orientations()->Get(index), p);
+      }
       if (has_colors) CopyAttribute(meshdef->colors()->Get(index), p);
       if (has_texcoords) CopyAttribute(meshdef->texcoords()->Get(index), p);
       if (has_texcoords_alt)
@@ -256,13 +268,14 @@ bool Mesh::InitFromMeshDef(const void *meshdef_buffer) {
 
   // Load materials, return error if there is any material that is failed to
   // load.
-  assert(material_loader_fn_ != nullptr || meshdef->surfaces()->size() == 0);
+  assert(material_create_fn_ != nullptr || meshdef->surfaces()->size() == 0);
   typedef std::pair<const meshdef::Surface *, Material *> SurfaceMaterialPair;
   std::vector<SurfaceMaterialPair> indices_data;
   for (size_t i = 0; i < meshdef->surfaces()->size(); i++) {
     flatbuffers::uoffset_t index = static_cast<flatbuffers::uoffset_t>(i);
     auto surface = meshdef->surfaces()->Get(index);
-    auto mat = material_loader_fn_(surface->material()->c_str());
+    auto mat = material_create_fn_(surface->material()->c_str(),
+                                   surface->material_info());
     if (!mat) {
       LogError(kError, "Invalid material file: ", surface->material()->c_str());
       return false;

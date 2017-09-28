@@ -105,16 +105,40 @@ void RendererBase::AdvanceFrame(bool minimized, double time) {
   environment_.AdvanceFrame(minimized);
 }
 
-bool RendererBase::InitializeRenderingState() {
-  auto exts = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
+static std::vector<std::string> GetExtensions() {
+  std::vector<std::string> extensions;
 
-  auto HasGLExt = [&exts](const char *ext) -> bool {
-    // TODO(b/28761934): Consider supporting GL3.0 version.
-    if (exts == nullptr) {
-      return false;
+  auto res = glGetString(GL_EXTENSIONS);
+  if (glGetError() == GL_NO_ERROR && res != nullptr) {
+    std::stringstream ss(reinterpret_cast<const char *>(res));
+    std::string ext;
+    while (std::getline(ss, ext, ' ')) {
+      extensions.push_back(ext);
     }
-    auto pos = strstr(exts, ext);
-    return pos && pos[strlen(ext)] <= ' ';  // Make sure it matched all.
+    return extensions;
+  }
+
+#if GL_ES_VERSION_3_0 || defined(GL_VERSION_3_0)
+  int num_extensions = 0;
+  glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+  if (glGetError() == GL_NO_ERROR) {
+    extensions.reserve(num_extensions);
+    for (int i = 0; i < num_extensions; ++i) {
+      auto res = glGetStringi(GL_EXTENSIONS, i);
+      if (res != nullptr) {
+        extensions.push_back(reinterpret_cast<const char *>(res));
+      }
+    }
+  }
+#endif  // defined(GL_NUM_EXTENSIONS)
+  return extensions;
+}
+
+bool RendererBase::InitializeRenderingState() {
+  const auto extensions = GetExtensions();
+  auto HasGLExt = [&extensions](const char *ext) -> bool {
+    auto it = std::find(extensions.begin(), extensions.end(), std::string(ext));
+    return it != extensions.end();
   };
 
   // Check for multiview extension support.
@@ -159,16 +183,23 @@ bool RendererBase::InitializeRenderingState() {
   }
 #endif
 
-  GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
-                        &max_vertex_uniform_components_));
-#if defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
-  if (max_vertex_uniform_components_ == 0) {
-    // If missing the number of uniform components, use the number of vectors.
-    GL_CALL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS,
-                          &max_vertex_uniform_components_));
+  // Now we attempt to get max vertex uniform components.  On OS X, there is no
+  // Compatibility Profile support, which means we can't graduate OS X to a
+  // Core Profile (3.2+) and still use our existing shaders which target older
+  // GLSL versions.  In that case (or any platform with a similar issue) the
+  // glGet of GL_MAX_VERTEX_UNIFORM_VECTORS will fail, so we return the spec
+  // minimum of 256 in that case.
+#ifdef GL_MAX_VERTEX_UNIFORM_VECTORS
+  glGetError();
+  glGetIntegerv(GL_MAX_VERTEX_UNIFORM_VECTORS, &max_vertex_uniform_components_);
+  if (glGetError() == GL_NONE) {
     max_vertex_uniform_components_ *= 4;
+  } else {
+    max_vertex_uniform_components_ = 256;
   }
-#endif  // defined(GL_MAX_VERTEX_UNIFORM_VECTORS)
+#else
+  max_vertex_uniform_components_ = 256;
+#endif
 
   return true;
 }
@@ -232,6 +263,8 @@ Shader *RendererBase::CompileAndLinkShaderHelper(const char *vs_source,
           glBindAttribLocation(program_gl, Mesh::kAttributeNormal, "aNormal"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTangent,
                                    "aTangent"));
+      GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeOrientation,
+                                   "aOrientation"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoord,
                                    "aTexCoord"));
       GL_CALL(glBindAttribLocation(program_gl, Mesh::kAttributeTexCoordAlt,
@@ -851,14 +884,14 @@ void LogGLError(const char *file, int line, const char *call) {
 }
 
 #if !defined(GL_GLEXT_PROTOTYPES)
-#if !defined(FPLBASE_GLES) && !defined(__APPLE__)
+#if (!defined(FPLBASE_GLES) && !defined(__APPLE__)) || defined(_WIN32)
 #define GLEXT(type, name, required) type name = nullptr;
 GLBASEEXTS GLEXTS
 #undef GLEXT
 #endif
 #endif  // !defined(GL_GLEXT_PROTOTYPES)
 
-#ifdef FPLBASE_GLES
+#if defined(FPLBASE_GLES)
 #define GLEXT(type, name, required) type name = nullptr;
     GLESEXTS
-#endif  // FPLBASE_GLES
+#endif  // defined(FPLBASE_GLES)

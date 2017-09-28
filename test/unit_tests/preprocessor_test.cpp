@@ -16,6 +16,22 @@
 #include "fplbase/preprocessor.h"
 #include "gtest/gtest.h"
 
+// The value of preprocessor.cpp's kDefaultDefines as a raw string so it can be
+// concatenated in the .inc files.
+#define DEFAULT_DEFINES_TEXT \
+    "#ifndef GL_ES\n" \
+    "#define lowp\n" \
+    "#define mediump\n" \
+    "#define highp\n" \
+    "#endif\n"
+
+// The value of preprocessor.cpp's kDefaultPrecisionSpecifier as a raw string
+// so it can be concatenated in the .inc files.
+#define DEFAULT_PRECISION_TEXT \
+    "#ifdef GL_ES\n" \
+    "precision highp float;\n" \
+    "#endif\n"
+
 static const std::set<std::string> kEmptyDefines;
 
 class PreprocessorTests : public ::testing::Test {
@@ -118,17 +134,14 @@ TEST_F(PreprocessorTests, ValuePassthrough) {
 }
 
 TEST_F(PreprocessorTests, SanitizeCheckPrecisionSpecifiers) {
-  const char* kDefaultSpecifier = "precision highp float;";
-
   const char* simple_file = "void main() { gl_FragColor = something; }";
   std::string result;
   fplbase::PlatformSanitizeShaderSource(simple_file, nullptr, &result);
 
-  const size_t defines_pos = result.find(
-      "#ifndef GL_ES\n#define lowp\n#define mediump\n#define highp\n#endif");
+  const size_t defines_pos = result.find(DEFAULT_DEFINES_TEXT);
   EXPECT_NE(defines_pos, std::string::npos);
 
-  size_t default_pos = result.find(kDefaultSpecifier);
+  size_t default_pos = result.find(DEFAULT_PRECISION_TEXT);
   EXPECT_NE(default_pos, std::string::npos);
 
   size_t main_pos = result.find("void main()");
@@ -150,13 +163,43 @@ TEST_F(PreprocessorTests, SanitizeCheckPrecisionSpecifiers) {
 
   fplbase::PlatformSanitizeShaderSource(if_file, nullptr, &result);
 
-  default_pos = result.find(kDefaultSpecifier);
+  default_pos = result.find(DEFAULT_PRECISION_TEXT);
   EXPECT_NE(default_pos, std::string::npos);
 
   const size_t foo_pos = result.find("#if TEST_B");
   EXPECT_NE(foo_pos, std::string::npos);
 
   EXPECT_LT(default_pos, foo_pos);
+
+  // Test that the specifier is placed correctly if first code is in an #if.
+  const char* if_code_test =
+      "#if FOO\n"
+      "// comment\n"
+      "#extension GL_OES_standard_derivatives : enable\n"
+      "#endif\n"
+      "\n"
+      "// comment\n"
+      "\n"
+      "#if defined(TEXTURE)\n"
+      "// comment\n"
+      "varying highp vec2 vTexCoord;\n"
+      "#endif\n";
+
+  fplbase::PlatformSanitizeShaderSource(if_code_test, nullptr, &result);
+  default_pos = result.find(DEFAULT_PRECISION_TEXT);
+  EXPECT_GT(default_pos, result.find("#extension"));
+  EXPECT_LT(default_pos, result.find("#if defined(TEXTURE)\n"));
+
+  // Test that we don't replace any existing precision default specifier.
+  const char* precision_test =
+      "#if FOO\n"
+      "#extension BAZ\n"
+      "precision mediump float;\n"
+      "#endif\n"
+      "void baz() { gl_FragColor = vec4(1, 1, 1, 1);\n";
+
+  fplbase::PlatformSanitizeShaderSource(precision_test, nullptr, &result);
+  EXPECT_EQ(result.find(DEFAULT_PRECISION_TEXT), std::string::npos);
 }
 
 TEST_F(PreprocessorTests, SanitizeVersionIsFirstLine) {
@@ -256,67 +299,6 @@ TEST_F(PreprocessorTests, SanitizeCommentsIgnored) {
   EXPECT_LT(ext_pos, version_pos);
 }
 
-TEST_F(PreprocessorTests, SanitizeSample) {
-  const char* file =
-      "\n"
-      "// #if Single line comment.\n"
-      "/* #version\n"
-      "within a\n"
-      "  multi-line comment should be ignored */\n"
-      "// A multi-part single-line comment should also be ignored \\\n"
-      "#version 900 is still part of the comment\n"
-      "\n"
-      // #version must be the first non-whitespace line (incl. comments).
-      "#version 100  // The actual version.\n"
-      "#define TEST_A 1\n"
-      "#define TEST_B 2\n"
-      "\n"
-      "#if GL_ES\n"
-      // No "code" can come before #extension directives.
-      "#extension GL_OES_standard_derivatives : enable\n"
-      "#endif\n"
-      "\n"
-      // This is the first line of top level "code".
-      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
-
-  // For our expected result, we skip the #version since it can change based on
-  // host platform.
-  const char* expected_after_version =
-      // Our desktop-safe precision #defines should be first.
-      "#ifndef GL_ES\n"
-      "#define lowp\n"
-      "#define mediump\n"
-      "#define highp\n"
-      "#endif\n"
-      "\n"
-      "// #if Single line comment.\n"
-      "/* #version\n"
-      "within a\n"
-      "  multi-line comment should be ignored */\n"
-      "// A multi-part single-line comment should also be ignored \\\n"
-      "#version 900 is still part of the comment\n"
-      "\n"
-      // "#version 100  // The actual version.\n" should have been removed.
-      "#define TEST_A 1\n"
-      "#define TEST_B 2\n"
-      "\n"
-      "#if GL_ES\n"
-      "#extension GL_OES_standard_derivatives : enable\n"
-      "#endif\n"
-      "\n"
-      // The default precision specifier should be here, before the first line
-      // of top level code.
-      "#ifdef GL_ES\n"
-      "precision highp float;\n"
-      "#endif\n"
-      "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
-
-  std::string result;
-  fplbase::PlatformSanitizeShaderSource(file, nullptr, &result);
-  EXPECT_EQ(result.find("#version"), 0U);
-  EXPECT_EQ(result.substr(result.find('\n') + 1), expected_after_version);
-}
-
 TEST_F(PreprocessorTests, SetShaderVersion) {
   const char* source = "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
   const char* expected =
@@ -354,6 +336,43 @@ TEST_F(PreprocessorTests, SetShaderVersion) {
       "void main() { gl_FragColor = vec4(1, 1, 1, 1); }\n";
   fplbase::SetShaderVersion(source, "330", &result);
   EXPECT_EQ(result, expected);
+}
+
+// Skips the version string if it exists.
+std::string SkipVersion(const std::string& str) {
+  // Version is expected to be at the beginning of the string.
+  if (str.compare(0, 8, "#version") == 0) {
+    return str.substr(str.find('\n') + 1);
+  }
+  return str;
+}
+
+TEST_F(PreprocessorTests, SanitizeSimple) {
+  #include "simple.inc"
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(kSourceText, nullptr, &result);
+  EXPECT_EQ(SkipVersion(result), kExpectedText);
+}
+
+TEST_F(PreprocessorTests, SanitizeIfExtension) {
+  #include "if_extension.inc"
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(kSourceText, nullptr, &result);
+  EXPECT_EQ(SkipVersion(result), kExpectedText);
+}
+
+TEST_F(PreprocessorTests, SanitizeIfExtensionPrecision) {
+  #include "if_extension_precision.inc"
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(kSourceText, nullptr, &result);
+  EXPECT_EQ(SkipVersion(result), kExpectedText);
+}
+
+TEST_F(PreprocessorTests, SanitizeExtensionInclude) {
+  #include "extension_include.inc"
+  std::string result;
+  fplbase::PlatformSanitizeShaderSource(kSourceText, nullptr, &result);
+  EXPECT_EQ(SkipVersion(result), kExpectedText);
 }
 
 extern "C" int FPL_main(int argc, char* argv[]) {

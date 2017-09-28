@@ -51,13 +51,16 @@ class AsyncAsset : public Asset {
   typedef std::function<void()> AssetFinalizedCallback;
 
   /// @brief Default constructor for an empty AsyncAsset.
-  AsyncAsset() : data_(nullptr) {}
+  AsyncAsset() : data_(nullptr), finalized_(false) {}
 
   /// @brief Construct an AsyncAsset with a given file name.
   /// @param[in] filename A C-string corresponding to the name of the asset
   /// file.
   explicit AsyncAsset(const char *filename)
-      : filename_(filename), data_(nullptr), finalize_callbacks_(0) {}
+      : filename_(filename),
+        data_(nullptr),
+        finalize_callbacks_(0),
+        finalized_(false) {}
 
   /// @brief AsyncAsset destructor.
   virtual ~AsyncAsset() {}
@@ -78,6 +81,10 @@ class AsyncAsset : public Asset {
   /// Should check if data_ is null.
   virtual bool Finalize() = 0;
 
+  /// @brief Whether this object has been loaded and finalized. This does not
+  /// signal success or not -- check IsValid for that.
+  bool IsFinalized() const { return finalized_; }
+
   /// @brief Whether this object loaded and finalized correctly. Call after
   /// Finalize has been called (by AssetManager::TryFinalize).
   virtual bool IsValid() = 0;
@@ -95,8 +102,8 @@ class AsyncAsset : public Asset {
 
   /// @brief Sets the filename that should be loaded.
   ///
-  /// Set the the filename in situations where it can't be initialized in
-  /// the constructor. Must be called before AsyncLoader::QueueJob().
+  /// Set the filename in situations where it can't be initialized in the
+  /// constructor. Must be called before AsyncLoader::QueueJob().
   ///
   /// @param filename The name of the file to load.
   void set_filename(const std::string &filename) { filename_ = filename; }
@@ -109,10 +116,17 @@ class AsyncAsset : public Asset {
   /// @brief Adds a callback to be called when the asset is finalized.
   ///
   /// Add a callback so logic can be executed when an asset is done loading.
+  /// This does nothing if the asset has already been finalized.
   ///
   /// @param callback The function to be called.
-  void AddFinalizeCallback(AssetFinalizedCallback callback) {
+  /// @return Returns true if the asset is not finalized and the callback was
+  /// added.
+  bool AddFinalizeCallback(AssetFinalizedCallback callback) {
+    if (finalized_) {
+      return false;
+    }
     finalize_callbacks_.push_back(callback);
+    return true;
   }
 
  protected:
@@ -125,6 +139,7 @@ class AsyncAsset : public Asset {
       (*it)();
     }
     finalize_callbacks_.clear();
+    finalized_ = true;
   }
 
   /// @brief The resource file name.
@@ -132,7 +147,10 @@ class AsyncAsset : public Asset {
   /// @brief The resource data.
   const uint8_t *data_;
 
+  /// @brief List of callbacks to be invoked when the asset is finalized.
   std::vector<AssetFinalizedCallback> finalize_callbacks_;
+  /// @brief Whether the asset has been finalized.
+  bool finalized_;
 
   friend class AsyncLoader;
 };

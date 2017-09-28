@@ -158,6 +158,12 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
     } else if (arg == "--force-32-bit-indices") {
       args->force32 = true;
 
+    } else if (arg == "--no-textures") {
+      args->gather_textures = false;
+
+    } else if (arg == "--embed-materials") {
+      args->embed_materials = true;
+
       // -f switch
     } else if (arg == "-f" || arg == "--texture-formats") {
       if (i + 1 < argc - 1) {
@@ -245,9 +251,9 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
         "Usage: mesh_pipeline [-b ASSET_BASE_DIR] [-r ASSET_REL_DIR]\n"
         "                     [-e TEXTURE_EXTENSION] [-f TEXTURE_FORMATS]\n"
         "                     [-m BLEND_MODE] [-a AXES] [-u (unit)|(scale)]\n"
-        "                     [--attrib p|n|t|u|c|b]\n"
-        "                     [-h] [-c] [-v|-d|-i]\n"
-        "                     FBX_FILE\n"
+        "                     [--attrib p|n|t|u|c|b] [--force-32-bit-indices]\n"
+        "                     [--no-textures] [--embed-materials] [-h] [-c]\n"
+        "                     [-l] [-v|-d|-i] FBX_FILE\n"
         "\n"
         "Pipeline to convert FBX mesh data into FlatBuffer mesh data.\n"
         "We output a .fplmesh file and (potentially several) .fplmat files,\n"
@@ -346,6 +352,11 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
         "  --force-32-bit-indices\n"
         "                By default, decides to use 16 or 32 bit indices\n"
         "                on index count. This makes it always use 32 bit.\n"
+        "  --no-textures\n"
+        "                Do not search for textures or create .fplmat files.\n"
+        "  --embed-materials\n"
+        "                Embeds the material data directly into the .fplmesh\n"
+        "                file instead of generating separate .fplmat files.\n"
         "  -v, --verbose output all informative messages\n"
         "  -d, --details output important informative messages\n"
         "  -i, --info    output more than details, less than verbose\n");

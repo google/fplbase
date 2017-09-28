@@ -267,9 +267,16 @@ uint8_t *Texture::UnpackKTX(const void *file_buf, size_t size,
   auto &header = *reinterpret_cast<const KTXHeader *>(file_buf);
   auto magic = "\xABKTX 11\xBB\r\n\x1A\n";
   auto v = memcmp(header.id, magic, sizeof(header.id));
+  // Note: a single Nx6N face and six NxN faces are both valid cubemaps
+  bool valid_face_count =
+      (flags & kTextureFlagsIsCubeMap)
+          ? (header.faces == 6 && header.width == header.height) ||
+                (header.faces == 1 && header.width * 6 == header.height)
+          : (header.faces == 1);
   if (v != 0 || header.endian != 0x04030201 || header.depth != 0 ||
-      header.faces != 1 || header.keyvalue_data != 0)
+      !valid_face_count) {
     return nullptr;
+  }
 
   *dimensions = vec2i(header.width, header.height);
   *texture_format = kFormatKTX;

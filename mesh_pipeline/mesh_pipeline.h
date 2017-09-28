@@ -79,8 +79,10 @@ struct MeshPipelineArgs {
   bool recenter;     /// Translate geometry to origin.
   bool interleaved;  /// Write vertex attributes interleaved.
   bool force32;      /// Force 32bit indices.
+  bool embed_materials;  /// Embed material definitions in fplmesh file.
   VertexAttributeBitmask vertex_attributes;  /// Vertex attributes to output.
   fplutil::LogLevel log_level;  /// Amount of logging to dump during conversion.
+  bool gather_textures;         /// Gather textures and generate .fplmat files.
 };
 
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log);

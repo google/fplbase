@@ -27,6 +27,7 @@
 
 #include "common_generated.h"
 #include "fbx_common/fbx_common.h"
+#include "flatbuffers/hash.h"
 #include "fplbase/fpl_common.h"
 #include "fplutil/file_utils.h"
 #include "fplutil/string_utils.h"
@@ -587,7 +588,8 @@ class FlatMesh {
       const std::string& assets_sub_dir_unformated,
       const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
-      matdef::BlendMode blend_mode, bool interleaved, bool force32) const {
+      matdef::BlendMode blend_mode, bool interleaved, bool force32,
+      bool embed_materials) const {
     // Ensure directory names end with a slash.
     const std::string mesh_name = fplutil::BaseFileName(mesh_name_unformated);
     const std::string assets_base_dir =
@@ -606,14 +608,17 @@ class FlatMesh {
     // Output bone hierarchy.
     LogBones();
 
-    // Create material files that reference the textures.
-    OutputMaterialFlatBuffers(mesh_name, assets_base_dir, assets_sub_dir,
-                              texture_extension, texture_formats, blend_mode);
+    if (!embed_materials) {
+      // Create material files that reference the textures.
+      OutputMaterialFlatBuffers(mesh_name, assets_base_dir, assets_sub_dir,
+                                texture_extension, texture_formats, blend_mode);
+    }
 
     // Create final mesh file that references materials relative to
     // `assets_base_dir`.
     OutputMeshFlatBuffer(mesh_name, assets_base_dir, assets_sub_dir,
-                         interleaved, force32);
+                         texture_extension, texture_formats, blend_mode,
+                         interleaved, force32, embed_materials);
 
     // Log summary
     log_.Log(kLogImportant, "  %s (%d vertices, %d triangles)\n",
@@ -745,16 +750,8 @@ class FlatMesh {
 
   struct VertexHash {
     size_t operator()(const VertexRef& c) const {
-      const size_t* p = reinterpret_cast<const size_t*>(c.ref);
-      size_t hash = 0;
-      for (size_t i = 0; i < sizeof(*c.ref) / sizeof(size_t); ++i) {
-        hash ^= Rotate(p[i], i);
-      }
-      return hash;
-    }
-
-    static size_t Rotate(size_t x, size_t bytes) {
-      return (x << (8 * bytes)) | (x >> (8 * (sizeof(size_t) - bytes)));
+      return flatbuffers::HashFnv1a<size_t>(
+          reinterpret_cast<const char*>(c.ref));
     }
   };
 
@@ -830,72 +827,45 @@ class FlatMesh {
     fclose(file);
   }
 
-  void OutputMaterialFlatBuffers(
-      const std::string& mesh_name, const std::string& assets_base_dir,
-      const std::string& assets_sub_dir, const std::string& texture_extension,
+
+  flatbuffers::Offset<matdef::Material> BuildMaterialFlatBuffer(
+      flatbuffers::FlatBufferBuilder& fbb, const std::string& assets_sub_dir,
+      const std::string& texture_extension,
       const std::vector<matdef::TextureFormat>& texture_formats,
-      matdef::BlendMode blend_mode) const {
-    log_.Log(kLogInfo, "Materials:\n");
+      matdef::BlendMode blend_mode, const FlatTextures& textures) const {
+    // Create FlatBuffer arrays of texture names and formats.
+    std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
+    std::vector<uint8_t> formats_fb;
+    textures_fb.reserve(textures.Count());
+    formats_fb.reserve(textures.Count());
+    for (size_t i = 0; i < textures.Count(); ++i) {
+      // Output texture file name to array of file names.
+      const std::string texture_file_name =
+          TextureFileName(textures[i], assets_sub_dir, texture_extension);
+      textures_fb.push_back(fbb.CreateString(texture_file_name));
 
-    size_t surface_idx = 0;
-    for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
-      const FlatTextures& textures = it->first;
-      if (!HasTexture(textures)) {
-        ++surface_idx;
-        continue;
+      // Append texture format (a uint8) to array of texture formats.
+      const matdef::TextureFormat texture_format =
+          i < texture_formats.size() ? texture_formats[i]
+                                     : kDefaultTextureFormat;
+      formats_fb.push_back(static_cast<uint8_t>(texture_format));
+
+      // Log texture and format.
+      log_.Log(kLogInfo, "%s %s", i == 0 ? "" : ",",
+               fplutil::RemoveDirectoryFromName(texture_file_name).c_str());
+      if (texture_format != kDefaultTextureFormat) {
+        log_.Log(kLogInfo, "(%s)",
+                 matdef::EnumNameTextureFormat(texture_format));
       }
-
-      const std::string material_file_name =
-          MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
-      log_.Log(kLogInfo, "  %s:", material_file_name.c_str());
-
-      // Create FlatBuffer arrays of texture names and formats.
-      flatbuffers::FlatBufferBuilder fbb;
-      std::vector<flatbuffers::Offset<flatbuffers::String>> textures_fb;
-      std::vector<uint8_t> formats_fb;
-      textures_fb.reserve(textures.Count());
-      formats_fb.reserve(textures.Count());
-      for (size_t i = 0; i < textures.Count(); ++i) {
-        // Output texture file name to array of file names.
-        const std::string texture_file_name =
-            TextureFileName(textures[i], assets_sub_dir, texture_extension);
-        textures_fb.push_back(fbb.CreateString(texture_file_name));
-
-        // Append texture format (a uint8) to array of texture formats.
-        const matdef::TextureFormat texture_format =
-            i < texture_formats.size() ? texture_formats[i]
-                                       : kDefaultTextureFormat;
-        formats_fb.push_back(static_cast<uint8_t>(texture_format));
-
-        // Log texture and format.
-        log_.Log(kLogInfo, "%s %s", i == 0 ? "" : ",",
-                 fplutil::RemoveDirectoryFromName(texture_file_name).c_str());
-        if (texture_format != kDefaultTextureFormat) {
-          log_.Log(kLogInfo, "(%s)",
-                   matdef::EnumNameTextureFormat(texture_format));
-        }
-      }
-      log_.Log(kLogInfo, "\n");
-
-      // Create final material FlatBuffer.
-      auto textures_vector_fb = fbb.CreateVector(textures_fb);
-      auto formats_vector_fb = fbb.CreateVector(formats_fb);
-      auto material_fb = matdef::CreateMaterial(fbb, textures_vector_fb,
-                                                blend_mode, formats_vector_fb);
-      matdef::FinishMaterialBuffer(fbb, material_fb);
-
-      const std::string full_material_file_name =
-          assets_base_dir + material_file_name;
-      OutputFlatBufferBuilder(fbb, full_material_file_name);
-
-      surface_idx++;
     }
+    log_.Log(kLogInfo, "\n");
 
-    // Log blend mode, if blend mode is being used.
-    if (blend_mode != matdef::BlendMode_OFF) {
-      log_.Log(kLogInfo, "  blend mode: %s\n",
-               matdef::EnumNameBlendMode(blend_mode));
-    }
+    // Create final material FlatBuffer.
+    auto textures_vector_fb = fbb.CreateVector(textures_fb);
+    auto formats_vector_fb = fbb.CreateVector(formats_fb);
+    auto material_fb = matdef::CreateMaterial(fbb, textures_vector_fb,
+                                              blend_mode, formats_vector_fb);
+    return material_fb;
   }
 
   VertIndex GetMaxIndex(const IndexBuffer& indices) const {
@@ -903,17 +873,12 @@ class FlatMesh {
                            : *std::max_element(indices.begin(), indices.end());
   }
 
-  void OutputMeshFlatBuffer(const std::string& mesh_name,
-                            const std::string& assets_base_dir,
-                            const std::string& assets_sub_dir,
-                            bool interleaved, bool force32) const {
-    const std::string rel_mesh_file_name =
-        assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
-    const std::string full_mesh_file_name =
-        assets_base_dir + rel_mesh_file_name;
-
-    log_.Log(kLogInfo, "Mesh:\n");
-
+  flatbuffers::Offset<meshdef::Mesh> BuildMeshFlatBuffer(
+      flatbuffers::FlatBufferBuilder& fbb, const std::string& mesh_name,
+      const std::string& assets_sub_dir, const std::string& texture_extension,
+      const std::vector<matdef::TextureFormat>& texture_formats,
+      matdef::BlendMode blend_mode, bool interleaved, bool force32,
+      bool embed_materials) const {
     const VertexAttributeBitmask attributes =
         vertex_attributes_ == kVertexAttributeBit_AllAttributesInSourceFile
             ? mesh_vertex_attributes_
@@ -937,7 +902,6 @@ class FlatMesh {
     CalculateBoneIndexMaps(&mesh_to_shader_bones, &shader_to_mesh_bones);
 
     // Output the surfaces.
-    flatbuffers::FlatBufferBuilder fbb;
     std::vector<flatbuffers::Offset<meshdef::Surface>> surfaces_fb;
     surfaces_fb.reserve(surfaces_.size());
     size_t surface_idx = 0;
@@ -962,8 +926,17 @@ class FlatMesh {
       } else {
         indices32_fb = fbb.CreateVector(index_buf);
       }
+
+      flatbuffers::Offset<matdef::Material> material_data_fb = 0;
+      if (embed_materials && HasTexture(textures)) {
+        log_.Log(kLogInfo, "  %s:", material_file_name.c_str());
+        material_data_fb =
+            BuildMaterialFlatBuffer(fbb, assets_sub_dir, texture_extension,
+                                    texture_formats, blend_mode, textures);
+      }
+
       auto surface_fb = meshdef::CreateSurface(fbb, indices_fb, material_fb,
-                                               indices32_fb);
+                                               indices32_fb, material_data_fb);
       surfaces_fb.push_back(surface_fb);
       surface_idx++;
     }
@@ -1010,7 +983,6 @@ class FlatMesh {
     auto shader_to_mesh_bones_fb =
         fbb.CreateVector(shader_to_mesh_bones_compact);
 
-    flatbuffers::Offset<meshdef::Mesh> mesh_fb = 0;
     if (interleaved) {
       std::vector<uint8_t> format;
       size_t vert_size = 0;
@@ -1088,7 +1060,7 @@ class FlatMesh {
       assert(vert_size * num_points == iattrs.size());
       auto formatvec = fbb.CreateVector(format);
       auto attrvec = fbb.CreateVector(iattrs);
-      mesh_fb = meshdef::CreateMesh(
+      return meshdef::CreateMesh(
           fbb, surface_vector_fb, 0, 0, 0, 0,
           0, 0, 0, &max_fb, &min_fb,
           bone_names_fb, bone_transforms_fb, bone_parents_fb,
@@ -1154,16 +1126,75 @@ class FlatMesh {
       auto skin_weights_fb = (attributes & kVertexAttributeBit_Bone)
                                  ? fbb.CreateVectorOfStructs(skin_weights)
                                  : 0;
-      mesh_fb = meshdef::CreateMesh(
-          fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb, colors_fb,
-          uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
+      return meshdef::CreateMesh(
+          fbb, surface_vector_fb, vertices_fb, normals_fb, tangents_fb,
+          colors_fb, uvs_fb, skin_indices_fb, skin_weights_fb, &max_fb, &min_fb,
           bone_names_fb, bone_transforms_fb, bone_parents_fb,
           shader_to_mesh_bones_fb, uvs_alt_fb, meshdef::MeshVersion_MostRecent);
     }
+  }
+
+  void OutputMeshFlatBuffer(
+      const std::string& mesh_name, const std::string& assets_base_dir,
+      const std::string& assets_sub_dir, const std::string& texture_extension,
+      const std::vector<matdef::TextureFormat>& texture_formats,
+      matdef::BlendMode blend_mode, bool interleaved, bool force32,
+      bool embed_materials) const {
+    const std::string rel_mesh_file_name =
+        assets_sub_dir + mesh_name + "." + meshdef::MeshExtension();
+    const std::string full_mesh_file_name =
+        assets_base_dir + rel_mesh_file_name;
+
+    log_.Log(kLogInfo, "Mesh:\n");
+
+    flatbuffers::FlatBufferBuilder fbb;
+    auto mesh_fb = BuildMeshFlatBuffer(
+        fbb, mesh_name, assets_sub_dir, texture_extension, texture_formats,
+        blend_mode, interleaved, force32, embed_materials);
+
     meshdef::FinishMeshBuffer(fbb, mesh_fb);
 
     // Write the buffer to a file.
     OutputFlatBufferBuilder(fbb, full_mesh_file_name);
+  }
+
+  void OutputMaterialFlatBuffers(
+      const std::string& mesh_name, const std::string& assets_base_dir,
+      const std::string& assets_sub_dir, const std::string& texture_extension,
+      const std::vector<matdef::TextureFormat>& texture_formats,
+      matdef::BlendMode blend_mode) const {
+    log_.Log(kLogInfo, "Materials:\n");
+
+    size_t surface_idx = 0;
+    for (auto it = surfaces_.begin(); it != surfaces_.end(); ++it) {
+      const FlatTextures& textures = it->first;
+      if (!HasTexture(textures)) {
+        ++surface_idx;
+        continue;
+      }
+
+      const std::string material_file_name =
+          MaterialFileName(mesh_name, surface_idx, assets_sub_dir);
+      log_.Log(kLogInfo, "  %s:", material_file_name.c_str());
+
+      flatbuffers::FlatBufferBuilder fbb;
+      auto material_fb =
+          BuildMaterialFlatBuffer(fbb, assets_sub_dir, texture_extension,
+                                  texture_formats, blend_mode, textures);
+      matdef::FinishMaterialBuffer(fbb, material_fb);
+
+      const std::string full_material_file_name =
+          assets_base_dir + material_file_name;
+      OutputFlatBufferBuilder(fbb, full_material_file_name);
+
+      surface_idx++;
+    }
+
+    // Log blend mode, if blend mode is being used.
+    if (blend_mode != matdef::BlendMode_OFF) {
+      log_.Log(kLogInfo, "  blend mode: %s\n",
+               matdef::EnumNameBlendMode(blend_mode));
+    }
   }
 
   int BoneParent(int i) const { return bones_[i].parent_bone_index; }
@@ -1437,7 +1468,7 @@ class FbxMeshParser {
   }
 
   // Gather converted geometry into our `FlatMesh` class.
-  void GatherFlatMesh(FlatMesh* out) const {
+  void GatherFlatMesh(bool gather_textures, FlatMesh* out) const {
     FbxNode* const root_node = scene_->GetRootNode();
     const int child_count = root_node->GetChildCount();
     NodeToBoneMap node_to_bone_map;
@@ -1457,7 +1488,8 @@ class FbxMeshParser {
     }
 
     // Final pass: Traverse the scene and output one surface per mesh.
-    GatherFlatMeshRecursive(&node_to_bone_map, root_node, root_node, out);
+    GatherFlatMeshRecursive(gather_textures, &node_to_bone_map, root_node,
+                            root_node, out);
   }
 
  private:
@@ -1801,7 +1833,8 @@ class FbxMeshParser {
   }
 
   // For each mesh in the tree of nodes under `node`, add a surface to `out`.
-  void GatherFlatMeshRecursive(const NodeToBoneMap* node_to_bone_map,
+  void GatherFlatMeshRecursive(bool gather_textures,
+                               const NodeToBoneMap* node_to_bone_map,
                                FbxNode* node, FbxNode* parent_node,
                                FlatMesh* out) const {
     // We're only interested in mesh nodes. If a node and all nodes under it
@@ -1835,8 +1868,10 @@ class FbxMeshParser {
         const FbxMesh* mesh = static_cast<const FbxMesh*>(attr);
 
         // Gather the textures attached to this mesh.
-        std::string normal_map_file_name;
-        const FlatTextures textures = GatherTextures(node, mesh);
+        FlatTextures textures;
+        if (gather_textures) {
+          textures = GatherTextures(node, mesh);
+        }
         out->SetSurface(textures);
 
         // If no textures for this mesh, try to get a solid color from the
@@ -1861,7 +1896,8 @@ class FbxMeshParser {
 
     // Recursively traverse each node in the scene
     for (int i = 0; i < node->GetChildCount(); i++) {
-      GatherFlatMeshRecursive(node_to_bone_map, node->GetChild(i), node, out);
+      GatherFlatMeshRecursive(gather_textures, node_to_bone_map,
+                              node->GetChild(i), node, out);
     }
   }
 
@@ -2073,8 +2109,10 @@ MeshPipelineArgs::MeshPipelineArgs()
       recenter(false),
       interleaved(true),
       force32(false),
+      embed_materials(false),
       vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
-      log_level(kLogWarning) {}
+      log_level(kLogWarning),
+      gather_textures(true) {}
 
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Update the amount of information we're dumping.
@@ -2090,13 +2128,13 @@ int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Gather data into a format conducive to our FlatBuffer format.
   const int max_verts = pipe.NumVertsUpperBound();
   fplbase::FlatMesh mesh(max_verts, args.vertex_attributes, log);
-  pipe.GatherFlatMesh(&mesh);
+  pipe.GatherFlatMesh(args.gather_textures, &mesh);
 
   // Output gathered data to a binary FlatBuffer.
   const bool output_status = mesh.OutputFlatBuffer(
       args.fbx_file, args.asset_base_dir, args.asset_rel_dir,
       args.texture_extension, args.texture_formats, args.blend_mode,
-      args.interleaved, args.force32);
+      args.interleaved, args.force32, args.embed_materials);
   if (!output_status) return 1;
 
   // Success.

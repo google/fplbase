@@ -304,6 +304,14 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
       size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
       if (separator == std::string::npos) break;
       current_dir = current_dir.substr(0, separator);
+#ifdef _WIN32
+      // On Windows, if you try to "cd c:" and you are already in a subdirectory
+      // of c:, you will end up in the same directory. "cd c:\" will take you to
+      // the root.
+      if (current_dir.length() == 2) {
+        current_dir.append("\\");
+      }
+#endif
       int chdir_error_code = chdir(current_dir.c_str());
       if (chdir_error_code) break;
       real_path[0] = '\0';
@@ -314,6 +322,14 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
         flatbuffers::ConCatPathFileName(current_dir, target_dir_str);
       chdir_error_code = chdir(target.c_str());
       if (chdir_error_code == 0) return true;
+#ifdef _WIN32
+      // If current_dir is now "c:\" on Windows, then we have tried and failed
+      // to find the target directory. Windows guarantees single letter drive
+      // names.
+      if (current_dir.length() == 3) {
+        break;
+      }
+#endif
     }
     return false;
   }

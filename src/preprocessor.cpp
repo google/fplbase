@@ -24,9 +24,11 @@ static const std::set<std::string> kEmptySet;
 
 const char kDefaultDesktopVersion[] = "120";
 const char kVersionTag[] = "version";
+const char kExtensionTag[] = "extension";
 const char kIfTag[] = "if";  // This will catch all flavors.
 const char kEndIfTag[] = "endif";
 const size_t kVersionTagLength = sizeof(kVersionTag) - 1;
+const size_t kExtensionTagLength = sizeof(kExtensionTag) - 1;
 const size_t kIfTagLength = sizeof(kIfTag) - 1;
 const size_t kEndIfTagLength = sizeof(kEndIfTag) - 1;
 
@@ -297,11 +299,12 @@ void PlatformSanitizeShaderSource(const char *csource,
   //    insert a default precision float specifier before it.
 
   std::vector<Substring> preamble;
-  const char* last_top_level_line = csource;
+  const char* precision_insertion_ptr = csource;
   int if_depth = 0;
   int version_number = 0;
   bool version_es = false;
   const char *comment_start = nullptr;
+  bool found_default_precision = false;
 
   // Iterate through each line until we find the first non-empty, non-comment,
   // non-preprocessor line. Strip out the #version line (we'll manually add it),
@@ -325,6 +328,10 @@ void PlatformSanitizeShaderSource(const char *csource,
 
     const char *start = SkipWhitespaceInLine(line);
     next_line = FindNextLine(start);
+
+    if (if_depth == 0) {
+      precision_insertion_ptr = line;
+    }
 
     // Single-line comment; just skip this line.
     const bool is_single_line_comment = start[0] == '/' && start[1] == '/';
@@ -372,8 +379,14 @@ void PlatformSanitizeShaderSource(const char *csource,
         }
 
         // Be sure to skip this line when composing the result.
-        last_top_level_line = next_line;
+        precision_insertion_ptr = next_line;
         continue;
+      }
+
+      // Check for extension directives: we can't insert precision specifiers
+      // before them, even if it means putting them within #if blocks.
+      if (strncmp(directive, kExtensionTag, kExtensionTagLength) == 0) {
+        precision_insertion_ptr = next_line;
       }
 
       // Update the #if context.
@@ -382,12 +395,10 @@ void PlatformSanitizeShaderSource(const char *csource,
       } else if (if_depth > 0 &&
           strncmp(directive, kEndIfTag, kEndIfTagLength) == 0) {
         --if_depth;
-      } else if (if_depth == 0) {
-        last_top_level_line = line;
       }
     } else {
-      if (if_depth == 0) {
-        last_top_level_line = line;
+      if (strncmp(start, "precision", 9) == 0) {
+        found_default_precision = true;
       }
       if (!IsEmptyLine(start)) {
         // We've found the first line of code.  Since there can be no #version
@@ -423,19 +434,21 @@ void PlatformSanitizeShaderSource(const char *csource,
   }
 
   // Add the preamble (lines before any code). Make sure we don't go past
-  // last_top_level_line, otherwise we end up with a partial dupe.
+  // precision_insertion_ptr, otherwise we end up with a partial dupe.
   for (size_t i = 0; i < preamble.size(); ++i) {
-    if (preamble[i].start >= last_top_level_line) {
+    if (preamble[i].start >= precision_insertion_ptr) {
       break;
     }
-    const size_t max_len = last_top_level_line - preamble[i].start;
+    const size_t max_len = precision_insertion_ptr - preamble[i].start;
     result->append(preamble[i].start, std::min(max_len, preamble[i].len));
   }
 
   // Add the default precision specifier.
-  result->append(kDefaultPrecisionSpecifier);
+  if (!found_default_precision) {
+    result->append(kDefaultPrecisionSpecifier);
+  }
   // Add the rest of the code.
-  result->append(last_top_level_line);
+  result->append(precision_insertion_ptr);
 }
 
 void PlatformSanitizeShaderSource(const char *source,

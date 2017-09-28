@@ -208,9 +208,25 @@ Mesh *AssetManager::FindMesh(const char *filename) {
 Mesh *AssetManager::LoadMesh(const char *filename, bool async) {
   auto mesh = FindMesh(filename);
   if (mesh) return mesh;
-  mesh = new Mesh(filename, [&](const char *filename) {
-    return LoadMaterial(filename, async);
-  });
+
+  auto async_flags = (async ? kTextureFlagsLoadAsync : kTextureFlagsNone);
+  auto load_texture_fn = [this, async_flags](const char *filename,
+                                             TextureFormat format,
+                                             TextureFlags flags) -> Texture * {
+    auto tex = LoadTexture(filename, format, flags | async_flags);
+    tex->set_scale(texture_scale_);
+    return tex;
+  };
+
+  mesh =
+      new Mesh(filename, [this, async, load_texture_fn](const char *filename,
+                                                 const matdef::Material *def) {
+        if (def) {
+          return Material::LoadFromMaterialDef(def, load_texture_fn);
+        } else {
+          return LoadMaterial(filename, async);
+        }
+      });
   return LoadOrQueue(mesh, mesh_map_, async, nullptr /* alias */);
 }
 
