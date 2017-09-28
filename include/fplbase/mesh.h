@@ -349,6 +349,9 @@ class Mesh : public AsyncAsset {
   void ParseInterleavedVertexData(const void *meshdef_buffer,
                                   InterleavedVertexData *ivd);
 
+  // Init mesh from MeshDef FlatBuffer.
+  bool InitFromMeshDef(const void *meshdef_buffer);
+
   MATHFU_DEFINE_CLASS_SIMD_AWARE_NEW_DELETE
 
  private:
@@ -365,9 +368,6 @@ class Mesh : public AsyncAsset {
   // Free all resources in the platform-dependent data (i.e. everything in the
   // impl_ class). Implemented in platform-dependent code.
   void ClearPlatformDependent();
-
-  // Init mesh from MeshDef FlatBuffer.
-  bool InitFromMeshDef(const void *meshdef_buffer);
 
   // Backend-specific create and destroy calls. These just call new and delete
   // on the platform-specific MeshImpl structs.
