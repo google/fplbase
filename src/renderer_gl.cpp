@@ -652,16 +652,28 @@ void Renderer::ScissorOff() {
   render_state_.scissor_state.enabled = false;
 }
 
+void Renderer::RenderSubMeshHelper(Mesh *mesh, size_t index,
+                                   bool ignore_material, size_t instances) {
+  assert(index < mesh->indices_.size());
+
+  auto submesh = mesh->indices_.begin() + index;
+
+  if (!ignore_material) {
+    submesh->mat->Set(*this);
+  }
+
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(submesh->ibo)));
+  DrawElement(submesh->count, static_cast<int32_t>(instances), submesh->index_type,
+              mesh->primitive_, base_->supports_instancing_);
+  GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+}
+
 void Renderer::Render(Mesh *mesh, bool ignore_material, size_t instances) {
   BindAttributes(mesh->impl_->vao, mesh->impl_->vbo, mesh->format_,
                  mesh->vertex_size_);
   if (!mesh->indices_.empty()) {
-    for (auto it = mesh->indices_.begin(); it != mesh->indices_.end(); ++it) {
-      if (!ignore_material) it->mat->Set(*this);
-      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GlBufferHandle(it->ibo)));
-      DrawElement(it->count, static_cast<int32_t>(instances), it->index_type,
-                  mesh->primitive_, base_->supports_instancing_);
-      GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    for (size_t i = 0; i < mesh->indices_.size(); ++i) {
+      RenderSubMeshHelper(mesh, i, ignore_material, instances);
     }
   } else {
     GL_CALL(glDrawArrays(mesh->primitive_, 0,
@@ -682,6 +694,7 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
     SetViewport(viewport[i]);
     SetShader(shader);
   };
+
   if (!mesh->indices_.empty()) {
     for (auto it = mesh->indices_.begin(); it != mesh->indices_.end(); ++it) {
       if (!ignore_material) it->mat->Set(*this);
@@ -699,6 +712,20 @@ void Renderer::RenderStereo(Mesh *mesh, const Shader *shader,
       GL_CALL(glDrawArrays(mesh->primitive_, 0,
                            static_cast<int32_t>(mesh->num_vertices_)));
     }
+  }
+  UnbindAttributes(mesh->impl_->vao, mesh->format_);
+}
+
+void Renderer::RenderSubMesh(Mesh *mesh, size_t submesh, bool ignore_material,
+                             size_t instances) {
+  BindAttributes(mesh->impl_->vao, mesh->impl_->vbo, mesh->format_,
+                 mesh->vertex_size_);
+  if (!mesh->indices_.empty()) {
+    RenderSubMeshHelper(mesh, submesh, ignore_material, instances);
+  } else {
+    assert(submesh == 0);
+    GL_CALL(glDrawArrays(mesh->primitive_, 0,
+                         static_cast<int32_t>(mesh->num_vertices_)));
   }
   UnbindAttributes(mesh->impl_->vao, mesh->format_);
 }

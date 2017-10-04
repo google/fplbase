@@ -344,6 +344,18 @@ class Renderer {
                     const mathfu::vec3 *camera_position,
                     bool ignore_material = false, size_t instances = 1);
 
+  /// @brief Render a submesh.
+  ///
+  /// Call to render a submesh. Uniforms must have been set before
+  /// calling this. For instanced rendering, pass in a value >1 (needs OpenGL
+  /// ES 3.0 to work).
+  ///
+  /// @param mesh The mesh object containing the submesh to be rendered.
+  /// @param ignore_material Whether to ignore the mesh's defined material.
+  /// @param instances The number of instances to be rendered.
+  void RenderSubMesh(Mesh *mesh, size_t submesh, bool ignore_material = false,
+                     size_t instances = 1);
+
   /// @brief Shader uniform: model_view_projection
   /// @return Returns the current model view projection being used.
   const mathfu::mat4 &model_view_projection() const {
@@ -631,6 +643,8 @@ class Renderer {
   void SetDepthState(const DepthState &depth_state);
   void SetScissorState(const ScissorState &scissor_state);
   void SetStencilState(const StencilState &stencil_state);
+  void RenderSubMeshHelper(Mesh *mesh, size_t index, bool ignore_material,
+                           size_t instances);
 
   // Platform-dependent data.
   RendererImpl* impl_;
