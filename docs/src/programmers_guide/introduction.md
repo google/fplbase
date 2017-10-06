@@ -96,17 +96,19 @@ program is as follows:
     mathfu::mat4::Ortho(-1.0, 1.0, -1.5, 1.5, -1.0, 1.0));
   ~~~
   Creates a 2D coordinate space with (0,0) in the center and (3,2) in size.
-* Now use the shader you've created by calling `Set` on it. This will make it
-  active, and also upload any renderer variables (such as
+* Now use the shader you've created by calling `SetShader` on the renderer.
+  This will make it active, and also upload any renderer variables (such as
   `model_view_projection`), ready to be used by the shader.
   ~~~{.cpp}
-  shader->Set(renderer);
+  renderer.SetShader(shader);
   ~~~
 * Finally, you can now render something! Lets use use convenient helper
   function that gets us a quad (or 2 sprite):
   ~~~{.cpp}
-  Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
-                           mathfu::vec3( 0.5f,  0.5f, 0));
+  RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0.0f),
+                     mathfu::vec3(0.5f, 0.5, 0.0f),
+                     mathfu::vec2(0.0f, 0.0f),
+                     mathfu::vec2(1.0f, 1.0f));
   ~~~
   For more complex meshes, see below.
 
@@ -141,10 +143,12 @@ while (!input.exit_requested()) {
   renderer.set_model_view_projection(
     mathfu::mat4::Ortho(-1.0, 1.0, -1.5, 1.5, -1.0, 1.0));
 
-  shader->Set(renderer);
+  renderer.SetShader(shader);
 
-  Mesh::RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0),
-                           mathfu::vec3( 0.5f,  0.5f, 0));
+  RenderAAQuadAlongX(mathfu::vec3(-0.5f, -0.5f, 0.0f),
+                     mathfu::vec3(0.5f, 0.5, 0.0f),
+                     mathfu::vec2(0.0f, 0.0f),
+                     mathfu::vec2(1.0f, 1.0f));
 }
 
 renderer.ShutDown();
@@ -293,8 +297,8 @@ const float vertices[] = {
   0.5f, -.5f, 0.0f
 };
 
-fpl::Mesh::RenderArray(fpl::Mesh::Primitive::kTriangles, 3, format,
-                       sizeof(float) * 3, vertices, indices);
+fpl::RenderArray(fpl::Mesh::Primitive::kTriangles, 3, format,
+                 sizeof(float) * 3, vertices, indices);
 ~~~
 
 `format` specifies what kind of attributes our vertex data contains, here only
@@ -315,7 +319,7 @@ manually.
 
 Inside your rendering loop, now all you have to do is call:
 ~~~{.cpp}
-mesh->Render(renderer);
+renderer.Render(mesh);
 ~~~
 This will render all surfaces contained, set all textures etc.
 
