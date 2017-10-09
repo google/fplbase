@@ -98,7 +98,7 @@ bool Mesh::IsValidFormat(const Attribute *attributes) {
   bool seen[kMaxAttributes] = {false};
   int count = 0;
   for (;; attributes++) {
-    int index = 0;
+    size_t index = 0;
     // clang-format off
     switch (*attributes) {
       case kPosition3f:     index = kAttributePosition;      break;
