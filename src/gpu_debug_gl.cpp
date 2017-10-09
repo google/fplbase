@@ -137,6 +137,10 @@ bool ValidateGlPointState(const PointState& state) {
   }
 #endif  // FPLBASE_GLES
 
+  // "Use" the bool value in case none of the conditions were hit, to avoid
+  // compilation errors.
+  (void)bool_value;
+
   return true;
 }
 
