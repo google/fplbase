@@ -103,6 +103,43 @@ bool ValidateGlDepthState(const DepthState& state) {
   return true;
 }
 
+bool ValidateGlPointState(const PointState& state) {
+  GLboolean bool_value;
+
+#ifndef FPLBASE_GLES
+#ifdef GL_POINT_SPRITE
+  GL_CALL(glGetBooleanv(GL_POINT_SPRITE, &bool_value));
+  if (GlToBool(bool_value) != state.point_sprite_enabled) {
+    assert(false);
+    return false;
+  }
+#endif  // GL_POINT_SPRITE
+
+#ifdef GL_PROGRAM_POINT_SIZE
+  GL_CALL(glGetBooleanv(GL_PROGRAM_POINT_SIZE, &bool_value));
+  if (GlToBool(bool_value) != state.point_sprite_enabled) {
+    assert(false);
+    return false;
+  }
+#elif defined(GL_VERTEX_PROGRAM_POINT_SIZE)
+  GL_CALL(glGetBooleanv(GL_VERTEX_PROGRAM_POINT_SIZE, &bool_value));
+  if (GlToBool(bool_value) != state.point_sprite_enabled) {
+    assert(false);
+    return false;
+  }
+#endif  // GL_PROGRAM_POINT_SIZE
+
+  float float_value;
+  GL_CALL(glGetFloatv(GL_POINT_SIZE, &float_value));
+  if (float_value != state.point_size) {
+    assert(false);
+    return false;
+  }
+#endif  // FPLBASE_GLES
+
+  return true;
+}
+
 bool ValidateGlStencilState(const StencilState& state) {
   GLboolean bool_value;
   GLint int_value;
@@ -237,6 +274,10 @@ bool ValidateRenderState(const RenderState& render_state) {
   }
 
   if (!ValidateGlDepthState(render_state.depth_state)) {
+    return false;
+  }
+
+  if (!ValidateGlPointState(render_state.point_state)) {
     return false;
   }
 

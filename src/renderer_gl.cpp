@@ -735,6 +735,7 @@ void Renderer::SetRenderState(const RenderState &render_state) {
   SetBlendState(render_state.blend_state);
   SetCullState(render_state.cull_state);
   SetDepthState(render_state.depth_state);
+  SetPointState(render_state.point_state);
   SetScissorState(render_state.scissor_state);
   SetStencilState(render_state.stencil_state);
   SetViewport(render_state.viewport);
@@ -828,6 +829,47 @@ void Renderer::SetDepthState(const DepthState &depth_state) {
   render_state_.depth_state = depth_state;
 
   depth_function_ = kDepthFunctionUnknown;
+}
+
+void Renderer::SetPointState(const PointState &point_state) {
+#ifndef FPLBASE_GLES
+#ifdef GL_POINT_SPRITE
+  if (render_state_.point_state.point_sprite_enabled !=
+      point_state.point_sprite_enabled) {
+    if (point_state.point_sprite_enabled) {
+      GL_CALL(glEnable(GL_POINT_SPRITE));
+    } else {
+      GL_CALL(glDisable(GL_POINT_SPRITE));
+    }
+  }
+#endif  // GL_POINT_SPRITE
+
+#ifdef GL_PROGRAM_POINT_SIZE
+  if (render_state_.point_state.program_point_size_enabled !=
+      point_state.program_point_size_enabled) {
+    if (point_state.program_point_size_enabled) {
+      GL_CALL(glEnable(GL_PROGRAM_POINT_SIZE));
+    } else {
+      GL_CALL(glDisable(GL_PROGRAM_POINT_SIZE));
+    }
+  }
+#elif defined(GL_VERTEX_PROGRAM_POINT_SIZE)
+  if (render_state_.point_state.program_point_size_enabled !=
+      point_state.program_point_size_enabled) {
+    if (point_state.program_point_size_enabled) {
+      GL_CALL(glEnable(GL_VERTEX_PROGRAM_POINT_SIZE));
+    } else {
+      GL_CALL(glDisable(GL_VERTEX_PROGRAM_POINT_SIZE));
+    }
+  }
+#endif  // GL_PROGRAM_POINT_SIZE
+
+  if (render_state_.point_state.point_size != point_state.point_size) {
+    GL_CALL(glPointSize(point_state.point_size));
+  }
+#endif  // FPLBASE_GLES
+
+  render_state_.point_state = point_state;
 }
 
 void Renderer::SetScissorState(const ScissorState &scissor_state) {

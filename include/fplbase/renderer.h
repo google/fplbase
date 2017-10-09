@@ -641,6 +641,7 @@ class Renderer {
   void SetBlendState(const BlendState &blend_state);
   void SetCullState(const CullState &cull_state);
   void SetDepthState(const DepthState &depth_state);
+  void SetPointState(const PointState &point_state);
   void SetScissorState(const ScissorState &scissor_state);
   void SetStencilState(const StencilState &stencil_state);
   void RenderSubMeshHelper(Mesh *mesh, size_t index, bool ignore_material,
