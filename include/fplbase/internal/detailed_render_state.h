@@ -92,6 +92,26 @@ struct DepthState {
       : function(kRenderAlways), test_enabled(false), write_enabled(true) {}
 };
 
+struct PointState {
+  /// If enabled, calculate texture coordinates for points based on texture
+  /// environment and point parameter settings. Otherwise texture coordinates
+  /// are constant across points.
+  bool point_sprite_enabled;
+  /// If enabled and a vertex or geometry shader is active, then the derived
+  /// point size is taken from the (potentially clipped) shader builtin
+  /// gl_PointSize and clamped to the implementation-dependent point size range.
+  /// If disabled, then the point size will be derived from
+  /// |program_point_size_enabled|.
+  bool program_point_size_enabled;
+  /// Point size to be used if |program_point_size_enabled| is disabled.
+  float point_size;
+
+  PointState()
+      : point_sprite_enabled(false),
+        program_point_size_enabled(false),
+        point_size(1.0f) {}
+};
+
 struct StencilFunction {
   RenderFunction function;
   int ref;
@@ -148,6 +168,7 @@ struct RenderState {
   BlendState blend_state;
   CullState cull_state;
   DepthState depth_state;
+  PointState point_state;
   ScissorState scissor_state;
   StencilState stencil_state;
 

@@ -157,6 +157,21 @@ Shader::ShaderSourcePair *Shader::LoadSourceFile() {
   return nullptr;
 }
 
+static void BreakAndLogError(const char *cstr) {
+  const size_t kMaxLength = 1024;  // Default Android log limit.
+  std::string str = cstr;
+  while (str.length() > kMaxLength) {
+    const size_t last_newline = str.find_last_of('\n', kMaxLength);
+    const size_t truncate_pos =
+        last_newline == std::string::npos ? kMaxLength : last_newline;
+    LogError(kError, str.substr(0, truncate_pos).c_str());
+    str.erase(0, truncate_pos);
+  }
+  if (!str.empty()) {
+    LogError(kError, str.c_str());
+  }
+}
+
 Shader *Shader::LoadFromShaderDef(const char *filename) {
   std::string flatbuf;
   if (LoadFile(filename, &flatbuf)) {
@@ -177,11 +192,11 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
         }
       }
       LogError(kError, "VS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->vertex_shader()->c_str());
+      BreakAndLogError(shaderdef->vertex_shader()->c_str());
       LogError(kError, "PS:  -----------------------------------");
-      LogError(kError, "%s", shaderdef->fragment_shader()->c_str());
+      BreakAndLogError(shaderdef->fragment_shader()->c_str());
       LogError(kError, "----------------------------------------");
-      LogError(kError, "%s", RendererBase::Get()->last_error().c_str());
+      BreakAndLogError(RendererBase::Get()->last_error().c_str());
     }
     return shader;
   }

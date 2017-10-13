@@ -97,8 +97,8 @@ unsigned int RenderTargetTextureFormatToInternalFormatGl(
       GL_RGB,    // kRenderTargetTextureFormatRGB8,
       GL_RGBA,   // kRenderTargetTextureFormatRGBA8,
 
-      GL_DEPTH_COMPONENT,  // kRenderTargetTextureFormatDepth16F,
-      GL_DEPTH_COMPONENT   // kRenderTargetTextureFormatDepth32F,
+      GL_DEPTH_COMPONENT16,  // kRenderTargetTextureFormatDepth16,
+      GL_DEPTH_COMPONENT32F  // kRenderTargetTextureFormatDepth32F,
   };
 
   static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==
@@ -123,7 +123,7 @@ unsigned int RenderTargetTextureFormatToFormatGl(
       GL_RGB,   // kRenderTargetTextureFormatRGB8,
       GL_RGBA,  // kRenderTargetTextureFormatRGBA8,
 
-      GL_DEPTH_COMPONENT,  // kRenderTargetTextureFormatDepth16F,
+      GL_DEPTH_COMPONENT,  // kRenderTargetTextureFormatDepth16,
       GL_DEPTH_COMPONENT   // kRenderTargetTextureFormatDepth32F,
   };
 
@@ -144,8 +144,8 @@ unsigned int RenderTargetTextureFormatToTypeGl(
       GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatRGB8,
       GL_UNSIGNED_BYTE,  // kRenderTargetTextureFormatRGBA8,
 
-      GL_HALF_FLOAT,  // kRenderTargetTextureFormatDepth16F,
-      GL_FLOAT        // kRenderTargetTextureFormatDepth32F,
+      GL_UNSIGNED_SHORT,  // kRenderTargetTextureFormatDepth16,
+      GL_FLOAT            // kRenderTargetTextureFormatDepth32F,
   };
 
   static_assert(FPL_ARRAYSIZE(kRenderTargetTextureFormatToTypeGlTable) ==

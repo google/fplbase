@@ -24,6 +24,12 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
                               RenderTargetTextureFormat texture_format,
                               DepthStencilFormat depth_stencil_format) {
   assert(!initialized());
+
+  GLint original_frame_buffer = 0;
+  GLint original_render_buffer = 0;
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &original_frame_buffer);
+  glGetIntegerv(GL_RENDERBUFFER_BINDING, &original_render_buffer);
+
   dimensions_ = dimensions;
 
   // Set up the framebuffer itself:
@@ -41,7 +47,7 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
 
   // Is the texture format a depth format?
   const bool is_depth_texture =
-      (texture_format >= kRenderTargetTextureFormatDepth16F &&
+      (texture_format >= kRenderTargetTextureFormatDepth16 &&
        texture_format <= kRenderTargetTextureFormatDepth32F);
 
   // The color buffer:
@@ -111,8 +117,8 @@ void RenderTarget::Initialize(const mathfu::vec2i& dimensions,
   // Be good citizens and clean up:
   // Bind the framebuffer:
   GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-  GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+  GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, original_frame_buffer));
+  GL_CALL(glBindRenderbuffer(GL_RENDERBUFFER, original_render_buffer));
 
   initialized_ = true;
 }

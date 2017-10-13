@@ -37,7 +37,7 @@ enum RenderTargetTextureFormat {
   kRenderTargetTextureFormatRGBA8,  /// 8-bits red, green, blue, alpha.
 
   // Depth Formats:
-  kRenderTargetTextureFormatDepth16F,  /// 16-bits depth texture format.
+  kRenderTargetTextureFormatDepth16,   /// 16-bits depth texture format.
   kRenderTargetTextureFormatDepth32F,  /// 32-bits depth texture format.
 
   kRenderTargetTextureFormatNone,  /// No texture buffer.
