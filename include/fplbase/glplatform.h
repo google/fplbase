@@ -44,6 +44,9 @@
 #define FPLBASE_GLES
 #include <EGL/egl.h>
 #include <android/api-level.h>
+#ifndef GL_TEXTURE_EXTERNAL_OES
+#define GL_TEXTURE_EXTERNAL_OES 0x8D65
+#endif
 #if __ANDROID_API__ >= 18
 #include <GLES3/gl3.h>
 #else  // __ANDROID_API__ < 18
