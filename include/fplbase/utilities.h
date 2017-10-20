@@ -328,6 +328,9 @@ std::string AndroidGetViewIntentData();
 /// `AAssetManager`.
 /// @note Must call this function once before loading any assets.
 void SetAAssetManager(AAssetManager *manager);
+/// @brief Returns the set Android asset manager.
+/// @return Returns the AAssetManager that has been previously set.
+AAssetManager *GetAAssetManager();
 /// @brief Set global Java virtual machine object.
 /// @note This method should be called only once.
 void AndroidSetJavaVM(JavaVM* vm, jint jni_version);

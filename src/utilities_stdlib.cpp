@@ -253,6 +253,8 @@ JNIEnv* AndroidGetJNIEnv() {
 
 void SetAAssetManager(AAssetManager *manager) { g_asset_manager = manager; }
 
+AAssetManager *GetAAssetManager() { return g_asset_manager; }
+
 // Initialize the Vsync mutexes.  Called by android lifecycle events.
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_fpl_fplbase_FPLActivity_nativeInitVsync(JNIEnv *env,
