@@ -17,6 +17,7 @@
 #include "precompiled.h"
 #include "fplbase/renderer_hmd.h"
 #include "fplbase/utilities.h"
+#include "fplbase/gpu_debug.h"
 
 using mathfu::vec2i;
 
@@ -98,7 +99,7 @@ void HeadMountedDisplayRenderStart(
     // Verify that the Cardboard API has not changed the rendering state.
     // If we hit this assert, we'll have to set the appropriate state to
     // `unknown` here.
-    assert(ValidateRenderState());
+    assert(ValidateRenderState(renderer->GetRenderState()));
   }
   renderer->ClearFrameBuffer(clear_color);
   renderer->set_color(mathfu::kOnes4f);
@@ -128,7 +129,7 @@ void HeadMountedDisplayRenderEnd(Renderer* renderer, bool use_undistortion) {
     // Verify that the Cardboard API has not changed the rendering state.
     // If we hit this assert, we'll have to set the appropriate state to
     // `unknown` here.
-    assert(ValidateRenderState());
+    assert(ValidateRenderState(renderer->GetRenderState()));
     renderer->SetBlendMode(kBlendModeOff);
   }
 }
