@@ -108,6 +108,14 @@ static vec2i GetBlockSize(int internal_format) {
 TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
                                      TextureFormat texture_format,
                                      TextureFormat desired,
+                                     TextureFlags flags) {
+  return CreateTexture(buffer, size, texture_format, desired, flags, nullptr);
+}
+
+// static
+TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
+                                     TextureFormat texture_format,
+                                     TextureFormat desired,
                                      TextureFlags flags, TextureImpl *impl) {
   (void)impl;
   GLenum tex_type = GL_TEXTURE_2D;
