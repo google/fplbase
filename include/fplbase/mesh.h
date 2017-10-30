@@ -346,8 +346,8 @@ class Mesh : public AsyncAsset {
   };
 
   /// @brief: Load vertex data from a FlatBuffer into CPU memory first.
-  void ParseInterleavedVertexData(const void *meshdef_buffer,
-                                  InterleavedVertexData *ivd);
+  static void ParseInterleavedVertexData(const void *meshdef_buffer,
+                                         InterleavedVertexData *ivd);
 
   // Init mesh from MeshDef FlatBuffer.
   bool InitFromMeshDef(const void *meshdef_buffer);
