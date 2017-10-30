@@ -26,16 +26,30 @@ using mathfu::vec4i;
 
 namespace fplbase {
 
-void RenderArray(Mesh::Primitive primitive, int index_count,
-                 const Attribute *format, int vertex_size, const void *vertices,
-                 const unsigned short *indices) {
+static void DrawElements(Mesh::Primitive primitive, int index_count,
+                         const Attribute *format, int vertex_size,
+                         const void *vertices, const void *indices,
+                         GLenum gl_index_type) {
   SetAttributes(0 /* vbo */, format, vertex_size,
                 reinterpret_cast<const char *>(vertices));
   GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
   auto gl_primitive = GetPrimitiveTypeFlags(primitive);
-  GL_CALL(
-      glDrawElements(gl_primitive, index_count, GL_UNSIGNED_SHORT, indices));
+  GL_CALL(glDrawElements(gl_primitive, index_count, gl_index_type, indices));
   UnSetAttributes(format);
+}
+
+void RenderArray(Mesh::Primitive primitive, int index_count,
+                 const Attribute *format, int vertex_size, const void *vertices,
+                 const unsigned short *indices) {
+  DrawElements(primitive, index_count, format, vertex_size, vertices, indices,
+               GL_UNSIGNED_SHORT);
+}
+
+void RenderArray(Mesh::Primitive primitive, int index_count,
+                 const Attribute *format, int vertex_size, const void *vertices,
+                 const unsigned int *indices) {
+  DrawElements(primitive, index_count, format, vertex_size, vertices, indices,
+               GL_UNSIGNED_INT);
 }
 
 void RenderArray(Mesh::Primitive primitive, int vertex_count,
