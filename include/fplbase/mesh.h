@@ -162,6 +162,11 @@ class Mesh : public AsyncAsset {
   void GatherShaderTransforms(const mathfu::AffineTransform *bone_transforms,
                               mathfu::AffineTransform *shader_transforms) const;
 
+  /// @brief Returns the number of index buffer objects in the mesh.
+  ///
+  /// @return Returns the number of index buffer objects in the mesh.
+  size_t GetNumIndexBufferObjects() const;
+
   /// @brief Get the material associated with the IBO at the given index.
   ///
   /// @param i The index of the IBO.

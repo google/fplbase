@@ -394,4 +394,8 @@ void Mesh::Clear() {
   }
 }
 
+size_t Mesh::GetNumIndexBufferObjects() const {
+  return indices_.size();
+}
+
 }  // namespace fplbase
