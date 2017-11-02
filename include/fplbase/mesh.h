@@ -173,6 +173,8 @@ class Mesh : public AsyncAsset {
   /// @return Returns the material of the corresponding IBO.
   Material *GetMaterial(int i) { return indices_[i].mat; }
 
+  const Material *GetMaterial(int i) const { return indices_[i].mat; }
+
   /// @brief Define the vertex buffer format.
   ///
   /// `format` must have length <= kMaxAttributes, including `kEND`.

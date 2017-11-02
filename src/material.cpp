@@ -110,6 +110,8 @@ Material *Material::LoadFromMaterialDef(const char *filename,
   if (!mat) {
     RendererBase::Get()->set_last_error(std::string("Couldn\'t load: ")
                                       + filename);
+  } else {
+    mat->set_filename(filename);
   }
   return mat;
 }
