@@ -47,27 +47,23 @@ namespace fplbase {
 
 bool LoadFileRaw(const char *filename, std::string *dest) {
 #if defined(__ANDROID__)
-  // Don't try to load absolute file paths through the asset manager.
-  if (filename[0] != '/') {
-    if (!g_asset_manager) {
-      LogError(kError,
-               "Need to call SetAssetManager() once before calling LoadFile()");
-      assert(false);
-    }
-    AAsset *asset =
-        AAssetManager_open(g_asset_manager, filename, AASSET_MODE_STREAMING);
-    if (!asset) {
-      LogError(kError, "LoadFile fail on %s", filename);
-      return false;
-    }
-    off_t len = AAsset_getLength(asset);
-    dest->assign(len, 0);
-    int rlen = AAsset_read(asset, &(*dest)[0], len);
-    AAsset_close(asset);
-    return len == rlen && len > 0;
+  if (!g_asset_manager) {
+    LogError(kError,
+             "Need to call SetAssetManager() once before calling LoadFile()");
+    assert(false);
   }
-#endif  // defined(__ANDROID__)
-
+  AAsset *asset =
+      AAssetManager_open(g_asset_manager, filename, AASSET_MODE_STREAMING);
+  if (!asset) {
+    LogError(kError, "LoadFile fail on %s", filename);
+    return false;
+  }
+  off_t len = AAsset_getLength(asset);
+  dest->assign(len, 0);
+  int rlen = AAsset_read(asset, &(*dest)[0], len);
+  AAsset_close(asset);
+  return len == rlen && len > 0;
+#else
   FILE *fd = fopen(filename, "rb");
   if (fd == NULL) {
     LogError(kError, "LoadFile fail on %s", filename);
@@ -83,6 +79,7 @@ bool LoadFileRaw(const char *filename, std::string *dest) {
   size_t rlen = fread(&(*dest)[0], 1, len, fd);
   fclose(fd);
   return len == rlen && len > 0;
+#endif
 }
 
 bool SaveFile(const char *filename, const void *data, size_t size) {
