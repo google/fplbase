@@ -117,7 +117,7 @@ bool Mesh::IsValidFormat(const Attribute *attributes) {
     // clang-format on
     assert(index < FPL_ARRAYSIZE(seen));
     if (seen[index] || count == kMaxAttributes) {
-      return false;
+      break;
     }
     seen[index] = true;
     ++count;
