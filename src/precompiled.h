@@ -53,7 +53,7 @@
 
 #include "fplbase/glplatform.h"
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__clang__)
 #pragma hdrstop
 #endif  //  _WIN32
 
