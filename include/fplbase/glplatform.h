@@ -63,6 +63,10 @@
 #define NOMINMAX
 #endif  // !defined(NOMINMAX)
 #include <windows.h>
+// Windows GDI defines ERROR.  Prevent it leaking from this header.
+#ifdef ERROR
+#undef ERROR
+#endif
 #endif  // !defined(_WIN32)
 
 #include <GL/gl.h>
