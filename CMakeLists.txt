@@ -211,7 +211,6 @@ set(fplbase_common_SRCS
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
-  include/fplbase/renderer_common.h
   include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/render_utils.h
@@ -220,6 +219,7 @@ set(fplbase_common_SRCS
   include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
+  include/fplbase/viewport.h
   schemas
   src/asset_manager.cpp
   src/gpu_debug_gl.cpp

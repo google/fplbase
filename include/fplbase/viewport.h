@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FPLBASE_RENDERER_COMMON_H
-#define FPLBASE_RENDERER_COMMON_H
+#ifndef FPLBASE_VIEWPORT_H
+#define FPLBASE_VIEWPORT_H
 
 #include "mathfu/glsl_mappings.h"
 
@@ -24,4 +24,4 @@ typedef mathfu::recti Viewport;
 
 }  // namespace fplbase
 
-#endif  // FPLBASE_RENDERER_COMMON_H
+#endif  // FPLBASE_VIEWPORT_H
