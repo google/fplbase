@@ -45,6 +45,30 @@ static AAssetManager *g_asset_manager = nullptr;
 
 namespace fplbase {
 
+bool FileExistsRaw(const char *filename) {
+#if defined(__ANDROID__)
+  if (!g_asset_manager) {
+    LogError(kError,
+             "Need to call SetAssetManager() once before calling FileExists()");
+    assert(false);
+  }
+  AAsset *asset =
+      AAssetManager_open(g_asset_manager, filename, AASSET_MODE_STREAMING);
+  if (!asset) {
+    return false;
+  }
+  AAsset_close(asset);
+  return true;
+#else
+  FILE *fd = fopen(filename, "rb");
+  if (fd == NULL) {
+    return false;
+  }
+  fclose(fd);
+  return true;
+#endif
+}
+
 bool LoadFileRaw(const char *filename, std::string *dest) {
 #if defined(__ANDROID__)
   if (!g_asset_manager) {

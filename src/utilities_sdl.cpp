@@ -38,6 +38,15 @@ static_assert(kInput == static_cast<LogCategory>(SDL_LOG_CATEGORY_INPUT),
 static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
               "update kCustom");
 
+bool FileExistsRaw(const char *filename) {
+  auto handle = SDL_RWFromFile(filename, "rb");
+  if (!handle) {
+    return false;
+  }
+  SDL_RWclose(handle);
+  return true;
+}
+
 bool LoadFileRaw(const char *filename, std::string *dest) {
   auto handle = SDL_RWFromFile(filename, "rb");
   if (!handle) {

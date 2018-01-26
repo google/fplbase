@@ -109,12 +109,17 @@ struct HighPerformanceParams {
 };
 #endif
 
+/// @brief Checks if a file exists.
+/// @param[in] filename A UTF-8 C-string representing the file to check.
+/// @return Returns `true` if the file exists, false otherwise.
+bool FileExistsRaw(const char *filename);
+
 /// @brief Loads a file and returns its contents via string pointer.
 /// @param[in] filename A UTF-8 C-string representing the file to load.
 /// @param[out] dest A pointer to a `std::string` to capture the output of
 /// the file.
-/// @return Returns `false` if the file couldn't be loaded (usually means it's
-/// not present, but can also mean there was a read error).
+/// @return Returns `false` if the file couldn't be loaded (usually means
+/// it's not present, but can also mean there was a read error).
 bool LoadFileRaw(const char *filename, std::string *dest);
 
 /// @brief Loads a file and returns its contents via string pointer.
