@@ -91,6 +91,11 @@ Texture::Texture(const char *filename, TextureFormat format, TextureFlags flags)
       is_external_(false) {}
 
 Texture::~Texture() {
+  if (data_) {
+    free(const_cast<uint8_t *>(data_));
+    data_ = nullptr;
+  }
+
   Delete();
   DestroyTextureImpl(impl_);
 }
