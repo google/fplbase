@@ -18,15 +18,13 @@
 #include <functional>
 #include <string>
 #include "fplbase/config.h"  // Must come first.
+#include "fplbase/file_utilities.h"
+#include "fplbase/logging.h"
 
 #include "mathfu/utilities.h"
 
 #if defined(__ANDROID__)
 #include <jni.h>
-#if defined(FPLBASE_BACKEND_STDLIB)
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#endif  // defined(FPLBASE_BACKEND_STDLIB)
 #endif
 
 namespace fplbase {
@@ -36,35 +34,6 @@ namespace fplbase {
 /// to people using the library:
 /// @addtogroup fplbase_utilities
 /// @{
-
-/// @brief Constants for use with LogInfo, LogError, etc.
-#ifdef FPLBASE_BACKEND_SDL
-enum LogCategory {
-  kApplication = 0,  // SDL_LOG_CATEGORY_APPLICATION
-  kError = 1,        // SDL_LOG_CATEGORY_ERROR
-  kSystem = 3,       // SDL_LOG_CATEGORY_SYSTEM
-  kAudio = 4,        // SDL_LOG_CATEGORY_AUDIO
-  kVideo = 5,        // SDL_LOG_CATEGORY_VIDEO
-  kRender = 6,       // SDL_LOG_CATEGORY_RENDER
-  kInput = 7,        // SDL_LOG_CATEGORY_INPUT
-  kCustom = 19,      // SDL_LOG_CATEGORY_CUSTOM
-};
-#else
-enum LogCategory {
-  kApplication = 0,
-  kError,
-  kSystem,
-  kAudio,
-  kVideo,
-  kRender,
-  kInput,
-  kCustom
-};
-#endif
-
-/// @brief Called by `LoadFile()`.
-typedef std::function<bool(const char *filename, std::string *dest)>
-    LoadFileFunction;
 
 /// @brief Enum for use with the `Set/GetPerformanceMode()` functions.
 enum PerformanceMode {
@@ -108,53 +77,6 @@ struct HighPerformanceParams {
   double time_between_presses;
 };
 #endif
-
-/// @brief Checks if a file exists.
-/// @param[in] filename A UTF-8 C-string representing the file to check.
-/// @return Returns `true` if the file exists, false otherwise.
-bool FileExistsRaw(const char *filename);
-
-/// @brief Loads a file and returns its contents via string pointer.
-/// @param[in] filename A UTF-8 C-string representing the file to load.
-/// @param[out] dest A pointer to a `std::string` to capture the output of
-/// the file.
-/// @return Returns `false` if the file couldn't be loaded (usually means
-/// it's not present, but can also mean there was a read error).
-bool LoadFileRaw(const char *filename, std::string *dest);
-
-/// @brief Loads a file and returns its contents via string pointer.
-/// @details In contrast to `LoadFileRaw()`, this method simply calls the
-/// function set by `SetLoadFileFunction()` to read the specified file.
-/// @param[in] filename A UTF-8 C-string representing the file to load.
-/// @param[out] dest A pointer to a `std::string` to capture the output of
-/// the file.
-/// @return Returns `false` if the file couldn't be loaded (usually means it's
-/// not present, but can also mean there was a read error).
-bool LoadFile(const char *filename, std::string *dest);
-
-/// @brief Set the function called by `LoadFile()`.
-/// @param[in] load_file_function The function to be used by `LoadFile()` to
-/// read files.
-/// @note If the specified function is nullptr, `LoadFileRaw()` is set as the
-/// default function.
-/// @return Returns the function previously set by `LoadFileFunction()`.
-LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function);
-
-/// @brief Save a string to a file, overwriting the existing contents.
-/// @param[in] filename A UTF-8 C-string representing the file to save to.
-/// @param[in] data A const reference to a `std::string` containing the data
-/// that should be written to the file specified by `filename`.
-/// @return Returns `false` if the file could not be written.
-bool SaveFile(const char *filename, const std::string &data);
-
-/// @brief Save a string to a file, overwriting the existing contents.
-/// @param[in] filename A UTF-8 C-string representing the file to save to.
-/// @param[in] data A const void pointer to the data that should be written to
-/// the file specified by `filename`.
-/// @param[in] size The size of the `data` array to write to the file specified
-/// by `filename`.
-/// @return Returns `false` if the file could not be written.
-bool SaveFile(const char *filename, const void *data, size_t size);
 
 /// @brief Load preference settings.
 ///
@@ -209,15 +131,6 @@ const void *MapFile(const char *filename, int32_t offset, int32_t *size);
 /// @param[in] size A size to unmap.
 void UnmapFile(const void *file, int32_t size);
 
-/// @brief Search and change to a given directory.
-/// @param binary_dir A C-string corresponding to the current directory
-/// to start searching from.
-/// @param target_dir A C-string corresponding to the desired directory
-/// that should be changed to, if found.
-/// @return Returns `true` if it's found, `false` otherwise.
-bool ChangeToUpstreamDir(const char *const binary_dir,
-                         const char *const target_dir);
-
 /// @brief check if 16bpp MipMap is supported.
 /// @return Return `true` if 16bpp MipMap generation is supported.
 /// @note Basically always true, except on certain android devices.
@@ -226,50 +139,6 @@ bool MipmapGeneration16bppSupported();
 /// @brief Get the system's RAM size.
 /// @return Returns the system RAM size in MB.
 int32_t GetSystemRamSize();
-
-/// @brief Log a format string with `Info` priority to the console.
-/// @param[in] fmt A C-string format string.
-/// @param[in] args A variable length argument list for the format
-/// string `fmt`.
-void LogInfo(const char *fmt, va_list args);
-
-/// @brief Log a format string with `Error` priority to the console.
-/// @param[in] fmt A C-string format string.
-/// @param[in] args A variable length argument list for the format
-/// string `fmt`.
-void LogError(const char *fmt, va_list args);
-
-/// @brief Log a format string with `Info` priority to the console.
-/// @param[in] category The LogCategory for the message.
-/// @param[in] fmt A C-string format string.
-/// @param[in] args A variable length argument list for the format
-/// string `fmt`.
-void LogInfo(LogCategory category, const char *fmt, va_list args);
-
-/// @brief Log a format string with `Error` priority to the console.
-/// @param[in] category The LogCategory for the message.
-/// @param[in] fmt A C-string format string.
-/// @param[in] args A variable length argument list for the format
-/// string `fmt`.
-void LogError(LogCategory category, const char *fmt, va_list args);
-
-/// @brief Log a format string with `Info` priority to the console.
-/// @param[in] fmt A C-string format string.
-void LogInfo(const char *fmt, ...);
-
-/// @brief Log a format string with `Error` priority to the console.
-/// @param[in] fmt A C-string format string.
-void LogError(const char *fmt, ...);
-
-/// @brief Log a format string with `Info` priority to the console.
-/// @param[in] category The LogCategory for the message.
-/// @param[in] fmt A C-string format string.
-void LogInfo(LogCategory category, const char *fmt, ...);
-
-/// @brief Log a format string with `Error` priority to the console.
-/// @param[in] category The LogCategory for the message.
-/// @param[in] fmt A C-string format string.
-void LogError(LogCategory category, const char *fmt, ...);
 
 #if defined(__ANDROID__)
 /// @brief Get the Android activity class.
@@ -328,14 +197,6 @@ std::string AndroidGetViewIntentData();
 #endif  // __ANDROID__
 
 #if defined(__ANDROID__) && defined(FPLBASE_BACKEND_STDLIB)
-/// @brief Set an Android asset manager.
-/// @param[in] manager A pointer to an already-created instance of
-/// `AAssetManager`.
-/// @note Must call this function once before loading any assets.
-void SetAAssetManager(AAssetManager *manager);
-/// @brief Returns the set Android asset manager.
-/// @return Returns the AAssetManager that has been previously set.
-AAssetManager *GetAAssetManager();
 /// @brief Set global Java virtual machine object.
 /// @note This method should be called only once.
 void AndroidSetJavaVM(JavaVM* vm, jint jni_version);
