@@ -822,6 +822,8 @@ void Renderer::SetDepthState(const DepthState &depth_state) {
     }
   }
 
+  SetDepthWrite(depth_state.write_enabled);
+
   if (depth_state.function != render_state_.depth_state.function) {
     const GLenum depth_func = RenderFunctionToGlFunction(depth_state.function);
     GL_CALL(glDepthFunc(depth_func));

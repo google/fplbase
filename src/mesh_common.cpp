@@ -165,7 +165,7 @@ void Mesh::Load() {
     data_ = reinterpret_cast<const uint8_t *>(flatbuf);
   } else {
     LogError(kError, "Couldn\'t load: %s", filename_.c_str());
-    data_ = nullptr;
+    delete flatbuf;
   }
 }
 
@@ -392,6 +392,10 @@ void Mesh::Clear() {
     delete reinterpret_cast<const std::string *>(data_);
     data_ = nullptr;
   }
+}
+
+size_t Mesh::GetNumIndexBufferObjects() const {
+  return indices_.size();
 }
 
 }  // namespace fplbase

@@ -78,8 +78,8 @@ struct Mat3x4 {
 }
 
 struct ColorRGBA {
-  r:float = 1.0;
-  g:float = 1.0;
-  b:float = 1.0;
-  a:float = 1.0;
+  r:float;
+  g:float;
+  b:float;
+  a:float;
 }

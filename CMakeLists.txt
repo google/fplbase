@@ -198,6 +198,7 @@ set(fplbase_common_SRCS
   include/fplbase/async_loader.h
   include/fplbase/debug_markers.h
   include/fplbase/environment.h
+  include/fplbase/file_utilities.h
   include/fplbase/fpl_common.h
   include/fplbase/glplatform.h
   include/fplbase/gpu_debug.h
@@ -206,12 +207,12 @@ set(fplbase_common_SRCS
   include/fplbase/internal/type_conversions_gl.h
   include/fplbase/internal/detailed_render_state.h
   include/fplbase/keyboard_keycodes.h
+  include/fplbase/logging.h
   include/fplbase/material.h
   include/fplbase/mesh.h
   include/fplbase/preprocessor.h
   include/fplbase/renderer.h
   include/fplbase/renderer_android.h
-  include/fplbase/renderer_common.h
   include/fplbase/render_state.h
   include/fplbase/render_target.h
   include/fplbase/render_utils.h
@@ -220,10 +221,13 @@ set(fplbase_common_SRCS
   include/fplbase/texture_atlas.h
   include/fplbase/utilities.h
   include/fplbase/version.h
+  include/fplbase/viewport.h
   schemas
   src/asset_manager.cpp
+  src/file_utilities.cpp
   src/gpu_debug_gl.cpp
   src/input.cpp
+  src/logging.cpp
   src/material.cpp
   src/mesh_common.cpp
   src/mesh_gl.cpp
@@ -248,7 +252,9 @@ set(fplbase_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_sdl.cpp
   src/environment_sdl.cpp
+  src/file_utilities_sdl.cpp
   src/input_sdl.cpp
+  src/logging_sdl.cpp
   src/main_sdl.cpp
   src/utilities_sdl.cpp)
 
@@ -256,7 +262,9 @@ set(fplbase_stdlib_SRCS
   ${fplbase_common_SRCS}
   src/async_loader_stdlib.cpp
   src/environment_stdlib.cpp
+  src/file_utilities_stdlib.cpp
   src/input_stdlib.cpp
+  src/logging_stdlib.cpp
   src/renderer_ios.mm
   src/utilities_stdlib.cpp)
 

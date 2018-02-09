@@ -313,6 +313,18 @@ class Texture : public AsyncAsset {
   static uint16_t *Convert888To565(const uint8_t *buffer,
                                    const mathfu::vec2i &size);
 
+  /// @brief Create a texture from a memory buffer.
+  /// @param[in] buffer The data to create the Texture from.
+  /// @param[in] size The dimensions of the image in the data buffer.
+  /// @param[in] texture_format The format of `buffer`.
+  /// @param[in] desired The desired TextureFormat.
+  /// @param[in] flags Options for the texture.
+  /// @return Returns the Texture handle if successfully created, 0 otherwise.
+  static TextureHandle CreateTexture(const uint8_t *buffer,
+                                     const mathfu::vec2i &size,
+                                     TextureFormat texture_format,
+                                     TextureFormat desired, TextureFlags flags);
+
   /// @brief Set texture target and id directly for textures that have been
   /// created outside of this class.  The creator is responsible for deleting
   /// the texture id.

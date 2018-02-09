@@ -31,31 +31,6 @@
 
 namespace fplbase {
 
-// Function called by LoadFile().
-static fplutil::Mutex g_load_file_function_mutex_;
-static LoadFileFunction g_load_file_function = LoadFileRaw;
-
-LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
-  fplutil::MutexLock lock(g_load_file_function_mutex_);
-  LoadFileFunction previous_function = g_load_file_function;
-  if (load_file_function) {
-    g_load_file_function = load_file_function;
-  } else {
-    g_load_file_function = LoadFileRaw;
-  }
-  return previous_function;
-}
-
-bool LoadFile(const char *filename, std::string *dest) {
-  LoadFileFunction load_file_function;
-  {
-    fplutil::MutexLock lock(g_load_file_function_mutex_);
-    load_file_function = g_load_file_function;
-  }
-  assert(load_file_function);
-  return load_file_function(filename, dest);
-}
-
 const void *MapFile(const char *filename, int32_t offset, int32_t *size) {
 #ifdef _WIN32
   (void)filename;
@@ -185,11 +160,6 @@ int32_t LoadPreference(const char *key, int32_t initial_value) {
 #endif
 }
 
-bool SaveFile(const char *filename, const std::string &src) {
-  return SaveFile(filename, static_cast<const void *>(src.c_str()),
-                  src.length());  // don't include the '\0'
-}
-
 bool SavePreferences(const char *filename, const void *data, size_t size) {
 #if defined(__ANDROID__)
   jobject activity = AndroidGetActivity(true);
@@ -278,68 +248,6 @@ bool SavePreference(const char *key, int32_t value) {
 #endif
 }
 
-#if defined(_WIN32)
-inline char *getcwd(char *buffer, size_t maxlen) {
-  return _getcwd(buffer, static_cast<int>(maxlen));
-}
-
-inline int chdir(const char *dirname) { return _chdir(dirname); }
-#endif  // defined(_WIN32)
-
-// Search up the directory tree from binary_dir for target_dir, changing the
-// working directory to the target_dir and returning true if it's found,
-// false otherwise.
-bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
-                                const char *const target_dir) {
-#if !defined(PLATFORM_MOBILE)
-  {
-    std::string target_dir_str(flatbuffers::PosixPath(target_dir));
-    std::string current_dir(flatbuffers::PosixPath(binary_dir));
-    std::string real_path;
-    real_path.reserve(512);
-
-    // Search up the tree from the directory containing the binary searching
-    // for target_dir.
-    for (;;) {
-      size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
-      if (separator == std::string::npos) break;
-      current_dir = current_dir.substr(0, separator);
-#ifdef _WIN32
-      // On Windows, if you try to "cd c:" and you are already in a subdirectory
-      // of c:, you will end up in the same directory. "cd c:\" will take you to
-      // the root.
-      if (current_dir.length() == 2) {
-        current_dir.append("\\");
-      }
-#endif
-      int chdir_error_code = chdir(current_dir.c_str());
-      if (chdir_error_code) break;
-      real_path[0] = '\0';
-      const char* cwd = getcwd(&real_path[0], real_path.capacity());
-      assert(cwd);  // cwd could be null if real_path is not long enough.
-      current_dir = flatbuffers::PosixPath(cwd);
-      std::string target =
-        flatbuffers::ConCatPathFileName(current_dir, target_dir_str);
-      chdir_error_code = chdir(target.c_str());
-      if (chdir_error_code == 0) return true;
-#ifdef _WIN32
-      // If current_dir is now "c:\" on Windows, then we have tried and failed
-      // to find the target directory. Windows guarantees single letter drive
-      // names.
-      if (current_dir.length() == 3) {
-        break;
-      }
-#endif
-    }
-    return false;
-  }
-#else
-  (void)binary_dir;
-  (void)target_dir;
-  return true;
-#endif
-}
-
 bool HasSystemFeature(const char *feature_name) {
 #if defined(__ANDROID__)
   jobject activity = AndroidGetActivity(true);
@@ -410,34 +318,6 @@ int32_t AndroidGetApiLevel() {
   return apilevel;
 }
 #endif
-
-void LogInfo(LogCategory category, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  LogInfo(category, fmt, args);
-  va_end(args);
-}
-
-void LogError(LogCategory category, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  LogError(category, fmt, args);
-  va_end(args);
-}
-
-void LogInfo(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  LogInfo(fmt, args);
-  va_end(args);
-}
-
-void LogError(const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  LogError(fmt, args);
-  va_end(args);
-}
 
 #ifdef __ANDROID__
 VsyncCallback g_vsync_callback = nullptr;

@@ -20,77 +20,8 @@
 
 namespace fplbase {
 
-static_assert(kApplication ==
-                  static_cast<LogCategory>(SDL_LOG_CATEGORY_APPLICATION),
-              "update kApplication");
-static_assert(kError == static_cast<LogCategory>(SDL_LOG_CATEGORY_ERROR),
-              "update kError");
-static_assert(kSystem == static_cast<LogCategory>(SDL_LOG_CATEGORY_SYSTEM),
-              "update kSystem");
-static_assert(kAudio == static_cast<LogCategory>(SDL_LOG_CATEGORY_AUDIO),
-              "update kAudio");
-static_assert(kVideo == static_cast<LogCategory>(SDL_LOG_CATEGORY_VIDEO),
-              "update kVideo");
-static_assert(kRender == static_cast<LogCategory>(SDL_LOG_CATEGORY_RENDER),
-              "update kRender");
-static_assert(kInput == static_cast<LogCategory>(SDL_LOG_CATEGORY_INPUT),
-              "update kInput");
-static_assert(kCustom == static_cast<LogCategory>(SDL_LOG_CATEGORY_CUSTOM),
-              "update kCustom");
-
-bool LoadFileRaw(const char *filename, std::string *dest) {
-  auto handle = SDL_RWFromFile(filename, "rb");
-  if (!handle) {
-    LogError(kError, "LoadFile fail on %s", filename);
-    return false;
-  }
-  auto len = static_cast<size_t>(SDL_RWseek(handle, 0, RW_SEEK_END));
-  SDL_RWseek(handle, 0, RW_SEEK_SET);
-  dest->assign(len, 0);
-  size_t rlen = static_cast<size_t>(SDL_RWread(handle, &(*dest)[0], 1, len));
-  SDL_RWclose(handle);
-  return len == rlen && len > 0;
-}
-
-bool SaveFile(const char *filename, const void *data, size_t size) {
-  auto handle = SDL_RWFromFile(filename, "wb");
-  if (!handle) {
-    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "SaveFile fail on %s", filename);
-    return false;
-  }
-  size_t wlen = static_cast<size_t>(SDL_RWwrite(handle, data, 1, size));
-  SDL_RWclose(handle);
-  return (wlen == size);
-}
-
-// Search up the directory tree from binary_dir for target_dir, changing the
-// working directory to the target_dir and returning true if it's found,
-// false otherwise.
-bool ChangeToUpstreamDir(const char *const binary_dir,
-                         const char *const target_dir) {
-  extern bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
-                                         const char *const target_dir);
-  return ChangeToUpstreamDirDesktop(binary_dir, target_dir);
-}
-
 int32_t GetSystemRamSize() {
   return SDL_GetSystemRAM();
-}
-
-void LogInfo(LogCategory category, const char *fmt, va_list args) {
-  SDL_LogMessageV(category, SDL_LOG_PRIORITY_INFO, fmt, args);
-}
-
-void LogError(LogCategory category, const char *fmt, va_list args) {
-  SDL_LogMessageV(category, SDL_LOG_PRIORITY_ERROR, fmt, args);
-}
-
-void LogInfo(const char *fmt, va_list args) {
-  LogInfo(kApplication, fmt, args);
-}
-
-void LogError(const char *fmt, va_list args) {
-  LogError(kApplication, fmt, args);
 }
 
 #if defined(__ANDROID__)

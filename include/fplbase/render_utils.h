@@ -32,9 +32,28 @@ namespace fplbase {
 ///        described in set_format().
 /// @param vertex_size The size of an individual vertex.
 /// @param vertices The array of vertices.
+/// @param indices The list of vertex indices to use to construct primitives.
 void RenderArray(Mesh::Primitive primitive, int index_count,
                  const Attribute *format, int vertex_size, const void *vertices,
                  const uint16_t *indices);
+
+/// @brief Renders the given vertex data directly.
+///
+/// Renders primitives using vertex data directly in local memory. This is a
+/// convenient alternative to creating a Mesh instance for small amounts of
+/// data, or dynamic data. This uint32 version is only guaranteed to work with
+/// GL ES 3.0+ or any version of desktop GL.
+///
+/// @param primitive The type of primitive to render the data as.
+/// @param vertex_count The total number of vertices.
+/// @param format The vertex buffer format, following the same rules as
+///        described in set_format().
+/// @param vertex_size The size of an individual vertex.
+/// @param vertices The array of vertices.
+/// @param indices The list of vertex indices to use to construct primitives.
+void RenderArray(Mesh::Primitive primitive, int index_count,
+                 const Attribute *format, int vertex_size, const void *vertices,
+                 const uint32_t *indices);
 
 /// @brief Renders the given vertex data directly.
 ///

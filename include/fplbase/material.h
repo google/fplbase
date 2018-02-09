@@ -81,7 +81,16 @@ class Material : public Asset {
   static Material *LoadFromMaterialDef(const char *filename,
                                        const TextureLoaderFn &tlf);
 
+  /// @brief The filename that was the source of the material, if this
+  /// material was loaded from a file.
+  const std::string& filename() const { return filename_; }
+
+  /// @brief Setter for The filename that is the source of the
+  /// material.
+  void set_filename(const std::string& filename) { filename_ = filename; }
+
  private:
+  std::string filename_;
   std::vector<Texture *> textures_;
   BlendMode blend_mode_;
 };

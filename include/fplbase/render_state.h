@@ -16,7 +16,7 @@
 #define FPLBASE_RENDER_STATE_H
 
 #include "fplbase/internal/detailed_render_state.h"
-#include "fplbase/renderer_common.h"
+#include "fplbase/viewport.h"
 
 namespace fplbase {
 
