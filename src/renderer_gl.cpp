@@ -42,6 +42,7 @@ void DrawElement(int32_t count, int32_t instances, uint32_t index_type,
     GL_CALL(glDrawElements(gl_primitive, count, index_type, kNullIndices));
   } else {
     assert(support_instancing);
+    (void)support_instancing;
     GL_CALL(glDrawElementsInstanced(gl_primitive, count, index_type,
                                     kNullIndices, instances));
   }
@@ -124,7 +125,7 @@ static std::vector<std::string> GetExtensions() {
   if (glGetError() == GL_NO_ERROR) {
     extensions.reserve(num_extensions);
     for (int i = 0; i < num_extensions; ++i) {
-      auto res = glGetStringi(GL_EXTENSIONS, i);
+      res = glGetStringi(GL_EXTENSIONS, i);
       if (res != nullptr) {
         extensions.push_back(reinterpret_cast<const char *>(res));
       }
