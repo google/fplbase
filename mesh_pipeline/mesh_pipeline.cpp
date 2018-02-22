@@ -479,6 +479,13 @@ class FlatMesh {
     return bone_index;
   }
 
+  void UpdateDefaultBoneTransformInverse(unsigned int bone_index,
+                                         const mat4& transform) {
+    if (bone_index < bones_.size()) {
+      transform.Pack(bones_[bone_index].default_bone_transform_inverse);
+    }
+  }
+
   void SetSurface(const FlatTextures& textures) {
     // Grab existing surface for `texture_file_name`, or create a new one.
     IndexBuffer& index_buffer = surfaces_[textures];
@@ -1944,7 +1951,8 @@ class FbxMeshParser {
   void GatherSkinBindings(const FbxMesh* mesh,
                           SkinBinding::BoneIndex transform_bone_index,
                           const NodeToBoneMap* node_to_bone_map,
-                          std::vector<SkinBinding>* out_skin_bindings) const {
+                          std::vector<SkinBinding>* out_skin_bindings,
+                          FlatMesh* out) const {
     const unsigned int point_count = mesh->GetControlPointsCount();
     std::vector<SkinBinding> skin_bindings(point_count);
 
@@ -1966,6 +1974,12 @@ class FbxMeshParser {
             node_to_bone_map->find(link_node);
         assert(link_it != node_to_bone_map->end());
         const int bone_index = link_it->second;
+
+        // Use the LinkMatrix as the inverse default transform for this bone.
+        FbxAMatrix matrix;
+        cluster->GetTransformLinkMatrix(matrix);
+        out->UpdateDefaultBoneTransformInverse(bone_index,
+                                               Mat4FromFbx(matrix).Inverse());
 
         // We currently only support normalized weights.  Both eNormalize and
         // eTotalOne can be treated as normalized, because we renormalize
@@ -2041,7 +2055,7 @@ class FbxMeshParser {
 
     std::vector<SkinBinding> skin_bindings;
     GatherSkinBindings(mesh, transform_bone_index, node_to_bone_map,
-                       &skin_bindings);
+                       &skin_bindings, out);
 
     // Get references to various vertex elements.
     const FbxVector4* vertices = mesh->GetControlPoints();
