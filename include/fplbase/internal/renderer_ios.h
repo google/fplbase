@@ -15,7 +15,9 @@
 #ifndef FPLBASE_RENDERER_IOS_H
 #define FPLBASE_RENDERER_IOS_H
 
-#include "fplbase/config.h"  // Must come first.
+#ifdef __APPLE__
+#include "TargetConditionals.h"
+#endif
 
 namespace fplbase {
 

@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-#include "fplbase/config.h"  // Must come first.
 #include "fplbase/file_utilities.h"
 #include "fplbase/logging.h"
-// clang-format on
 
 namespace fplbase {
 

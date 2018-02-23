@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-#include "precompiled.h"
-#include "fplbase/logging.h"
-// clang-format on
-
 #if defined(__ANDROID__)
 #include <android/log.h>
 #endif  // defined(__ANDROID__)
+
+#include <stdio.h>
+#include "fplbase/logging.h"
 
 namespace fplbase {
 

@@ -19,8 +19,6 @@
 #ifndef FPLBASE_GLPLATFORM_H
 #define FPLBASE_GLPLATFORM_H
 
-#include "fplbase/config.h"  // Must come first.
-
 #ifdef __APPLE__
 #  include "TargetConditionals.h"
 #  if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
