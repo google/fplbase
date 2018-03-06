@@ -131,6 +131,7 @@
        GLEXT(PFNGLUNIFORM3FVARBPROC, glUniform3fv, true)                       \
        GLEXT(PFNGLUNIFORM4FVARBPROC, glUniform4fv, true)                       \
        GLEXT(PFNGLUNIFORM1IARBPROC, glUniform1i, true)                         \
+       GLEXT(PFNGLUNIFORM1IVARBPROC, glUniform1iv, true)                       \
        GLEXT(PFNGLUNIFORMMATRIX2FVARBPROC, glUniformMatrix2fv, true)           \
        GLEXT(PFNGLUNIFORMMATRIX3FVARBPROC, glUniformMatrix3fv, true)           \
        GLEXT(PFNGLUNIFORMMATRIX4FVARBPROC, glUniformMatrix4fv, true)           \
