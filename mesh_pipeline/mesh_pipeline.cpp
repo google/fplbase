@@ -1344,8 +1344,11 @@ const FlatMesh::BoneIndex FlatMesh::kInvalidBoneIdx;
 /// @brief Load FBX files and save their geometry in our FlatBuffer format.
 class FbxMeshParser {
  public:
-  explicit FbxMeshParser(Logger& log)
-      : manager_(nullptr), scene_(nullptr), log_(log) {
+  FbxMeshParser(Logger& log, const FbxAMatrix& bake_transform)
+      : manager_(nullptr),
+        scene_(nullptr),
+        log_(log),
+        bake_transform_(bake_transform) {
     // The FbxManager is the gateway to the FBX API.
     manager_ = FbxManager::Create();
     if (manager_ == nullptr) {
@@ -1869,7 +1872,8 @@ class FbxMeshParser {
     const FbxAMatrix geometric_transform(geometric_translation,
                                          geometric_rotation, geometric_scaling);
 
-    const FbxAMatrix global_transform = node->EvaluateGlobalTransform();
+    const FbxAMatrix global_transform =
+        bake_transform_ * node->EvaluateGlobalTransform();
     const FbxAMatrix parent_global_transform =
         parent_node->EvaluateGlobalTransform();
 
@@ -2155,6 +2159,9 @@ class FbxMeshParser {
 
   // Information and warnings.
   Logger& log_;
+
+  // Transform baked into vertices.
+  FbxAMatrix bake_transform_;
 };
 
 MeshPipelineArgs::MeshPipelineArgs()
@@ -2167,7 +2174,9 @@ MeshPipelineArgs::MeshPipelineArgs()
       embed_materials(false),
       vertex_attributes(kVertexAttributeBit_AllAttributesInSourceFile),
       log_level(kLogWarning),
-      gather_textures(true) {}
+      gather_textures(true) {
+  bake_transform.SetIdentity();
+}
 
 int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   // Update the amount of information we're dumping.
@@ -2184,7 +2193,7 @@ int RunMeshPipeline(const MeshPipelineArgs& args, fplutil::Logger& log) {
   }
 
   // Load the FBX file.
-  fplbase::FbxMeshParser pipe(log);
+  fplbase::FbxMeshParser pipe(log, args.bake_transform);
   const bool load_status = pipe.Load(args.fbx_file.c_str(), args.axis_system,
                                      args.distance_unit_scale, args.recenter,
                                      args.vertex_attributes);

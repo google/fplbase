@@ -85,6 +85,21 @@ static matdef::BlendMode DefaultBlendMode(
              : matdef::BlendMode_OFF;
 }
 
+static bool Vector3FromArgs(const char* const* args, FbxVector4* out) {
+  const size_t kValueCount = 3;
+  double values[kValueCount];
+  for (size_t i = 0; i != kValueCount; ++i) {
+    const char* const arg = args[i];
+    char* arg_end;
+    values[i] = strtod(arg, &arg_end);
+    if (arg_end == arg) {
+      return false;
+    }
+  }
+  *out = FbxVector4(values[0], values[1], values[2]);
+  return true;
+}
+
 static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
                                   fplbase::MeshPipelineArgs* args) {
   bool valid_args = true;
@@ -101,9 +116,15 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
     valid_args = false;
   }
 
+  FbxVector4 bake_translation(0.0, 0.0, 0.0);
+  FbxVector4 bake_rotation(0.0, 0.0, 0.0);
+  FbxVector4 bake_scale(1.0, 1.0, 1.0);
+
   // Parse switches.
+  const char* const* arg_end = argv + argc;
   for (int i = 1; i < argc - 1; ++i) {
     const std::string arg = argv[i];
+    const char* const* arg_it = argv + i + 1;
 
     // -v switch
     if (arg == "-v" || arg == "--verbose") {
@@ -213,6 +234,30 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
       } else {
         valid_args = false;
       }
+
+    } else if (arg == "-bt" || arg == "--bake-translation") {
+      if (arg_it + 3 > arg_end || !Vector3FromArgs(arg_it, &bake_translation)) {
+        valid_args = false;
+        log.Log(kLogError, "Invalid --bake-translation %s %s %s\n\n",
+                arg_it[0], arg_it[1], arg_it[2]);
+      }
+      i += 3;
+
+    } else if (arg == "-br" || arg == "--bake-rotation") {
+      if (arg_it + 3 > arg_end || !Vector3FromArgs(arg_it, &bake_rotation)) {
+        valid_args = false;
+        log.Log(kLogError, "Invalid --bake-rotation %s %s %s\n\n",
+                arg_it[0], arg_it[1], arg_it[2]);
+      }
+      i += 3;
+
+    } else if (arg == "-bs" || arg == "--bake-scale") {
+      if (arg_it + 3 > arg_end || !Vector3FromArgs(arg_it, &bake_scale)) {
+        valid_args = false;
+        log.Log(kLogError, "Invalid --bake-scale %s %s %s\n\n",
+                arg_it[0], arg_it[1], arg_it[2]);
+      }
+      i += 3;
 
     } else if (arg == "--attrib" || arg == "--vertex-attributes") {
       if (i + 1 < argc - 1) {
@@ -334,6 +379,12 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
         "                distance unit. For example, instead of '-u inches',\n"
         "                you could also use '-u 2.54'.\n"
         "                If unspecified, use FBX file's unit.\n"
+        "  -bt, --bake-translation X Y Z\n"
+        "                Bake translation into vertices.\n"
+        "  -br, --bake-rotation X Y Z\n"
+        "                Bake axis rotations (in degrees) into vertices.\n"
+        "  -bs, --bake-scale X Y Z\n"
+        "                Bake scale into vertices.\n"
         "  --attrib, --vertex-attributes ATTRIBUTES\n"
         "                Composition of the output vertex buffer.\n"
         "                If unspecified, output attributes in source file.\n"
@@ -363,6 +414,7 @@ static bool ParseMeshPipelineArgs(int argc, char** argv, fplutil::Logger& log,
         "  -i, --info    output more than details, less than verbose\n");
   }
 
+  args->bake_transform.SetTRS(bake_translation, bake_rotation, bake_scale);
   return valid_args;
 }
 
