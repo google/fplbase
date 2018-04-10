@@ -134,11 +134,12 @@ class AsyncAsset : public Asset {
   ///
   /// This should be called by descendants as soon as they are finalized.
   void CallFinalizeCallback() {
-    for (auto it = finalize_callbacks_.begin();
-         it != finalize_callbacks_.end(); ++it) {
+    auto callbacks = finalize_callbacks_;
+    finalize_callbacks_.clear();
+    for (auto it = callbacks.begin();
+         it != callbacks.end(); ++it) {
       (*it)();
     }
-    finalize_callbacks_.clear();
     finalized_ = true;
   }
 
