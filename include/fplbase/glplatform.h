@@ -201,14 +201,14 @@
 
 #ifdef LOG_GL_ERRORS
 #  define GL_CALL(call)                      \
-    {                                        \
+    do {                                     \
       call;                                  \
       LogGLError(__FILE__, __LINE__, #call); \
-    }
+    } while (0)
 #else  // !LOG_GL_ERRORS
-#  define GL_CALL(call) \
-    do {                \
-      call;             \
+#  define GL_CALL(call)                      \
+    do {                                     \
+      call;                                  \
     } while (0)
 #endif  // !LOG_GL_ERRORS
 
