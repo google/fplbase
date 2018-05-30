@@ -14,9 +14,6 @@
 
 #import "fplbase/internal/renderer_ios.h"
 
-#import "fplbase/renderer.h"
-#import "precompiled.h"
-
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 
 #import <OpenGLES/EAGL.h>

@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-#include "precompiled.h"
 #include "fplbase/logging.h"
-// clang-format on
+#include "SDL_log.h"
 
 namespace fplbase {
 

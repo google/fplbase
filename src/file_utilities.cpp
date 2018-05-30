@@ -12,13 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-#include "fplbase/config.h"  // Must come first.
-#include "fplbase/file_utilities.h"
-#include "fplbase/logging.h"
-// clang-format on
-
-#ifndef _WIN32
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -30,17 +26,20 @@
 #endif  // defined(__APPLE__)
 // clang-format on
 
-#include "flatbuffers/util.h"
-#include "fplutil/mutex.h"
+#include <assert.h>
+#include <algorithm>
+#include <mutex>
+#include "fplbase/file_utilities.h"
+#include "fplbase/logging.h"
 
 namespace fplbase {
 
 // Function called by LoadFile().
-static fplutil::Mutex g_load_file_function_mutex_;
+static std::mutex g_load_file_function_mutex_;
 static LoadFileFunction g_load_file_function = LoadFileRaw;
 
 LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
-  fplutil::MutexLock lock(g_load_file_function_mutex_);
+  std::unique_lock<std::mutex> lock(g_load_file_function_mutex_);
   LoadFileFunction previous_function = g_load_file_function;
   if (load_file_function) {
     g_load_file_function = load_file_function;
@@ -53,7 +52,7 @@ LoadFileFunction SetLoadFileFunction(LoadFileFunction load_file_function) {
 bool LoadFile(const char *filename, std::string *dest) {
   LoadFileFunction load_file_function;
   {
-    fplutil::MutexLock lock(g_load_file_function_mutex_);
+    std::unique_lock<std::mutex> lock(g_load_file_function_mutex_);
     load_file_function = g_load_file_function;
   }
   assert(load_file_function);
@@ -73,6 +72,35 @@ inline char *getcwd(char *buffer, size_t maxlen) {
 inline int chdir(const char *dirname) { return _chdir(dirname); }
 #endif  // defined(_WIN32)
 
+inline char& string_back(std::string &value) {
+  return value[value.length() - 1];
+}
+
+inline std::string PosixPath(const char *path) {
+  std::string p = path;
+  std::replace(p.begin(), p.end(), '\\', '/');
+  return p;
+}
+
+inline std::string ConCatPathFileName(const std::string &path,
+                                      const std::string &filename) {
+  std::string filepath = path;
+  if (filepath.length()) {
+    char &filepath_last_character = string_back(filepath);
+    if (filepath_last_character == '\\') {
+      filepath_last_character = '/';
+    } else if (filepath_last_character != '/') {
+      filepath += '/';
+    }
+  }
+  filepath += filename;
+  // Ignore './' at the start of filepath.
+  if (filepath[0] == '.' && filepath[1] == '/') {
+    filepath.erase(0, 2);
+  }
+  return filepath;
+}
+
 // Search up the directory tree from binary_dir for target_dir, changing the
 // working directory to the target_dir and returning true if it's found,
 // false otherwise.
@@ -80,15 +108,15 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
                                 const char *const target_dir) {
 #if !defined(PLATFORM_MOBILE)
   {
-    std::string target_dir_str(flatbuffers::PosixPath(target_dir));
-    std::string current_dir(flatbuffers::PosixPath(binary_dir));
+    std::string target_dir_str(PosixPath(target_dir));
+    std::string current_dir(PosixPath(binary_dir));
     std::string real_path;
     real_path.reserve(512);
 
     // Search up the tree from the directory containing the binary searching
     // for target_dir.
     for (;;) {
-      size_t separator = current_dir.find_last_of(flatbuffers::kPathSeparator);
+      size_t separator = current_dir.find_last_of('/');
       if (separator == std::string::npos) break;
       current_dir = current_dir.substr(0, separator);
 #ifdef _WIN32
@@ -104,9 +132,9 @@ bool ChangeToUpstreamDirDesktop(const char *const binary_dir,
       real_path[0] = '\0';
       const char* cwd = getcwd(&real_path[0], real_path.capacity());
       assert(cwd);  // cwd could be null if real_path is not long enough.
-      current_dir = flatbuffers::PosixPath(cwd);
+      current_dir = PosixPath(cwd);
       std::string target =
-        flatbuffers::ConCatPathFileName(current_dir, target_dir_str);
+        ConCatPathFileName(current_dir, target_dir_str);
       chdir_error_code = chdir(target.c_str());
       if (chdir_error_code == 0) return true;
 #ifdef _WIN32

@@ -15,8 +15,6 @@
 // This is a wrapper around main, as SDL needs to modify the main function
 // directly.  Users of FPLBase should declare "FPL_main" which this will call.
 
-#include "fplbase/config.h"  // Must come first.
-
 #include "SDL_main.h"
 
 #ifdef __ANDROID__
