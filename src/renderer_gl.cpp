@@ -929,32 +929,6 @@ void Renderer::SetFrontFace(CullState::FrontFace front_face) {
 #define GL_INVALID_FRAMEBUFFER_OPERATION GL_INVALID_FRAMEBUFFER_OPERATION_EXT
 #endif
 
-void LogGLError(const char *file, int line, const char *call) {
-  auto err = glGetError();
-  if (err == GL_NO_ERROR) return;
-  const char *err_str = "<unknown error enum>";
-  switch (err) {
-    case GL_INVALID_ENUM:
-      err_str = "GL_INVALID_ENUM";
-      break;
-    case GL_INVALID_VALUE:
-      err_str = "GL_INVALID_VALUE";
-      break;
-    case GL_INVALID_OPERATION:
-      err_str = "GL_INVALID_OPERATION";
-      break;
-    case GL_INVALID_FRAMEBUFFER_OPERATION:
-      err_str = "GL_INVALID_FRAMEBUFFER_OPERATION";
-      break;
-    case GL_OUT_OF_MEMORY:
-      err_str = "GL_OUT_OF_MEMORY";
-      break;
-  }
-  LogError(fplbase::kError, "%s(%d): OpenGL Error: %s from %s", file, line,
-           err_str, call);
-  assert(0);
-}
-
 #if !defined(GL_GLEXT_PROTOTYPES)
 #if (!defined(FPLBASE_GLES) && !defined(__APPLE__)) || defined(_WIN32)
 #define GLEXT(type, name, required) type name = nullptr;
