@@ -309,5 +309,8 @@ extern void LogGLError(const char *file, int line, const char *call);
 #ifndef GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR
 #  define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR 0x93DD
 #endif
+#ifndef GL_TEXTURE_CUBE_MAP_SEAMLESS
+#  define GL_TEXTURE_CUBE_MAP_SEAMLESS 0x884F
+#endif
 
 #endif  // FPLBASE_GLPLATFORM_H
