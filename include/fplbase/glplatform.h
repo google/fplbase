@@ -28,12 +28,8 @@
 #    include <OpenGLES/ES3/glext.h>
 #  else  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #    define PLATFORM_OSX
-#    include <OpenGL/gl.h>
-#    include <OpenGL/glext.h>
-#    define glGenVertexArrays glGenVertexArraysAPPLE
-#    define glBindVertexArray glBindVertexArrayAPPLE
-#    define glDeleteVertexArrays glDeleteVertexArraysAPPLE
-#    define glDrawElementsInstanced glDrawElementsInstancedARB
+#    include <OpenGL/gl3.h>
+#    include <OpenGL/gl3ext.h>
 #  endif  // TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 
 #else  // !defined(__APPLE__)
@@ -151,7 +147,10 @@
        GLEXT(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays, true)          \
        GLEXT(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray, true)                \
        GLEXT(PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC,                          \
-             glFramebufferTextureMultiviewOVR, false)
+             glFramebufferTextureMultiviewOVR, false)                          \
+       GLEXT(PFNGLGETUNIFORMBLOCKINDEXPROC, glGetUniformBlockIndex, true)      \
+       GLEXT(PFNGLUNIFORMBLOCKBINDINGPROC, glUniformBlockBinding, true)        \
+       GLEXT(PFNGLBINDBUFFERBASEPROC, glBindBufferBase, true)
 
 // TODO(jsanmiya): Get this compiling for all versions of OpenGL. Currently only
 //                 valid when GL_VERSION_4_3 is defined.
@@ -311,6 +310,22 @@ extern void LogGLError(const char *file, int line, const char *call);
 #endif
 #ifndef GL_TEXTURE_CUBE_MAP_SEAMLESS
 #  define GL_TEXTURE_CUBE_MAP_SEAMLESS 0x884F
+#endif
+
+#ifndef GL_INVALID_INDEX
+#  define GL_INVALID_INDEX 0xFFFFFFFFu
+#endif
+#ifndef GL_UNIFORM_BUFFER
+#  define GL_UNIFORM_BUFFER 0x8A11
+#endif
+#ifndef GL_DEPTH_BITS
+#  define GL_DEPTH_BITS 0x0D56
+#endif
+#ifndef GL_LUMINANCE
+#  define GL_LUMINANCE 0x1909
+#endif
+#ifndef GL_LUMINANCE_ALPHA
+#  define GL_LUMINANCE_ALPHA 0x190A
 #endif
 
 #endif  // FPLBASE_GLPLATFORM_H

@@ -743,7 +743,8 @@ void Renderer::SetRenderState(const RenderState &render_state) {
 }
 
 void Renderer::SetAlphaTestState(const AlphaTestState &alpha_test_state) {
-#ifndef FPLBASE_GLES  // Alpha test not supported in ES 2.
+#if !defined(FPLBASE_GLES) && \
+    !defined(PLATFORM_OSX)  // Alpha test not supported in ES 2+.
   if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
     if (alpha_test_state.enabled) {
       GL_CALL(glEnable(GL_ALPHA_TEST));
