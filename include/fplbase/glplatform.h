@@ -150,6 +150,9 @@
              glFramebufferTextureMultiviewOVR, false)                          \
        GLEXT(PFNGLGETUNIFORMBLOCKINDEXPROC, glGetUniformBlockIndex, true)      \
        GLEXT(PFNGLUNIFORMBLOCKBINDINGPROC, glUniformBlockBinding, true)        \
+       GLEXT(PFNGLGETACTIVEUNIFORMBLOCKIVPROC, glGetActiveUniformBlockiv, true)\
+       GLEXT(PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC, glGetActiveUniformBlockName,  \
+             true)                                                             \
        GLEXT(PFNGLBINDBUFFERBASEPROC, glBindBufferBase, true)
 
 // TODO(jsanmiya): Get this compiling for all versions of OpenGL. Currently only
