@@ -47,7 +47,12 @@
 #      include <GLES2/gl2.h>
 #      include "gl3stub.h"
 #    endif  // __ANDROID_API__ < 18
-#  else  // !defined(__ANDROID__), so WIN32 & Linux
+#  elif defined(__EMSCRIPTEN__) // !defined(__ANDROID__)
+#    define PLATFORM_MOBILE
+#    define FPLBASE_GLES
+#    include <EGL/egl.h>
+#    include <GLES3/gl3.h>
+#  else  // !defined(__ANDROID__) && !defined(__EMSCRIPTEN__), so WIN32 & Linux
 #    ifdef _WIN32
 #      define VC_EXTRALEAN
 #      ifndef WIN32_LEAN_AND_MEAN
