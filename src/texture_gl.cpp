@@ -280,13 +280,21 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     }
     case kFormatLuminance: {
       assert(texture_format == kFormatLuminance);
-      format = GL_LUMINANCE;
+      // GL_LUMINANCE was removed from GL in Desktop 3.1.  Its behavior can be
+      // emulated with GL_RED and a texture swizzle, however, swizzle was only
+      // added to core in 3.3.  So there is a limbo period that cannot be
+      // covered by any one solution.  If an app selects an OpenGL 3.2 profile,
+      // GL_LUMINANCE is GL_INVALID_ENUM.  By using GL_RED here, we are assuming
+      // shaders will only read the red channel of a luminance texture.  For
+      // reference, the 3.1 spec was released in 2009.
+      format = GL_RED;
       gl_tex_image(buffer, tex_size, 0, num_pixels, false);
       break;
     }
     case kFormatLuminanceAlpha: {
       assert(texture_format == kFormatLuminanceAlpha);
-      format = GL_LUMINANCE_ALPHA;
+      // See the comment just above about GL versions and GL_LUMINANCE.
+      format = GL_RG;
       gl_tex_image(buffer, tex_size, 0, num_pixels * 2, false);
       break;
     }
