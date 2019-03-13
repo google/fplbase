@@ -39,12 +39,12 @@ enum TextureFormat {
   kFormat888,
   kFormat5551,
   kFormat565,
-  kFormatLuminance, ///< @brief In GL this is GL_RED, so use ".r" in GLSL.
+  kFormatLuminance,
   kFormatASTC,
   kFormatPKM,
   kFormatKTX,
   kFormatNative,  ///< @brief Uses the same format as the source file.
-  kFormatLuminanceAlpha, ///< @brief In GL this is GL_RG, so use ".rg" in GLSL.
+  kFormatLuminanceAlpha,
   kFormatCount    // Must be at end.
 };
 
