@@ -14,6 +14,7 @@
 //
 
 #include <cassert>
+#include <cmath>
 #include "fplbase/asset_manager.h"
 #include "fplbase/input.h"
 #include "fplbase/render_utils.h"
@@ -61,8 +62,8 @@ extern "C" int FPL_main(int /*argc*/, char* argv[]) {
     renderer.ClearFrameBuffer(mathfu::vec4(0.0, 0.0f, 0.0, 1.0f));
 
     auto time = static_cast<float>(input.Time());
-    auto c = cos(time);
-    auto s = sin(time);
+    auto c = std::cos(time);
+    auto s = std::sin(time);
     auto rotz = mathfu::mat3::RotationZ(s * 2);
     auto zoom = mathfu::vec3(3.0f, 3.0f, 1.0f) + mathfu::vec3(c, c, 1.0f);
     auto aspect =
