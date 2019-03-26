@@ -416,7 +416,7 @@ TextureHandle Texture::CreateTexture(const uint8_t *buffer, const vec2i &size,
     // this workaround, the client will need to do this preallocation
     // workaround themselves.
     auto min_dimension = static_cast<float>(std::min(tex_size.x, tex_size.y));
-    auto levels = ceil(std::log(min_dimension) / std::log(2.0f));
+    auto levels = std::ceil(std::log(min_dimension) / std::log(2.0f));
     auto mip_size = tex_size / 2;
     for (auto i = 1; i < levels; ++i) {
       gl_tex_image(nullptr, mip_size, i, 0, false);
