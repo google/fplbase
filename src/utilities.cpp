@@ -24,6 +24,8 @@
 // Platforms with POSIX
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #endif  // _WIN32
 
