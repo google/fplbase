@@ -159,8 +159,9 @@ struct StencilState {
 
 struct ScissorState {
   bool enabled;
+  mathfu::recti rect;
 
-  ScissorState() : enabled(false) {}
+  ScissorState() : enabled(false), rect(0, 0, 0, 0) {}
 };
 
 struct RenderState {
@@ -178,7 +179,7 @@ struct RenderState {
 };
 
 inline bool operator==(const ScissorState &lhs, const ScissorState &rhs) {
-  return (lhs.enabled == rhs.enabled);
+  return (lhs.enabled == rhs.enabled) && (lhs.rect == rhs.rect);
 }
 
 inline bool operator!=(const ScissorState &lhs, const ScissorState &rhs) {

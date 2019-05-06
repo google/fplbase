@@ -887,6 +887,9 @@ void Renderer::SetScissorState(const ScissorState &scissor_state) {
     GL_CALL(glDisable(GL_SCISSOR_TEST));
   }
 
+  GL_CALL(glScissor(scissor_state.rect.pos.x, scissor_state.rect.pos.y,
+                    scissor_state.rect.size.x, scissor_state.rect.size.y));
+
   render_state_.scissor_state = scissor_state;
 }
 
