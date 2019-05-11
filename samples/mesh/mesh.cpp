@@ -18,7 +18,6 @@
 #include "fplbase/asset_manager.h"
 #include "fplbase/utilities.h"
 #include "mathfu/matrix.h"
-#include "mathfu/matrix_4x4.h"
 #include <cassert>
 
 // Mesh is a sample that draws from mesh of a red hot shrimp on a white box.

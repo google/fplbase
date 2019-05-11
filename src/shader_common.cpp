@@ -197,6 +197,8 @@ Shader *Shader::LoadFromShaderDef(const char *filename) {
       BreakAndLogError(shaderdef->fragment_shader()->c_str());
       LogError(kError, "----------------------------------------");
       BreakAndLogError(RendererBase::Get()->last_error().c_str());
+    } else {
+      shader->set_filename(filename);
     }
     return shader;
   }

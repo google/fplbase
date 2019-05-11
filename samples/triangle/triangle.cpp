@@ -14,6 +14,7 @@
 //
 
 #include <cassert>
+#include <cmath>
 
 #include "fplbase/input.h"
 #include "fplbase/mesh.h"
@@ -52,7 +53,7 @@ extern "C" int FPL_main(int /*argc*/, char * /*argv*/[]) {
     renderer.AdvanceFrame(input.minimized(), input.Time());
     input.AdvanceFrame(&renderer.window_size());
 
-    float color = (1.0f - cos(static_cast<float>(input.Time())) / 2.0f);
+    float color = (1.0f - std::cos(static_cast<float>(input.Time())) / 2.0f);
     renderer.ClearFrameBuffer(mathfu::vec4(color, 0.0f, color, 1.0f));
 
     renderer.SetShader(shader);

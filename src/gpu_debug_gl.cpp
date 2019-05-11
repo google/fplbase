@@ -248,6 +248,16 @@ bool ValidateGlScissorState(const ScissorState& state) {
     return false;
   }
 
+  GLint int_values[4];
+
+  GL_CALL(glGetIntegerv(GL_SCISSOR_BOX, int_values));
+  if (int_values[0] != state.rect.pos.x || int_values[1] != state.rect.pos.y ||
+      int_values[2] != state.rect.size.x ||
+      int_values[3] != state.rect.size.y) {
+    assert(false);
+    return false;
+  }
+
   return true;
 }
 

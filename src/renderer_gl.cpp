@@ -743,7 +743,8 @@ void Renderer::SetRenderState(const RenderState &render_state) {
 }
 
 void Renderer::SetAlphaTestState(const AlphaTestState &alpha_test_state) {
-#ifndef FPLBASE_GLES  // Alpha test not supported in ES 2.
+#if !defined(FPLBASE_GLES) && \
+    !defined(PLATFORM_OSX)  // Alpha test not supported in ES 2+.
   if (alpha_test_state.enabled != render_state_.alpha_test_state.enabled) {
     if (alpha_test_state.enabled) {
       GL_CALL(glEnable(GL_ALPHA_TEST));
@@ -886,6 +887,9 @@ void Renderer::SetScissorState(const ScissorState &scissor_state) {
     GL_CALL(glDisable(GL_SCISSOR_TEST));
   }
 
+  GL_CALL(glScissor(scissor_state.rect.pos.x, scissor_state.rect.pos.y,
+                    scissor_state.rect.size.x, scissor_state.rect.size.y));
+
   render_state_.scissor_state = scissor_state;
 }
 
@@ -928,32 +932,6 @@ void Renderer::SetFrontFace(CullState::FrontFace front_face) {
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION
 #define GL_INVALID_FRAMEBUFFER_OPERATION GL_INVALID_FRAMEBUFFER_OPERATION_EXT
 #endif
-
-void LogGLError(const char *file, int line, const char *call) {
-  auto err = glGetError();
-  if (err == GL_NO_ERROR) return;
-  const char *err_str = "<unknown error enum>";
-  switch (err) {
-    case GL_INVALID_ENUM:
-      err_str = "GL_INVALID_ENUM";
-      break;
-    case GL_INVALID_VALUE:
-      err_str = "GL_INVALID_VALUE";
-      break;
-    case GL_INVALID_OPERATION:
-      err_str = "GL_INVALID_OPERATION";
-      break;
-    case GL_INVALID_FRAMEBUFFER_OPERATION:
-      err_str = "GL_INVALID_FRAMEBUFFER_OPERATION";
-      break;
-    case GL_OUT_OF_MEMORY:
-      err_str = "GL_OUT_OF_MEMORY";
-      break;
-  }
-  LogError(fplbase::kError, "%s(%d): OpenGL Error: %s from %s", file, line,
-           err_str, call);
-  assert(0);
-}
 
 #if !defined(GL_GLEXT_PROTOTYPES)
 #if (!defined(FPLBASE_GLES) && !defined(__APPLE__)) || defined(_WIN32)
